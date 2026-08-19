@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "updatedAt": "2026-08-20T08:25:00+09:00",
+  "scope": {
+    "leagues": ["J1", "Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership"],
+    "focus": "Japanese players and their clubs"
+  },
+  "workflow": [
+    "fetch_latest_information",
+    "finish_all_league_and_club_collection",
+    "finish_all_player_level_collection",
+    "build_integrated_snapshot",
+    "validate_internal_consistency",
+    "update_data_json_only_if_valid",
+    "compare_data_json_with_snapshot",
+    "validate_site_structure_and_render_contract",
+    "finish_only_when_all_checks_pass",
+    "report_to_user"
+  ],
+  "playerDataPolicy": {
+    "fields": ["appearance", "start", "bench", "minutes", "goals", "assists", "cleanSheets", "yellowCards", "redCards", "substitution", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "clearances", "saves"],
+    "missingData": {
+      "setPriorityUpdate": true,
+      "priorityFlagField": "priorityUpdate",
+      "priorityFieldsField": "priorityFields",
+      "retryBeforeNormalTargets": true,
+      "neverGuessMissingValues": true,
+      "clearFieldWhenResolved": true,
+      "clearPriorityWhenAllResolved": true
+    }
+  },
+  "consistencyPolicy": {
+    "crossCheck": ["players", "matches", "gaResults", "topMatches", "insights", "analysis", "rankings"],
+    "restartFullWorkflowOnUserMismatchReport": true
+  }
+}
