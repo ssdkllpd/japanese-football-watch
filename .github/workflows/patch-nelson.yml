@@ -1,0 +1,54 @@
+name: Patch Nelson round 2
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-nelson.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch data
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data.json')
+          d=json.loads(p.read_text())
+          d['updated']='2026-08-19 20:20 JST'
+          # player cumulative stats after round 2
+          for x in d.get('players',[]):
+              if x.get('name')=='石渡ネルソン' and x.get('club')=='STVV':
+                  x['status']='2試合連続先発・2試合連続G/A'
+                  x['statsStatus']='verified'
+                  x['statsAsOf']='第2節終了'
+                  s=x.setdefault('stats',{})
+                  s.update({'apps':2,'starts':2,'goals':1,'assists':1})
+          m={
+            'ko':'2026-08-15 03:45','league':'ベルギー','round':'第2節 / 全34節',
+            'match':'サークル・ブルージュ 3-3 STVV',
+            'players':'石渡ネルソン / 小久保玲央ブライアン / 畑大雅 / 谷口彰悟',
+            'appearance':'石渡・小久保・畑先発、谷口途中出場',
+            'note':'石渡が47分に加入後初ゴール。開幕戦1Aに続き2試合連続で得点関与。STVVは3-1から終盤に追いつかれ3-3。',
+            'watch':'DAZN / BS10','status':'verified'}
+          d['matches']=[x for x in d.get('matches',[]) if not (x.get('league')=='ベルギー' and 'サークル' in x.get('match','') and x.get('round','').startswith('第2節'))]
+          d['matches'].append(m)
+          # featured: put this match first, preserve the rest and rerank
+          tm={**m,'rank':1,'reason':'石渡ネルソンが加入後初ゴール。開幕戦1Aに続く2試合連続G/A。','rating':'S+'}
+          old=[x for x in d.get('topMatches',[]) if x.get('match')!=m['match']]
+          d['topMatches']=[tm]+old[:4]
+          for i,x in enumerate(d['topMatches'],1): x['rank']=i
+          # G/A result
+          d['gaResults']=[x for x in d.get('gaResults',[]) if not (x.get('player')=='石渡ネルソン' and x.get('round','').startswith('第2節'))]
+          d['gaResults'].append({'player':'石渡ネルソン','club':'STVV','league':'ベルギー','contribution':'1G','result':'D','resultLabel':'引分','match':'サークル・ブルージュ 3-3 STVV','round':'第2節 / 全34節','ko':'2026-08-15 03:45'})
+          p.write_text(json.dumps(d,ensure_ascii=False,separators=(',',':'))+'\n')
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add data.json
+          git diff --cached --quiet || git commit -m "Update Nelson round 2 goal and STVV draw"
+          git push
