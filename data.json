@@ -1,0 +1,57 @@
+{
+  "updated": "2026-08-19 17:35 JST",
+  "topMatches": [
+    {"rank":1,"match":"フェイエノールト 2-2 ゴー・アヘッド","players":"上田綺世 / 渡辺剛","reason":"上田1G＋渡辺復帰先発","league":"エールディヴィジ","rating":"S+","watch":"U-NEXT系"},
+    {"rank":2,"match":"STVV 1-1 ロンメル","players":"石渡ネルソン / 小久保玲央ブライアン","reason":"石渡1A＋若手日本人多数","league":"ベルギー","rating":"S+","watch":"BS10 / 配信確認"},
+    {"rank":3,"match":"テルスター 1-3 スパルタ","players":"三戸舜介","reason":"三戸1A、継続先発","league":"エールディヴィジ","rating":"S","watch":"U-NEXT系"},
+    {"rank":4,"match":"KRCヘンク 3-2 ウェステルロー","players":"伊東純也 / 横山歩夢","reason":"伊東が2戦連続で決定機関与","league":"ベルギー","rating":"S","watch":"DAZN系確認"},
+    {"rank":5,"match":"ポーツマス 1-3 QPR","players":"斉藤光毅","reason":"開幕戦ゴール","league":"チャンピオンシップ","rating":"S","watch":"配信確認"}
+  ],
+  "players": [
+    {"league":"エールディヴィジ","rank":1,"name":"上田綺世","club":"フェイエノールト","pos":"FW","status":"主力・先発","latest":"第2節 1G","rating":5,"updated":"2026-08-16"},
+    {"league":"エールディヴィジ","rank":2,"name":"三戸舜介","club":"スパルタ・ロッテルダム","pos":"MF","status":"2戦連続先発","latest":"第2節 1A","rating":4,"updated":"2026-08-15"},
+    {"league":"エールディヴィジ","rank":3,"name":"渡辺剛","club":"フェイエノールト","pos":"DF","status":"第2節復帰先発","latest":"64分出場","rating":4,"updated":"2026-08-16"},
+    {"league":"エールディヴィジ","rank":4,"name":"市原吏音","club":"AZ","pos":"DF","status":"途中出場","latest":"81分から出場","rating":4,"updated":"2026-08-16"},
+    {"league":"エールディヴィジ","rank":5,"name":"毎熊晟矢","club":"AZ","pos":"DF","status":"ベンチ","latest":"出場時間確保が焦点","rating":3,"updated":"2026-08-16"},
+    {"league":"ベルギー","rank":1,"name":"石渡ネルソン","club":"STVV","pos":"MF","status":"主力候補・先発","latest":"開幕戦 1A","rating":5,"updated":"2026-08-09"},
+    {"league":"ベルギー","rank":2,"name":"伊東純也","club":"KRCヘンク","pos":"FW","status":"主力・先発","latest":"開幕1A→次節PK獲得","rating":5,"updated":"2026-08-16"},
+    {"league":"ベルギー","rank":3,"name":"小久保玲央ブライアン","club":"STVV","pos":"GK","status":"先発","latest":"開幕先発","rating":4,"updated":"2026-08-09"},
+    {"league":"ベルギー","rank":4,"name":"横山歩夢","club":"KRCヘンク","pos":"FW","status":"途中出場","latest":"第2節途中出場","rating":4,"updated":"2026-08-16"},
+    {"league":"ベルギー","rank":5,"name":"畑大雅","club":"STVV","pos":"DF","status":"先発","latest":"開幕戦出場","rating":3,"updated":"2026-08-09"},
+    {"league":"ベルギー","rank":6,"name":"荒木遼太郎","club":"STVV","pos":"MF","status":"ベンチ","latest":"出場機会待ち","rating":3,"updated":"2026-08-09"},
+    {"league":"ベルギー","rank":7,"name":"松澤海斗","club":"STVV","pos":"FW","status":"途中出場","latest":"開幕戦出場","rating":3,"updated":"2026-08-09"},
+    {"league":"ポルトガル","rank":1,"name":"福井太智","club":"アロウカ","pos":"MF","status":"先発","latest":"開幕戦勝利に貢献","rating":4,"updated":"2026-08-09"},
+    {"league":"スコットランド","rank":1,"name":"旗手怜央","club":"セルティック","pos":"MF","status":"先発","latest":"開幕戦出場","rating":4,"updated":"2026-08-04"},
+    {"league":"チャンピオンシップ","rank":1,"name":"森下龍矢","club":"ブラックバーン","pos":"MF/DF","status":"先発","latest":"開幕戦 1A","rating":4,"updated":"2026-08-15"},
+    {"league":"チャンピオンシップ","rank":2,"name":"岩田智輝","club":"バーミンガム","pos":"MF","status":"先発","latest":"開幕先発","rating":4,"updated":"2026-08-16"},
+    {"league":"チャンピオンシップ","rank":3,"name":"斉藤光毅","club":"QPR","pos":"FW/MF","status":"先発","latest":"開幕戦 1G","rating":4,"updated":"2026-08-15"},
+    {"league":"チャンピオンシップ","rank":4,"name":"平河悠","club":"ブリストル・シティ","pos":"FW/MF","status":"先発","latest":"開幕先発","rating":4,"updated":"2026-08-15"},
+    {"league":"チャンピオンシップ","rank":5,"name":"松木玖生","club":"サウサンプトン","pos":"MF","status":"先発","latest":"88分まで出場","rating":4,"updated":"2026-08-16"},
+    {"league":"プレミアリーグ","rank":1,"name":"三笘薫","club":"ブライトン","pos":"FW/MF","status":"開幕前","latest":"開幕待ち","rating":5,"updated":"2026-08-18"},
+    {"league":"プレミアリーグ","rank":2,"name":"田中碧","club":"リーズ","pos":"MF","status":"開幕前","latest":"開幕待ち","rating":4,"updated":"2026-08-18"},
+    {"league":"プレミアリーグ","rank":3,"name":"高井幸大","club":"トッテナム","pos":"DF","status":"開幕前","latest":"開幕待ち","rating":4,"updated":"2026-08-18"},
+    {"league":"ブンデスリーガ","rank":1,"name":"追跡枠","club":"開幕後更新","pos":"-","status":"開幕前","latest":"日本人所属状況を反映予定","rating":3,"updated":"2026-08-18"},
+    {"league":"ラ・リーガ","rank":1,"name":"追跡枠","club":"開幕後更新","pos":"-","status":"開幕前","latest":"日本人所属状況を反映予定","rating":3,"updated":"2026-08-18"}
+  ],
+  "matches": [
+    {"ko":"2026-08-16 21:30","league":"エールディヴィジ","match":"フェイエノールト 2-2 ゴー・アヘッド","players":"上田綺世 / 渡辺剛","appearance":"両者先発","note":"上田1G・渡辺復帰","watch":"U-NEXT系"},
+    {"ko":"2026-08-15 03:00","league":"エールディヴィジ","match":"テルスター 1-3 スパルタ","players":"三戸舜介","appearance":"先発","note":"三戸1A","watch":"U-NEXT系"},
+    {"ko":"2026-08-16 03:45","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","players":"伊東純也 / 横山歩夢","appearance":"先発 / 途中","note":"伊東PK獲得","watch":"DAZN系確認"},
+    {"ko":"2026-08-09 03:45","league":"ベルギー","match":"STVV 1-1 ロンメル","players":"石渡ネルソン / 小久保玲央ブライアン","appearance":"先発","note":"石渡1A","watch":"BS10 / 配信確認"},
+    {"ko":"2026-08-09 23:00","league":"ベルギー","match":"ズルテ・ワレヘム 2-1 KRCヘンク","players":"伊東純也","appearance":"先発","note":"伊東1A","watch":"DAZN系確認"},
+    {"ko":"2026-08-15 23:00","league":"チャンピオンシップ","match":"ポーツマス 1-3 QPR","players":"斉藤光毅","appearance":"先発","note":"1G","watch":"配信確認"},
+    {"ko":"2026-08-15 04:00","league":"チャンピオンシップ","match":"ウルヴズ 2-2 ブラックバーン","players":"森下龍矢 / 大橋祐紀","appearance":"先発 / 途中","note":"森下1A","watch":"DAZN等要確認"},
+    {"ko":"2026-08-16 01:30","league":"チャンピオンシップ","match":"シェフィールドU vs バーミンガム","players":"岩田智輝 / 藤本寛也","appearance":"先発 / ベンチ","note":"開幕戦","watch":"配信確認"},
+    {"ko":"2026-08-16 21:30","league":"チャンピオンシップ","match":"ワトフォード vs サウサンプトン","players":"松木玖生","appearance":"先発","note":"88分まで出場","watch":"配信確認"},
+    {"ko":"2026-08-09 02:00","league":"ポルトガル","match":"ヴィトーリア 0-1 アロウカ","players":"福井太智","appearance":"先発","note":"若手ボランチ追跡","watch":"DAZN系確認"},
+    {"ko":"2026-08-04 03:30","league":"スコットランド","match":"セルティック 1-0 ダンディー","players":"旗手怜央","appearance":"先発","note":"開幕戦","watch":"Celtic TV系"}
+  ],
+  "gaResults": [
+    {"player":"上田綺世","club":"フェイエノールト","league":"エールディヴィジ","contribution":"1G","result":"D","resultLabel":"引分","match":"フェイエノールト 2-2 ゴー・アヘッド","ko":"2026-08-16 21:30"},
+    {"player":"三戸舜介","club":"スパルタ・ロッテルダム","league":"エールディヴィジ","contribution":"1A","result":"W","resultLabel":"勝利","match":"テルスター 1-3 スパルタ","ko":"2026-08-15 03:00"},
+    {"player":"石渡ネルソン","club":"STVV","league":"ベルギー","contribution":"1A","result":"D","resultLabel":"引分","match":"STVV 1-1 ロンメル","ko":"2026-08-09 03:45"},
+    {"player":"伊東純也","club":"KRCヘンク","league":"ベルギー","contribution":"1A","result":"L","resultLabel":"敗戦","match":"ズルテ・ワレヘム 2-1 KRCヘンク","ko":"2026-08-09 23:00"},
+    {"player":"森下龍矢","club":"ブラックバーン","league":"チャンピオンシップ","contribution":"1A","result":"D","resultLabel":"引分","match":"ウルヴズ 2-2 ブラックバーン","ko":"2026-08-15 04:00"},
+    {"player":"斉藤光毅","club":"QPR","league":"チャンピオンシップ","contribution":"1G","result":"W","resultLabel":"勝利","match":"ポーツマス 1-3 QPR","ko":"2026-08-15 23:00"}
+  ]
+}
