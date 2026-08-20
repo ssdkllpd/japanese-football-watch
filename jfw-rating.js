@@ -188,15 +188,15 @@
 
 window.addEventListener('load', () => {
   let tries = 0;
-  const bootMatchDetail = () => {
+  const bootBackfill = () => {
     let ready = false;
-    try { ready = typeof D !== 'undefined' && !!D; } catch {}
-    if (!ready && tries++ < 100) { setTimeout(bootMatchDetail, 100); return; }
-    if (document.querySelector('script[data-jfw-match-detail]')) return;
+    try { ready = typeof D !== 'undefined' && !!D && typeof loadSeason === 'function'; } catch {}
+    if (!ready && tries++ < 100) { setTimeout(bootBackfill, 100); return; }
+    if (document.querySelector('script[data-jfw-backfill]')) return;
     const script = document.createElement('script');
-    script.src = `match-detail.js?v=${Date.now()}`;
-    script.dataset.jfwMatchDetail = '1';
+    script.src = `backfill-loader.js?v=${Date.now()}`;
+    script.dataset.jfwBackfill = '1';
     document.body.appendChild(script);
   };
-  bootMatchDetail();
+  bootBackfill();
 });
