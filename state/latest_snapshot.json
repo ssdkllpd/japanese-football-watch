@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-20T12:55:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the active season after stored-match player-data backfill and latest verified corrections.",
+  "base": {
+    "path": "data.json",
+    "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
+  },
+  "overlayManifest": {
+    "path": "data/2026-27/backfill/index.json",
+    "blobSha": "0096740a59551c81edff3589dff371b0958ad470",
+    "orderedFragments": [
+      "core.json",
+      "scotland-portugal.json",
+      "belgium-stvv.json",
+      "eredivisie.json",
+      "championship.json",
+      "belgium-genk.json",
+      "latest-2026-08-20.json",
+      "source-fixes-2026-08-20.json",
+      "rating-safety-fixes-2026-08-20.json"
+    ]
+  },
+  "runtime": [
+    "data.json",
+    "jfw-rating.js",
+    "backfill-loader.js",
+    "match-detail.js"
+  ],
+  "validation": {
+    "manifestOrderChecked": true,
+    "allManifestFragmentsPresent": true,
+    "storedMatchCorrectionsAppliedByStableMatchIdOrLegacyMatchKey": true,
+    "playerMatchStatsUpsertedByRecordIdOrMatchPlayerKey": true,
+    "aggregateLeagueStatsExcludeCupAndUefaRecords": true,
+    "gaResultsDeduplicatedByMatchAndPlayer": true,
+    "missingValuesNeverConvertedToZeroByBackfillUnlessExplicitDisciplineClean": true,
+    "nonExhaustiveCupDisciplineInputsForcedToMissing": true,
+    "jfwRatingVersion": "1.0",
+    "ratingRequiresExplicitDisciplineInputs": true,
+    "siteMatchDetailConsumesPlayerMatchStats": true
+  },
+  "verifiedCorrections": [
+    "Telstar 0-0 Sparta corrected to Telstar 1-3 Sparta; Shunsuke Mito assist added.",
+    "Genk-Westerlo result and Japanese player participation expanded; Ayumu Yokoyama and Junya Ito assists retained on separate Genk goals.",
+    "Previously stored completed matches now receive playerMatchStats records where appearance state and minimum facts were verifiable."
+  ],
+  "declaredCoverageGaps": [
+    "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
+    "J1 does not yet have a defined tracked-player roster in the current data.json, so no J1 player records were invented during this corrective backfill.",
+    "Some cup/UEFA records have minutes and G/A but intentionally no JFW Rating because discipline inputs are not exhaustively verified."
+  ]
+}
