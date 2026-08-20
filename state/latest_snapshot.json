@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-20T12:46:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the active season after stored-match player-data backfill and latest verified corrections.",
+  "updatedAt": "2026-08-21T05:58:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the active season after stored-match player-data backfill and latest verified roster corrections.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "852ee5b8b3be80a28d502891efb181b1bb58b5bf",
+    "blobSha": "fcf0bebe78a8272eec18e361ad3eccd143a12085",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -19,7 +19,8 @@
       "belgium-genk.json",
       "latest-2026-08-20.json",
       "source-fixes-2026-08-20.json",
-      "rating-safety-fixes-2026-08-20.json"
+      "rating-safety-fixes-2026-08-20.json",
+      "premier-roster-2026-08-21.json"
     ]
   },
   "runtime": [
@@ -32,6 +33,7 @@
     "manifestOrderChecked": true,
     "allManifestFragmentsPresent": true,
     "storedMatchCorrectionsAppliedByStableMatchIdOrLegacyMatchKey": true,
+    "playerUpdatesCanInsertMissingTrackedPlayers": true,
     "playerMatchStatsUpsertedByRecordIdOrMatchPlayerKey": true,
     "aggregateLeagueStatsExcludeCupAndUefaRecords": true,
     "gaResultsDeduplicatedByMatchAndPlayer": true,
@@ -39,16 +41,19 @@
     "nonExhaustiveCupDisciplineInputsForcedToMissing": true,
     "jfwRatingVersion": "1.0",
     "ratingRequiresExplicitDisciplineInputs": true,
-    "siteMatchDetailConsumesPlayerMatchStats": true
+    "siteMatchDetailConsumesPlayerMatchStats": true,
+    "premierJapaneseRosterCrossCheckedAsOf": "2026-08-20"
   },
   "verifiedCorrections": [
     "Telstar 0-0 Sparta corrected to Telstar 1-3 Sparta; Shunsuke Mito assist added.",
     "Genk-Westerlo result and Japanese player participation expanded; Ayumu Yokoyama and Junya Ito assists retained on separate Genk goals.",
-    "Previously stored completed matches now receive playerMatchStats records where appearance state and minimum facts were verifiable."
+    "Previously stored completed matches now receive playerMatchStats records where appearance state and minimum facts were verifiable.",
+    "Premier League tracked roster corrected to include Takehiro Tomiyasu (Crystal Palace), Hidemasa Morita (Hull City), and Tatsuhiro Sakamoto (Coventry City) before the 2026-27 league opener."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "J1 does not yet have a defined tracked-player roster in the current data.json, so no J1 player records were invented during this corrective backfill.",
-    "Some cup/UEFA records have minutes and G/A but intentionally no JFW Rating because discipline inputs are not exhaustively verified."
+    "Some cup/UEFA records have minutes and G/A but intentionally no JFW Rating because discipline inputs are not exhaustively verified.",
+    "Ko Itakura's reported Borussia Monchengladbach return was not committed in this snapshot because a sufficiently strong primary-source confirmation was not retrieved during this run."
   ]
 }
