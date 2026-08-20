@@ -1,0 +1,11 @@
+{
+  "current": "2026-27",
+  "seasons": [
+    {
+      "id": "2026-27",
+      "label": "2026-27",
+      "data": "data.json",
+      "current": true
+    }
+  ]
+}
