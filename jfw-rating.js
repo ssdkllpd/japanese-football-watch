@@ -3,6 +3,7 @@
 
   const VERSION = '1.0';
   const BASE = 6.0;
+  const DISCIPLINE_FIELDS = ['yellowCards','secondYellowRed','straightRed','penaltiesConceded','ownGoals'];
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const round2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
   const isValue = x => x && x.state === 'value' && Number.isFinite(Number(x.value));
@@ -10,7 +11,6 @@
 
   const CONFIG = {
     FW: {
-      totalWeight: 3.51,
       fields: [
         ['goals', 1.05, v => 1.05 * v],
         ['assists', 0.75, v => 0.75 * v],
@@ -23,7 +23,6 @@
       ]
     },
     MF: {
-      totalWeight: 3.80,
       fields: [
         ['goals', 0.90, v => 0.90 * v],
         ['assists', 0.80, v => 0.80 * v],
@@ -37,7 +36,6 @@
       ]
     },
     DF: {
-      totalWeight: 5.20,
       fields: [
         ['gaOnPitch', 0.90, v => Math.max(0.55 - 0.35 * v, -0.90)],
         ['tackles', 0.52, v => Math.min(0.13 * v, 0.52)],
@@ -52,7 +50,6 @@
       ]
     },
     GK: {
-      totalWeight: 4.09,
       fields: [
         ['gaOnPitch', 1.00, v => Math.max(0.60 - 0.40 * v, -1.00)],
         ['saves', 0.80, v => Math.min(0.16 * v, 0.80)],
@@ -95,12 +92,11 @@
   }
 
   function discipline(inputs) {
-    const val = key => isValue(inputs?.[key]) ? n(inputs[key]) : 0;
-    return -0.20 * val('yellowCards')
-      -0.70 * val('secondYellowRed')
-      -1.20 * val('straightRed')
-      -0.50 * val('penaltiesConceded')
-      -0.80 * val('ownGoals');
+    return -0.20 * n(inputs.yellowCards)
+      -0.70 * n(inputs.secondYellowRed)
+      -1.20 * n(inputs.straightRed)
+      -0.50 * n(inputs.penaltiesConceded)
+      -0.80 * n(inputs.ownGoals);
   }
 
   function confidence(c) {
@@ -113,6 +109,9 @@
     if (!cfg) return { jfwRating: null, reason: 'unknown_position', ratingVersion: VERSION };
     if (!['minutes', 'goals', 'assists'].every(k => isValue(inputs?.[k]))) {
       return { jfwRating: null, reason: 'minimum_inputs_missing', ratingVersion: VERSION, ratingPosition: pos };
+    }
+    if (!DISCIPLINE_FIELDS.every(k => isValue(inputs?.[k]))) {
+      return { jfwRating: null, reason: 'discipline_inputs_missing', ratingVersion: VERSION, ratingPosition: pos };
     }
     const minutes = n(inputs.minutes);
     if (!(minutes > 0)) return { jfwRating: null, reason: 'not_appeared', ratingVersion: VERSION, ratingPosition: pos };
@@ -152,14 +151,14 @@
 
   function withComputedRating(record) {
     if (!record) return record;
-    if (Number.isFinite(Number(record.jfwRating))) return record;
-    if (!record.ratingInputs || !record.ratingPosition) return record;
+    if (record.ratingVersion === VERSION && Number.isFinite(Number(record.jfwRating))) return record;
+    if (!record.ratingInputs || !record.ratingPosition) return { ...record, jfwRating: null };
     return { ...record, ...compute(record.ratingInputs, record.ratingPosition) };
   }
 
   function seasonSummary(records) {
     const all = (records || []).filter(r => Number(r?.minutes ?? r?.ratingInputs?.minutes?.value) > 0);
-    const rated = all.map(withComputedRating).filter(r => Number.isFinite(Number(r.jfwRating)));
+    const rated = all.map(withComputedRating).filter(r => r.ratingVersion === VERSION && Number.isFinite(Number(r.jfwRating)));
     const weighted = rows => {
       let total = 0, mins = 0;
       for (const r of rows) {
@@ -169,7 +168,7 @@
       return mins ? round2(total / mins) : null;
     };
     const recentWindow = [...all].sort((a,b) => String(b.ko || '').localeCompare(String(a.ko || ''))).slice(0, 5);
-    const recentRated = recentWindow.map(withComputedRating).filter(r => Number.isFinite(Number(r.jfwRating)));
+    const recentRated = recentWindow.map(withComputedRating).filter(r => r.ratingVersion === VERSION && Number.isFinite(Number(r.jfwRating)));
     const avgCoverage = rated.length ? rated.reduce((s,r) => s + Number(r.ratingCoverage || 0), 0) / rated.length : null;
     const avgMinutes = all.length ? all.reduce((s,r) => s + Number(r.minutes ?? r.ratingInputs?.minutes?.value ?? 0), 0) / all.length : null;
     return {
