@@ -107,5 +107,6 @@ R.seasonSelect.addEventListener('change',()=>loadSeason(R.seasonSelect.value,{re
 R.searchBox.addEventListener('input',()=>{renderSuggestions();renderSearch()});R.searchBox.addEventListener('focus',renderSuggestions);R.searchBox.addEventListener('keydown',e=>{if(e.key==='ArrowDown'&&suggestRows.length){e.preventDefault();suggestIndex=(suggestIndex+1)%suggestRows.length;paintSuggestion()}else if(e.key==='ArrowUp'&&suggestRows.length){e.preventDefault();suggestIndex=(suggestIndex-1+suggestRows.length)%suggestRows.length;paintSuggestion()}else if(e.key==='Enter'&&suggestIndex>=0){e.preventDefault();chooseSuggestion(suggestIndex)}else if(e.key==='Escape'){R.searchBox.value='';clearSuggestions();showPage(lastPage)}});document.addEventListener('click',e=>{if(!e.target.closest('.searchWrap'))clearSuggestions()});window.addEventListener('popstate',()=>{let u=new URL(location.href),p=u.searchParams.get('player'),c=u.searchParams.get('club');if(p&&playerByRef(p)){activePlayer=p;renderPlayerDetail();showPage('player',{scroll:false})}else if(c&&clubPlayers(c).length){activeClub=c;renderClubDetail();showPage('club',{scroll:false})}else showPage(location.hash.replace('#','')||lastPage,{scroll:false})});
 </script>
 <script src="favorites.js"></script>
+<script src="clubs.js"></script>
 <script>init();</script>
 </body></html>
