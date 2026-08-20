@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updated": "2026-08-20 12:45 JST",
+  "updated": "2026-08-20 12:50 JST",
   "fragments": [
     "core.json",
     "scotland-portugal.json",
@@ -10,6 +10,7 @@
     "championship.json",
     "belgium-genk.json",
     "latest-2026-08-20.json",
-    "source-fixes-2026-08-20.json"
+    "source-fixes-2026-08-20.json",
+    "rating-safety-fixes-2026-08-20.json"
   ]
 }
