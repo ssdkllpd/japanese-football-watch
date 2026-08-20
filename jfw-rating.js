@@ -185,3 +185,11 @@
 
   window.JFWRating = { VERSION, compute, withComputedRating, seasonSummary };
 })();
+
+window.addEventListener('load', () => {
+  if (document.querySelector('script[data-jfw-match-detail]')) return;
+  const script = document.createElement('script');
+  script.src = `match-detail.js?v=${Date.now()}`;
+  script.dataset.jfwMatchDetail = '1';
+  document.body.appendChild(script);
+});
