@@ -187,9 +187,16 @@
 })();
 
 window.addEventListener('load', () => {
-  if (document.querySelector('script[data-jfw-match-detail]')) return;
-  const script = document.createElement('script');
-  script.src = `match-detail.js?v=${Date.now()}`;
-  script.dataset.jfwMatchDetail = '1';
-  document.body.appendChild(script);
+  let tries = 0;
+  const bootMatchDetail = () => {
+    let ready = false;
+    try { ready = typeof D !== 'undefined' && !!D; } catch {}
+    if (!ready && tries++ < 100) { setTimeout(bootMatchDetail, 100); return; }
+    if (document.querySelector('script[data-jfw-match-detail]')) return;
+    const script = document.createElement('script');
+    script.src = `match-detail.js?v=${Date.now()}`;
+    script.dataset.jfwMatchDetail = '1';
+    document.body.appendChild(script);
+  };
+  bootMatchDetail();
 });
