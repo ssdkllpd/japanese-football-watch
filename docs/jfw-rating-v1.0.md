@@ -13,7 +13,8 @@ JFW = clamp( 6.00 + Δ_perf × K_cov × K_min + Δ_disc , 3.00, 10.00 )
 - `K_cov`: データ充足率による縮小係数
 - `K_min`: 出場時間による縮小係数
 - 未出場（0分）は `null`
-- 最低算出条件は `minutes / goals / assists` がすべて `value`
+- 基礎最低算出条件は `minutes / goals / assists` がすべて `value`
+- 実装整合性ガードとして、縮小対象外の規律項目もすべて `value`（0を含む）であることを要求する。欠損時は0とみなさず `null`
 
 ## 1. 入力値の3状態
 
@@ -126,7 +127,7 @@ GA_onpitch = 選手がピッチ上にいた時間帯に発生した失点数
 - PK献上 `-0.50 × n`
 - オウンゴール `-0.80 × n`
 
-規律項目は充足率の分母に入れない。`yellowCards / secondYellowRed / straightRed` は別々に保存する。
+規律項目は充足率の分母に入れない。`yellowCards / secondYellowRed / straightRed / penaltiesConceded / ownGoals` はすべて明示的な `value` として保存する。0件なら `value: 0`、取得不能ならRatingを算出しない。
 
 ## 7. シーズン集計
 
