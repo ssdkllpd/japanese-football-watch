@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-20T12:55:00+09:00",
+  "updatedAt": "2026-08-20T12:46:00+09:00",
   "purpose": "Reproducible integrated snapshot for the active season after stored-match player-data backfill and latest verified corrections.",
   "base": {
     "path": "data.json",
@@ -9,7 +9,7 @@
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "0096740a59551c81edff3589dff371b0958ad470",
+    "blobSha": "852ee5b8b3be80a28d502891efb181b1bb58b5bf",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
