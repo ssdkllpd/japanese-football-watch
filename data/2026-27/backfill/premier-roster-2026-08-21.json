@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-21 05:58 JST",
+  "sources": {
+    "unext-premier-japanese-20260820": {
+      "id": "unext-premier-japanese-20260820",
+      "name": "U-NEXT 2026/27プレミアリーグ日本人選手一覧",
+      "type": "broadcaster_roster_announcement",
+      "url": "https://prtimes.jp/main/html/rd/p/000002908.000031998.html",
+      "retrievedAt": "2026-08-21T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["premierLeagueJapaneseRosterAsOf2026-08-20"]
+    },
+    "cpfc-tomiyasu-20260807": {
+      "id": "cpfc-tomiyasu-20260807",
+      "name": "Crystal Palace FC announcement",
+      "type": "club_official_announcement",
+      "url": "https://www.cpfc.co.uk/news/announcement/takehiro-tomiyasu-signs-for-crystal-palace/",
+      "retrievedAt": "2026-08-21T05:58:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["club"]
+    },
+    "hull-morita-20260724": {
+      "id": "hull-morita-20260724",
+      "name": "Hull City official signing announcement (reported by Nikkan Sports)",
+      "type": "club_announcement_report",
+      "url": "https://www.nikkansports.com/soccer/world/news/202607250000136.html",
+      "retrievedAt": "2026-08-21T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["club"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "league": "プレミアリーグ",
+      "rank": 8,
+      "name": "冨安健洋",
+      "club": "クリスタル・パレス",
+      "pos": "DF",
+      "status": "加入正式発表済み・開幕前",
+      "rating": 4,
+      "statsStatus": "verified",
+      "statsAsOf": "開幕前",
+      "stats": {"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0,"cleanSheets":0},
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sources": ["cpfc-tomiyasu-20260807","unext-premier-japanese-20260820"]
+    },
+    {
+      "league": "プレミアリーグ",
+      "rank": 9,
+      "name": "守田英正",
+      "club": "ハル・シティ",
+      "pos": "MF",
+      "status": "加入正式発表済み・開幕前",
+      "rating": 4,
+      "statsStatus": "verified",
+      "statsAsOf": "開幕前",
+      "stats": {"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0},
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sources": ["hull-morita-20260724","unext-premier-japanese-20260820"]
+    },
+    {
+      "league": "プレミアリーグ",
+      "rank": 10,
+      "name": "坂元達裕",
+      "club": "コヴェントリー・シティ",
+      "pos": "FW/MF",
+      "status": "所属確認済み・開幕前",
+      "rating": 4,
+      "statsStatus": "verified",
+      "statsAsOf": "開幕前",
+      "stats": {"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0},
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sources": ["unext-premier-japanese-20260820"]
+    }
+  ]
+}
