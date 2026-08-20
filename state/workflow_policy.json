@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "updatedAt": "2026-08-20T10:23:00+09:00",
+  "version": 4,
+  "updatedAt": "2026-08-20T10:35:00+09:00",
   "scope": {
     "leagues": [
       "J1",
@@ -111,6 +111,27 @@
     "seasonAverage": "minutes_weighted",
     "crossPositionRanking": false
   },
+  "siteViewPolicy": {
+    "matchDetail": {
+      "script": "match-detail.js",
+      "routeParam": "match",
+      "dataSources": ["matches", "topMatches", "playerMatchStats"],
+      "mustExpose": [
+        "matchSummary",
+        "appearanceSummary",
+        "japanesePlayerRecords",
+        "ratingInputs",
+        "inputStates",
+        "jfwRating",
+        "ratingCoverage",
+        "ratingBreakdown",
+        "ratingSources",
+        "ratingConflicts"
+      ],
+      "showMissingExplicitly": true,
+      "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"]
+    }
+  },
   "consistencyPolicy": {
     "crossCheck": [
       "players",
@@ -121,7 +142,8 @@
       "insights",
       "analysis",
       "rankings",
-      "jfwRating"
+      "jfwRating",
+      "matchDetail"
     ],
     "restartFullWorkflowOnUserMismatchReport": true
   }
