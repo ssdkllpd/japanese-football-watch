@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updated": "2026-08-20 10:47 JST",
+  "updated": "2026-08-20 12:30 JST",
   "fragments": [
     "core.json",
     "scotland-portugal.json",
     "belgium-stvv.json",
     "eredivisie.json",
     "championship.json",
-    "belgium-genk.json"
+    "belgium-genk.json",
+    "latest-2026-08-20.json"
   ]
 }
