@@ -3,18 +3,260 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#070b14">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <title>海外日本人ウォッチ</title>
+<script>
+try {
+  if (localStorage.getItem('jfw-font-size-v1') === 'large') {
+    document.documentElement.dataset.font = 'large';
+  }
+} catch {}
+</script>
 <style>
 :root{--bg:#080c18;--p:#11182a;--p2:#182238;--t:#f4f7fb;--m:#95a3b8;--a:#5eead4;--b:#60a5fa;--l:#27334a;--y:#fbbf24;--r:#fca5a5;--g:#86efac;--vio:#c4b5fd}*{box-sizing:border-box}body{margin:0;background:linear-gradient(#080c18,#0d1322 55%,#080c18);color:var(--t);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}.wrap{max-width:980px;margin:auto;padding:14px 12px 82px}.hero h1{font-size:24px;margin:4px 0}.heroMeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.seasonBox{display:flex;align-items:center;gap:7px;color:var(--m);font-size:12px}.seasonSelect,.rangeSelect{background:var(--p);color:var(--t);border:1px solid var(--l);border-radius:9px;padding:6px 9px;font-weight:700}.muted{color:var(--m);font-size:12px}.topnav{position:sticky;top:0;z-index:20;background:#080c18f4;backdrop-filter:blur(10px);padding:10px 0;border-bottom:1px solid var(--l)}.scroll{display:flex;gap:7px;overflow:auto;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}.btn,.navbtn,.linkbtn{border:1px solid var(--l);background:var(--p);color:var(--t);border-radius:999px;padding:8px 11px;white-space:nowrap;font-size:12px;cursor:pointer}.btn.on,.navbtn.on{background:var(--a);color:#06211d;border-color:var(--a);font-weight:800}.linkbtn{border-radius:10px;background:var(--p2)}.searchWrap{position:relative}.search{width:100%;margin-top:9px;background:var(--p);border:1px solid var(--l);border-radius:11px;padding:11px;color:var(--t)}.suggestions{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;background:#0f1627;border:1px solid var(--l);border-radius:12px;overflow:hidden;box-shadow:0 16px 40px #0008}.suggestions:empty{display:none}.suggestion{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--l);background:transparent;color:var(--t);padding:10px 12px;cursor:pointer}.suggestion:last-child{border-bottom:0}.suggestion.on,.suggestion:hover{background:var(--p2)}.suggestion small{color:var(--m)}.view{display:none}.view.active{display:block}section{margin-top:20px}h2{font-size:18px;margin:0 0 10px}.lead{font-size:12px;color:var(--m);margin:-4px 0 10px}.card{background:linear-gradient(var(--p),#0f1627);border:1px solid var(--l);border-radius:15px;padding:13px;margin-bottom:9px}.clickable{cursor:pointer}.clickable:hover{border-color:#3d4d6d}.grid{display:grid;grid-template-columns:1fr;gap:9px}.row{display:flex;gap:10px;align-items:flex-start}.rank{min-width:32px;height:32px;border-radius:9px;background:var(--p2);display:grid;place-items:center;font-weight:900;color:var(--a)}.grow{flex:1;min-width:0}.name,.match{font-size:16px;font-weight:850}.entityLink{cursor:pointer;text-decoration:underline;text-decoration-color:#ffffff33;text-underline-offset:3px}.sub{font-size:12px;color:var(--m);margin-top:4px}.pill{display:inline-block;border:1px solid var(--l);border-radius:999px;padding:3px 7px;font-size:10px;margin:6px 4px 0 0}.ok{color:var(--g)}.part{color:var(--y)}.no{color:var(--r)}.stars{color:var(--y)}.stats,.reason{font-size:12px;line-height:1.65;margin-top:8px}.badge{float:right;font-size:11px;padding:4px 7px;border:1px solid var(--l);border-radius:8px}.round{color:var(--vio);font-weight:700}.date{color:#93c5fd}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.sum{background:var(--p2);border:1px solid var(--l);border-radius:12px;text-align:center;padding:10px}.num{font-size:23px;font-weight:900}.metricValue{font-size:21px;font-weight:900;color:var(--a);margin-left:auto}.watchbtn{margin-top:10px;width:100%;border:1px solid var(--l);background:var(--p2);color:var(--t);border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer}.watchbtn.done{border-color:var(--g);color:var(--g);background:#163124}.watchedCard{opacity:.68}.kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.kpi .card{margin:0}.kpiN{font-size:24px;font-weight:900}.empty{color:var(--m);padding:16px;text-align:center}.analysis{border-left:3px solid var(--b)}.fact{border-left:3px solid var(--a)}.footer{font-size:11px;color:var(--m);margin-top:24px;line-height:1.5}.searchGroup{margin-bottom:18px}.detailHead{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}.detailTitle{font-size:25px;font-weight:900;margin:3px 0}.crumb{font-size:12px;color:var(--m);cursor:pointer}.ratingHero{display:grid;grid-template-columns:1fr;gap:10px}.ratingMain{background:radial-gradient(circle at top right,#164e6338,transparent 45%),linear-gradient(var(--p),#0f1627);border:1px solid #2dd4bf55;border-radius:18px;padding:16px}.ratingN{font-size:46px;font-weight:950;line-height:1;color:var(--a);letter-spacing:-2px}.ratingLabel{font-size:12px;color:var(--m);margin-bottom:8px}.ratingBand{font-size:13px;font-weight:800;margin-top:8px}.detailKpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.detailKpis .sum{padding:12px}.miniN{font-size:19px;font-weight:900}.rangeBox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.sectionTitleRow{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.profileGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.profileItem{background:var(--p2);border-radius:10px;padding:9px}.profileItem b{display:block;font-size:11px;color:var(--m);margin-bottom:3px}.ratingBar{height:8px;background:#0a1020;border:1px solid var(--l);border-radius:999px;overflow:hidden;margin-top:8px}.ratingBar>span{display:block;height:100%;background:linear-gradient(90deg,var(--b),var(--a));width:0}.ratingRow{display:flex;justify-content:space-between;gap:8px;align-items:center}.backRow{margin-top:15px}.sourceNote{font-size:10px;color:var(--m);margin-top:7px}@media(min-width:720px){.grid{grid-template-columns:1fr 1fr}.kpi{grid-template-columns:repeat(4,1fr)}.ratingHero{grid-template-columns:1.15fr 1fr}.detailKpis{grid-template-columns:repeat(4,1fr)}.profileGrid{grid-template-columns:repeat(4,1fr)}}
 </style>
+<style id="ui-refresh">
+:root{
+  color-scheme:dark;
+  --bg:#070b14;
+  --p:#111a2b;
+  --p2:#19263d;
+  --t:#f8fafc;
+  --m:#b7c3d5;
+  --a:#5eead4;
+  --b:#7dd3fc;
+  --l:#34445e;
+  --y:#fcd34d;
+  --r:#fda4af;
+  --g:#86efac;
+  --vio:#c4b5fd;
+  --shadow:0 12px 32px rgba(0,0,0,.22);
+}
+html{font-size:16px;scroll-behavior:smooth;text-size-adjust:100%;-webkit-text-size-adjust:100%}
+html[data-font="large"]{font-size:18px}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 15% -10%,rgba(45,212,191,.10),transparent 34rem),
+    radial-gradient(circle at 90% 5%,rgba(96,165,250,.10),transparent 30rem),
+    linear-gradient(180deg,#070b14 0%,#0b1220 52%,#070b14 100%);
+  color:var(--t);
+  font-size:1rem;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit}
+button,select{touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--b);
+  outline-offset:3px;
+}
+.skipLink{
+  position:fixed;
+  top:8px;
+  left:8px;
+  z-index:100;
+  transform:translateY(-160%);
+  border-radius:10px;
+  background:var(--a);
+  color:#042f2e;
+  padding:10px 14px;
+  font-weight:800;
+}
+.skipLink:focus{transform:translateY(0)}
+.wrap{width:100%;max-width:1240px;margin:0 auto;padding:24px clamp(14px,2.5vw,32px) 72px}
+.hero{padding:2px 2px 0}
+.hero h1{font-size:clamp(1.65rem,2.7vw,2.15rem);line-height:1.2;letter-spacing:-.025em;margin:0 0 10px}
+.heroMeta{gap:10px 12px;align-items:center}
+.seasonBox,.muted{color:var(--m);font-size:.875rem}
+.seasonBox{font-weight:650}
+.seasonSelect,.rangeSelect,.fontToggle{
+  min-height:44px;
+  border:1px solid var(--l);
+  border-radius:11px;
+  background:var(--p);
+  color:var(--t);
+  padding:8px 12px;
+  font-size:.875rem;
+  font-weight:750;
+}
+.fontToggle{cursor:pointer;white-space:nowrap}
+.topnav{
+  position:sticky;
+  top:10px;
+  z-index:30;
+  margin-top:18px;
+  padding:11px;
+  border:1px solid rgba(71,89,119,.78);
+  border-radius:17px;
+  background:rgba(8,13,24,.92);
+  box-shadow:0 8px 28px rgba(0,0,0,.25);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.scroll{
+  gap:8px;
+  overscroll-behavior-inline:contain;
+  scroll-snap-type:x proximity;
+  scroll-padding-inline:8px;
+}
+.btn,.navbtn,.linkbtn{
+  min-height:44px;
+  border-color:var(--l);
+  background:var(--p);
+  padding:9px 14px;
+  font-size:.875rem;
+  font-weight:700;
+  line-height:1.25;
+  scroll-snap-align:start;
+}
+.btn:hover,.navbtn:hover,.linkbtn:hover,.fontToggle:hover{border-color:#587092;background:#17243a}
+.btn.on,.navbtn.on{
+  color:#032925;
+  background:linear-gradient(135deg,#5eead4,#7dd3fc);
+  border-color:transparent;
+  box-shadow:0 5px 16px rgba(45,212,191,.2);
+}
+.search{height:48px;margin-top:10px;border-color:var(--l);border-radius:12px;background:#0d1627;padding:11px 14px;font-size:1rem;line-height:1.4}
+.search::placeholder{color:#8290a6;opacity:1}
+.suggestions{top:calc(100% + 7px);border-color:var(--l);box-shadow:0 18px 45px rgba(0,0,0,.55)}
+.suggestion{min-height:52px;padding:11px 14px;font-size:.9375rem;align-items:center}
+.suggestion small{font-size:.8125rem;color:var(--m)}
+main{display:block}
+section{margin-top:32px;scroll-margin-top:150px}
+section+section{margin-top:40px}
+h2{font-size:1.25rem;line-height:1.35;letter-spacing:-.015em;margin:0 0 12px}
+.lead{font-size:.875rem;line-height:1.55;color:var(--m);margin:-5px 0 14px}
+.grid{gap:13px}
+.card{
+  position:relative;
+  border-color:var(--l);
+  border-radius:17px;
+  background:linear-gradient(145deg,rgba(20,31,51,.98),rgba(13,21,37,.98));
+  box-shadow:0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.13);
+  padding:17px;
+  margin-bottom:12px;
+}
+.clickable{transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+@media (hover:hover){.clickable:hover{border-color:#547092;transform:translateY(-1px);box-shadow:var(--shadow)}}
+.row{gap:13px}
+.rank{min-width:38px;width:38px;height:38px;border-radius:11px;background:#1b2b45;font-size:1rem}
+.name,.match{font-size:1.0625rem;line-height:1.4;font-weight:850;letter-spacing:-.01em}
+.sub{font-size:.875rem;line-height:1.55;color:var(--m);margin-top:5px}
+.pill{padding:4px 8px;border-color:#42536f;font-size:.75rem;line-height:1.25;margin:8px 5px 0 0}
+.stats,.reason{font-size:.9375rem;line-height:1.72;margin-top:10px}
+.badge{font-size:.75rem;line-height:1.3;padding:5px 8px;border-color:#42536f}
+.watchbtn{
+  min-height:48px;
+  margin-top:13px;
+  border-color:var(--l);
+  border-radius:12px;
+  padding:10px 13px;
+  background:#1a2941;
+  font-size:.875rem;
+}
+.watchbtn:hover{border-color:#5c7398;background:#20314e}
+.watchbtn.done{border-color:#4c9e68;color:#adf3bd;background:#173322}
+.watchedCard{opacity:.8}
+.summary{gap:10px}
+.sum{min-width:0;border-color:var(--l);border-radius:14px;background:#18253b;padding:13px 10px}
+.num{font-size:1.6rem;line-height:1.15}
+.metricValue{font-size:1.45rem;line-height:1.2}
+.kpi{gap:10px}
+.kpiN{font-size:1.6rem;line-height:1.2}
+.empty{font-size:.9375rem;line-height:1.6;padding:24px 16px}
+.analysis,.fact{border-left-width:4px}
+.footer{font-size:.8125rem;line-height:1.65;margin-top:38px;padding-top:18px;border-top:1px solid var(--l)}
+.detailHead{gap:15px}
+.detailTitle{font-size:clamp(1.65rem,3vw,2.15rem);line-height:1.25;letter-spacing:-.025em;margin:5px 0}
+.crumb{font-size:.875rem}
+.ratingHero{gap:13px}
+.ratingMain{border-color:rgba(45,212,191,.45);border-radius:19px;padding:19px}
+.ratingN{font-size:3.2rem;letter-spacing:-.05em}
+.ratingLabel{font-size:.8125rem;line-height:1.5;margin-bottom:9px}
+.ratingBand{font-size:.9375rem;margin-top:9px}
+.detailKpis{gap:10px}
+.detailKpis .sum{padding:14px 10px}
+.miniN{font-size:1.3rem;line-height:1.2}
+.rangeBox{gap:9px;margin:12px 0}
+.profileGrid{gap:10px}
+.profileItem{border:1px solid rgba(52,68,94,.75);border-radius:12px;background:#18253b;padding:12px}
+.profileItem b{font-size:.75rem;margin-bottom:4px}
+.ratingBar{height:10px;border-color:var(--l);margin-top:10px}
+.backRow{margin-top:18px}
+.sourceNote{font-size:.75rem;line-height:1.55;margin-top:9px}
+#statRank,#players,#matches,#coverage,#insights,#analysis{margin-top:12px}
+
+@media (max-width:719px){
+  .wrap{padding:16px 12px calc(94px + env(safe-area-inset-bottom))}
+  .hero{padding:0 3px}
+  .hero h1{margin-bottom:11px}
+  .heroMeta{align-items:center}
+  #updated{flex:1 0 100%;order:3}
+  .topnav{top:0;margin:14px -3px 0;padding:8px;border-radius:14px}
+  #pageNav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:60;
+    gap:8px;
+    padding:8px max(12px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-right));
+    border-top:1px solid var(--l);
+    background:rgba(7,11,20,.96);
+    box-shadow:0 -10px 30px rgba(0,0,0,.34);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+  }
+  #pageNav .navbtn{min-height:46px;padding:10px 15px}
+  .search{margin-top:0}
+  section{margin-top:27px;scroll-margin-top:82px}
+  section+section{margin-top:34px}
+  .card{padding:16px;margin-bottom:11px}
+  .kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi .card{padding:14px 12px}
+  .summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .detailHead>.linkbtn{width:100%}
+  .sectionTitleRow{align-items:flex-start}
+  .sectionTitleRow .rangeBox{width:100%}
+  .sectionTitleRow .rangeSelect{flex:1;min-width:0}
+}
+
+@media (min-width:720px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .ratingHero{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+  .detailKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profileGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+@media (min-width:980px){
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px}
+  .hero h1{margin:0}
+  .heroMeta{justify-content:flex-end}
+  .topnav{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,360px);align-items:center;gap:14px;padding:12px}
+  .search{margin-top:0}
+  #statRank,#players,#matches,#coverage,#insights,#analysis{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:13px;
+  }
+  #statRank>.card,#players>.card,#matches>.card,#coverage>.card,#insights>.card,#analysis>.card{margin-bottom:0}
+  #analysis:not(:empty){margin-top:13px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
 </head>
-<body><div class="wrap">
-<div class="hero"><h1>海外日本人ウォッチ</h1><div class="heroMeta"><label class="seasonBox">シーズン <select id="seasonSelect" class="seasonSelect" aria-label="シーズン選択"></select></label><div id="updated" class="muted">読み込み中…</div></div></div>
-<div class="topnav"><div id="pageNav" class="scroll"></div><div class="searchWrap"><input id="searchBox" class="search" placeholder="選手・クラブ・試合を検索" autocomplete="off" aria-autocomplete="list" aria-controls="suggestions"><div id="suggestions" class="suggestions" role="listbox"></div></div></div>
-<main>
+<body><a class="skipLink" href="#main-content">本文へ移動</a><div class="wrap">
+<div class="hero"><h1>海外日本人ウォッチ</h1><div class="heroMeta"><label class="seasonBox">シーズン <select id="seasonSelect" class="seasonSelect" aria-label="シーズン選択"></select></label><button id="fontToggle" class="fontToggle" type="button" aria-pressed="false">文字 大</button><div id="updated" class="muted">読み込み中…</div></div></div>
+<nav class="topnav" aria-label="メインナビゲーション"><div id="pageNav" class="scroll"></div><div class="searchWrap"><input id="searchBox" class="search" type="search" placeholder="選手・クラブ・試合を検索" autocomplete="off" aria-label="選手・クラブ・試合を検索" aria-autocomplete="list" aria-controls="suggestions"><div id="suggestions" class="suggestions" role="listbox"></div></div></nav>
+<main id="main-content">
 <div id="v-search" class="view"><section><h2>検索結果</h2><div id="searchSummary" class="lead"></div><div class="searchGroup"><h2>選手</h2><div id="searchPlayers" class="grid"></div></div><div class="searchGroup"><h2>試合</h2><div id="searchMatches" class="grid"></div></div><div class="searchGroup"><h2>G/A</h2><div id="searchGA" class="grid"></div></div></section></div>
 <div id="v-home" class="view active"><section><h2>ダッシュボード</h2><div id="kpis" class="kpi"></div></section><section><h2>未視聴の注目試合</h2><div id="homeFeatured" class="grid"></div></section><section><h2>直近のG/A</h2><div id="homeGA" class="grid"></div></section></div>
 <div id="v-featured" class="view"><section><h2>注目試合</h2><div class="lead">見る優先度。視聴済みは下へ移動します。</div><div id="featuredWatchBtns" class="scroll"></div><div id="featured" class="grid" style="margin-top:10px"></div></section></div>
@@ -32,7 +274,7 @@
 <script src="jfw-rating.js"></script>
 <script>
 let D=null,seasonManifest={current:'2026-27',seasons:[{id:'2026-27',label:'2026-27',data:'data.json',current:true}]},selectedSeason='2026-27',page='home',lastPage='home',scope='すべて',metric='goals',attLeague='すべて',matchLeague='すべて',featuredWatch='未視聴',logWatch='すべて',suggestIndex=-1,suggestRows=[],activePlayer=null,activeClub=null,clubRoundFrom=null,clubRoundTo=null;
-const $=id=>document.getElementById(id),R={updated:$('updated'),seasonSelect:$('seasonSelect'),pageNav:$('pageNav'),searchBox:$('searchBox'),suggestions:$('suggestions'),kpis:$('kpis'),homeFeatured:$('homeFeatured'),homeGA:$('homeGA'),featuredWatchBtns:$('featuredWatchBtns'),featured:$('featured'),scopeBtns:$('scopeBtns'),metricBtns:$('metricBtns'),statRank:$('statRank'),leagueBtns:$('leagueBtns'),leagueTitle:$('leagueTitle'),players:$('players'),logWatchBtns:$('logWatchBtns'),matchLeagueBtns:$('matchLeagueBtns'),matches:$('matches'),gaSummary:$('gaSummary'),ga:$('ga'),insights:$('insights'),analysis:$('analysis'),coverage:$('coverage'),searchSummary:$('searchSummary'),searchPlayers:$('searchPlayers'),searchMatches:$('searchMatches'),searchGA:$('searchGA'),playerDetail:$('playerDetail'),clubDetail:$('clubDetail')};
+const $=id=>document.getElementById(id),R={updated:$('updated'),seasonSelect:$('seasonSelect'),fontToggle:$('fontToggle'),pageNav:$('pageNav'),searchBox:$('searchBox'),suggestions:$('suggestions'),kpis:$('kpis'),homeFeatured:$('homeFeatured'),homeGA:$('homeGA'),featuredWatchBtns:$('featuredWatchBtns'),featured:$('featured'),scopeBtns:$('scopeBtns'),metricBtns:$('metricBtns'),statRank:$('statRank'),leagueBtns:$('leagueBtns'),leagueTitle:$('leagueTitle'),players:$('players'),logWatchBtns:$('logWatchBtns'),matchLeagueBtns:$('matchLeagueBtns'),matches:$('matches'),gaSummary:$('gaSummary'),ga:$('ga'),insights:$('insights'),analysis:$('analysis'),coverage:$('coverage'),searchSummary:$('searchSummary'),searchPlayers:$('searchPlayers'),searchMatches:$('searchMatches'),searchGA:$('searchGA'),playerDetail:$('playerDetail'),clubDetail:$('clubDetail')};
 const order=['すべて','J1','プレミアリーグ','チャンピオンシップ','ブンデスリーガ','ラ・リーガ','リーグ・アン','セリエA','エールディヴィジ','ベルギー','ポルトガル','スコットランド'];
 const pages=[['home','トップ'],['featured','注目試合'],['stats','個人成績'],['attention','リーグ別'],['matches','試合ログ'],['ga','G/A'],['insights','好調・分析'],['coverage','取得状況']];
 const metrics={goals:'得点',assists:'アシスト',ga:'G+A',apps:'出場',starts:'先発',minutes:'出場時間',cleanSheets:'クリーンシート',saves:'セーブ',shots:'シュート',shotsOnTarget:'枠内シュート',keyPasses:'キーパス',tackles:'タックル',interceptions:'インターセプト',clearances:'クリア',yellowCards:'警告'};
@@ -40,7 +282,8 @@ const SEARCH_ALIASES={'上田綺世':['上田','うえだあやせ','ayase ueda'
 const E=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const fmt=v=>v==null?'—':v;
 const st=x=>x==='verified'?['確認済','ok']:x==='partial'?['一部確認','part']:['未取得あり','no'];
-const WATCH_KEY='jfw-watched-v1',SEASON_KEY='jfw-season-v1';
+const WATCH_KEY='jfw-watched-v1',SEASON_KEY='jfw-season-v1',FONT_KEY='jfw-font-size-v1';
+function syncFontToggle(){let large=document.documentElement.dataset.font==='large';R.fontToggle.textContent=large?'文字 標準':'文字 大';R.fontToggle.setAttribute('aria-pressed',String(large));R.fontToggle.setAttribute('aria-label',large?'文字サイズを標準に戻す':'文字サイズを大きくする')}
 function watchedSet(){try{return new Set(JSON.parse(localStorage.getItem(WATCH_KEY)||'[]'))}catch{return new Set()}}
 function saveWatched(s){localStorage.setItem(WATCH_KEY,JSON.stringify([...s]))}
 function key(m){return[m.league,m.ko,m.match].join('|')}
@@ -49,7 +292,7 @@ function toggle(m){let s=watchedSet(),k=key(m);s.has(k)?s.delete(k):s.add(k);sav
 function watchFilter(m,mode){return mode==='すべて'||(mode==='視聴済み'?isWatched(m):!isWatched(m))}
 function setDetailParams(type,value){let u=new URL(location.href);u.searchParams.set('season',selectedSeason);u.searchParams.delete(type==='player'?'club':'player');if(value)u.searchParams.set(type,value);else u.searchParams.delete(type);history.pushState(null,'',u.pathname+u.search+u.hash)}
 function clearDetailParams(replace=false){let u=new URL(location.href);u.searchParams.delete('player');u.searchParams.delete('club');(replace?history.replaceState:history.pushState).call(history,null,'',u.pathname+u.search+u.hash)}
-function nav(){R.pageNav.innerHTML=pages.map(([k,v])=>`<button class="navbtn ${k===page?'on':''}" data-p="${k}">${v}</button>`).join('');R.pageNav.querySelectorAll('button').forEach(b=>b.onclick=()=>{R.searchBox.value='';clearSuggestions();activePlayer=null;activeClub=null;clearDetailParams();showPage(b.dataset.p)})}
+function nav(){R.pageNav.innerHTML=pages.map(([k,v])=>`<button class="navbtn ${k===page?'on':''}" data-p="${k}"${k===page?' aria-current="page"':''}>${v}</button>`).join('');R.pageNav.querySelectorAll('button').forEach(b=>b.onclick=()=>{R.searchBox.value='';clearSuggestions();activePlayer=null;activeClub=null;clearDetailParams();showPage(b.dataset.p)});requestAnimationFrame(()=>R.pageNav.querySelector('.on')?.scrollIntoView({block:'nearest',inline:'center'}))}
 function showPage(p,{scroll=true}={}){if(!['search','player','club'].includes(p))lastPage=p;page=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));let target=$('v-'+p);if(target)target.classList.add('active');nav();if(!['search','player','club'].includes(p))location.hash=p;if(scroll)window.scrollTo({top:0,behavior:'smooth'})}
 function btns(el,vals,cur,setter){el.innerHTML=vals.map(x=>`<button class="btn ${x===cur?'on':''}" data-x="${E(x)}">${E(x)}</button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>setter(b.dataset.x))}
 function leagues(){return order.filter(x=>x==='すべて'||(D.players||[]).some(p=>p.league===x)||(D.matches||[]).some(m=>m.league===x))}
@@ -103,6 +346,8 @@ function renderSeasonOptions(){R.seasonSelect.innerHTML=(seasonManifest.seasons|
 async function fetchJson(path){let sep=path.includes('?')?'&':'?';let r=await fetch(path+sep+'v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(path+' '+r.status);return r.json()}
 async function loadSeason(id,{persist=true,restoreDetail=true}={}){let s=seasonById(id)||seasonById(seasonManifest.current)||seasonManifest.seasons[0];if(!s)throw new Error('season not found');R.updated.textContent='読み込み中…';D=await fetchJson(s.data);selectedSeason=s.id;R.seasonSelect.value=selectedSeason;if(persist)localStorage.setItem(SEASON_KEY,selectedSeason);let u=new URL(location.href);u.searchParams.set('season',selectedSeason);history.replaceState(null,'',u.pathname+u.search+u.hash);document.title=`海外日本人ウォッチ ${s.label}`;R.updated.textContent=`${s.label} ・ 最終更新: ${D.updated||'未取得'}`;scope='すべて';attLeague='すべて';matchLeague='すべて';featuredWatch='未視聴';logWatch='すべて';R.searchBox.value='';clearSuggestions();renderAll();if(restoreDetail){let q=new URL(location.href);let pref=q.searchParams.get('player'),club=q.searchParams.get('club');if(pref&&playerByRef(pref)){activePlayer=pref;renderPlayerDetail();showPage('player');return}if(club&&clubPlayers(club).length){activeClub=club;renderClubDetail();showPage('club');return}}showPage(page==='search'?lastPage:page)}
 async function init(){try{try{seasonManifest=await fetchJson('seasons.json')}catch(e){console.warn('seasons.json fallback',e)}let h=location.hash.replace('#','');if(pages.some(x=>x[0]===h)){page=h;lastPage=h}let fromUrl=new URL(location.href).searchParams.get('season'),saved=localStorage.getItem(SEASON_KEY),candidate=[fromUrl,saved,seasonManifest.current].find(x=>x&&seasonById(x))||seasonManifest.seasons[0]?.id;selectedSeason=candidate;renderSeasonOptions();await loadSeason(selectedSeason,{persist:false,restoreDetail:true})}catch(e){R.updated.textContent='データ読み込みエラー';console.error(e)}}
+syncFontToggle();
+R.fontToggle.addEventListener('click',()=>{let large=document.documentElement.dataset.font==='large';if(large)delete document.documentElement.dataset.font;else document.documentElement.dataset.font='large';try{localStorage.setItem(FONT_KEY,large?'normal':'large')}catch{}syncFontToggle()});
 R.seasonSelect.addEventListener('change',()=>loadSeason(R.seasonSelect.value,{restoreDetail:true}).catch(e=>{R.updated.textContent='シーズン読み込みエラー';console.error(e)}));
 R.searchBox.addEventListener('input',()=>{renderSuggestions();renderSearch()});R.searchBox.addEventListener('focus',renderSuggestions);R.searchBox.addEventListener('keydown',e=>{if(e.key==='ArrowDown'&&suggestRows.length){e.preventDefault();suggestIndex=(suggestIndex+1)%suggestRows.length;paintSuggestion()}else if(e.key==='ArrowUp'&&suggestRows.length){e.preventDefault();suggestIndex=(suggestIndex-1+suggestRows.length)%suggestRows.length;paintSuggestion()}else if(e.key==='Enter'&&suggestIndex>=0){e.preventDefault();chooseSuggestion(suggestIndex)}else if(e.key==='Escape'){R.searchBox.value='';clearSuggestions();showPage(lastPage)}});document.addEventListener('click',e=>{if(!e.target.closest('.searchWrap'))clearSuggestions()});window.addEventListener('popstate',()=>{let u=new URL(location.href),p=u.searchParams.get('player'),c=u.searchParams.get('club');if(p&&playerByRef(p)){activePlayer=p;renderPlayerDetail();showPage('player',{scroll:false})}else if(c&&clubPlayers(c).length){activeClub=c;renderClubDetail();showPage('club',{scroll:false})}else showPage(location.hash.replace('#','')||lastPage,{scroll:false})});init();
 </script>
