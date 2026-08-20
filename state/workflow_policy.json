@@ -1,24 +1,87 @@
 {
-  "version": 2,
-  "updatedAt": "2026-08-20T08:25:00+09:00",
+  "version": 3,
+  "updatedAt": "2026-08-20T10:23:00+09:00",
   "scope": {
-    "leagues": ["J1", "Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership"],
+    "leagues": [
+      "J1",
+      "Premier League",
+      "EFL Championship",
+      "Bundesliga",
+      "Belgian Pro League",
+      "Eredivisie",
+      "La Liga",
+      "Ligue 1",
+      "Serie A",
+      "Scottish Premiership",
+      "Primeira Liga"
+    ],
     "focus": "Japanese players and their clubs"
   },
+  "seasonPolicy": {
+    "manifest": "seasons.json",
+    "activeSeasonField": "current",
+    "resolveActiveDataPathFromManifest": true,
+    "neverOverwritePreviousSeason": true,
+    "onSeasonRollover": [
+      "freeze_previous_season_data",
+      "create_new_season_data_path",
+      "append_new_season_to_manifest",
+      "move_manifest_current_to_new_season"
+    ]
+  },
   "workflow": [
+    "resolve_active_season_and_data_path",
     "fetch_latest_information",
     "finish_all_league_and_club_collection",
     "finish_all_player_level_collection",
+    "finish_jfw_rating_input_collection",
     "build_integrated_snapshot",
     "validate_internal_consistency",
-    "update_data_json_only_if_valid",
-    "compare_data_json_with_snapshot",
+    "update_active_season_json_only_if_valid",
+    "compare_active_season_json_with_snapshot",
     "validate_site_structure_and_render_contract",
     "finish_only_when_all_checks_pass",
     "report_to_user"
   ],
   "playerDataPolicy": {
-    "fields": ["appearance", "start", "bench", "minutes", "goals", "assists", "cleanSheets", "yellowCards", "redCards", "substitution", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "clearances", "saves"],
+    "fields": [
+      "appearance",
+      "start",
+      "bench",
+      "minutes",
+      "goals",
+      "assists",
+      "cleanSheets",
+      "yellowCards",
+      "secondYellowRed",
+      "straightRed",
+      "substitution",
+      "shots",
+      "shotsOnTarget",
+      "keyPasses",
+      "tackles",
+      "interceptions",
+      "clearances",
+      "blocks",
+      "saves",
+      "duelsWon",
+      "duelsTotal",
+      "aerialDuelsWon",
+      "aerialDuelsTotal",
+      "dribbles",
+      "dribbledPast",
+      "bigChancesMissed",
+      "possessionsLost",
+      "passesCompleted",
+      "passesAttempted",
+      "shotsOnTargetFaced",
+      "penaltiesSaved",
+      "penaltiesConceded",
+      "ownGoals",
+      "highClaims",
+      "errorsLeadingToGoal",
+      "gaOnPitch"
+    ],
     "missingData": {
       "setPriorityUpdate": true,
       "priorityFlagField": "priorityUpdate",
@@ -29,8 +92,36 @@
       "clearPriorityWhenAllResolved": true
     }
   },
+  "jfwRatingPolicy": {
+    "name": "JFW Rating",
+    "ratingVersion": "1.0",
+    "opsVersion": "ops-v1.0",
+    "engine": "jfw-rating.js",
+    "matchDataField": "playerMatchStats",
+    "minimumInputs": ["minutes", "goals", "assists"],
+    "states": ["value", "missing", "notApplicable"],
+    "neverConvertMissingToZero": true,
+    "zeroMayBeDerivedOnlyFromExhaustiveSource": true,
+    "saveRawInputs": true,
+    "saveSourcesAndConflicts": true,
+    "recheckWindowHours": 72,
+    "recalculateWhenInputChanges": true,
+    "recentWindow": "last_5_appearances",
+    "seasonAverage": "minutes_weighted",
+    "crossPositionRanking": false
+  },
   "consistencyPolicy": {
-    "crossCheck": ["players", "matches", "gaResults", "topMatches", "insights", "analysis", "rankings"],
+    "crossCheck": [
+      "players",
+      "matches",
+      "playerMatchStats",
+      "gaResults",
+      "topMatches",
+      "insights",
+      "analysis",
+      "rankings",
+      "jfwRating"
+    ],
     "restartFullWorkflowOnUserMismatchReport": true
   }
 }
