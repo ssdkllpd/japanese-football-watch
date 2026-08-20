@@ -1,20 +1,8 @@
 {
-  "version": 4,
-  "updatedAt": "2026-08-20T10:35:00+09:00",
+  "version": 5,
+  "updatedAt": "2026-08-20T10:47:00+09:00",
   "scope": {
-    "leagues": [
-      "J1",
-      "Premier League",
-      "EFL Championship",
-      "Bundesliga",
-      "Belgian Pro League",
-      "Eredivisie",
-      "La Liga",
-      "Ligue 1",
-      "Serie A",
-      "Scottish Premiership",
-      "Primeira Liga"
-    ],
+    "leagues": ["J1", "Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their clubs"
   },
   "seasonPolicy": {
@@ -22,15 +10,11 @@
     "activeSeasonField": "current",
     "resolveActiveDataPathFromManifest": true,
     "neverOverwritePreviousSeason": true,
-    "onSeasonRollover": [
-      "freeze_previous_season_data",
-      "create_new_season_data_path",
-      "append_new_season_to_manifest",
-      "move_manifest_current_to_new_season"
-    ]
+    "onSeasonRollover": ["freeze_previous_season_data", "create_new_season_data_path", "append_new_season_to_manifest", "move_manifest_current_to_new_season"]
   },
   "workflow": [
     "resolve_active_season_and_data_path",
+    "backfill_stored_completed_matches_before_new_targets",
     "fetch_latest_information",
     "finish_all_league_and_club_collection",
     "finish_all_player_level_collection",
@@ -43,45 +27,21 @@
     "finish_only_when_all_checks_pass",
     "report_to_user"
   ],
+  "backfillPolicy": {
+    "priority": "highest",
+    "rule": "Every stored completed match involving a tracked Japanese player must have playerMatchStats records for all tracked Japanese players whose lineup/bench/absence state can be verified.",
+    "manifestPattern": "data/{season}/backfill/index.json",
+    "fragmentedStorage": true,
+    "mergeAtLoad": true,
+    "neverGuessMissingValues": true,
+    "recordMissingFieldsExplicitly": true,
+    "retryMissingFieldsBeforeNormalTargets": true,
+    "crossCheckAggregatePlayerStats": true,
+    "crossCheckGaResults": true,
+    "correctStoredMatchResultWhenVerifiedMismatchFound": true
+  },
   "playerDataPolicy": {
-    "fields": [
-      "appearance",
-      "start",
-      "bench",
-      "minutes",
-      "goals",
-      "assists",
-      "cleanSheets",
-      "yellowCards",
-      "secondYellowRed",
-      "straightRed",
-      "substitution",
-      "shots",
-      "shotsOnTarget",
-      "keyPasses",
-      "tackles",
-      "interceptions",
-      "clearances",
-      "blocks",
-      "saves",
-      "duelsWon",
-      "duelsTotal",
-      "aerialDuelsWon",
-      "aerialDuelsTotal",
-      "dribbles",
-      "dribbledPast",
-      "bigChancesMissed",
-      "possessionsLost",
-      "passesCompleted",
-      "passesAttempted",
-      "shotsOnTargetFaced",
-      "penaltiesSaved",
-      "penaltiesConceded",
-      "ownGoals",
-      "highClaims",
-      "errorsLeadingToGoal",
-      "gaOnPitch"
-    ],
+    "fields": ["appearance", "start", "bench", "minutes", "goals", "assists", "cleanSheets", "yellowCards", "secondYellowRed", "straightRed", "substitution", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "clearances", "blocks", "saves", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted", "shotsOnTargetFaced", "penaltiesSaved", "penaltiesConceded", "ownGoals", "highClaims", "errorsLeadingToGoal", "gaOnPitch"],
     "missingData": {
       "setPriorityUpdate": true,
       "priorityFlagField": "priorityUpdate",
@@ -116,35 +76,13 @@
       "script": "match-detail.js",
       "routeParam": "match",
       "dataSources": ["matches", "topMatches", "playerMatchStats"],
-      "mustExpose": [
-        "matchSummary",
-        "appearanceSummary",
-        "japanesePlayerRecords",
-        "ratingInputs",
-        "inputStates",
-        "jfwRating",
-        "ratingCoverage",
-        "ratingBreakdown",
-        "ratingSources",
-        "ratingConflicts"
-      ],
+      "mustExpose": ["matchSummary", "appearanceSummary", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
       "showMissingExplicitly": true,
       "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"]
     }
   },
   "consistencyPolicy": {
-    "crossCheck": [
-      "players",
-      "matches",
-      "playerMatchStats",
-      "gaResults",
-      "topMatches",
-      "insights",
-      "analysis",
-      "rankings",
-      "jfwRating",
-      "matchDetail"
-    ],
+    "crossCheck": ["players", "matches", "playerMatchStats", "gaResults", "topMatches", "insights", "analysis", "rankings", "jfwRating", "matchDetail", "backfillFragments"],
     "restartFullWorkflowOnUserMismatchReport": true
   }
 }
