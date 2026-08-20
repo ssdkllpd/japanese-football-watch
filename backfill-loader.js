@@ -10,18 +10,35 @@
     return r.json();
   }
   function matchKeyOf(m){ return [m?.league,m?.ko,m?.match].join('|'); }
+  function cleanMatchUpdate(u){
+    const {matchKey,addIfMissing,addToTopMatches,...rest}=u||{};
+    return rest;
+  }
+  function matchFinder(list,u){
+    return list.find(x=>(u.matchId&&x.matchId===u.matchId)||(u.matchKey&&matchKeyOf(x)===u.matchKey));
+  }
   function mergeMatchUpdates(rows){
+    D.matches=D.matches||[];
+    D.topMatches=D.topMatches||[];
     for(const u of rows||[]){
-      for(const list of [D.matches||[],D.topMatches||[]]){
-        const m=list.find(x=>(u.matchId&&x.matchId===u.matchId)||matchKeyOf(x)===u.matchKey);
-        if(m) Object.assign(m,u);
-      }
+      const clean=cleanMatchUpdate(u);
+      let m=matchFinder(D.matches,u);
+      if(m) Object.assign(m,clean);
+      else if(u.addIfMissing!==false) D.matches.push({...clean});
+      let top=matchFinder(D.topMatches,u);
+      if(top) Object.assign(top,clean);
+      else if(u.addToTopMatches) D.topMatches.push({...clean});
     }
   }
   function mergePlayerUpdates(rows){
+    D.players=D.players||[];
     for(const u of rows||[]){
-      const p=(D.players||[]).find(x=>(u.playerId&&x.playerId===u.playerId)||x.name===u.name);
-      if(!p) continue;
+      let p=D.players.find(x=>(u.playerId&&x.playerId===u.playerId)||x.name===u.name);
+      if(!p){
+        const stats={...(u.stats||{})};
+        D.players.push({...u,stats});
+        continue;
+      }
       const stats={...(p.stats||{}),...(u.stats||{})};
       Object.assign(p,u,{stats});
     }
@@ -57,7 +74,18 @@
     for(const x of rows||[]){
       const exists=D.gaResults.some(y=>(x.matchId&&y.matchId===x.matchId&&y.player===x.player)||(y.player===x.player&&y.ko===x.ko&&y.match===x.match));
       if(!exists) D.gaResults.push(x);
+      else {
+        const i=D.gaResults.findIndex(y=>(x.matchId&&y.matchId===x.matchId&&y.player===x.player)||(y.player===x.player&&y.ko===x.ko&&y.match===x.match));
+        if(i>=0) D.gaResults[i]={...D.gaResults[i],...x};
+      }
     }
+  }
+  function removeGA(rows){
+    if(!rows?.length||!D.gaResults) return;
+    D.gaResults=D.gaResults.filter(y=>!(rows||[]).some(x=>
+      (x.matchId&&y.matchId===x.matchId&&(!x.player||y.player===x.player)) ||
+      (!x.matchId&&x.player===y.player&&x.ko===y.ko&&(!x.match||x.match===y.match))
+    ));
   }
   function applyFragments(parts){
     const sources={};
@@ -67,6 +95,7 @@
       mergePlayerUpdates(p.playerUpdates);
       upsertPlayerMatchStats(p.playerMatchStats,sources);
       mergeGA(p.gaResultsAdd);
+      removeGA(p.gaResultsRemove);
     }
     const newest=parts.map(x=>x.updated).filter(Boolean).sort().at(-1);
     if(newest) D.updated=newest;
