@@ -99,6 +99,7 @@
     "engine": "jfw-rating.js",
     "matchDataField": "playerMatchStats",
     "minimumInputs": ["minutes", "goals", "assists"],
+    "requiredDisciplineInputs": ["yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals"],
     "states": ["value", "missing", "notApplicable"],
     "neverConvertMissingToZero": true,
     "zeroMayBeDerivedOnlyFromExhaustiveSource": true,
