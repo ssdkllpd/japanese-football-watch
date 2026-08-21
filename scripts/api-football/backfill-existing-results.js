@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { createClientFromEnv, ApiFootballError } = require('./client');
 const { FINAL_FIXTURE_STATUSES, mapFixtureToSchemaV2 } = require('./schema-v2-mapper');
 
@@ -63,43 +64,12 @@ function mergeProviderIds(current, incoming) {
 }
 
 function mergeCurrentData(root = ROOT, season = '2026-27') {
-  const data = readJson(path.join(root, 'data.json'));
-  data.matches = data.matches || [];
-  data.players = data.players || [];
-
-  const backfillDirectory = path.join(root, 'data', season, 'backfill');
-  const index = readJson(path.join(backfillDirectory, 'index.json'));
-  for (const fragmentName of index.fragments || []) {
-    const fragment = readJson(path.join(backfillDirectory, fragmentName));
-    for (const update of fragment.matchUpdates || []) {
-      const found = data.matches.find(match =>
-        (update.matchId && match.matchId === update.matchId) ||
-        (update.matchKey && matchKeyOf(match) === update.matchKey)
-      );
-      const { matchKey, addIfMissing, addToTopMatches, ...clean } = update;
-      if (found) Object.assign(found, clean);
-      else if (addIfMissing !== false) data.matches.push({ ...clean });
-    }
-
-    for (const update of fragment.playerUpdates || []) {
-      let player = data.players.find(candidate =>
-        (update.playerId && candidate.playerId === update.playerId) || candidate.name === update.name
-      );
-      if (!player) {
-        player = { name: update.name, stats: {} };
-        data.players.push(player);
-      }
-      const { providerIds, stats, ...metadata } = update;
-      Object.assign(player, metadata);
-      if (providerIds) player.providerIds = mergeProviderIds(player.providerIds, providerIds);
-      if (!player.stats && stats) player.stats = { ...stats };
-    }
-  }
-
-  for (const player of data.players) {
-    if (player?.name && !player.playerId) player.playerId = stablePlayerId(player.name);
-  }
-  return data;
+  const loader = path.join(root, 'scripts', 'shared', 'runtime-data-loader-cli.js');
+  const output = execFileSync(process.execPath, [loader, '--root', root, '--season', season], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return JSON.parse(output);
 }
 
 function parseStoredScore(matchLabel) {

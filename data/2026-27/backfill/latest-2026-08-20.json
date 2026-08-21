@@ -836,63 +836,842 @@
       "appearance": "starter_full",
       "ratingPosition": "FW",
       "ratingPositionSource": "match_secondary",
-      "sourceIds": ["proleague-zulte-genk", "soccerking-zulte-genk"],
-      "values": {"minutes":90,"goals":0,"assists":1},
-      "start": true,"bench": false,"disciplineClean": true,
-      "missingFields": ["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "sourceIds": [
+        "proleague-zulte-genk",
+        "soccerking-zulte-genk"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 1
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId": "r-yokoyama-zulte-genk","matchId":"m-2026-08-09-zulte-genk","player":"横山歩夢","club":"KRCヘンク","league":"ベルギー","match":"ズルテ・ワレヘム 2-1 KRCヘンク","ko":"2026-08-09 23:00","round":"第1節 / 全34節","appearance":"sub_71","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["proleague-zulte-genk"],"values":{"minutes":19,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-yokoyama-zulte-genk",
+      "matchId": "m-2026-08-09-zulte-genk",
+      "player": "横山歩夢",
+      "club": "KRCヘンク",
+      "league": "ベルギー",
+      "match": "ズルテ・ワレヘム 2-1 KRCヘンク",
+      "ko": "2026-08-09 23:00",
+      "round": "第1節 / 全34節",
+      "appearance": "sub_71",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "proleague-zulte-genk"
+      ],
+      "values": {
+        "minutes": 19,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-kimura-westerlo-union","matchId":"m-2026-08-08-westerlo-union","player":"木村誠二","club":"ウェステルロー","league":"ベルギー","match":"ウェステルロー 1-5 ユニオンSG","ko":"2026-08-09 02:45","round":"第1節 / 全34節","appearance":"starter_full","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["sky-westerlo-union","fwp-westerlo-union"],"values":{"minutes":90,"goals":0,"assists":0,"gaOnPitch":5},"start":true,"bench":false,"disciplineClean":true,"missingFields":["tackles","interceptions","clearances","blocks","aerialDuelsWon","aerialDuelsTotal","duelsWon","duelsTotal","dribbledPast"]
+      "recordId": "r-kimura-westerlo-union",
+      "matchId": "m-2026-08-08-westerlo-union",
+      "player": "木村誠二",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "ウェステルロー 1-5 ユニオンSG",
+      "ko": "2026-08-09 02:45",
+      "round": "第1節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "sky-westerlo-union",
+        "fwp-westerlo-union"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "gaOnPitch": 5
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "duelsWon",
+        "duelsTotal",
+        "dribbledPast"
+      ]
     },
     {
-      "recordId":"r-sakamoto-westerlo-union","matchId":"m-2026-08-08-westerlo-union","player":"坂本一彩","club":"ウェステルロー","league":"ベルギー","match":"ウェステルロー 1-5 ユニオンSG","ko":"2026-08-09 02:45","round":"第1節 / 全34節","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["sky-westerlo-union","fwp-westerlo-union"],"values":{"minutes":90,"goals":0,"assists":1},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-sakamoto-westerlo-union",
+      "matchId": "m-2026-08-08-westerlo-union",
+      "player": "坂本一彩",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "ウェステルロー 1-5 ユニオンSG",
+      "ko": "2026-08-09 02:45",
+      "round": "第1節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "sky-westerlo-union",
+        "fwp-westerlo-union"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 1
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-saito-westerlo-union","matchId":"m-2026-08-08-westerlo-union","player":"齋藤俊輔","club":"ウェステルロー","league":"ベルギー","match":"ウェステルロー 1-5 ユニオンSG","ko":"2026-08-09 02:45","round":"第1節 / 全34節","appearance":"starter_sub_80","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["sky-westerlo-union","fwp-westerlo-union"],"values":{"minutes":80,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-saito-westerlo-union",
+      "matchId": "m-2026-08-08-westerlo-union",
+      "player": "齋藤俊輔",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "ウェステルロー 1-5 ユニオンSG",
+      "ko": "2026-08-09 02:45",
+      "round": "第1節 / 全34節",
+      "appearance": "starter_sub_80",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "sky-westerlo-union",
+        "fwp-westerlo-union"
+      ],
+      "values": {
+        "minutes": 80,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-ito-genk-westerlo","matchId":"m-2026-08-15-genk-westerlo","player":"伊東純也","club":"KRCヘンク","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","ko":"2026-08-16 03:45","round":"第2節 / 全34節","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["elbotola-genk-westerlo","dazn-genk-westerlo"],"values":{"minutes":90,"goals":0,"assists":1},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-ito-genk-westerlo",
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "player": "伊東純也",
+      "club": "KRCヘンク",
+      "league": "ベルギー",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "ko": "2026-08-16 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "elbotola-genk-westerlo",
+        "dazn-genk-westerlo"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 1
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-yokoyama-genk-westerlo","matchId":"m-2026-08-15-genk-westerlo","player":"横山歩夢","club":"KRCヘンク","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","ko":"2026-08-16 03:45","round":"第2節 / 全34節","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["elbotola-genk-westerlo","tv-asahi-genk-westerlo"],"values":{"minutes":90,"goals":0,"assists":1},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-yokoyama-genk-westerlo",
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "player": "横山歩夢",
+      "club": "KRCヘンク",
+      "league": "ベルギー",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "ko": "2026-08-16 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "elbotola-genk-westerlo",
+        "tv-asahi-genk-westerlo"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 1
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-kimura-genk-westerlo","matchId":"m-2026-08-15-genk-westerlo","player":"木村誠二","club":"ウェステルロー","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","ko":"2026-08-16 03:45","round":"第2節 / 全34節","appearance":"starter_full","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["elbotola-genk-westerlo"],"values":{"minutes":90,"goals":0,"assists":0,"gaOnPitch":3},"start":true,"bench":false,"disciplineClean":true,"missingFields":["tackles","interceptions","clearances","blocks","aerialDuelsWon","aerialDuelsTotal","duelsWon","duelsTotal","dribbledPast"]
+      "recordId": "r-kimura-genk-westerlo",
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "player": "木村誠二",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "ko": "2026-08-16 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "elbotola-genk-westerlo"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "gaOnPitch": 3
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "duelsWon",
+        "duelsTotal",
+        "dribbledPast"
+      ]
     },
     {
-      "recordId":"r-sakamoto-genk-westerlo","matchId":"m-2026-08-15-genk-westerlo","player":"坂本一彩","club":"ウェステルロー","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","ko":"2026-08-16 03:45","round":"第2節 / 全34節","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["elbotola-genk-westerlo"],"values":{"minutes":90,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-sakamoto-genk-westerlo",
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "player": "坂本一彩",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "ko": "2026-08-16 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "elbotola-genk-westerlo"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
     {
-      "recordId":"r-saito-genk-westerlo","matchId":"m-2026-08-15-genk-westerlo","player":"齋藤俊輔","club":"ウェステルロー","league":"ベルギー","match":"KRCヘンク 3-2 ウェステルロー","ko":"2026-08-16 03:45","round":"第2節 / 全34節","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["elbotola-genk-westerlo"],"values":{"minutes":90,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+      "recordId": "r-saito-genk-westerlo",
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "player": "齋藤俊輔",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "ko": "2026-08-16 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "elbotola-genk-westerlo"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
     },
-    {"recordId":"r-ichihara-az-ado","matchId":"m-2026-08-08-az-ado","player":"市原吏音","club":"AZ","league":"エールディヴィジ","match":"AZ 2-0 ADOデン・ハーグ","ko":"2026-08-09 04:00","round":"第1節 / 全34節","appearance":"bench_unused","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["vi-az-ado"],"values":{"minutes":0,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true},
-    {"recordId":"r-maikuma-az-ado","matchId":"m-2026-08-08-az-ado","player":"毎熊晟矢","club":"AZ","league":"エールディヴィジ","match":"AZ 2-0 ADOデン・ハーグ","ko":"2026-08-09 04:00","round":"第1節 / 全34節","appearance":"bench_unused","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["vi-az-ado"],"values":{"minutes":0,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true},
-    {"recordId":"r-ichihara-utrecht-az","matchId":"m-2026-08-15-utrecht-az","player":"市原吏音","club":"AZ","league":"エールディヴィジ","match":"ユトレヒト 1-4 AZ","ko":"2026-08-16 01:45","round":"第2節 / 全34節","appearance":"sub_80","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["vi-utrecht-az"],"values":{"minutes":10,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true,"missingFields":["gaOnPitch","tackles","interceptions","clearances","blocks","aerialDuelsWon","aerialDuelsTotal","duelsWon","duelsTotal","dribbledPast"]},
-    {"recordId":"r-maikuma-utrecht-az","matchId":"m-2026-08-15-utrecht-az","player":"毎熊晟矢","club":"AZ","league":"エールディヴィジ","match":"ユトレヒト 1-4 AZ","ko":"2026-08-16 01:45","round":"第2節 / 全34節","appearance":"sub_85","ratingPosition":"DF","ratingPositionSource":"match_secondary","sourceIds":["vi-utrecht-az"],"values":{"minutes":5,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true,"missingFields":["gaOnPitch","tackles","interceptions","clearances","blocks","aerialDuelsWon","aerialDuelsTotal","duelsWon","duelsTotal","dribbledPast"]},
-    {"recordId":"r-hirakawa-bristol-millwall","matchId":"m-2026-08-15-bristol-millwall","player":"平河悠","club":"ブリストル・シティ","league":"チャンピオンシップ","match":"ブリストル・シティ 0-2 ミルウォール","ko":"2026-08-15 23:00","round":"第1節 / 全46節","appearance":"starter_sub_ht","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["vi-bristol-millwall"],"values":{"minutes":45,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
-    {"recordId":"r-saito-qpr-millwall-cup","matchId":"m-2026-08-08-qpr-millwall-cup","player":"斉藤光毅","club":"QPR","league":"カラバオカップ","match":"QPR 1-1 ミルウォール（PK 0-2）","ko":"2026-08-08 22:00","round":"1回戦","appearance":"sub_80","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["guardian-qpr-millwall"],"values":{"minutes":10,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
-    {"recordId":"r-hirakawa-bristol-walsall-cup","matchId":"m-2026-08-06-bristol-walsall-cup","player":"平河悠","club":"ブリストル・シティ","league":"カラバオカップ","match":"ブリストル・シティ 0-1 ウォルソール","ko":"2026-08-07 03:45","round":"1回戦","appearance":"sub_58","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["fwp-bristol-walsall"],"values":{"minutes":32,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
-    {"recordId":"r-matsuki-colchester-southampton-cup","matchId":"m-2026-08-08-colchester-southampton-cup","player":"松木玖生","club":"サウサンプトン","league":"カラバオカップ","match":"コルチェスター 0-2 サウサンプトン","ko":"2026-08-09 01:30","round":"1回戦","appearance":"starter_sub_86","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["southampton-colchester"],"values":{"minutes":86,"goals":0,"assists":0},"start":true,"bench":false,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"ratingInputsNote":"規律項目は出典の網羅性未確認のためmissingとして扱う"},
-    {"recordId":"r-iwata-swansea-birmingham-cup","matchId":"m-2026-08-08-swansea-birmingham-cup","player":"岩田智輝","club":"バーミンガム","league":"カラバオカップ","match":"スウォンジー 0-1 バーミンガム","ko":"2026-08-08 23:00","round":"1回戦","appearance":"starter_full","ratingPosition":"MF","ratingPositionSource":"match_secondary","sourceIds":["fwp-swansea-birmingham"],"values":{"minutes":90,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]},
-    {"recordId":"r-morishita-burton-blackburn-cup","matchId":"m-2026-08-08-burton-blackburn-cup","player":"森下龍矢","club":"ブラックバーン","league":"カラバオカップ","match":"バートン 1-2 ブラックバーン","ko":"2026-08-08 23:00","round":"1回戦","appearance":"starter_full","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["fwp-burton-blackburn"],"values":{"minutes":90,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
-    {"recordId":"r-ohashi-burton-blackburn-cup","matchId":"m-2026-08-08-burton-blackburn-cup","player":"大橋祐紀","club":"ブラックバーン","league":"カラバオカップ","match":"バートン 1-2 ブラックバーン","ko":"2026-08-08 23:00","round":"1回戦","appearance":"starter_sub_62","ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["fwp-burton-blackburn"],"values":{"minutes":62,"goals":0,"assists":0},"start":true,"bench":false,"disciplineClean":true,"missingFields":["shotsOnTarget","shots","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
-    {"recordId":"r-fukui-arouca-moreirense","matchId":"m-2026-08-16-arouca-moreirense","player":"福井太智","club":"アロウカ","league":"ポルトガル","match":"アロウカ 4-0 モレイレンセ","ko":"2026-08-17 02:00","round":"第2節 / 全34節","appearance":"starter_sub_79","ratingPosition":"MF","ratingPositionSource":"match_secondary","sourceIds":["univers-arouca-moreirense","lequipe-arouca"],"values":{"minutes":79,"goals":0,"assists":0},"start":true,"bench":false,"missingFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"ratingInputsNote":"出場時間とG/Aは確認、規律項目は網羅的ソース未確定のためRating算出保留"},
-    {"recordId":"r-hatate-kilmarnock-celtic","matchId":"m-2026-08-09-kilmarnock-celtic","player":"旗手怜央","club":"セルティック","league":"スコットランド","match":"キルマーノック 1-5 セルティック","ko":"2026-08-09 21:30","round":"第2節 / 全38試合（33節後スプリット）","appearance":"bench_unused","ratingPosition":"MF","ratingPositionSource":"match_secondary","sourceIds":["fwp-kilmarnock-celtic"],"values":{"minutes":0,"goals":0,"assists":0},"start":false,"bench":true,"disciplineClean":true},
-    {"recordId":"r-hatate-celtic-lask","matchId":"m-2026-08-19-celtic-lask","player":"旗手怜央","club":"セルティック","league":"UEFAチャンピオンズリーグ","match":"セルティック 3-0 LASK","ko":"2026-08-20 04:00","round":"プレーオフ 第1戦","appearance":"sub_65","ratingPosition":"MF","ratingPositionSource":"match_secondary","sourceIds":["times-celtic-lask"],"values":{"minutes":25,"goals":0,"assists":0},"start":false,"bench":true,"missingFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]}
+    {
+      "recordId": "r-ichihara-az-ado",
+      "matchId": "m-2026-08-08-az-ado",
+      "player": "市原吏音",
+      "club": "AZ",
+      "league": "エールディヴィジ",
+      "match": "AZ 2-0 ADOデン・ハーグ",
+      "ko": "2026-08-09 04:00",
+      "round": "第1節 / 全34節",
+      "appearance": "bench_unused",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "vi-az-ado"
+      ],
+      "values": {
+        "minutes": 0,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true
+    },
+    {
+      "recordId": "r-maikuma-az-ado",
+      "matchId": "m-2026-08-08-az-ado",
+      "player": "毎熊晟矢",
+      "club": "AZ",
+      "league": "エールディヴィジ",
+      "match": "AZ 2-0 ADOデン・ハーグ",
+      "ko": "2026-08-09 04:00",
+      "round": "第1節 / 全34節",
+      "appearance": "bench_unused",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "vi-az-ado"
+      ],
+      "values": {
+        "minutes": 0,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true
+    },
+    {
+      "recordId": "r-ichihara-utrecht-az",
+      "matchId": "m-2026-08-15-utrecht-az",
+      "player": "市原吏音",
+      "club": "AZ",
+      "league": "エールディヴィジ",
+      "match": "ユトレヒト 1-4 AZ",
+      "ko": "2026-08-16 01:45",
+      "round": "第2節 / 全34節",
+      "appearance": "sub_80",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "vi-utrecht-az"
+      ],
+      "values": {
+        "minutes": 10,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true,
+      "missingFields": [
+        "gaOnPitch",
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "duelsWon",
+        "duelsTotal",
+        "dribbledPast"
+      ]
+    },
+    {
+      "recordId": "r-maikuma-utrecht-az",
+      "matchId": "m-2026-08-15-utrecht-az",
+      "player": "毎熊晟矢",
+      "club": "AZ",
+      "league": "エールディヴィジ",
+      "match": "ユトレヒト 1-4 AZ",
+      "ko": "2026-08-16 01:45",
+      "round": "第2節 / 全34節",
+      "appearance": "sub_85",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "vi-utrecht-az"
+      ],
+      "values": {
+        "minutes": 5,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true,
+      "missingFields": [
+        "gaOnPitch",
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "duelsWon",
+        "duelsTotal",
+        "dribbledPast"
+      ]
+    },
+    {
+      "recordId": "r-hirakawa-bristol-millwall",
+      "matchId": "m-2026-08-15-bristol-millwall",
+      "player": "平河悠",
+      "club": "ブリストル・シティ",
+      "league": "チャンピオンシップ",
+      "match": "ブリストル・シティ 0-2 ミルウォール",
+      "ko": "2026-08-15 23:00",
+      "round": "第1節 / 全46節",
+      "appearance": "starter_sub_ht",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "vi-bristol-millwall"
+      ],
+      "values": {
+        "minutes": 45,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
+    },
+    {
+      "recordId": "r-saito-qpr-millwall-cup",
+      "matchId": "m-2026-08-08-qpr-millwall-cup",
+      "player": "斉藤光毅",
+      "club": "QPR",
+      "league": "カラバオカップ",
+      "match": "QPR 1-1 ミルウォール（PK 0-2）",
+      "ko": "2026-08-08 22:00",
+      "round": "1回戦",
+      "appearance": "sub_80",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "guardian-qpr-millwall"
+      ],
+      "values": {
+        "minutes": 10,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
+    },
+    {
+      "recordId": "r-hirakawa-bristol-walsall-cup",
+      "matchId": "m-2026-08-06-bristol-walsall-cup",
+      "player": "平河悠",
+      "club": "ブリストル・シティ",
+      "league": "カラバオカップ",
+      "match": "ブリストル・シティ 0-1 ウォルソール",
+      "ko": "2026-08-07 03:45",
+      "round": "1回戦",
+      "appearance": "sub_58",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "fwp-bristol-walsall"
+      ],
+      "values": {
+        "minutes": 32,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
+    },
+    {
+      "recordId": "r-matsuki-colchester-southampton-cup",
+      "matchId": "m-2026-08-08-colchester-southampton-cup",
+      "player": "松木玖生",
+      "club": "サウサンプトン",
+      "league": "カラバオカップ",
+      "match": "コルチェスター 0-2 サウサンプトン",
+      "ko": "2026-08-09 01:30",
+      "round": "1回戦",
+      "appearance": "starter_sub_86",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "southampton-colchester"
+      ],
+      "values": {
+        "minutes": 86,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals"
+      ],
+      "ratingInputsNote": "規律項目は出典の網羅性未確認のためmissingとして扱う"
+    },
+    {
+      "recordId": "r-iwata-swansea-birmingham-cup",
+      "matchId": "m-2026-08-08-swansea-birmingham-cup",
+      "player": "岩田智輝",
+      "club": "バーミンガム",
+      "league": "カラバオカップ",
+      "match": "スウォンジー 0-1 バーミンガム",
+      "ko": "2026-08-08 23:00",
+      "round": "1回戦",
+      "appearance": "starter_full",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "fwp-swansea-birmingham"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "keyPasses",
+        "passesCompleted",
+        "passesAttempted",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "possessionsLost"
+      ]
+    },
+    {
+      "recordId": "r-morishita-burton-blackburn-cup",
+      "matchId": "m-2026-08-08-burton-blackburn-cup",
+      "player": "森下龍矢",
+      "club": "ブラックバーン",
+      "league": "カラバオカップ",
+      "match": "バートン 1-2 ブラックバーン",
+      "ko": "2026-08-08 23:00",
+      "round": "1回戦",
+      "appearance": "starter_full",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "fwp-burton-blackburn"
+      ],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
+    },
+    {
+      "recordId": "r-ohashi-burton-blackburn-cup",
+      "matchId": "m-2026-08-08-burton-blackburn-cup",
+      "player": "大橋祐紀",
+      "club": "ブラックバーン",
+      "league": "カラバオカップ",
+      "match": "バートン 1-2 ブラックバーン",
+      "ko": "2026-08-08 23:00",
+      "round": "1回戦",
+      "appearance": "starter_sub_62",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "fwp-burton-blackburn"
+      ],
+      "values": {
+        "minutes": 62,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "missingFields": [
+        "shotsOnTarget",
+        "shots",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed"
+      ]
+    },
+    {
+      "recordId": "r-fukui-arouca-moreirense",
+      "matchId": "m-2026-08-16-arouca-moreirense",
+      "player": "福井太智",
+      "club": "アロウカ",
+      "league": "ポルトガル",
+      "match": "アロウカ 4-0 モレイレンセ",
+      "ko": "2026-08-17 02:00",
+      "round": "第2節 / 全34節",
+      "appearance": "starter_sub_79",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "univers-arouca-moreirense",
+        "lequipe-arouca"
+      ],
+      "values": {
+        "minutes": 79,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": true,
+      "bench": false,
+      "missingFields": [
+        "keyPasses",
+        "passesCompleted",
+        "passesAttempted",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "possessionsLost",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals"
+      ],
+      "ratingInputsNote": "出場時間とG/Aは確認、規律項目は網羅的ソース未確定のためRating算出保留"
+    },
+    {
+      "recordId": "r-hatate-kilmarnock-celtic",
+      "matchId": "m-2026-08-09-kilmarnock-celtic",
+      "player": "旗手怜央",
+      "club": "セルティック",
+      "league": "スコットランド",
+      "match": "キルマーノック 1-5 セルティック",
+      "ko": "2026-08-09 21:30",
+      "round": "第2節 / 全38試合（33節後スプリット）",
+      "appearance": "bench_unused",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "fwp-kilmarnock-celtic"
+      ],
+      "values": {
+        "minutes": 0,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "disciplineClean": true
+    },
+    {
+      "recordId": "r-hatate-celtic-lask",
+      "matchId": "m-2026-08-19-celtic-lask",
+      "player": "旗手怜央",
+      "club": "セルティック",
+      "league": "UEFAチャンピオンズリーグ",
+      "match": "セルティック 3-0 LASK",
+      "ko": "2026-08-20 04:00",
+      "round": "プレーオフ 第1戦",
+      "appearance": "sub_65",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": [
+        "times-celtic-lask"
+      ],
+      "values": {
+        "minutes": 25,
+        "goals": 0,
+        "assists": 0
+      },
+      "start": false,
+      "bench": true,
+      "missingFields": [
+        "keyPasses",
+        "passesCompleted",
+        "passesAttempted",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "possessionsLost",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals"
+      ]
+    }
   ],
   "gaResultsAdd": [
-    {"player":"伊東純也","club":"KRCヘンク","league":"ベルギー","contribution":"1A","result":"L","resultLabel":"敗戦","match":"ズルテ・ワレヘム 2-1 KRCヘンク","round":"第1節 / 全34節","ko":"2026-08-09 23:00","matchId":"m-2026-08-09-zulte-genk"},
-    {"player":"坂本一彩","club":"ウェステルロー","league":"ベルギー","contribution":"1A","result":"L","resultLabel":"敗戦","match":"ウェステルロー 1-5 ユニオンSG","round":"第1節 / 全34節","ko":"2026-08-09 02:45","matchId":"m-2026-08-08-westerlo-union"},
-    {"player":"横山歩夢","club":"KRCヘンク","league":"ベルギー","contribution":"1A","result":"W","resultLabel":"勝利","match":"KRCヘンク 3-2 ウェステルロー","round":"第2節 / 全34節","ko":"2026-08-16 03:45","matchId":"m-2026-08-15-genk-westerlo"}
+    {
+      "player": "伊東純也",
+      "club": "KRCヘンク",
+      "league": "ベルギー",
+      "contribution": "1A",
+      "result": "L",
+      "resultLabel": "敗戦",
+      "match": "ズルテ・ワレヘム 2-1 KRCヘンク",
+      "round": "第1節 / 全34節",
+      "ko": "2026-08-09 23:00",
+      "matchId": "m-2026-08-09-zulte-genk"
+    },
+    {
+      "player": "坂本一彩",
+      "club": "ウェステルロー",
+      "league": "ベルギー",
+      "contribution": "1A",
+      "result": "L",
+      "resultLabel": "敗戦",
+      "match": "ウェステルロー 1-5 ユニオンSG",
+      "round": "第1節 / 全34節",
+      "ko": "2026-08-09 02:45",
+      "matchId": "m-2026-08-08-westerlo-union"
+    },
+    {
+      "player": "横山歩夢",
+      "club": "KRCヘンク",
+      "league": "ベルギー",
+      "contribution": "1A",
+      "result": "W",
+      "resultLabel": "勝利",
+      "match": "KRCヘンク 3-2 ウェステルロー",
+      "round": "第2節 / 全34節",
+      "ko": "2026-08-16 03:45",
+      "matchId": "m-2026-08-15-genk-westerlo"
+    }
   ],
   "verificationNotes": [
     "既存試合ログを再点検し、未登録の個人試合記録を追加。",
     "テルスター対スパルタの1-3訂正と三戸舜介1Aはcore.jsonの先行補正を継続。",
     "KRCヘンク対ウェステルロー第2節は横山歩夢1Aと伊東純也1Aを反映。",
-    "カップ戦個人記録はplayerMatchStatsに含めるが、players.statsのリーグ集計には加算しない。",
+    "現行仕様では players.stats / seasonStats の『すべて』は、追跡対象期間の全公式戦通算（親善・プレシーズン除外）。リーグ・カップ等の大会別表示は competitionStats を使用する。",
     "詳細スタッツ未取得項目はmissingのまま保持しpriorityFieldsで再取得対象にする。"
   ]
 }
