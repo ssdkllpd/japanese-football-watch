@@ -1,6 +1,6 @@
 {
-  "version": 11,
-  "updatedAt": "2026-08-21T14:16:42+09:00",
+  "version": 12,
+  "updatedAt": "2026-08-21T14:36:43+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -154,7 +154,11 @@
     "goalEventMustCreatePlayerMatchRecordWhenPlayerStatisticsAreMissing": true,
     "positiveGoalsAndAssistsMustNeverBeDroppedByEmptyOrIncompleteEventData": true,
     "eventDerivedZeroRequiresFinalFixtureAndGoalEventCountMatchingScore": true,
-    "neverExposeApiKeyToBrowserOrRepository": true
+    "neverExposeApiKeyToBrowserOrRepository": true,
+    "formationDataPath": "matches[].formationData",
+    "formationUsesProviderGrid": true,
+    "providerRatingPath": "playerMatchStats[].providerRatings.apiFootball",
+    "providerAndJfwRatingsRemainSeparate": true
   },
   "rankingPolicy": {
     "overallSource": "seasonStats",
@@ -213,7 +217,10 @@
       "script": "match-detail.js",
       "routeParam": "match",
       "dataSources": ["matches", "topMatches", "playerMatchStats"],
-      "mustExpose": ["matchSummary", "appearanceSummary", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
+      "mustExpose": ["matchSummary", "appearanceSummary", "homeAndAwayFormation", "startingXI", "substitutions", "bench", "apiFootballRating", "ratingModeSwitch", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
+      "formationDisplay": "two_pitch_fotmob_inspired",
+      "formationRatingModes": ["apiFootball", "jfw"],
+      "individualRatingDisplay": "apiFootball_and_jfw_side_by_side",
       "showMissingExplicitly": true,
       "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"],
       "ratingDisplayMustUseValidityGuard": true,

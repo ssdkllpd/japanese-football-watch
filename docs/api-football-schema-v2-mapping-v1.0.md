@@ -29,11 +29,20 @@ API-Footballの試合データを、海外日本人追跡アプリの`playerMatc
 | `/players/squads` | 日本人選手のprovider ID解決 | 同期前に必須 |
 | `/fixtures?id=...` | 結果・イベント・ラインナップ・個人スタッツを含む主取得 | 試合更新の主経路 |
 | `/fixtures/events` | 得点・アシスト・カード・交代の補完 | 主取得で欠けた場合 |
-| `/fixtures/lineups` | 先発・ベンチ・ポジションの補完 | 主取得で欠けた場合 |
+| `/fixtures/lineups` | 両チームの先発・ベンチ・フォーメーション・grid配置の補完 | 主取得で欠けた場合 |
 | `/fixtures/players` | 試合別個人スタッツの補完・再確認 | 試合終了後の再取得対象 |
 | `/players` | シーズン通算の照合 | 試合事実の代替には使わない |
 
 API-Football公式ドキュメントでは、fixture ID指定によりイベント、ラインナップ、統計、選手を含む試合データをまとめて取得できる。実際の契約プランと大会ごとの提供状況は、手動棚卸しで確認する。
+
+## フォーメーションと2種類のRating
+
+- `matchUpdates[].formationData`へ、home/away両チームのフォーメーション、先発、ベンチ、背番号、ポジション、`grid`を保存する。
+- `events[].type = subst`では、`player`を交代OUT、`assist`を交代INとして、通常時間と追加時間を双方の選手へ紐付ける。
+- `players[].players[].statistics[].games.rating`は`providerRatings.apiFootball`へ保存し、JFW Ratingとは混同しない。
+- 追跡日本人のラインナップ選手には安定`playerId`を付ける。非追跡選手を名前だけでJFW記録へ紐付けない。
+- 試合詳細では両チームのピッチを表示し、API-Football評価とJFW独自評価を切り替えられる。JFW評価は追跡対象かつ算出可能な選手だけに表示する。
+- 個人カードではAPI-Football評価とJFW独自評価を並べる。どちらも未取得・未算出を0へ変換せず`—`とする。
 
 ## ID方針
 

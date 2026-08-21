@@ -175,6 +175,80 @@ test('positive player-stat G/A is retained when an embedded event lacks attribut
   assert.equal(record.ratingConflicts, undefined);
 });
 
+test('both teams formation, grid, substitutions and provider ratings are preserved', () => {
+  const fixture = baseFixture({
+    events: [{
+      time: { elapsed: 63, extra: 2 },
+      team: { id: 200, name: 'SC Freiburg' },
+      player: { id: 100, name: 'Keisuke Goto' },
+      assist: { id: 101, name: 'Away replacement' },
+      type: 'subst',
+      detail: 'Substitution 1',
+    }],
+    lineups: [{
+      team: { id: 300, name: 'Motherwell' },
+      formation: '4-3-3',
+      startXI: [{ player: { id: 301, name: 'Home starter', number: 1, pos: 'G', grid: '1:1' } }],
+      substitutes: [{ player: { id: 302, name: 'Home substitute', number: 12, pos: 'G', grid: null } }],
+    }, {
+      team: { id: 200, name: 'SC Freiburg' },
+      formation: '4-2-3-1',
+      startXI: [{ player: { id: 100, name: 'Keisuke Goto', number: 9, pos: 'F', grid: '4:1' } }],
+      substitutes: [{ player: { id: 101, name: 'Away replacement', number: 19, pos: 'F', grid: null } }],
+    }],
+    players: [{
+      team: { id: 300, name: 'Motherwell' },
+      players: [{
+        player: { id: 301, name: 'Home starter' },
+        statistics: [{ games: { minutes: 90, position: 'G', substitute: false, rating: '6.8' } }],
+      }],
+    }, {
+      team: { id: 200, name: 'SC Freiburg' },
+      players: [{
+        player: { id: 100, name: 'Keisuke Goto' },
+        statistics: [{
+          games: { minutes: 63, position: 'F', substitute: false, rating: '7.6' },
+          goals: { total: 0, assists: 0 },
+        }],
+      }, {
+        player: { id: 101, name: 'Away replacement' },
+        statistics: [{ games: { minutes: 27, position: 'F', substitute: true, rating: '6.9' } }],
+      }],
+    }],
+  });
+
+  const fragment = mapFixtureToSchemaV2(fixture, {
+    trackedPlayers: gotoRegistry,
+    clubNamesByProviderId: { 200: 'フライブルク', 300: 'マザーウェル' },
+  });
+  const formationData = fragment.matchUpdates[0].formationData;
+
+  assert.equal(formationData.provider, 'api-football');
+  assert.equal(formationData.teams.length, 2);
+  const home = formationData.teams.find(team => team.side === 'home');
+  const away = formationData.teams.find(team => team.side === 'away');
+  assert.equal(home.teamName, 'マザーウェル');
+  assert.equal(home.formation, '4-3-3');
+  assert.equal(home.startXI[0].apiFootballRating, 6.8);
+  assert.equal(home.startXI[0].playerId, null);
+  assert.equal(away.teamName, 'フライブルク');
+  assert.equal(away.formation, '4-2-3-1');
+  assert.equal(away.startXI[0].grid, '4:1');
+  assert.equal(away.startXI[0].playerId, 'jp-goto-keisuke');
+  assert.equal(away.startXI[0].apiFootballRating, 7.6);
+  assert.deepEqual(away.startXI[0].substitution, {
+    direction: 'out', elapsed: 63, extra: 2,
+    replacementProviderPlayerId: 101, replacementName: 'Away replacement',
+  });
+  assert.equal(away.substitutes[0].substitution.direction, 'in');
+  assert.equal(away.substitutes[0].substitution.replacedName, 'Keisuke Goto');
+
+  const record = fragment.playerMatchStats[0];
+  assert.equal(record.providerRatings.apiFootball.value, 7.6);
+  assert.equal(record.lineup.grid, '4:1');
+  assert.equal(record.substitution.direction, 'out');
+});
+
 test('complete event timeline wins over a conflicting zero player-stat goal', () => {
   const fixture = baseFixture({
     goals: { home: 0, away: 1 },

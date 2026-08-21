@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "provider": "api-football",
   "apiVersion": "v3",
   "updatedAt": "2026-08-21",
@@ -72,6 +72,26 @@
     "appearance": {
       "providerPaths": ["players[].players[].statistics[].games.minutes", "players[].players[].statistics[].games.substitute", "lineups[].startXI[].player.id", "lineups[].substitutes[].player.id", "events[].player.id", "events[].assist.id"],
       "strategy": "Combine minutes, lineups and events without interpreting missing as no appearance."
+    },
+    "formation": {
+      "providerPaths": ["lineups[].team.id", "lineups[].formation", "lineups[].startXI[].player.id"],
+      "strategy": "Persist both teams, their reported formation strings and starting XIs on matchUpdates[].formationData."
+    },
+    "lineupGrid": {
+      "providerPaths": ["lineups[].startXI[].player.grid"],
+      "strategy": "Persist the provider row:column grid for pitch placement; do not invent a provider grid when omitted."
+    },
+    "shirtNumber": {
+      "providerPaths": ["lineups[].startXI[].player.number", "lineups[].substitutes[].player.number"],
+      "strategy": "Persist the match-lineup shirt number for display."
+    },
+    "substitution": {
+      "providerPaths": ["events[].type", "events[].time.elapsed", "events[].time.extra", "events[].player.id", "events[].assist.id"],
+      "strategy": "For subst events, treat player as outgoing and assist as incoming; retain elapsed and stoppage time for clear IN/OUT display."
+    },
+    "apiFootballRating": {
+      "providerPaths": ["players[].players[].statistics[].games.rating"],
+      "strategy": "Persist the provider match rating separately from JFW Rating so the UI can compare or switch between them."
     },
     "minutes": {
       "providerPaths": ["players[].players[].statistics[].games.minutes"],

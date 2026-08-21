@@ -219,3 +219,49 @@ test('provider id updates merge without deleting ids from another provider', asy
   assert.equal(p.providerIds.apiFootball.team, 10);
   assert.equal(p.providerIds.apiFootball.player, 1234);
 });
+
+test('formation data and provider rating survive the runtime backfill merge', async () => {
+  const player = {
+    playerId: 'jp-formation-player',
+    name: '配置五郎',
+    club: 'Club A',
+    league: 'プレミアリーグ',
+    providerIds: { apiFootball: { player: 55 } },
+    stats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 }
+  };
+  const formationData = {
+    version: '1.0',
+    provider: 'api-football',
+    teams: [{
+      side: 'home', teamId: 5, teamName: 'Club A', formation: '4-3-3',
+      startXI: [{ providerPlayerId: 55, playerId: 'jp-formation-player', name: '配置五郎', grid: '3:2', apiFootballRating: 7.2 }],
+      substitutes: []
+    }]
+  };
+  const fragments = [{
+    updated: '2026-08-21 15:00 JST',
+    sources: { apiFixture: { id: 'apiFixture', name: 'API-Football fixture bundle' } },
+    matchUpdates: [{
+      matchId: 'formation-match', league: 'プレミアリーグ', ko: '2026-08-21 20:00',
+      match: 'Club A 1-0 Club B', addIfMissing: true, formationData
+    }],
+    playerMatchStats: [{
+      recordId: 'formation-match-player', matchId: 'formation-match', playerId: 'jp-formation-player',
+      playerName: '配置五郎', club: 'Club A', competition: 'プレミアリーグ', appearance: true, start: true,
+      values: { minutes: 90, goals: 0, assists: 0 }, missingFields: [], sourceIds: ['apiFixture'],
+      providerIds: { apiFootball: { player: 55, fixture: 500 } },
+      providerRatings: { apiFootball: { value: 7.2, sourceId: 'apiFixture' } },
+      lineup: { role: 'starter', number: 8, position: 'MF', grid: '3:2' },
+      substitution: { direction: 'out', elapsed: 82, extra: null, replacementProviderPlayerId: 66 }
+    }]
+  }];
+  const context = buildHarness({ player, fragments });
+  await apply(context);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(context.D.matches[0].formationData)), formationData);
+  const record = context.D.playerMatchStats[0];
+  assert.equal(record.providerRatings.apiFootball.value, 7.2);
+  assert.equal(record.lineup.grid, '3:2');
+  assert.equal(record.substitution.direction, 'out');
+  assert.equal(record.ratingInputs.minutes.value, 90);
+});

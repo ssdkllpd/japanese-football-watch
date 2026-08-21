@@ -223,6 +223,111 @@ function collectEvents(fixture) {
   return rows;
 }
 
+function collectSubstitutions(fixture) {
+  const byPlayer = new Map();
+  const events = [];
+  for (const event of fixture?.events || []) {
+    if (String(event?.type || '').toLowerCase() !== 'subst') continue;
+    const outgoingId = event?.player?.id;
+    const incomingId = event?.assist?.id;
+    const elapsed = numeric(event?.time?.elapsed);
+    const extra = numeric(event?.time?.extra);
+    const teamId = numeric(event?.team?.id) ?? event?.team?.id ?? null;
+    const change = {
+      teamId,
+      elapsed,
+      extra,
+      outgoingProviderPlayerId: numeric(outgoingId) ?? outgoingId ?? null,
+      outgoingName: event?.player?.name || null,
+      incomingProviderPlayerId: numeric(incomingId) ?? incomingId ?? null,
+      incomingName: event?.assist?.name || null,
+    };
+    events.push(change);
+    if (outgoingId !== null && outgoingId !== undefined) {
+      byPlayer.set(String(outgoingId), {
+        direction: 'out',
+        elapsed,
+        extra,
+        replacementProviderPlayerId: change.incomingProviderPlayerId,
+        replacementName: change.incomingName,
+      });
+    }
+    if (incomingId !== null && incomingId !== undefined) {
+      byPlayer.set(String(incomingId), {
+        direction: 'in',
+        elapsed,
+        extra,
+        replacedProviderPlayerId: change.outgoingProviderPlayerId,
+        replacedName: change.outgoingName,
+      });
+    }
+  }
+  return { byPlayer, events };
+}
+
+function lineupPlayer(item, role, trackedPlayers, playerStats, substitutions) {
+  const player = item?.player || {};
+  const providerPlayerId = player?.id;
+  if (providerPlayerId === null || providerPlayerId === undefined) return null;
+  const key = String(providerPlayerId);
+  const tracked = trackedPlayers.get(key) || null;
+  const stats = playerStats.get(key)?.statistics || {};
+  const rating = numeric(stats?.games?.rating);
+  const row = {
+    providerPlayerId: numeric(providerPlayerId) ?? providerPlayerId,
+    playerId: tracked?.playerId || null,
+    name: tracked?.name || player?.name || playerStats.get(key)?.player?.name || null,
+    number: numeric(player?.number),
+    position: playerPosition(player?.pos || stats?.games?.position),
+    grid: String(player?.grid || '').trim() || null,
+    role,
+    apiFootballRating: rating,
+    minutes: numeric(stats?.games?.minutes),
+    captain: typeof stats?.games?.captain === 'boolean' ? stats.games.captain : null,
+  };
+  const substitution = substitutions.byPlayer.get(key);
+  if (substitution) row.substitution = substitution;
+  return row;
+}
+
+function buildFormationData(fixture, options, trackedPlayers, playerStats, substitutions, sourceId) {
+  const lineups = Array.isArray(fixture?.lineups) ? fixture.lineups : [];
+  const hasLineup = lineups.some(lineup =>
+    lineup?.formation || (lineup?.startXI || []).length || (lineup?.substitutes || []).length
+  );
+  if (!hasLineup) return null;
+
+  const sides = [
+    ['home', fixture?.teams?.home || null],
+    ['away', fixture?.teams?.away || null],
+  ];
+  const teams = sides.map(([side, fixtureTeam]) => {
+    const lineup = lineups.find(row => sameId(row?.team?.id, fixtureTeam?.id)) || null;
+    const sourceTeam = lineup?.team || fixtureTeam || {};
+    return {
+      side,
+      teamId: numeric(sourceTeam?.id) ?? sourceTeam?.id ?? null,
+      teamName: teamResolver(options, sourceTeam),
+      formation: String(lineup?.formation || '').trim() || null,
+      lineupAvailable: !!lineup,
+      startXI: (lineup?.startXI || [])
+        .map(item => lineupPlayer(item, 'starter', trackedPlayers, playerStats, substitutions))
+        .filter(Boolean),
+      substitutes: (lineup?.substitutes || [])
+        .map(item => lineupPlayer(item, 'substitute', trackedPlayers, playerStats, substitutions))
+        .filter(Boolean),
+    };
+  });
+
+  return {
+    version: '1.0',
+    provider: 'api-football',
+    sourceId,
+    teams,
+    substitutions: substitutions.events,
+  };
+}
+
 function knownValue(values, fieldSources, field, value, sourceId) {
   const parsed = numeric(value);
   if (parsed === null) return false;
@@ -297,6 +402,7 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
   const lines = collectLineups(fixture);
   const playerStats = collectPlayerStatistics(fixture);
   const events = collectEvents(fixture);
+  const substitutions = collectSubstitutions(fixture);
   const finalFixture = isFinalFixture(fixture);
   const eventsComplete = fixtureEventsAreComplete(fixture);
   const sourceId = `api-football-fixture-${providerFixtureId}`;
@@ -306,6 +412,14 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
   const homeClub = teamResolver(options, fixture?.teams?.home || {});
   const awayClub = teamResolver(options, fixture?.teams?.away || {});
   const match = buildMatchLabel(homeClub, awayClub, fixture?.goals);
+  const formationData = buildFormationData(
+    fixture,
+    options,
+    trackedPlayers,
+    playerStats,
+    substitutions,
+    sourceId
+  );
 
   const candidateIds = new Set([...lines.keys(), ...playerStats.keys(), ...events.keys()]);
   const records = [];
@@ -385,6 +499,7 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
         league: numeric(fixture?.league?.id) ?? fixture?.league?.id ?? null,
       },
     };
+    const apiFootballRating = numeric(stats?.games?.rating);
 
     const record = {
       recordId: `${matchId}-${tracked.playerId}`,
@@ -411,6 +526,21 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
       priorityUpdate: missingFields.length > 0,
       priorityFields: missingFields,
     };
+    if (apiFootballRating !== null) {
+      record.providerRatings = {
+        apiFootball: { value: apiFootballRating, sourceId },
+      };
+    }
+    if (line) {
+      record.lineup = {
+        role: line.start ? 'starter' : (line.bench ? 'substitute' : null),
+        number: numeric(line?.player?.number),
+        position: playerPosition(line?.player?.pos),
+        grid: String(line?.player?.grid || '').trim() || null,
+      };
+    }
+    const substitution = substitutions.byPlayer.get(String(providerPlayerId));
+    if (substitution) record.substitution = substitution;
     if (conflicts.length) record.ratingConflicts = conflicts;
     records.push(record);
 
@@ -448,6 +578,26 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
     }
   }
 
+  const matchUpdate = {
+    matchId,
+    league: competition,
+    round: fixture?.league?.round || null,
+    ko: fixture?.fixture?.date || null,
+    match,
+    status: finalFixture ? 'verified' : 'live_or_scheduled',
+    addIfMissing: true,
+    sourceIds: [sourceId],
+    providerIds: {
+      apiFootball: {
+        fixture: numeric(providerFixtureId) ?? providerFixtureId,
+        league: numeric(fixture?.league?.id) ?? fixture?.league?.id ?? null,
+        homeTeam: numeric(fixture?.teams?.home?.id) ?? fixture?.teams?.home?.id ?? null,
+        awayTeam: numeric(fixture?.teams?.away?.id) ?? fixture?.teams?.away?.id ?? null,
+      },
+    },
+  };
+  if (formationData) matchUpdate.formationData = formationData;
+
   return {
     schemaVersion: 2,
     season: options.season || String(fixture?.league?.season || ''),
@@ -466,24 +616,7 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
           : ['observed_events_only'],
       },
     },
-    matchUpdates: [{
-      matchId,
-      league: competition,
-      round: fixture?.league?.round || null,
-      ko: fixture?.fixture?.date || null,
-      match,
-      status: finalFixture ? 'verified' : 'live_or_scheduled',
-      addIfMissing: true,
-      sourceIds: [sourceId],
-      providerIds: {
-        apiFootball: {
-          fixture: numeric(providerFixtureId) ?? providerFixtureId,
-          league: numeric(fixture?.league?.id) ?? fixture?.league?.id ?? null,
-          homeTeam: numeric(fixture?.teams?.home?.id) ?? fixture?.teams?.home?.id ?? null,
-          awayTeam: numeric(fixture?.teams?.away?.id) ?? fixture?.teams?.away?.id ?? null,
-        },
-      },
-    }],
+    matchUpdates: [matchUpdate],
     playerUpdates,
     playerMatchStats: records,
     gaResultsAdd,
@@ -492,6 +625,8 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
 
 module.exports = {
   FINAL_FIXTURE_STATUSES,
+  buildFormationData,
+  collectSubstitutions,
   fixtureEventsAreComplete,
   mapFixtureToSchemaV2,
   normalizeTrackedPlayers,
