@@ -1,622 +1,405 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T17:25:25+09:00",
+  "updatedAt": "2026-08-21T19:30:00+09:00",
   "policy": {
     "runtimeIdentity": "explicit_registry_required",
     "nameHashGeneration": "migration_only_registry_bootstrap",
     "providerJoin": "provider_id_to_registry_to_player_id",
-    "namesAreDisplayData": true
+    "namesAreDisplayData": true,
+    "mutableProviderStateInRegistry": false
   },
   "players": [
     {
       "playerId": "jp-j75yuh",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "三戸舜介",
-      "aliases": [
-        "S. Mito",
-        "Shunsuke Mito"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 237131,
-          "fixture": 1552122,
-          "team": 426,
-          "league": 88
-        }
-      }
+      "aliases": ["S. Mito", "Shunsuke Mito"],
+      "providerIds": { "apiFootball": { "player": 237131 } }
     },
     {
       "playerId": "jp-1koq39p",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "三笘薫",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-30qn2r",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "上田綺世",
-      "aliases": [
-        "A. Ueda",
-        "Ayase Ueda"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 72155,
-          "fixture": 1552122,
-          "team": 209,
-          "league": 88
-        }
-      }
+      "aliases": ["A. Ueda", "Ayase Ueda"],
+      "providerIds": { "apiFootball": { "player": 72155 } }
     },
     {
       "playerId": "jp-1wcgr8k",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "中村草太",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1kw6wo2",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "久保建英",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-ox5x4t",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "伊東純也",
-      "aliases": [
-        "J. Ito",
-        "Junya Ito"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 1942,
-          "fixture": 1558587,
-          "team": 742,
-          "league": 144
-        }
-      }
+      "aliases": ["J. Ito", "Junya Ito"],
+      "providerIds": { "apiFootball": { "player": 1942 } }
     },
     {
       "playerId": "jp-1kbrm9j",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "伊藤洋輝",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-18tbwp5",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "伊藤涼太郎",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1noa7gy",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "佐藤龍之介",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-12g4rex",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "佐野海舟",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-e9pwxe",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "冨安健洋",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1ba69y9",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "前田大然",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1vfak3p",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "坂元達裕",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-18yk0tk",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "坂本一彩",
-      "aliases": [
-        "I. Sakamoto",
-        "Issei Sakamoto"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 278950,
-          "fixture": 1558585,
-          "team": 261,
-          "league": 144
-        }
-      }
+      "aliases": ["I. Sakamoto", "Issei Sakamoto"],
+      "providerIds": { "apiFootball": { "player": 278950 } }
     },
     {
       "playerId": "jp-162t0n1",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "堂安律",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1kq4igv",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "大橋祐紀",
-      "aliases": [
-        "Y. Ohashi",
-        "Yuki Ohashi"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 33147,
-          "fixture": 1567394,
-          "team": 67,
-          "league": 48
-        }
-      }
+      "aliases": ["Y. Ohashi", "Yuki Ohashi"],
+      "providerIds": { "apiFootball": { "player": 33147 } }
     },
     {
       "playerId": "jp-16bp240",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "宇野禅斗",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-730t0t",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "守田英正",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-7re7eg",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "小久保玲央ブライアン",
-      "aliases": [
-        "L. Kokubo",
-        "Leo Brian Kokubo",
-        "Leo Kokubo"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 162482,
-          "fixture": 1558584,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["L. Kokubo", "Leo Brian Kokubo", "Leo Kokubo"],
+      "providerIds": { "apiFootball": { "player": 162482 } }
     },
     {
       "playerId": "jp-1lfb3rc",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "小杉啓太",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1li78ux",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "山本理仁",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-7ej0il",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "岩田智輝",
-      "aliases": [
-        "T. Iwata",
-        "Tomoki Iwata"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 32938,
-          "fixture": 1567417,
-          "team": 54,
-          "league": 48
-        }
-      }
+      "aliases": ["T. Iwata", "Tomoki Iwata"],
+      "providerIds": { "apiFootball": { "player": 32938 } }
     },
     {
       "playerId": "jp-tcfkg2",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "川﨑颯太",
-      "aliases": [],
+      "aliases": ["川崎颯太"],
       "providerIds": {}
     },
     {
       "playerId": "jp-ruq6m8",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "市原吏音",
-      "aliases": [
-        "R. Ichihara",
-        "Rion Ichihara"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 422581,
-          "fixture": 1552121,
-          "team": 201,
-          "league": 88
-        }
-      }
+      "aliases": ["R. Ichihara", "Rion Ichihara"],
+      "providerIds": { "apiFootball": { "player": 422581 } }
     },
     {
       "playerId": "jp-bpub09",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "平河悠",
-      "aliases": [
-        "Y. Hirakawa",
-        "Yu Hirakawa"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 348800,
-          "fixture": 1567390,
-          "team": 56,
-          "league": 48
-        }
-      }
+      "aliases": ["Y. Hirakawa", "Yu Hirakawa"],
+      "providerIds": { "apiFootball": { "player": 348800 } }
     },
     {
       "playerId": "jp-19l4emr",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "後藤啓介",
-      "aliases": [
-        "K. Goto",
-        "Keisuke Goto"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 375930,
-          "fixture": 1623399,
-          "team": 160,
-          "league": 848
-        }
-      }
+      "aliases": ["K. Goto", "Keisuke Goto"],
+      "providerIds": { "apiFootball": { "player": 375930 } }
     },
     {
       "playerId": "jp-1itow8a",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "斉藤光毅",
-      "aliases": [
-        "K. Saito",
-        "Koki Saito"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 33838,
-          "fixture": 1567411,
-          "team": 72,
-          "league": 48
-        }
-      }
+      "aliases": ["K. Saito", "Koki Saito"],
+      "providerIds": { "apiFootball": { "player": 33838 } }
     },
     {
       "playerId": "jp-1grigow",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "新川志音",
-      "aliases": [
-        "S. Shinkawa",
-        "Shion Shinkawa"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 510415,
-          "fixture": 1558590,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["S. Shinkawa", "Shion Shinkawa"],
+      "providerIds": { "apiFootball": { "player": 510415 } }
     },
     {
       "playerId": "jp-yg9ufx",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "旗手怜央",
-      "aliases": [
-        "R. Hatate",
-        "Reo Hatate"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 180758,
-          "fixture": 1556633,
-          "team": 247,
-          "league": 179
-        }
-      }
+      "aliases": ["R. Hatate", "Reo Hatate"],
+      "providerIds": { "apiFootball": { "player": 180758 } }
     },
     {
       "playerId": "jp-klzve6",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "木村誠二",
-      "aliases": [
-        "S. Kimura",
-        "Seiji Kimura"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 109271,
-          "fixture": 1558585,
-          "team": 261,
-          "league": 144
-        }
-      }
+      "aliases": ["S. Kimura", "Seiji Kimura"],
+      "providerIds": { "apiFootball": { "player": 109271 } }
     },
     {
       "playerId": "jp-1hit3wo",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "松木玖生",
-      "aliases": [
-        "K. Matsuki",
-        "Kuryu Matsuki"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 351013,
-          "fixture": 1567398,
-          "team": 41,
-          "league": 48
-        }
-      }
+      "aliases": ["K. Matsuki", "Kuryu Matsuki"],
+      "providerIds": { "apiFootball": { "player": 351013 } }
     },
     {
       "playerId": "jp-pjdybh",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "松澤海斗",
-      "aliases": [
-        "K. Matsuzawa",
-        "Kaito Matsuzawa"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 415721,
-          "fixture": 1558584,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["K. Matsuzawa", "Kaito Matsuzawa"],
+      "providerIds": { "apiFootball": { "player": 415721 } }
     },
     {
       "playerId": "jp-6yxkdg",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "板倉滉",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-rsci69",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "森下龍矢",
-      "aliases": [
-        "R. Morishita",
-        "Ryoya Morishita"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 199150,
-          "fixture": 1567394,
-          "team": 67,
-          "league": 48
-        }
-      }
+      "aliases": ["R. Morishita", "Ryoya Morishita"],
+      "providerIds": { "apiFootball": { "player": 199150 } }
     },
     {
       "playerId": "jp-1ki8uj3",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "横山歩夢",
-      "aliases": [
-        "A. Yokoyama",
-        "Ayumu Yokoyama"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 304918,
-          "fixture": 1558587,
-          "team": 742,
-          "league": 144
-        }
-      }
+      "aliases": ["A. Yokoyama", "Ayumu Yokoyama"],
+      "providerIds": { "apiFootball": { "player": 304918 } }
     },
     {
       "playerId": "jp-he5z0h",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "橋岡大樹",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-gfobk8",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "毎熊晟矢",
-      "aliases": [
-        "S. Maikuma",
-        "Seiya Maikuma"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 199793,
-          "fixture": 1552121,
-          "team": 201,
-          "league": 88
-        }
-      }
+      "aliases": ["S. Maikuma", "Seiya Maikuma"],
+      "providerIds": { "apiFootball": { "player": 199793 } }
     },
     {
       "playerId": "jp-xb5mh5",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "水多海斗",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-16bcxq3",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "渡辺剛",
-      "aliases": [
-        "T. Watanabe",
-        "Tsuyoshi Watanabe"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 32858,
-          "fixture": 1552132,
-          "team": 209,
-          "league": 88
-        }
-      }
+      "aliases": ["T. Watanabe", "Tsuyoshi Watanabe"],
+      "providerIds": { "apiFootball": { "player": 32858 } }
     },
     {
       "playerId": "jp-13pqr22",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "瀬古歩夢",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1vfimc3",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "田中碧",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1f0x0ed",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "田中聡",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1du7xhl",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "町田浩樹",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1o7tzl2",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "町野修斗",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-4a145o",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "畑大雅",
-      "aliases": [
-        "T. Hata",
-        "Taiga Hata"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 199153,
-          "fixture": 1623438,
-          "team": 735,
-          "league": 3
-        }
-      }
+      "aliases": ["T. Hata", "Taiga Hata"],
+      "providerIds": { "apiFootball": { "player": 199153 } }
     },
     {
       "playerId": "jp-m6vn75",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "石渡ネルソン",
-      "aliases": [
-        "N. Ishiwatari",
-        "Nelson Ishiwatari"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 356714,
-          "fixture": 1558584,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["N. Ishiwatari", "Nelson Ishiwatari"],
+      "providerIds": { "apiFootball": { "player": 356714 } }
     },
     {
       "playerId": "jp-17qj0bl",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "福井太智",
-      "aliases": [
-        "T. Fukui",
-        "Taichi Fukui"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 306615,
-          "fixture": 1575454,
-          "team": 240,
-          "league": 94
-        }
-      }
+      "aliases": ["T. Fukui", "Taichi Fukui"],
+      "providerIds": { "apiFootball": { "player": 306615 } }
     },
     {
       "playerId": "jp-3lulkd",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "荒木遼太郎",
-      "aliases": [
-        "R. Araki",
-        "Ryotaro Araki"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 197972,
-          "fixture": 1558584,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["R. Araki", "Ryotaro Araki"],
+      "providerIds": { "apiFootball": { "player": 197972 } }
     },
     {
       "playerId": "jp-xyaciq",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "菅原由勢",
-      "aliases": [
-        "Y. Sugawara",
-        "Yukinari Sugawara"
-      ],
+      "aliases": ["Y. Sugawara", "Yukinari Sugawara"],
       "providerIds": {}
     },
     {
       "playerId": "jp-ukb0c6",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "谷口彰悟",
-      "aliases": [
-        "S. Taniguchi",
-        "Shogo Taniguchi"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 32954,
-          "fixture": 1558584,
-          "team": 735,
-          "league": 144
-        }
-      }
+      "aliases": ["S. Taniguchi", "Shogo Taniguchi"],
+      "providerIds": { "apiFootball": { "player": 32954 } }
     },
     {
       "playerId": "jp-ijsu41",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "遠藤航",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-fwd2e8",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "鈴木唯人",
-      "aliases": [
-        "Y. Suzuki",
-        "Yuito Suzuki"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 199143,
-          "fixture": 1623399,
-          "team": 160,
-          "league": 848
-        }
-      }
+      "aliases": ["Y. Suzuki", "Yuito Suzuki"],
+      "providerIds": { "apiFootball": { "player": 199143 } }
     },
     {
       "playerId": "jp-62e5ru",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "鈴木彩艶",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-154y4cm",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "鎌田大地",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-j0aaaf",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "高井幸大",
       "aliases": [],
       "providerIds": {}
     },
     {
       "playerId": "jp-1osyk4c",
+      "idSource": "legacy_name_hash_migration_2026-08-21",
       "name": "齋藤俊輔",
-      "aliases": [
-        "S. Saito",
-        "Shunsuke Saito"
-      ],
-      "providerIds": {
-        "apiFootball": {
-          "player": 457169,
-          "fixture": 1558585,
-          "team": 261,
-          "league": 144
-        }
-      }
+      "aliases": ["S. Saito", "Shunsuke Saito"],
+      "providerIds": { "apiFootball": { "player": 457169 } }
     }
   ]
 }
