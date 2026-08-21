@@ -2270,10 +2270,10 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:40:33.539Z",
-    "requestCount": 88,
-    "dailyRemaining": 7408,
-    "minuteRemaining": 212,
+    "completedAt": "2026-08-21T06:50:39.964Z",
+    "requestCount": 9,
+    "dailyRemaining": 7399,
+    "minuteRemaining": 291,
     "reserve": 100,
     "stoppedReason": null,
     "resolvedFixtureCount": 27,
@@ -2306,5 +2306,6 @@
       "method": "exact_team_search_alias",
       "resolvedAt": "2026-08-21T06:31:03.561Z"
     }
-  }
+  },
+  "coachResolutions": {}
 }

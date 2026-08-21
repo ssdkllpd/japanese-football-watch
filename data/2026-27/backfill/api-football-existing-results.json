@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "season": "2026-27",
-  "updated": "2026-08-21T06:40:33.539Z",
+  "updated": "2026-08-21T06:50:39.964Z",
   "provider": "api-football",
   "sources": {
     "api-football-fixture-1623399": {
@@ -31,7 +31,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1623438/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:40:33.539Z",
+      "retrievedAt": "2026-08-21T06:50:39.964Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -295,7 +295,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558590/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:40:33.539Z",
+      "retrievedAt": "2026-08-21T06:50:39.964Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -405,7 +405,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558584/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:40:33.539Z",
+      "retrievedAt": "2026-08-21T06:50:39.964Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -1581,7 +1581,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/162482.png",
-                "photoSource": "api_football_media_template"
+                "photoSource": "tracked_player_registry"
               },
               {
                 "providerPlayerId": 381316,
@@ -1609,7 +1609,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/32954.png",
-                "photoSource": "api_football_media_template"
+                "photoSource": "tracked_player_registry"
               },
               {
                 "providerPlayerId": 105474,
@@ -1679,7 +1679,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/356714.png",
-                "photoSource": "api_football_media_template",
+                "photoSource": "tracked_player_registry",
                 "substitution": {
                   "direction": "out",
                   "elapsed": 61,
@@ -1735,7 +1735,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/415721.png",
-                "photoSource": "api_football_media_template",
+                "photoSource": "tracked_player_registry",
                 "substitution": {
                   "direction": "out",
                   "elapsed": 61,
@@ -1790,8 +1790,8 @@
               },
               {
                 "providerPlayerId": 199153,
-                "playerId": null,
-                "name": "T. Hata",
+                "playerId": "jp-4a145o",
+                "name": "畑大雅",
                 "number": 3,
                 "position": "DF",
                 "grid": null,
@@ -1800,7 +1800,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/199153.png",
-                "photoSource": "api_football_media_template"
+                "photoSource": "tracked_player_registry"
               },
               {
                 "providerPlayerId": 197972,
@@ -1814,7 +1814,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/197972.png",
-                "photoSource": "api_football_media_template",
+                "photoSource": "tracked_player_registry",
                 "substitution": {
                   "direction": "in",
                   "elapsed": 61,
@@ -1874,8 +1874,8 @@
               },
               {
                 "providerPlayerId": 510415,
-                "playerId": null,
-                "name": "S. Shinkawa",
+                "playerId": "jp-1grigow",
+                "name": "新川志音",
                 "number": 99,
                 "position": "FW",
                 "grid": null,
@@ -1884,7 +1884,7 @@
                 "minutes": null,
                 "captain": null,
                 "photo": "https://media.api-sports.io/football/players/510415.png",
-                "photoSource": "api_football_media_template"
+                "photoSource": "tracked_player_registry"
               },
               {
                 "providerPlayerId": 314377,
@@ -12569,8 +12569,8 @@
               },
               {
                 "providerPlayerId": 510415,
-                "playerId": null,
-                "name": "S. Shinkawa",
+                "playerId": "jp-1grigow",
+                "name": "新川志音",
                 "number": 99,
                 "position": "MF",
                 "grid": null,
@@ -24577,7 +24577,7 @@
         "gaOnPitch"
       ],
       "photo": "https://media.api-sports.io/football/players/162482.png",
-      "photoSource": "api_football_media_template",
+      "photoSource": "tracked_player_registry",
       "lineup": {
         "role": "starter",
         "number": 16,
@@ -24665,7 +24665,7 @@
         "gaOnPitch"
       ],
       "photo": "https://media.api-sports.io/football/players/32954.png",
-      "photoSource": "api_football_media_template",
+      "photoSource": "tracked_player_registry",
       "lineup": {
         "role": "starter",
         "number": 5,
@@ -24753,7 +24753,7 @@
         "passesAttempted"
       ],
       "photo": "https://media.api-sports.io/football/players/356714.png",
-      "photoSource": "api_football_media_template",
+      "photoSource": "tracked_player_registry",
       "lineup": {
         "role": "starter",
         "number": 18,
@@ -24844,7 +24844,7 @@
         "passesAttempted"
       ],
       "photo": "https://media.api-sports.io/football/players/415721.png",
-      "photoSource": "api_football_media_template",
+      "photoSource": "tracked_player_registry",
       "lineup": {
         "role": "starter",
         "number": 38,
@@ -24939,7 +24939,7 @@
         "passesAttempted"
       ],
       "photo": "https://media.api-sports.io/football/players/197972.png",
-      "photoSource": "api_football_media_template",
+      "photoSource": "tracked_player_registry",
       "lineup": {
         "role": "substitute",
         "number": 71,
@@ -29629,6 +29629,266 @@
       "lineup": {
         "role": "substitute",
         "number": 41,
+        "position": "MF",
+        "grid": null
+      }
+    },
+    {
+      "recordId": "uel-2026-08-20-stvv-omonia-jp-4a145o",
+      "playerId": "jp-4a145o",
+      "matchId": "uel-2026-08-20-stvv-omonia",
+      "playerName": "畑大雅",
+      "player": "畑大雅",
+      "club": "STVV",
+      "competition": "UEFA Europa League",
+      "league": "UEFA Europa League",
+      "match": "STVV 1-0 オモニア",
+      "ko": "2026-08-20 20:00 CEST",
+      "round": "Play-off 1st leg",
+      "appearance": false,
+      "start": false,
+      "bench": true,
+      "ratingPosition": "DF",
+      "ratingPositionSource": "season_primary",
+      "values": {
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "ownGoals": 0
+      },
+      "missingFields": [
+        "minutes",
+        "penaltiesConceded",
+        "cleanSheets",
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "duelsWon",
+        "duelsTotal",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "dribbledPast",
+        "passesCompleted",
+        "passesAttempted",
+        "gaOnPitch"
+      ],
+      "fieldSources": {
+        "goals": "api-football-fixture-1623438",
+        "assists": "api-football-fixture-1623438",
+        "yellowCards": "api-football-fixture-1623438",
+        "secondYellowRed": "api-football-fixture-1623438",
+        "straightRed": "api-football-fixture-1623438",
+        "ownGoals": "api-football-fixture-1623438"
+      },
+      "sourceIds": [
+        "api-football-fixture-1623438"
+      ],
+      "providerIds": {
+        "apiFootball": {
+          "player": 199153,
+          "fixture": 1623438,
+          "team": 735,
+          "league": 3
+        }
+      },
+      "priorityUpdate": true,
+      "priorityFields": [
+        "minutes",
+        "penaltiesConceded",
+        "cleanSheets",
+        "tackles",
+        "interceptions",
+        "clearances",
+        "blocks",
+        "duelsWon",
+        "duelsTotal",
+        "aerialDuelsWon",
+        "aerialDuelsTotal",
+        "dribbledPast",
+        "passesCompleted",
+        "passesAttempted",
+        "gaOnPitch"
+      ],
+      "photo": "https://media.api-sports.io/football/players/199153.png",
+      "photoSource": "tracked_player_registry",
+      "lineup": {
+        "role": "substitute",
+        "number": 3,
+        "position": "DF",
+        "grid": null
+      }
+    },
+    {
+      "recordId": "uel-2026-08-20-stvv-omonia-jp-1grigow",
+      "playerId": "jp-1grigow",
+      "matchId": "uel-2026-08-20-stvv-omonia",
+      "playerName": "新川志音",
+      "player": "新川志音",
+      "club": "STVV",
+      "competition": "UEFA Europa League",
+      "league": "UEFA Europa League",
+      "match": "STVV 1-0 オモニア",
+      "ko": "2026-08-20 20:00 CEST",
+      "round": "Play-off 1st leg",
+      "appearance": false,
+      "start": false,
+      "bench": true,
+      "ratingPosition": "FW",
+      "ratingPositionSource": "season_primary",
+      "values": {
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "ownGoals": 0
+      },
+      "missingFields": [
+        "minutes",
+        "penaltiesConceded",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "dribbledPast",
+        "bigChancesMissed",
+        "possessionsLost",
+        "passesCompleted",
+        "passesAttempted"
+      ],
+      "fieldSources": {
+        "goals": "api-football-fixture-1623438",
+        "assists": "api-football-fixture-1623438",
+        "yellowCards": "api-football-fixture-1623438",
+        "secondYellowRed": "api-football-fixture-1623438",
+        "straightRed": "api-football-fixture-1623438",
+        "ownGoals": "api-football-fixture-1623438"
+      },
+      "sourceIds": [
+        "api-football-fixture-1623438"
+      ],
+      "providerIds": {
+        "apiFootball": {
+          "player": 510415,
+          "fixture": 1623438,
+          "team": 735,
+          "league": 3
+        }
+      },
+      "priorityUpdate": true,
+      "priorityFields": [
+        "minutes",
+        "penaltiesConceded",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "dribbledPast",
+        "bigChancesMissed",
+        "possessionsLost",
+        "passesCompleted",
+        "passesAttempted"
+      ],
+      "photo": "https://media.api-sports.io/football/players/510415.png",
+      "photoSource": "tracked_player_registry",
+      "lineup": {
+        "role": "substitute",
+        "number": 99,
+        "position": "FW",
+        "grid": null
+      }
+    },
+    {
+      "recordId": "m-2026-08-14-cercle-stvv-jp-1grigow",
+      "playerId": "jp-1grigow",
+      "matchId": "m-2026-08-14-cercle-stvv",
+      "playerName": "新川志音",
+      "player": "新川志音",
+      "club": "STVV",
+      "competition": "ベルギー",
+      "league": "ベルギー",
+      "match": "サークル・ブルージュ 3-3 STVV",
+      "ko": "2026-08-15 03:45",
+      "round": "第2節 / 全34節",
+      "appearance": false,
+      "start": false,
+      "bench": true,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "api_football_fixture",
+      "values": {
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "ownGoals": 0
+      },
+      "missingFields": [
+        "minutes",
+        "penaltiesConceded",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "dribbledPast",
+        "bigChancesMissed",
+        "possessionsLost",
+        "passesCompleted",
+        "passesAttempted"
+      ],
+      "fieldSources": {
+        "goals": "api-football-fixture-1558590",
+        "assists": "api-football-fixture-1558590",
+        "yellowCards": "api-football-fixture-1558590",
+        "secondYellowRed": "api-football-fixture-1558590",
+        "straightRed": "api-football-fixture-1558590",
+        "ownGoals": "api-football-fixture-1558590"
+      },
+      "sourceIds": [
+        "api-football-fixture-1558590"
+      ],
+      "providerIds": {
+        "apiFootball": {
+          "player": 510415,
+          "fixture": 1558590,
+          "team": 735,
+          "league": 144
+        }
+      },
+      "priorityUpdate": true,
+      "priorityFields": [
+        "minutes",
+        "penaltiesConceded",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "dribbledPast",
+        "bigChancesMissed",
+        "possessionsLost",
+        "passesCompleted",
+        "passesAttempted"
+      ],
+      "photo": "https://media.api-sports.io/football/players/510415.png",
+      "photoSource": "api_football_fixture_players",
+      "lineup": {
+        "role": "substitute",
+        "number": 99,
         "position": "MF",
         "grid": null
       }
