@@ -8,6 +8,11 @@
   const round2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
   const isValue = x => x && x.state === 'value' && Number.isFinite(Number(x.value));
   const n = x => isValue(x) ? Number(x.value) : null;
+  const isRatingValue = value => {
+    if (value === null || value === undefined || value === '') return false;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 3.0 && numeric <= 10.0;
+  };
 
   const CONFIG = {
     FW: {
@@ -151,24 +156,32 @@
 
   function withComputedRating(record) {
     if (!record) return record;
-    if (record.ratingVersion === VERSION && Number.isFinite(Number(record.jfwRating))) return record;
-    if (!record.ratingInputs || !record.ratingPosition) return { ...record, jfwRating: null };
-    return { ...record, ...compute(record.ratingInputs, record.ratingPosition) };
+    if (record.ratingVersion === VERSION && isRatingValue(record.jfwRating)) return record;
+    if (!record.ratingInputs || !record.ratingPosition) return { ...record, jfwRating: undefined };
+    const computed = compute(record.ratingInputs, record.ratingPosition);
+    return {
+      ...record,
+      ...computed,
+      jfwRating: isRatingValue(computed.jfwRating) ? Number(computed.jfwRating) : undefined
+    };
   }
 
   function seasonSummary(records) {
     const all = (records || []).filter(r => Number(r?.minutes ?? r?.ratingInputs?.minutes?.value) > 0);
-    const rated = all.map(withComputedRating).filter(r => r.ratingVersion === VERSION && Number.isFinite(Number(r.jfwRating)));
+    const rated = all.map(withComputedRating).filter(r => r.ratingVersion === VERSION && isRatingValue(r.jfwRating));
     const weighted = rows => {
       let total = 0, mins = 0;
       for (const r of rows) {
         const m = Number(r.minutes ?? r.ratingInputs?.minutes?.value ?? 0);
-        if (m > 0) { total += Number(r.jfwRating) * m; mins += m; }
+        if (m > 0 && isRatingValue(r.jfwRating)) {
+          total += Number(r.jfwRating) * m;
+          mins += m;
+        }
       }
       return mins ? round2(total / mins) : null;
     };
     const recentWindow = [...all].sort((a,b) => String(b.ko || '').localeCompare(String(a.ko || ''))).slice(0, 5);
-    const recentRated = recentWindow.map(withComputedRating).filter(r => r.ratingVersion === VERSION && Number.isFinite(Number(r.jfwRating)));
+    const recentRated = recentWindow.map(withComputedRating).filter(r => r.ratingVersion === VERSION && isRatingValue(r.jfwRating));
     const avgCoverage = rated.length ? rated.reduce((s,r) => s + Number(r.ratingCoverage || 0), 0) / rated.length : null;
     const avgMinutes = all.length ? all.reduce((s,r) => s + Number(r.minutes ?? r.ratingInputs?.minutes?.value ?? 0), 0) / all.length : null;
     return {
@@ -183,7 +196,7 @@
     };
   }
 
-  window.JFWRating = { VERSION, compute, withComputedRating, seasonSummary };
+  window.JFWRating = { VERSION, compute, withComputedRating, seasonSummary, isRatingValue };
 })();
 
 window.addEventListener('load', () => {
