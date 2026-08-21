@@ -362,6 +362,24 @@ function sleep(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+function safeApiErrorDetails(error, apiKey = process.env.API_FOOTBALL_KEY) {
+  if (!(error instanceof ApiFootballError)) return null;
+  let serialized;
+  try {
+    serialized = JSON.stringify(error.apiErrors ?? null);
+  } catch {
+    serialized = 'null';
+  }
+  if (apiKey) serialized = serialized.split(String(apiKey)).join('[REDACTED]');
+  if (serialized.length > 2000) serialized = JSON.stringify(`${serialized.slice(0, 1990)}…`);
+  let apiErrors = null;
+  try { apiErrors = JSON.parse(serialized); } catch { apiErrors = 'unparseable_api_error'; }
+  return {
+    status: error.status,
+    apiErrors,
+  };
+}
+
 class RequestBudget {
   constructor(providerConfig, options = {}) {
     const quota = providerConfig.quota || {};
@@ -642,6 +660,7 @@ async function runBackfill(options = {}) {
       completedFixtureCount: completed.size,
       unresolvedPlayers,
       error: runError ? runError.message : null,
+      errorDetails: runError ? safeApiErrorDetails(runError) : null,
     };
     fragment.updated = updated;
     const index = ensureFragmentInIndex(readJson(indexPath), GENERATED_FRAGMENT);
@@ -686,6 +705,7 @@ module.exports = {
   GENERATED_FRAGMENT,
   QuotaStop,
   RequestBudget,
+  safeApiErrorDetails,
   aliasMatches,
   buildTargets,
   compactFixture,

@@ -5,6 +5,9 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+  ApiFootballError,
+} = require('../scripts/api-football/client');
+const {
   RequestBudget,
   aliasMatches,
   buildTargets,
@@ -14,6 +17,7 @@ const {
   normalizeProviderName,
   parseStoredScore,
   resolvedTrackedPlayers,
+  safeApiErrorDetails,
 } = require('../scripts/api-football/backfill-existing-results');
 
 const ROOT = path.join(__dirname, '..');
@@ -132,4 +136,15 @@ test('fragment merge upserts provider IDs without dropping existing provider nam
 
   assert.equal(merged.playerUpdates[0].providerIds.manualSource.player, 'manual-1');
   assert.equal(merged.playerUpdates[0].providerIds.apiFootball.player, 10);
+});
+
+test('persisted API errors retain diagnostics but redact the repository secret', () => {
+  const error = new ApiFootballError('provider error', {
+    status: 200,
+    apiErrors: { plan: 'secret-value cannot access this date' },
+  });
+  assert.deepEqual(safeApiErrorDetails(error, 'secret-value'), {
+    status: 200,
+    apiErrors: { plan: '[REDACTED] cannot access this date' },
+  });
 });
