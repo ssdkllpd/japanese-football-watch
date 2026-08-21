@@ -9,6 +9,8 @@
     "エールディヴィジ": 88,
     "チャンピオンシップ": 40,
     "カラバオカップ": 48,
+    "Premier League": 39,
+    "DFB-Pokal": 81,
     "UEFAチャンピオンズリーグ": 2,
     "UEFA Conference League": 848,
     "UEFA Europa League": 3
@@ -100,6 +102,18 @@
       "aliases": ["Motherwell"],
       "providerTeamId": 256,
       "matchIds": ["uecl-2026-08-20-motherwell-freiburg"]
+    },
+    {
+      "key": "eintracht-frankfurt",
+      "search": "Eintracht Frankfurt",
+      "aliases": ["Eintracht Frankfurt", "Frankfurt"],
+      "matchIds": ["dfbpokal-2026-08-21-st-tonis-frankfurt"]
+    },
+    {
+      "key": "coventry",
+      "search": "Coventry",
+      "aliases": ["Coventry", "Coventry City"],
+      "matchIds": ["premier-2026-08-21-arsenal-coventry"]
     }
   ],
   "selection": {
@@ -115,6 +129,18 @@
     "knownFixtureIdsRemainFetchable": true
   },
   "fixtures": [
+    {
+      "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
+      "fixtureDate": "2026-08-21",
+      "homeAliases": ["SC St. Tönis", "SC St. Toenis", "SC St Tonis", "SC St Toenis"],
+      "awayAliases": ["Eintracht Frankfurt", "Frankfurt"]
+    },
+    {
+      "matchId": "premier-2026-08-21-arsenal-coventry",
+      "fixtureDate": "2026-08-22",
+      "homeAliases": ["Arsenal"],
+      "awayAliases": ["Coventry", "Coventry City"]
+    },
     {
       "matchId": "uecl-2026-08-20-motherwell-freiburg",
       "providerFixtureId": 1623399,
@@ -265,7 +291,7 @@
     {
       "matchId": "m-2026-08-08-burton-blackburn-cup",
       "fixtureDate": "2026-08-08",
-      "homeAliases": ["Burton Albion", "Burton"] ,
+      "homeAliases": ["Burton Albion", "Burton"],
       "awayAliases": ["Blackburn", "Blackburn Rovers"]
     },
     {
@@ -286,8 +312,10 @@
     "上田綺世": ["Ayase Ueda", "A. Ueda"],
     "伊東純也": ["Junya Ito", "J. Ito"],
     "坂本一彩": ["Issei Sakamoto", "I. Sakamoto"],
+    "坂元達裕": ["Tatsuhiro Sakamoto", "T. Sakamoto"],
     "大橋祐紀": ["Yuki Ohashi", "Y. Ohashi"],
     "小久保玲央ブライアン": ["Leo Kokubo", "Leo Brian Kokubo", "L. Kokubo"],
+    "小杉啓太": ["Keita Kosugi", "K. Kosugi"],
     "岩田智輝": ["Tomoki Iwata", "T. Iwata"],
     "市原吏音": ["Rion Ichihara", "R. Ichihara"],
     "平河悠": ["Yu Hirakawa", "Y. Hirakawa"],
