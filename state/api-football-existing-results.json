@@ -2270,10 +2270,10 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:50:39.964Z",
-    "requestCount": 9,
-    "dailyRemaining": 7399,
-    "minuteRemaining": 291,
+    "completedAt": "2026-08-21T06:52:37.749Z",
+    "requestCount": 10,
+    "dailyRemaining": 7389,
+    "minuteRemaining": 290,
     "reserve": 100,
     "stoppedReason": null,
     "resolvedFixtureCount": 27,
@@ -2307,5 +2307,27 @@
       "resolvedAt": "2026-08-21T06:31:03.561Z"
     }
   },
-  "coachResolutions": {}
+  "coachResolutions": {
+    "735|2026-08-21": {
+      "providerTeamId": 735,
+      "fixtureDate": "2026-08-21",
+      "candidateCount": 3,
+      "reason": "ambiguous_coach_assignment",
+      "resolvedAt": "2026-08-21T06:52:37.749Z"
+    },
+    "735|2026-08-15": {
+      "providerTeamId": 735,
+      "fixtureDate": "2026-08-15",
+      "candidateCount": 3,
+      "reason": "ambiguous_coach_assignment",
+      "resolvedAt": "2026-08-21T06:52:37.749Z"
+    },
+    "735|2026-08-09": {
+      "providerTeamId": 735,
+      "fixtureDate": "2026-08-09",
+      "candidateCount": 3,
+      "reason": "ambiguous_coach_assignment",
+      "resolvedAt": "2026-08-21T06:52:37.749Z"
+    }
+  }
 }

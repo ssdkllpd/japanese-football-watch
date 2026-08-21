@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "season": "2026-27",
-  "updated": "2026-08-21T06:50:39.964Z",
+  "updated": "2026-08-21T06:52:37.749Z",
   "provider": "api-football",
   "sources": {
     "api-football-fixture-1623399": {
@@ -31,7 +31,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1623438/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:50:39.964Z",
+      "retrievedAt": "2026-08-21T06:52:37.749Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -45,7 +45,8 @@
         "/fixtures?date=2026-08-21",
         "/fixtures/events?fixture=1623438",
         "/fixtures/lineups?fixture=1623438",
-        "/fixtures/players?fixture=1623438"
+        "/fixtures/players?fixture=1623438",
+        "/coachs?team=735"
       ]
     },
     "api-football-fixture-1610923": {
@@ -295,7 +296,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558590/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:50:39.964Z",
+      "retrievedAt": "2026-08-21T06:52:37.749Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -309,7 +310,8 @@
         "/fixtures?date=2026-08-15",
         "/fixtures/events?fixture=1558590",
         "/fixtures/lineups?fixture=1558590",
-        "/fixtures/players?fixture=1558590"
+        "/fixtures/players?fixture=1558590",
+        "/coachs?team=735"
       ]
     },
     "api-football-fixture-1556638": {
@@ -405,7 +407,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558584/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:50:39.964Z",
+      "retrievedAt": "2026-08-21T06:52:37.749Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -419,7 +421,8 @@
         "/fixtures?date=2026-08-09",
         "/fixtures/events?fixture=1558584",
         "/fixtures/lineups?fixture=1558584",
-        "/fixtures/players?fixture=1558584"
+        "/fixtures/players?fixture=1558584",
+        "/coachs?team=735"
       ]
     },
     "api-football-fixture-1558585": {
