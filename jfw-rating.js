@@ -254,6 +254,11 @@ window.addEventListener('load', () => {
     const script = document.createElement('script');
     script.src = `backfill-loader.js?v=${Date.now()}`;
     script.dataset.jfwBackfill = '1';
+    script.onload = () => {
+      try { window.JFWRating?.installProviderRatingUi?.(); } catch (error) {
+        console.warn('provider rating UI reinstall after backfill failed', error);
+      }
+    };
     document.body.appendChild(script);
   };
   bootBackfill();
