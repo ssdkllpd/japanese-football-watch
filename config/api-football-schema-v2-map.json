@@ -1,0 +1,190 @@
+{
+  "version": "1.0",
+  "provider": "api-football",
+  "apiVersion": "v3",
+  "updatedAt": "2026-08-21",
+  "documentation": "https://www.api-football.com/documentation-v3",
+  "primaryFixtureStrategy": {
+    "endpoint": "/fixtures",
+    "parameters": ["id", "timezone"],
+    "purpose": "Fetch one fixture bundle with result, events, lineups, team statistics and player statistics.",
+    "scheduledSyncEnabled": false
+  },
+  "endpointInventory": [
+    {
+      "endpoint": "/leagues",
+      "purpose": "Resolve provider league and season identifiers.",
+      "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/teams",
+      "purpose": "Resolve provider team identifiers and canonical club crosswalks.",
+      "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/players/squads",
+      "purpose": "Resolve provider player identifiers for the tracked Japanese-player registry.",
+      "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/fixtures",
+      "purpose": "Primary match bundle. Request by fixture id and include embedded events, lineups, statistics and players when returned.",
+      "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/fixtures/events",
+      "purpose": "Goal, assist, card and substitution fallback when the primary bundle omits events.",
+      "requiredBeforeSync": false
+    },
+    {
+      "endpoint": "/fixtures/lineups",
+      "purpose": "Starter, substitute, formation and grid-position fallback.",
+      "requiredBeforeSync": false
+    },
+    {
+      "endpoint": "/fixtures/players",
+      "purpose": "Per-match player-statistics fallback and post-match recheck source.",
+      "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/players",
+      "purpose": "Season aggregate cross-check only; never replace match-level provenance with aggregates.",
+      "requiredBeforeSync": true
+    }
+  ],
+  "fieldMappings": {
+    "matchId": {
+      "providerPaths": ["fixture.id"],
+      "strategy": "Persist provider fixture id and resolve to a stable JFW matchId."
+    },
+    "competition": {
+      "providerPaths": ["league.id", "league.name", "league.season"],
+      "strategy": "Use provider id crosswalk; preserve the provider id."
+    },
+    "club": {
+      "providerPaths": ["teams.home.id", "teams.away.id", "players[].team.id", "lineups[].team.id"],
+      "strategy": "Resolve the team at the match, not the player's current club."
+    },
+    "playerId": {
+      "providerPaths": ["players[].players[].player.id", "lineups[].startXI[].player.id", "lineups[].substitutes[].player.id", "events[].player.id", "events[].assist.id"],
+      "strategy": "Join through the tracked-player provider-id registry; names are display data only."
+    },
+    "appearance": {
+      "providerPaths": ["players[].players[].statistics[].games.minutes", "players[].players[].statistics[].games.substitute", "lineups[].startXI[].player.id", "lineups[].substitutes[].player.id", "events[].player.id", "events[].assist.id"],
+      "strategy": "Combine minutes, lineups and events without interpreting missing as no appearance."
+    },
+    "minutes": {
+      "providerPaths": ["players[].players[].statistics[].games.minutes"],
+      "strategy": "Direct numeric mapping."
+    },
+    "goals": {
+      "providerPaths": ["players[].players[].statistics[].goals.total", "events[].type", "events[].detail", "events[].player.id"],
+      "strategy": "Use exhaustive goal events as the fallback and consistency check. A scorer event must create a playerMatchStats record even when player statistics are absent."
+    },
+    "assists": {
+      "providerPaths": ["players[].players[].statistics[].goals.assists", "events[].type", "events[].assist.id"],
+      "strategy": "Use exhaustive goal events as the fallback and consistency check."
+    },
+    "shots": {
+      "providerPaths": ["players[].players[].statistics[].shots.total"],
+      "strategy": "Direct numeric mapping."
+    },
+    "shotsOnTarget": {
+      "providerPaths": ["players[].players[].statistics[].shots.on"],
+      "strategy": "Direct numeric mapping."
+    },
+    "keyPasses": {
+      "providerPaths": ["players[].players[].statistics[].passes.key"],
+      "strategy": "Direct numeric mapping."
+    },
+    "passesAttempted": {
+      "providerPaths": ["players[].players[].statistics[].passes.total"],
+      "strategy": "Direct numeric mapping."
+    },
+    "passesCompleted": {
+      "providerPaths": ["players[].players[].statistics[].passes.accuracy"],
+      "strategy": "Map the provider's reported accurate-pass count; retain the raw provider path in the inventory."
+    },
+    "tackles": {
+      "providerPaths": ["players[].players[].statistics[].tackles.total"],
+      "strategy": "Direct numeric mapping."
+    },
+    "blocks": {
+      "providerPaths": ["players[].players[].statistics[].tackles.blocks"],
+      "strategy": "Direct numeric mapping."
+    },
+    "interceptions": {
+      "providerPaths": ["players[].players[].statistics[].tackles.interceptions"],
+      "strategy": "Direct numeric mapping."
+    },
+    "duelsTotal": {
+      "providerPaths": ["players[].players[].statistics[].duels.total"],
+      "strategy": "Direct numeric mapping."
+    },
+    "duelsWon": {
+      "providerPaths": ["players[].players[].statistics[].duels.won"],
+      "strategy": "Direct numeric mapping."
+    },
+    "dribbles": {
+      "providerPaths": ["players[].players[].statistics[].dribbles.success"],
+      "strategy": "Map successful dribbles."
+    },
+    "dribbledPast": {
+      "providerPaths": ["players[].players[].statistics[].dribbles.past"],
+      "strategy": "Direct numeric mapping."
+    },
+    "saves": {
+      "providerPaths": ["players[].players[].statistics[].goals.saves"],
+      "strategy": "Direct numeric mapping for goalkeepers."
+    },
+    "shotsOnTargetFaced": {
+      "providerPaths": ["players[].players[].statistics[].goals.saves", "players[].players[].statistics[].goals.conceded"],
+      "strategy": "For goalkeepers only, derive saves plus goals conceded when both are known."
+    },
+    "cleanSheets": {
+      "providerPaths": ["players[].players[].statistics[].goals.conceded", "players[].players[].statistics[].games.position"],
+      "strategy": "For an appearing goalkeeper only, derive 1 when provider goals conceded is explicitly zero; otherwise do not guess."
+    },
+    "yellowCards": {
+      "providerPaths": ["players[].players[].statistics[].cards.yellow", "events[].type", "events[].detail", "events[].player.id"],
+      "strategy": "Use player statistics and exhaustive card events."
+    },
+    "secondYellowRed": {
+      "providerPaths": ["events[].type", "events[].detail", "events[].player.id"],
+      "strategy": "Derive only from exhaustive card-event detail."
+    },
+    "straightRed": {
+      "providerPaths": ["events[].type", "events[].detail", "events[].player.id"],
+      "strategy": "Derive only from exhaustive card-event detail."
+    },
+    "ownGoals": {
+      "providerPaths": ["events[].type", "events[].detail", "events[].player.id"],
+      "strategy": "Own-goal events never increment normal goals."
+    },
+    "penaltiesSaved": {
+      "providerPaths": ["players[].players[].statistics[].penalty.saved"],
+      "strategy": "Direct numeric mapping."
+    },
+    "penaltiesConceded": {
+      "providerPaths": ["players[].players[].statistics[].penalty.commited"],
+      "strategy": "Direct numeric mapping using the provider's field spelling."
+    }
+  },
+  "knownCoverageGaps": [
+    "clearances",
+    "aerialDuelsWon",
+    "aerialDuelsTotal",
+    "bigChancesMissed",
+    "possessionsLost",
+    "highClaims",
+    "errorsLeadingToGoal",
+    "outfieldGaOnPitch"
+  ],
+  "missingValueRules": {
+    "neverConvertMissingToZero": true,
+    "eventDerivedZeroRequiresFinalFixtureAndGoalEventCountMatchingTheScore": true,
+    "positiveObservedEventMayBeRecordedBeforeFinalWhistle": true,
+    "unsupportedOrOmittedFieldsRemainMissing": true,
+    "seasonAggregatesNeverReplaceMatchProvenance": true
+  }
+}

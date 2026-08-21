@@ -189,3 +189,33 @@ test('membership correction fixes current club without inventing a transfer stin
   assert.equal(p.membershipCorrections.length, 1);
   assert.equal(p.membershipCorrections[0].fromClub, 'Wrong Club');
 });
+
+test('provider id updates merge without deleting ids from another provider', async () => {
+  const player = {
+    playerId: 'jp-provider-player',
+    name: '識別四郎',
+    club: 'Club A',
+    league: 'プレミアリーグ',
+    providerIds: {
+      manualSource: { player: 'manual-44' },
+      apiFootball: { team: 10 }
+    },
+    stats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 }
+  };
+  const fragments = [{
+    updated: '2026-08-21 14:00 JST',
+    playerUpdates: [{
+      playerId: 'jp-provider-player',
+      name: '識別四郎',
+      providerIds: {
+        apiFootball: { player: 1234 }
+      }
+    }]
+  }];
+  const context = buildHarness({ player, fragments });
+  const p = await apply(context);
+
+  assert.equal(p.providerIds.manualSource.player, 'manual-44');
+  assert.equal(p.providerIds.apiFootball.team, 10);
+  assert.equal(p.providerIds.apiFootball.player, 1234);
+});

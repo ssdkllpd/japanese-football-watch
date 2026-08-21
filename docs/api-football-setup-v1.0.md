@@ -49,6 +49,12 @@ node scripts/api-football/smoke-test.js
 - Never log request headers containing the key.
 - If a key is accidentally exposed, regenerate it in the API-SPORTS dashboard immediately.
 
-## Next implementation step
+## Schema mapping and field inventory
 
-Once the connection test succeeds, use the generic client in `scripts/api-football/client.js` to inventory API-Football endpoint/field coverage and map all returned data into the JFW Data Schema v2 superset model before enabling scheduled synchronization.
+After the connection test succeeds:
+
+1. Read `docs/api-football-schema-v2-mapping-v1.0.md`.
+2. Use the manual `API-Football Field Inventory` Action with a completed fixture ID from each tracked league.
+3. Register provider league, team and player IDs before converting a fixture.
+4. Use `scripts/api-football/schema-v2-mapper.js` to create Schema v2 backfill fragments.
+5. Keep scheduled synchronization disabled until the coverage and consistency gates in the mapping document pass.

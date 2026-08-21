@@ -1,6 +1,6 @@
 {
-  "version": 10,
-  "updatedAt": "2026-08-21T12:00:00+09:00",
+  "version": 11,
+  "updatedAt": "2026-08-21T14:16:42+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -132,6 +132,29 @@
       "clubPageMustUseClubStatsNotSeasonStats": true,
       "competitionRankingMustUseCompetitionStatsNotCurrentLeague": true
     }
+  },
+  "providerIntegrationPolicy": {
+    "provider": "api-football",
+    "apiVersion": "v3",
+    "connectionSmokeTestPassed": true,
+    "schemaMapping": "config/api-football-schema-v2-map.json",
+    "mappingImplementation": "scripts/api-football/schema-v2-mapper.js",
+    "fieldInventoryImplementation": "scripts/api-football/field-inventory.js",
+    "scheduledSynchronizationEnabled": false,
+    "enableScheduledSynchronizationOnlyAfter": [
+      "tracked_league_team_and_player_provider_ids_are_registered",
+      "one_completed_fixture_per_tracked_league_has_field_inventory",
+      "goal_event_and_player_statistics_reconciliation_tests_pass",
+      "missing_values_remain_missing",
+      "quota_soft_stop_and_retry_priority_are_enforced",
+      "all_internal_consistency_tests_pass"
+    ],
+    "matchFactsRemainSourceOfTruth": true,
+    "seasonAggregateEndpointIsCrossCheckOnly": true,
+    "goalEventMustCreatePlayerMatchRecordWhenPlayerStatisticsAreMissing": true,
+    "positiveGoalsAndAssistsMustNeverBeDroppedByEmptyOrIncompleteEventData": true,
+    "eventDerivedZeroRequiresFinalFixtureAndGoalEventCountMatchingScore": true,
+    "neverExposeApiKeyToBrowserOrRepository": true
   },
   "rankingPolicy": {
     "overallSource": "seasonStats",

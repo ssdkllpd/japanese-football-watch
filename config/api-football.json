@@ -19,6 +19,9 @@
     "neverExposeApiKeyToBrowser": true,
     "serverSideOnly": true,
     "persistProviderIds": true,
-    "persistQuotaHeaders": true
+    "persistQuotaHeaders": true,
+    "schemaMapping": "config/api-football-schema-v2-map.json",
+    "scheduledSynchronizationEnabled": false,
+    "enableOnlyAfterCoverageInventoryAndConsistencyTests": true
   }
 }

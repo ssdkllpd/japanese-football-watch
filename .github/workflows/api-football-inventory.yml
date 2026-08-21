@@ -1,0 +1,40 @@
+name: API-Football Field Inventory
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixture_id:
+        description: API-Football fixture ID for a completed tracked match
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      API_FOOTBALL_BASE_URL: https://v3.football.api-sports.io
+      API_FOOTBALL_FIXTURE_ID: ${{ inputs.fixture_id }}
+      API_FOOTBALL_TIMEZONE: Asia/Tokyo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify secret is configured
+        shell: bash
+        run: |
+          if [ -z "$API_FOOTBALL_KEY" ]; then
+            echo "API_FOOTBALL_KEY repository secret is not configured."
+            exit 1
+          fi
+
+      - name: Inventory returned fields without printing raw data
+        run: node scripts/api-football/field-inventory.js
