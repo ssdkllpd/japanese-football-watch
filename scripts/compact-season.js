@@ -20,6 +20,7 @@ const blobSha = content => {
   const bytes = Buffer.from(content, 'utf8');
   return crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
 };
+const unique = values => [...new Set((values || []).filter(Boolean))];
 
 (async () => {
   const seasons = readJson(path.join(ROOT, 'seasons.json'));
@@ -37,13 +38,29 @@ const blobSha = content => {
     process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
     return;
   }
+  if (!fragments.length) {
+    process.stdout.write(`${JSON.stringify({ ...plan, applied: false, reason: 'no_new_fragments' }, null, 2)}\n`);
+    return;
+  }
   if (!eligible && !has('--force')) throw new Error(`compaction threshold not reached: ${JSON.stringify(plan)}`);
 
   const data = await loadIntegratedSeasonData(ROOT, season);
   const compactedAt = new Date().toISOString();
+  const previousCompactedThrough = Array.isArray(data.compaction?.compactedThroughFragments)
+    ? data.compaction.compactedThroughFragments
+    : [];
+  const previousArchived = Array.isArray(manifest.compaction?.archivedFragments)
+    ? manifest.compaction.archivedFragments
+    : [];
+  const compactedThroughFragments = unique([
+    ...previousCompactedThrough,
+    ...previousArchived,
+    ...fragments,
+  ]);
   data.compaction = {
+    ...(data.compaction || {}),
     compactedAt,
-    compactedThroughFragments: [...fragments],
+    compactedThroughFragments,
     sourceManifest: `data/${season}/backfill/index.json`,
   };
 
@@ -57,9 +74,10 @@ const blobSha = content => {
     ...manifest,
     fragments: [],
     compaction: {
+      ...(manifest.compaction || {}),
       compactedAt,
       base: baseRel,
-      archivedFragments: [...fragments],
+      archivedFragments: compactedThroughFragments,
     },
   };
   const manifestContent = `${JSON.stringify(nextManifest, null, 2)}\n`;
@@ -81,11 +99,15 @@ const blobSha = content => {
       blobSha: blobSha(manifestContent),
       orderedFragments: [],
     };
-    snapshot.compaction = { compactedAt, archivedFragments: [...fragments] };
+    snapshot.compaction = {
+      ...(snapshot.compaction || {}),
+      compactedAt,
+      archivedFragments: compactedThroughFragments,
+    };
     writeJson(snapshotPath, snapshot);
   }
 
-  process.stdout.write(`${JSON.stringify({ ...plan, applied: true, base: baseRel }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ...plan, applied: true, base: baseRel, compactedThroughFragments }, null, 2)}\n`);
 })().catch(error => {
   console.error(error?.stack || error);
   process.exitCode = 1;
