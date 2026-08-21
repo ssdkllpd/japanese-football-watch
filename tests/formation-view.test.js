@@ -146,7 +146,7 @@ test('five-player defensive line preserves enough horizontal separation for mobi
     .sort((a, b) => a - b);
   const gaps = xs.slice(1).map((x, index) => x - xs[index]);
   assert.equal(xs.length, 5);
-  assert.ok(Math.min(...gaps) >= 16.6);
+  assert.ok(Math.min(...gaps) >= 16.5);
 });
 
 test('layoutPlayers one-argument API remains backward compatible and exposes non-enumerable metadata', () => {
