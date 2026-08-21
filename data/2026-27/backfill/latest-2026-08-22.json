@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 01:55 JST",
+  "sources": {
+    "brighton-squad-numbers-20260820": {
+      "id": "brighton-squad-numbers-20260820",
+      "name": "Brighton & Hove Albion official 2026/27 squad numbers",
+      "type": "club_official_squad_registration",
+      "url": "https://www.brightonandhovealbion.com/media-article/mft-news-kit-numbers-premier-league-2026-27-season-august-2026",
+      "retrievedAt": "2026-08-22T01:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["squadNumber"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "三笘薫",
+      "squadNumber": 7,
+      "sourceIds": ["brighton-squad-numbers-20260820"]
+    }
+  ]
+}
