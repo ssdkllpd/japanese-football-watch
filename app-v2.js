@@ -30,6 +30,7 @@
     workerBase: readWorkerBase(),
     follows: readFollows(),
     loading: false,
+    matchLoadSequence: 0,
   };
 
   function esc(value) {
@@ -151,6 +152,12 @@
     };
   }
 
+  function legacyFixturesForDate(legacy, date) {
+    return (legacy.topMatches || [])
+      .map(parseLegacyMatch)
+      .filter(row => row.dateJst === date);
+  }
+
   function normalizeLive(row) {
     return {
       fixtureId: row.fixtureId,
@@ -168,37 +175,47 @@
     };
   }
 
+  function renderMatchesIfVisible() {
+    if (state.page === 'matches' && !state.detail) renderMatches();
+  }
+
   async function loadMatches() {
+    const loadSequence = ++state.matchLoadSequence;
+    const requestedDate = state.date;
     state.loading = true;
-    renderMatches();
+    renderMatchesIfVisible();
     const legacy = await loadLegacy();
+    const legacyRows = legacyFixturesForDate(legacy, requestedDate);
+    let fixtures;
+    let source;
     if (state.workerBase) {
       try {
         const [index, live] = await Promise.all([
-          apiFetch(`/api/v2/dates/${encodeURIComponent(state.date)}`).catch(error => {
+          apiFetch(`/api/v2/dates/${encodeURIComponent(requestedDate)}`).catch(error => {
             if (String(error.message).includes('Not found')) return { fixtures: [] };
             throw error;
           }),
-          state.date === todayJst() ? apiFetch('/api/v2/live').catch(() => ({ fixtures: [] })) : Promise.resolve({ fixtures: [] }),
+          requestedDate === todayJst() ? apiFetch('/api/v2/live').catch(() => ({ fixtures: [] })) : Promise.resolve({ fixtures: [] }),
         ]);
         const baseRows = Array.isArray(index?.fixtures) ? index.fixtures : [];
         const liveRows = (Array.isArray(live?.fixtures) ? live.fixtures : []).map(normalizeLive);
         const merged = new Map(baseRows.map(row => [row.fixtureId, row]));
-        for (const row of liveRows) if (row.dateJst === state.date) merged.set(row.fixtureId, { ...(merged.get(row.fixtureId) || {}), ...row });
-        state.fixtures = [...merged.values()].sort((a, b) => String(a.kickoffUtc || '').localeCompare(String(b.kickoffUtc || '')));
-        state.source = 'core';
+        for (const row of liveRows) if (row.dateJst === requestedDate) merged.set(row.fixtureId, { ...(merged.get(row.fixtureId) || {}), ...row });
+        fixtures = [...merged.values()].sort((a, b) => String(a.kickoffUtc || '').localeCompare(String(b.kickoffUtc || '')));
+        source = 'core';
       } catch (error) {
-        state.fixtures = (legacy.topMatches || []).map(parseLegacyMatch).filter(row => row.dateJst === state.date);
-        if (!state.fixtures.length) state.fixtures = (legacy.topMatches || []).map(parseLegacyMatch).sort((a, b) => String(b.dateJst || '').localeCompare(String(a.dateJst || '')));
-        state.source = `fallback:${error.message}`;
+        fixtures = legacyRows;
+        source = `fallback:${error.message}`;
       }
     } else {
-      state.fixtures = (legacy.topMatches || []).map(parseLegacyMatch).filter(row => row.dateJst === state.date);
-      if (!state.fixtures.length) state.fixtures = (legacy.topMatches || []).map(parseLegacyMatch).sort((a, b) => String(b.dateJst || '').localeCompare(String(a.dateJst || '')));
-      state.source = 'legacy';
+      fixtures = legacyRows;
+      source = 'legacy';
     }
+    if (loadSequence !== state.matchLoadSequence) return;
+    state.fixtures = fixtures;
+    state.source = source;
     state.loading = false;
-    renderMatches();
+    renderMatchesIfVisible();
   }
 
   function renderDateStrip() {
@@ -265,7 +282,12 @@
   }
 
   function renderFixtureGroups(rows) {
-    if (!rows.length) return '<div class="empty-state"><strong>表示できる試合がありません</strong>この日付のCoreデータはまだ取得されていません。</div>';
+    if (!rows.length) {
+      const message = state.liveOnly
+        ? '現在進行中として取得できた試合はありません。'
+        : 'この日付の試合データはまだ取得されていません。';
+      return `<div class="empty-state"><strong>表示できる試合がありません</strong>${message}</div>`;
+    }
     return groupFixtures(rows).map(([name, fixtures]) => {
       const sample = fixtures[0] || {};
       const logo = sample?.competition?.logo ? `<img class="competition-logo" src="${esc(sample.competition.logo)}" alt="">` : '';

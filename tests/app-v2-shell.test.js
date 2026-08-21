@@ -39,3 +39,16 @@ test('Japanese tracking is an optional page while generic match data remains the
   assert.match(js, /page: 'matches'/);
   assert.match(js, /日本人追跡は総合データアプリのオプション機能/);
 });
+
+test('legacy fallback never shows fixtures from a different selected date', () => {
+  assert.match(js, /function legacyFixturesForDate\(legacy, date\)/);
+  assert.match(js, /filter\(row => row\.dateJst === date\)/);
+  assert.doesNotMatch(js, /if \(!state\.fixtures\.length\) state\.fixtures = \(legacy\.topMatches/);
+});
+
+test('stale match requests cannot overwrite a newer date or another page', () => {
+  assert.match(js, /const loadSequence = \+\+state\.matchLoadSequence/);
+  assert.match(js, /const requestedDate = state\.date/);
+  assert.match(js, /if \(loadSequence !== state\.matchLoadSequence\) return/);
+  assert.match(js, /state\.page === 'matches' && !state\.detail/);
+});
