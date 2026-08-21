@@ -262,16 +262,22 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:18:33.773Z",
-    "requestCount": 3,
-    "dailyRemaining": 97,
-    "minuteRemaining": 8,
+    "completedAt": "2026-08-21T06:22:26.937Z",
+    "requestCount": 1,
+    "dailyRemaining": null,
+    "minuteRemaining": null,
     "reserve": 20,
     "stoppedReason": null,
     "resolvedFixtureCount": 3,
     "completedFixtureCount": 0,
     "unresolvedPlayers": {},
-    "error": "API-Football returned an API-level error."
+    "error": "API-Football returned an API-level error.",
+    "errorDetails": {
+      "status": 200,
+      "apiErrors": {
+        "plan": "Free plans do not have access to this date, try from 2026-08-20 to 2026-08-22."
+      }
+    }
   },
   "security": {
     "apiKeyPersisted": false,
