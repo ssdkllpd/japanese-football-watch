@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "updatedAt": "2026-08-21T20:14:00+09:00",
+  "product": {
+    "primaryMode": "general_football_data_app",
+    "uiReference": "fotmob_inspired_information_architecture",
+    "japaneseTrackingRole": "optional_first_class_module",
+    "legacyJapaneseDashboardIsDefault": false
+  },
+  "coreFootballData": {
+    "provider": "api-football",
+    "providerApiVersion": "v3",
+    "mustNotDependOnJapanesePlayerPresence": true,
+    "j1Allowed": true,
+    "requiredDomains": [
+      "competitions",
+      "seasons",
+      "fixtures",
+      "fixture_status",
+      "teams",
+      "standings",
+      "players",
+      "coaches",
+      "lineups",
+      "formations",
+      "substitutions",
+      "events",
+      "match_statistics",
+      "player_match_statistics",
+      "provider_ratings"
+    ],
+    "missingValuesNeverBecomeZero": true,
+    "apiKeyBrowserExposureForbidden": true
+  },
+  "japaneseTracking": {
+    "scope": "Japanese players in configured overseas leagues",
+    "j1ExcludedFromTrackingWorkflow": true,
+    "j1MustNotBlockTrackingUpdates": true,
+    "preserveExistingDataModel": true,
+    "features": [
+      "tracked_players",
+      "membership_history",
+      "jfw_rating",
+      "player_rankings",
+      "ga_tracking",
+      "tracking_insights",
+      "tracking_data_quality"
+    ]
+  },
+  "navigation": [
+    "matches",
+    "leagues",
+    "following",
+    "japanese_players",
+    "more"
+  ],
+  "newsTab": {
+    "enabled": false,
+    "reason": "No authoritative news provider is currently integrated"
+  },
+  "migrationOrder": [
+    "build_generic_core_feed",
+    "build_matches_home",
+    "build_league_directory_and_league_detail",
+    "connect_match_club_player_details",
+    "migrate_favourites_to_follow_model",
+    "move_legacy_tracking_views_under_japanese_module",
+    "remove_legacy_default_dashboard_after_parity"
+  ]
+}
