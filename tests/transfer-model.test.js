@@ -21,6 +21,7 @@ function buildHarness({ player, fragments }) {
     console,
     window: {},
     document: {
+      body: makeElement(),
       querySelector() { return null; },
       createElement() { return makeElement(); }
     },
