@@ -100,6 +100,7 @@
       p._initialStats = { ...(p.stats || {}) };
       p._initialClub = p.club || null;
       p._initialLeague = p.league || null;
+      p._initialStatsUpdated = D?.updated || null;
       p._initialStatsCaptured = true;
     }
     if (!p.membershipHistory.length && (p.club || p.league)) {
@@ -183,7 +184,7 @@
     if (p._initialClub && club !== p._initialClub) return;
     if (p._initialLeague && competition !== p._initialLeague) return;
     const key = baselineKey(club, competition);
-    if (!p._aggregateBaselines?.[key]) saveBaseline(p, club, competition, p._initialStats, updated, p.statsAsOf);
+    if (!p._aggregateBaselines?.[key]) saveBaseline(p, club, competition, p._initialStats, p._initialStatsUpdated || updated, p.statsAsOf);
   }
   function applyMembershipChange(p, u, fragmentUpdated) {
     const nextClub = u.club !== undefined ? u.club : p.club;
