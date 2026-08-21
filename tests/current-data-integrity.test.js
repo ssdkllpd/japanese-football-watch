@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { createRuntimeContext } = require('../scripts/shared/runtime-data-loader');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -10,16 +11,8 @@ function json(rel) {
   return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 }
 
-function makeElement() {
-  return {
-    textContent: '',
-    innerHTML: '',
-    dataset: {},
-    querySelectorAll() { return []; },
-    querySelector() { return null; },
-    appendChild() {},
-    insertAdjacentElement() {}
-  };
+function textKey(value) {
+  return String(value ?? '').normalize('NFKC').trim();
 }
 
 function buildHarness() {
@@ -27,64 +20,8 @@ function buildHarness() {
   const season = seasons.seasons.find(s => s.id === seasons.current);
   assert.ok(season, 'current season must resolve from seasons.json');
   const data = json(season.data);
-
-  const context = {
-    console,
-    window: {},
-    document: {
-      body: makeElement(),
-      querySelector() { return null; },
-      createElement() { return makeElement(); }
-    },
-    D: data,
-    selectedSeason: seasons.current,
-    loadSeason: async () => {},
-    renderAll() {},
-    renderPlayerDetail() {},
-    renderClubDetail() {},
-    renderAttention() {},
-    renderStats() {},
-    relevantClubMatches() { return []; },
-    clubPlayers() { return []; },
-    clubMatchCard() { return ''; },
-    pcard() { return ''; },
-    mcard() { return ''; },
-    bindEntities() {},
-    bindWatch() {},
-    btns() {},
-    eligible() { return true; },
-    playerRef(p) { return p.playerId || p.name; },
-    playerByRef(ref) { return context.D.players.find(p => p.playerId === ref || p.name === ref); },
-    roundNo() { return null; },
-    fmt(v) { return v == null ? '—' : String(v); },
-    E(v) { return String(v ?? ''); },
-    $() { return makeElement(); },
-    R: { updated: makeElement(), leagueBtns: makeElement(), players: makeElement(), scopeBtns: makeElement(), metricBtns: makeElement(), statRank: makeElement(), playerDetail: makeElement(), clubDetail: makeElement() },
-    order: ['すべて','プレミアリーグ','チャンピオンシップ','ブンデスリーガ','ラ・リーガ','リーグ・アン','セリエA','エールディヴィジ','ベルギー','ポルトガル','スコットランド'],
-    scope: 'すべて',
-    metric: 'goals',
-    metrics: { goals: '得点', assists: 'アシスト' },
-    attLeague: 'すべて',
-    page: 'home',
-    activePlayer: null,
-    activeClub: null,
-    clubRoundFrom: null,
-    clubRoundTo: null,
-    clearDetailParams() {},
-    showPage() {},
-    lastPage: 'home',
-    fetch: async url => {
-      const clean = String(url).replace(/[?&]v=\d+$/, '').replace(/^\.\//, '');
-      const rel = clean.startsWith('data/') ? clean : clean;
-      const file = path.join(ROOT, rel);
-      if (!fs.existsSync(file)) return { ok: false, status: 404, json: async () => ({}) };
-      return { ok: true, json: async () => JSON.parse(fs.readFileSync(file, 'utf8')) };
-    },
-    setTimeout,
-    clearTimeout
-  };
-
-  context.window = context;
+  const context = createRuntimeContext(ROOT, seasons.current, data, seasons);
+  context.console = console;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-loader.js'), 'utf8'), context, { filename: 'backfill-loader.js' });
   return context;
@@ -94,6 +31,30 @@ async function loadedData() {
   const context = buildHarness();
   await context.window.JFWBackfill.applyCurrentBackfill();
   return { context, data: context.D };
+}
+
+function registryIndexes(registry) {
+  const byId = new Map();
+  const byName = new Map();
+  const byProvider = new Map();
+  for (const row of registry.players || []) {
+    byId.set(String(row.playerId), row);
+    for (const name of [row.name, ...(row.aliases || [])].map(textKey).filter(Boolean)) byName.set(name, row);
+    const providerId = row?.providerIds?.apiFootball?.player;
+    if (providerId !== null && providerId !== undefined) byProvider.set(String(providerId), row);
+  }
+  return { byId, byName, byProvider };
+}
+
+function registryEntryFor(value, indexes) {
+  if (!value) return null;
+  if (value.playerId && indexes.byId.has(String(value.playerId))) return indexes.byId.get(String(value.playerId));
+  const providerId = value?.providerIds?.apiFootball?.player ?? value?.apiFootballPlayerId ?? value?.providerPlayerId;
+  if (providerId !== null && providerId !== undefined && indexes.byProvider.has(String(providerId))) {
+    return indexes.byProvider.get(String(providerId));
+  }
+  const name = textKey(value.name || value.playerName || value.player);
+  return name ? (indexes.byName.get(name) || null) : null;
 }
 
 test('current season player identities and memberships satisfy tracking invariants', async () => {
@@ -113,6 +74,36 @@ test('current season player identities and memberships satisfy tracking invarian
     assert.ok(p.clubCompetitionStats && typeof p.clubCompetitionStats === 'object', `${p.name}: clubCompetitionStats missing`);
     if (p.trackingStatus !== 'active' && p.club) {
       assert.equal(p.clubStats[p.club], undefined, `${p.name}: out-of-scope destination must not receive tracked club stats`);
+    }
+  }
+});
+
+test('current-season base and overlay identities all resolve through player registry', () => {
+  const seasons = json('seasons.json');
+  const season = seasons.seasons.find(s => s.id === seasons.current);
+  assert.ok(season, 'current season must resolve from seasons.json');
+  const registry = json('config/player-registry.json');
+  const indexes = registryIndexes(registry);
+  const base = json(season.data);
+  const manifestRel = `data/${seasons.current}/backfill/index.json`;
+  const manifest = json(manifestRel);
+  const backfillDir = path.dirname(manifestRel);
+
+  for (const player of base.players || []) {
+    assert.ok(registryEntryFor(player, indexes), `base player registry missing: ${player.name || player.playerId}`);
+  }
+
+  const identityCollections = ['playerUpdates', 'playerMatchStats', 'gaResultsAdd', 'gaResultsRemove'];
+  for (const fragmentName of manifest.fragments || []) {
+    const fragment = json(path.join(backfillDir, fragmentName));
+    for (const key of identityCollections) {
+      for (const row of fragment[key] || []) {
+        const label = row.name || row.playerName || row.player || row.playerId || row.apiFootballPlayerId || row.providerPlayerId || '(identity missing)';
+        assert.ok(
+          registryEntryFor(row, indexes),
+          `${fragmentName} ${key}: player registry missing: ${label}`
+        );
+      }
     }
   }
 });
@@ -180,7 +171,6 @@ test('J1 is not an active tracking league or tracked-club source', async () => {
   const activeJ1 = data.players.filter(p => p.trackingStatus === 'active' && p.league === 'J1');
   assert.equal(activeJ1.length, 0);
 });
-
 
 test('伊東純也のシーズン通算アシストはbaselineと試合明細を二重計上せず2で固定される', async () => {
   const { data } = await loadedData();
