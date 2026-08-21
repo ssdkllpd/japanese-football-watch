@@ -31,6 +31,7 @@ test('fixed manifest covers every currently stored verified result and nothing e
   assert.equal(new Set(targets.map(target => target.matchId)).size, 27);
   assert.equal(new Set(targets.map(target => target.fixtureDate)).size, 9);
   assert.ok(targets.every(target => Number.isInteger(target.providerLeagueId)));
+  assert.ok(targets.every(target => target.discoveryGroup?.key));
   assert.ok(targets.every(target => target.status === 'verified'));
   assert.ok(targets.every(target => Number.isInteger(target.score.homeGoals)));
   assert.ok(targets.every(target => Number.isInteger(target.score.awayGoals)));

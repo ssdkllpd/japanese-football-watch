@@ -26,7 +26,8 @@
     "manualExistingResultsBackfillEnabled": true,
     "manualExistingResultsManifest": "config/api-football-existing-results.json",
     "manualExistingResultsState": "state/api-football-existing-results.json",
-    "manualExistingResultsNeverRequestsLatestOrScheduledFixtures": true,
+    "manualExistingResultsUsesTeamLastOnlyForFixtureIdDiscovery": true,
+    "manualExistingResultsNeverPersistsUnlistedOrScheduledFixtures": true,
     "enableOnlyAfterCoverageInventoryAndConsistencyTests": true
   }
 }
