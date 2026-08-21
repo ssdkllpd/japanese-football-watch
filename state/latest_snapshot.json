@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T04:57:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability and squad-number updates, and Eintracht Frankfurt's verified DFB-Pokal opener with Keita Kosugi's two assists and Ritsu Doan's muscular-complaint absence.",
+  "updatedAt": "2026-08-22T05:53:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability and squad-number updates, and Eintracht Frankfurt's verified DFB-Pokal opener with Keita Kosugi's corrected three assists and Ritsu Doan's muscular-complaint absence.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "a6f8cd112372768ab26511e2a2e178e6b6bb33da",
+    "blobSha": "be7a7496fa25096a7da05e2256d4ff28a84e74c6",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -27,7 +27,8 @@
       "api-football-existing-results.json",
       "latest-2026-08-21-5.json",
       "latest-2026-08-22.json",
-      "latest-2026-08-22-2.json"
+      "latest-2026-08-22-2.json",
+      "latest-2026-08-22-3.json"
     ]
   },
   "runtime": [
@@ -67,6 +68,7 @@
     "premierLeagueMitomaAvailabilityLoadsThroughPlayerUpdates": true,
     "premierLeagueMitomaSquadNumberLoadsThroughPlayerUpdates": true,
     "frankfurtCupKosugiUpdateLoadsThroughPlayerMatchStats": true,
+    "frankfurtCupKosugiThirdAssistCorrectionLoadsThroughPlayerMatchStats": true,
     "doanCurrentAvailabilityLoadsThroughPlayerUpdates": true,
     "noHistoricalSeasonDataOverwritten": true
   },
@@ -74,7 +76,7 @@
     "Sint-Truidense 1-0 Omonia on 2026-08-20 added as a UEFA Europa League play-off first leg; Shogo Taniguchi scored the 90+4 winner.",
     "STVV Japanese participation recorded from the available match report: Leo Brian Kokubo, Shogo Taniguchi, Nelson Ishiwatari and Kaito Matsuzawa started; Ryotaro Araki entered at 61 minutes; Ishiwatari and Matsuzawa left at 61.",
     "Motherwell 1-3 Freiburg records refined: Keisuke Goto entered at 80 minutes and scored at 90+6; Yuito Suzuki started and left at 74 minutes.",
-    "SC St. Tonis 0-11 Eintracht Frankfurt on 2026-08-21 added as a DFB-Pokal first-round result; Keita Kosugi started and assisted the 29th- and 34th-minute goals.",
+    "SC St. Tonis 0-11 Eintracht Frankfurt on 2026-08-21 added as a DFB-Pokal first-round result; Keita Kosugi started and is now credited with three assists, at 29, 34 and 45+5 minutes. The earlier two-assist record is retained as an explicit source conflict and superseded by the higher-priority structured event feed.",
     "Ritsu Doan was absent from Eintracht Frankfurt's 2026-08-21 DFB-Pokal squad because of muscular complaints; no appearance record or zero match statistics were created for him.",
     "Premier League roster correction: Hidemasa Morita is registered with Hull City, Tatsuhiro Sakamoto with Coventry City, and Takehiro Tomiyasu with Crystal Palace for 2026-27; all three were missing from the integrated player list.",
     "Ko Itakura transferred from Ajax back to Borussia Monchengladbach on 2026-08-20; the Bundesliga membership is recorded as a transfer while preserving Ajax/Eredivisie as the previous membership.",
@@ -82,13 +84,13 @@
     "Brighton officially registered Kaoru Mitoma as squad number 7 for 2026/27, replacing his previous number 22; the player master now retains squadNumber=7.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json, latest-2026-08-21-5.json, latest-2026-08-22.json and latest-2026-08-22-2.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json, latest-2026-08-21-5.json, latest-2026-08-22.json, latest-2026-08-22-2.json and latest-2026-08-22-3.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
     "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
-    "St. Tonis-Frankfurt: Keita Kosugi's start and two assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
+    "St. Tonis-Frankfurt: Keita Kosugi's start and three assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
