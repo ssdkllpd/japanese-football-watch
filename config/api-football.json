@@ -1,0 +1,24 @@
+{
+  "provider": "api-football",
+  "apiVersion": "v3",
+  "baseUrl": "https://v3.football.api-sports.io",
+  "auth": {
+    "header": "x-apisports-key",
+    "keyEnv": "API_FOOTBALL_KEY"
+  },
+  "quota": {
+    "plan": "free",
+    "configuredDailyBudget": 100,
+    "configuredPerMinuteLimit": 10,
+    "trustResponseHeadersOverConfiguredLimits": true,
+    "reserveForTrackedFixtures": 20,
+    "softStopRemaining": 5
+  },
+  "sync": {
+    "timezone": "Asia/Tokyo",
+    "neverExposeApiKeyToBrowser": true,
+    "serverSideOnly": true,
+    "persistProviderIds": true,
+    "persistQuotaHeaders": true
+  }
+}

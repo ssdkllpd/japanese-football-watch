@@ -25,5 +25,7 @@ jobs:
           node --check favorites.js
           node --check jfw-rating.js
           node --check match-detail.js
+          node --check scripts/api-football/client.js
+          node --check scripts/api-football/smoke-test.js
       - name: Run tests
         run: node --test tests/*.test.js
