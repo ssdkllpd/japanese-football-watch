@@ -15,8 +15,9 @@ JFWに結果を反映済みの試合だけをAPI-Footballで補完し、フォ�
 
 1. 確認済みのprovider fixture IDは`/fixtures?id=`で再検証し、未解決分はマニフェストの固定日付ごとに`/fixtures?date=`で解決する。
 2. 解決済みfixture IDに限り、`/fixtures/events`、`/fixtures/lineups`、`/fixtures/players`を取得する。
-3. Proプランの300 requests/minuteおよび5 requests/secondを下回るよう、呼出し間隔を300ミリ秒以上にする。
-4. 日次7,500件のうち最低100リクエストを残す。1回で完了しない場合は状態を保存して次回に続きから再開する。
+3. ラインナップに監督が欠ける場合だけ`/coachs?team=`を取得し、対象日を含む在任期間が一意に一致した監督と写真を補完する。
+4. Proプランの300 requests/minuteおよび5 requests/secondを下回るよう、呼出し間隔を300ミリ秒以上にする。
+5. 日次7,500件のうち最低100リクエストを残す。1回で完了しない場合は状態を保存して次回に続きから再開する。
 
 ## 保存と安全性
 

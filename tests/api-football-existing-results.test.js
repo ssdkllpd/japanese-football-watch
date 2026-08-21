@@ -14,10 +14,12 @@ const {
   fixtureMatchesTarget,
   mergeCurrentData,
   mergeFragment,
+  matchNeedsCoachEnrichment,
   normalizeProviderName,
   parseStoredScore,
   resolvedTrackedPlayers,
   safeApiErrorDetails,
+  selectCoachForDate,
 } = require('../scripts/api-football/backfill-existing-results');
 
 const ROOT = path.join(__dirname, '..');
@@ -163,4 +165,34 @@ test('persisted API errors retain diagnostics but redact the repository secret',
     status: 200,
     apiErrors: { plan: '[REDACTED] cannot access this date' },
   });
+});
+
+test('coach fallback requires one exact team career assignment covering the fixture date', () => {
+  const rows = [{
+    id: 90,
+    name: 'Previous Coach',
+    career: [{ team: { id: 735 }, start: '2025-07-01', end: '2026-05-31' }],
+  }, {
+    id: 91,
+    name: 'Current Coach',
+    career: [{ team: { id: 735 }, start: '2026-06-01', end: null }],
+  }];
+
+  assert.equal(selectCoachForDate(rows, 735, '2026-08-21').id, 91);
+  assert.equal(selectCoachForDate(rows, 999, '2026-08-21'), null);
+});
+
+test('completed matches are reopened only when a lineup team lacks a coach portrait', () => {
+  const fragment = {
+    matchUpdates: [{
+      matchId: 'complete',
+      formationData: { teams: [{ lineupAvailable: true, coach: { name: 'Coach', photo: 'https://example.com/coach.png' } }] },
+    }, {
+      matchId: 'missing',
+      formationData: { teams: [{ lineupAvailable: true, coach: null }] },
+    }],
+  };
+
+  assert.equal(matchNeedsCoachEnrichment(fragment, 'complete'), false);
+  assert.equal(matchNeedsCoachEnrichment(fragment, 'missing'), true);
 });

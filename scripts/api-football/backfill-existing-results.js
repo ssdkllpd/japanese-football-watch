@@ -573,6 +573,85 @@ function responseRows(result) {
   return Array.isArray(result?.data?.response) ? result.data.response : [];
 }
 
+function sameProviderId(left, right) {
+  if (left === null || left === undefined || right === null || right === undefined) return false;
+  return String(left) === String(right);
+}
+
+function coachCoversDate(coach, teamId, fixtureDate) {
+  return (coach?.career || []).some(assignment => {
+    if (!sameProviderId(assignment?.team?.id, teamId)) return false;
+    const start = String(assignment?.start || '');
+    const end = String(assignment?.end || '');
+    return (!start || start <= fixtureDate) && (!end || fixtureDate <= end);
+  });
+}
+
+function selectCoachForDate(rows, teamId, fixtureDate) {
+  const candidates = (rows || []).filter(coach => coachCoversDate(coach, teamId, fixtureDate));
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+function matchNeedsCoachEnrichment(fragment, matchId) {
+  const update = (fragment?.matchUpdates || []).find(row => row.matchId === matchId);
+  return (update?.formationData?.teams || []).some(team =>
+    team.lineupAvailable && (!team.coach || !team.coach.photo)
+  );
+}
+
+async function enrichMissingLineupCoaches(lineups, target, client, budget, state, cache, updated) {
+  const enriched = (lineups || []).map(lineup => ({ ...lineup }));
+  const supplementalEndpoints = [];
+  state.coachResolutions = state.coachResolutions || {};
+
+  for (const lineup of enriched) {
+    if (lineup?.coach) continue;
+    const teamId = lineup?.team?.id;
+    if (teamId === null || teamId === undefined) continue;
+    const cacheKey = String(teamId);
+    if (!cache.has(cacheKey)) {
+      if (!budget.hasCapacity(1)) {
+        budget.stoppedReason = 'daily_quota_reserve';
+        throw new QuotaStop('API-Football request reserve reached during coach enrichment.');
+      }
+      const result = await budget.get(client, '/coachs', { team: teamId });
+      cache.set(cacheKey, responseRows(result));
+    }
+
+    const endpoint = `/coachs?team=${teamId}`;
+    if (!supplementalEndpoints.includes(endpoint)) supplementalEndpoints.push(endpoint);
+    const rows = cache.get(cacheKey);
+    const selected = selectCoachForDate(rows, teamId, target.fixtureDate);
+    const resolutionKey = `${teamId}|${target.fixtureDate}`;
+    if (!selected) {
+      const candidateCount = rows.filter(coach => coachCoversDate(coach, teamId, target.fixtureDate)).length;
+      state.coachResolutions[resolutionKey] = {
+        providerTeamId: teamId,
+        fixtureDate: target.fixtureDate,
+        candidateCount,
+        reason: candidateCount ? 'ambiguous_coach_assignment' : 'coach_assignment_not_found',
+        resolvedAt: updated,
+      };
+      continue;
+    }
+    lineup.coach = {
+      id: selected.id ?? null,
+      name: selected.name || [selected.firstname, selected.lastname].filter(Boolean).join(' ') || null,
+      photo: selected.photo || null,
+      photoSource: 'api_football_coach_registry',
+    };
+    state.coachResolutions[resolutionKey] = {
+      providerTeamId: teamId,
+      providerCoachId: selected.id ?? null,
+      providerCoachName: lineup.coach.name,
+      fixtureDate: target.fixtureDate,
+      method: 'team_career_date_exact',
+      resolvedAt: updated,
+    };
+  }
+  return { lineups: enriched, supplementalEndpoints };
+}
+
 function localNameMaps(target, baseFixture) {
   return {
     clubNamesByProviderId: {
@@ -585,7 +664,7 @@ function localNameMaps(target, baseFixture) {
   };
 }
 
-function normalizeMappedFragment(mapped, target, fixtureId, updated, discovery) {
+function normalizeMappedFragment(mapped, target, fixtureId, updated, discovery, supplementalEndpoints = []) {
   const matchUpdate = mapped.matchUpdates?.[0];
   if (matchUpdate) {
     Object.assign(matchUpdate, {
@@ -631,6 +710,7 @@ function normalizeMappedFragment(mapped, target, fixtureId, updated, discovery) 
         `/fixtures/events?fixture=${fixtureId}`,
         `/fixtures/lineups?fixture=${fixtureId}`,
         `/fixtures/players?fixture=${fixtureId}`,
+        ...supplementalEndpoints,
       ],
       retrievedAt: updated,
     };
@@ -669,7 +749,11 @@ async function runBackfill(options = {}) {
     minimumIntervalMs: options.minimumIntervalMs ?? process.env.API_FOOTBALL_MIN_INTERVAL_MS,
   });
   const completed = new Set(state.completedMatchIds || []);
-  const unresolvedPlayers = {};
+  for (const target of targets) {
+    if (matchNeedsCoachEnrichment(fragment, target.matchId)) completed.delete(target.matchId);
+  }
+  const unresolvedPlayers = { ...(state.lastRun?.unresolvedPlayers || {}) };
+  const coachCache = new Map();
   let runError = null;
 
   async function processResolvedTargets() {
@@ -686,10 +770,19 @@ async function runBackfill(options = {}) {
       const eventsResult = await budget.get(client, '/fixtures/events', { fixture: fixtureId });
       const lineupsResult = await budget.get(client, '/fixtures/lineups', { fixture: fixtureId });
       const playersResult = await budget.get(client, '/fixtures/players', { fixture: fixtureId });
+      const coachEnrichment = await enrichMissingLineupCoaches(
+        responseRows(lineupsResult),
+        target,
+        client,
+        budget,
+        state,
+        coachCache,
+        updated
+      );
       const fixture = {
         ...resolution.baseFixture,
         events: responseRows(eventsResult),
-        lineups: responseRows(lineupsResult),
+        lineups: coachEnrichment.lineups,
         players: responseRows(playersResult),
       };
       if (!fixtureMatchesTarget(fixture, target)) {
@@ -697,6 +790,7 @@ async function runBackfill(options = {}) {
       }
 
       const playerResolution = resolvedTrackedPlayers(data, target, fixture, manifest, state, updated);
+      delete unresolvedPlayers[target.matchId];
       if (playerResolution.unresolved.length) unresolvedPlayers[target.matchId] = playerResolution.unresolved;
       const names = localNameMaps(target, resolution.baseFixture);
       const mapped = mapFixtureToSchemaV2(fixture, {
@@ -711,7 +805,8 @@ async function runBackfill(options = {}) {
         target,
         fixtureId,
         updated,
-        resolution.discovery
+        resolution.discovery,
+        coachEnrichment.supplementalEndpoints
       ));
       completed.add(target.matchId);
     }
@@ -825,9 +920,11 @@ module.exports = {
   fixtureMatchesTarget,
   mergeCurrentData,
   mergeFragment,
+  matchNeedsCoachEnrichment,
   normalizeProviderName,
   parseStoredScore,
   resolvedTrackedPlayers,
   runBackfill,
+  selectCoachForDate,
   stablePlayerId,
 };

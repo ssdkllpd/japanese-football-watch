@@ -1,6 +1,6 @@
 {
-  "version": 18,
-  "updatedAt": "2026-08-21T15:38:00+09:00",
+  "version": 19,
+  "updatedAt": "2026-08-21T15:51:00+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -152,7 +152,7 @@
       "fixtureDiscovery": "only the nine fixed manifest dates; never latest, next, or last",
       "teamLastDiscoveryMayReadUnlistedCompletedResults": false,
       "persistUnlistedCompletedResults": false,
-      "detailEndpoints": ["/fixtures/events", "/fixtures/lineups", "/fixtures/players"],
+      "detailEndpoints": ["/fixtures/events", "/fixtures/lineups", "/fixtures/players", "/coachs?team={teamId} only when the fixture lineup omits its coach"],
       "outputFragment": "data/2026-27/backfill/api-football-existing-results.json",
       "resumableState": "state/api-football-existing-results.json",
       "dailyRequestReserve": 100,
