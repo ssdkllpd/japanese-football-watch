@@ -1,0 +1,2339 @@
+{
+  "schemaVersion": 1,
+  "provider": "api-football",
+  "mode": "existing_verified_results_only",
+  "season": "2026-27",
+  "targetCount": 27,
+  "fixtureResolutions": {
+    "uecl-2026-08-20-motherwell-freiburg": {
+      "fixtureId": 1623399,
+      "signature": "uecl-2026-08-20-motherwell-freiburg|2026-08-21|2026-08-20 18:30 CEST|マザーウェル 1-3 フライブルク|verified",
+      "fixtureDate": "2026-08-21",
+      "providerHome": "Motherwell",
+      "providerAway": "SC Freiburg",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1623399,
+          "referee": "Radu Marian Petrescu, Romania",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-21T03:30:00+09:00",
+          "timestamp": 1787250600,
+          "venue": {
+            "id": null,
+            "name": "Fir Park",
+            "city": "Motherwell"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 848,
+          "name": "UEFA Europa Conference League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/848.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Playoff round",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 256,
+            "name": "Motherwell",
+            "logo": "https://media.api-sports.io/football/teams/256.png",
+            "winner": false
+          },
+          "away": {
+            "id": 160,
+            "name": "SC Freiburg",
+            "logo": "https://media.api-sports.io/football/teams/160.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 3
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 3
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "uel-2026-08-20-stvv-omonia": {
+      "fixtureId": 1623438,
+      "signature": "uel-2026-08-20-stvv-omonia|2026-08-21|2026-08-20 20:00 CEST|STVV 1-0 オモニア|verified",
+      "fixtureDate": "2026-08-21",
+      "providerHome": "St. Truiden",
+      "providerAway": "Omonia Nicosia",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1623438,
+          "referee": "Georgi Kabakov, Bulgaria",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-21T03:00:00+09:00",
+          "timestamp": 1787248800,
+          "venue": {
+            "id": null,
+            "name": "Stayen",
+            "city": "Sint- Truiden"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 3,
+          "name": "UEFA Europa League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/3.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Play-offs",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 735,
+            "name": "St. Truiden",
+            "logo": "https://media.api-sports.io/football/teams/735.png",
+            "winner": true
+          },
+          "away": {
+            "id": 3402,
+            "name": "Omonia Nicosia",
+            "logo": "https://media.api-sports.io/football/teams/3402.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-19-celtic-lask": {
+      "fixtureId": 1610923,
+      "signature": "m-2026-08-19-celtic-lask|2026-08-20|2026-08-20 04:00|セルティック 3-0 LASK|verified",
+      "fixtureDate": "2026-08-20",
+      "providerHome": "Celtic",
+      "providerAway": "Lask Linz",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1610923,
+          "referee": "Sandro Schärer, Switzerland",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-20T04:00:00+09:00",
+          "timestamp": 1787166000,
+          "venue": {
+            "id": null,
+            "name": "Celtic Park",
+            "city": "Glasgow"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 2,
+          "name": "UEFA Champions League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/2.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Play-offs",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 247,
+            "name": "Celtic",
+            "logo": "https://media.api-sports.io/football/teams/247.png",
+            "winner": true
+          },
+          "away": {
+            "id": 1026,
+            "name": "Lask Linz",
+            "logo": "https://media.api-sports.io/football/teams/1026.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 3,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 2,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 3,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-16-arouca-moreirense": {
+      "fixtureId": 1575457,
+      "signature": "m-2026-08-16-arouca-moreirense|2026-08-17|2026-08-17 02:00|アロウカ 4-0 モレイレンセ|verified",
+      "fixtureDate": "2026-08-17",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-17"
+      },
+      "providerHome": "Arouca",
+      "providerAway": "Moreirense",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1575457,
+          "referee": "A. Narciso",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-17T02:00:00+09:00",
+          "timestamp": 1786899600,
+          "venue": {
+            "id": 1275,
+            "name": "Estádio Municipal de Arouca",
+            "city": "Arouca"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 94,
+          "name": "Primeira Liga",
+          "country": "Portugal",
+          "logo": "https://media.api-sports.io/football/leagues/94.png",
+          "flag": "https://media.api-sports.io/flags/pt.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 240,
+            "name": "Arouca",
+            "logo": "https://media.api-sports.io/football/teams/240.png",
+            "winner": true
+          },
+          "away": {
+            "id": 215,
+            "name": "Moreirense",
+            "logo": "https://media.api-sports.io/football/teams/215.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 4,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 3,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 4,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-16-feyenoord-go-ahead": {
+      "fixtureId": 1552132,
+      "signature": "m-2026-08-16-feyenoord-go-ahead|2026-08-16|2026-08-16 21:30|フェイエノールト 2-2 ゴー・アヘッド・イーグルス|verified",
+      "fixtureDate": "2026-08-16",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-16"
+      },
+      "providerHome": "Feyenoord",
+      "providerAway": "GO Ahead Eagles",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1552132,
+          "referee": "J. Kooij",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-16T21:30:00+09:00",
+          "timestamp": 1786883400,
+          "venue": {
+            "id": null,
+            "name": "De Kuip",
+            "city": "Rotterdam"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 5
+          }
+        },
+        "league": {
+          "id": 88,
+          "name": "Eredivisie",
+          "country": "Netherlands",
+          "logo": "https://media.api-sports.io/football/leagues/88.png",
+          "flag": "https://media.api-sports.io/flags/nl.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 209,
+            "name": "Feyenoord",
+            "logo": "https://media.api-sports.io/football/teams/209.png",
+            "winner": null
+          },
+          "away": {
+            "id": 410,
+            "name": "GO Ahead Eagles",
+            "logo": "https://media.api-sports.io/football/teams/410.png",
+            "winner": null
+          }
+        },
+        "goals": {
+          "home": 2,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 2,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 2,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-16-watford-southampton": {
+      "fixtureId": 1563092,
+      "signature": "m-2026-08-16-watford-southampton|2026-08-16|2026-08-16 21:30|ワトフォード 2-1 サウサンプトン|verified",
+      "fixtureDate": "2026-08-16",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-16"
+      },
+      "providerHome": "Watford",
+      "providerAway": "Southampton",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1563092,
+          "referee": "M. Donohue",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-16T21:30:00+09:00",
+          "timestamp": 1786883400,
+          "venue": {
+            "id": 596,
+            "name": "Vicarage Road",
+            "city": "Watford"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 40,
+          "name": "Championship",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/40.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 38,
+            "name": "Watford",
+            "logo": "https://media.api-sports.io/football/teams/38.png",
+            "winner": true
+          },
+          "away": {
+            "id": 41,
+            "name": "Southampton",
+            "logo": "https://media.api-sports.io/football/teams/41.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 2,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 2,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 2,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-15-sheffield-birmingham": {
+      "fixtureId": 1563091,
+      "signature": "m-2026-08-15-sheffield-birmingham|2026-08-16|2026-08-16 01:30|シェフィールドU 0-0 バーミンガム|verified",
+      "fixtureDate": "2026-08-16",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-16"
+      },
+      "providerHome": "Sheffield Utd",
+      "providerAway": "Birmingham",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1563091,
+          "referee": "G. Ward",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-16T01:30:00+09:00",
+          "timestamp": 1786811400,
+          "venue": {
+            "id": 581,
+            "name": "Bramall Lane",
+            "city": "Sheffield"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 5
+          }
+        },
+        "league": {
+          "id": 40,
+          "name": "Championship",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/40.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 62,
+            "name": "Sheffield Utd",
+            "logo": "https://media.api-sports.io/football/teams/62.png",
+            "winner": null
+          },
+          "away": {
+            "id": 54,
+            "name": "Birmingham",
+            "logo": "https://media.api-sports.io/football/teams/54.png",
+            "winner": null
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-15-genk-westerlo": {
+      "fixtureId": 1558593,
+      "signature": "m-2026-08-15-genk-westerlo|2026-08-16|2026-08-16 03:45|KRCヘンク 3-2 ウェステルロー|verified",
+      "fixtureDate": "2026-08-16",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-16"
+      },
+      "providerHome": "Genk",
+      "providerAway": "KVC Westerlo",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1558593,
+          "referee": "L. Visser",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-16T03:45:00+09:00",
+          "timestamp": 1786819500,
+          "venue": {
+            "id": 12455,
+            "name": "Cegeka Arena",
+            "city": "Genk"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 7
+          }
+        },
+        "league": {
+          "id": 144,
+          "name": "Jupiler Pro League",
+          "country": "Belgium",
+          "logo": "https://media.api-sports.io/football/leagues/144.png",
+          "flag": "https://media.api-sports.io/flags/be.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 742,
+            "name": "Genk",
+            "logo": "https://media.api-sports.io/football/teams/742.png",
+            "winner": true
+          },
+          "away": {
+            "id": 261,
+            "name": "KVC Westerlo",
+            "logo": "https://media.api-sports.io/football/teams/261.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 3,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 2,
+            "away": 2
+          },
+          "fulltime": {
+            "home": 3,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-15-utrecht-az": {
+      "fixtureId": 1552128,
+      "signature": "m-2026-08-15-utrecht-az|2026-08-16|2026-08-16 01:45|ユトレヒト 1-4 AZ|verified",
+      "fixtureDate": "2026-08-16",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-16"
+      },
+      "providerHome": "Utrecht",
+      "providerAway": "AZ Alkmaar",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1552128,
+          "referee": "D. Makkelie",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-16T01:45:00+09:00",
+          "timestamp": 1786812300,
+          "venue": {
+            "id": 1154,
+            "name": "Stadion Galgenwaard",
+            "city": "Utrecht"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 88,
+          "name": "Eredivisie",
+          "country": "Netherlands",
+          "logo": "https://media.api-sports.io/football/leagues/88.png",
+          "flag": "https://media.api-sports.io/flags/nl.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 207,
+            "name": "Utrecht",
+            "logo": "https://media.api-sports.io/football/teams/207.png",
+            "winner": false
+          },
+          "away": {
+            "id": 201,
+            "name": "AZ Alkmaar",
+            "logo": "https://media.api-sports.io/football/teams/201.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 4
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 4
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-15-portsmouth-qpr": {
+      "fixtureId": 1563089,
+      "signature": "m-2026-08-15-portsmouth-qpr|2026-08-15|2026-08-15 23:00|ポーツマス 1-3 QPR|verified",
+      "fixtureDate": "2026-08-15",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-15"
+      },
+      "providerHome": "Portsmouth",
+      "providerAway": "QPR",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1563089,
+          "referee": "W. Finnie",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-15T23:00:00+09:00",
+          "timestamp": 1786802400,
+          "venue": {
+            "id": 573,
+            "name": "Fratton Park",
+            "city": "Portsmouth"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 40,
+          "name": "Championship",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/40.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 1355,
+            "name": "Portsmouth",
+            "logo": "https://media.api-sports.io/football/teams/1355.png",
+            "winner": false
+          },
+          "away": {
+            "id": 72,
+            "name": "QPR",
+            "logo": "https://media.api-sports.io/football/teams/72.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 3
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 3
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 3
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-15-bristol-millwall": {
+      "fixtureId": 1563085,
+      "signature": "m-2026-08-15-bristol-millwall|2026-08-15|2026-08-15 23:00|ブリストル・シティ 0-2 ミルウォール|verified",
+      "fixtureDate": "2026-08-15",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-15"
+      },
+      "providerHome": "Bristol City",
+      "providerAway": "Millwall",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1563085,
+          "referee": "L. Smith",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-15T23:00:00+09:00",
+          "timestamp": 1786802400,
+          "venue": {
+            "id": 20106,
+            "name": "Ashton Gate Stadium",
+            "city": "Bristol"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 40,
+          "name": "Championship",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/40.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 56,
+            "name": "Bristol City",
+            "logo": "https://media.api-sports.io/football/teams/56.png",
+            "winner": false
+          },
+          "away": {
+            "id": 58,
+            "name": "Millwall",
+            "logo": "https://media.api-sports.io/football/teams/58.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-14-telstar-sparta": {
+      "fixtureId": 1552126,
+      "signature": "m-2026-08-14-telstar-sparta|2026-08-15|2026-08-15 03:00|テルスター 1-3 スパルタ|verified",
+      "fixtureDate": "2026-08-15",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-15"
+      },
+      "providerHome": "Telstar",
+      "providerAway": "Sparta Rotterdam",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1552126,
+          "referee": "I. Oostrom",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-15T03:00:00+09:00",
+          "timestamp": 1786730400,
+          "venue": {
+            "id": null,
+            "name": "BUKO Stadion",
+            "city": "Velsen-Zuid"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 8
+          }
+        },
+        "league": {
+          "id": 88,
+          "name": "Eredivisie",
+          "country": "Netherlands",
+          "logo": "https://media.api-sports.io/football/leagues/88.png",
+          "flag": "https://media.api-sports.io/flags/nl.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 427,
+            "name": "Telstar",
+            "logo": "https://media.api-sports.io/football/teams/427.png",
+            "winner": false
+          },
+          "away": {
+            "id": 426,
+            "name": "Sparta Rotterdam",
+            "logo": "https://media.api-sports.io/football/teams/426.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 3
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 3
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-14-wolves-blackburn": {
+      "fixtureId": 1563083,
+      "signature": "m-2026-08-14-wolves-blackburn|2026-08-15|2026-08-15 04:00|ウルヴァーハンプトン 2-2 ブラックバーン|verified",
+      "fixtureDate": "2026-08-15",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-15"
+      },
+      "providerHome": "Wolves",
+      "providerAway": "Blackburn",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1563083,
+          "referee": "F. Hallam",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-15T04:00:00+09:00",
+          "timestamp": 1786734000,
+          "venue": {
+            "id": null,
+            "name": "Molineux Stadium",
+            "city": "Wolverhampton"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 40,
+          "name": "Championship",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/40.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 39,
+            "name": "Wolves",
+            "logo": "https://media.api-sports.io/football/teams/39.png",
+            "winner": null
+          },
+          "away": {
+            "id": 67,
+            "name": "Blackburn",
+            "logo": "https://media.api-sports.io/football/teams/67.png",
+            "winner": null
+          }
+        },
+        "goals": {
+          "home": 2,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 2,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-14-cercle-stvv": {
+      "fixtureId": 1558590,
+      "signature": "m-2026-08-14-cercle-stvv|2026-08-15|2026-08-15 03:45|サークル・ブルージュ 3-3 STVV|verified",
+      "fixtureDate": "2026-08-15",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-15"
+      },
+      "providerHome": "Cercle Brugge",
+      "providerAway": "St. Truiden",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1558590,
+          "referee": "J. Boterberg",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-15T03:45:00+09:00",
+          "timestamp": 1786733100,
+          "venue": {
+            "id": null,
+            "name": "Jan Breydel Stadion",
+            "city": "Brugge"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 144,
+          "name": "Jupiler Pro League",
+          "country": "Belgium",
+          "logo": "https://media.api-sports.io/football/leagues/144.png",
+          "flag": "https://media.api-sports.io/flags/be.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 741,
+            "name": "Cercle Brugge",
+            "logo": "https://media.api-sports.io/football/teams/741.png",
+            "winner": null
+          },
+          "away": {
+            "id": 735,
+            "name": "St. Truiden",
+            "logo": "https://media.api-sports.io/football/teams/735.png",
+            "winner": null
+          }
+        },
+        "goals": {
+          "home": 3,
+          "away": 3
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 2
+          },
+          "fulltime": {
+            "home": 3,
+            "away": 3
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-09-kilmarnock-celtic": {
+      "fixtureId": 1556638,
+      "signature": "m-2026-08-09-kilmarnock-celtic|2026-08-09|2026-08-09 21:30|キルマーノック 1-5 セルティック|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "Kilmarnock",
+      "providerAway": "Celtic",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1556638,
+          "referee": "R. Lee",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T21:30:00+09:00",
+          "timestamp": 1786278600,
+          "venue": {
+            "id": null,
+            "name": "Rugby Park",
+            "city": "Kilmarnock"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 179,
+          "name": "Premiership",
+          "country": "Scotland",
+          "logo": "https://media.api-sports.io/football/leagues/179.png",
+          "flag": "https://media.api-sports.io/flags/gb-sct.svg",
+          "season": 2026,
+          "round": "Regular Season - 2",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 250,
+            "name": "Kilmarnock",
+            "logo": "https://media.api-sports.io/football/teams/250.png",
+            "winner": false
+          },
+          "away": {
+            "id": 247,
+            "name": "Celtic",
+            "logo": "https://media.api-sports.io/football/teams/247.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 5
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 3
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 5
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-09-zulte-genk": {
+      "fixtureId": 1558587,
+      "signature": "m-2026-08-09-zulte-genk|2026-08-09|2026-08-09 23:00|ズルテ・ワレヘム 2-1 KRCヘンク|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "Zulte Waregem",
+      "providerAway": "Genk",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1558587,
+          "referee": "K. van Damme",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T23:00:00+09:00",
+          "timestamp": 1786284000,
+          "venue": {
+            "id": 11891,
+            "name": "Elindus Arena",
+            "city": "Waregem"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 144,
+          "name": "Jupiler Pro League",
+          "country": "Belgium",
+          "logo": "https://media.api-sports.io/football/leagues/144.png",
+          "flag": "https://media.api-sports.io/flags/be.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 600,
+            "name": "Zulte Waregem",
+            "logo": "https://media.api-sports.io/football/teams/600.png",
+            "winner": true
+          },
+          "away": {
+            "id": 742,
+            "name": "Genk",
+            "logo": "https://media.api-sports.io/football/teams/742.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 2,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 2,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-09-sparta-feyenoord": {
+      "fixtureId": 1552122,
+      "signature": "m-2026-08-09-sparta-feyenoord|2026-08-09|2026-08-09 19:15|スパルタ 0-1 フェイエノールト|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "Sparta Rotterdam",
+      "providerAway": "Feyenoord",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1552122,
+          "referee": "S. van der Eijk",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T19:15:00+09:00",
+          "timestamp": 1786270500,
+          "venue": {
+            "id": 10505,
+            "name": "Sparta Stadion Het Kasteel",
+            "city": "Rotterdam"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 8
+          }
+        },
+        "league": {
+          "id": 88,
+          "name": "Eredivisie",
+          "country": "Netherlands",
+          "logo": "https://media.api-sports.io/football/leagues/88.png",
+          "flag": "https://media.api-sports.io/flags/nl.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 426,
+            "name": "Sparta Rotterdam",
+            "logo": "https://media.api-sports.io/football/teams/426.png",
+            "winner": false
+          },
+          "away": {
+            "id": 209,
+            "name": "Feyenoord",
+            "logo": "https://media.api-sports.io/football/teams/209.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-vitoria-arouca": {
+      "fixtureId": 1575454,
+      "signature": "m-2026-08-08-vitoria-arouca|2026-08-09|2026-08-09 02:00|ヴィトーリアSC 0-1 アロウカ|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "Vitória SC",
+      "providerAway": "Arouca",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1575454,
+          "referee": "M. Nogueira",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T02:00:00+09:00",
+          "timestamp": 1786208400,
+          "venue": {
+            "id": 1295,
+            "name": "Estádio Dom Afonso Henriques",
+            "city": "Guimaraes"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 7
+          }
+        },
+        "league": {
+          "id": 94,
+          "name": "Primeira Liga",
+          "country": "Portugal",
+          "logo": "https://media.api-sports.io/football/leagues/94.png",
+          "flag": "https://media.api-sports.io/flags/pt.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 224,
+            "name": "Vitória SC",
+            "logo": "https://media.api-sports.io/football/teams/224.png",
+            "winner": false
+          },
+          "away": {
+            "id": 240,
+            "name": "Arouca",
+            "logo": "https://media.api-sports.io/football/teams/240.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-stvv-lommel": {
+      "fixtureId": 1558584,
+      "signature": "m-2026-08-08-stvv-lommel|2026-08-09|2026-08-09 03:45|STVV 1-1 ロンメル|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "St. Truiden",
+      "providerAway": "Lommel United",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1558584,
+          "referee": "A. Letellier",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T03:45:00+09:00",
+          "timestamp": 1786214700,
+          "venue": {
+            "id": null,
+            "name": "Daio Wasabi Stayen",
+            "city": "Sint-Truiden"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 8
+          }
+        },
+        "league": {
+          "id": 144,
+          "name": "Jupiler Pro League",
+          "country": "Belgium",
+          "logo": "https://media.api-sports.io/football/leagues/144.png",
+          "flag": "https://media.api-sports.io/flags/be.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 735,
+            "name": "St. Truiden",
+            "logo": "https://media.api-sports.io/football/teams/735.png",
+            "winner": null
+          },
+          "away": {
+            "id": 259,
+            "name": "Lommel United",
+            "logo": "https://media.api-sports.io/football/teams/259.png",
+            "winner": null
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-westerlo-union": {
+      "fixtureId": 1558585,
+      "signature": "m-2026-08-08-westerlo-union|2026-08-09|2026-08-09 02:45|ウェステルロー 1-5 ユニオンSG|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "KVC Westerlo",
+      "providerAway": "Union St. Gilloise",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1558585,
+          "referee": "B. Put",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T03:45:00+09:00",
+          "timestamp": 1786214700,
+          "venue": {
+            "id": 195,
+            "name": "Het Kuipje",
+            "city": "Westerlo"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 2
+          }
+        },
+        "league": {
+          "id": 144,
+          "name": "Jupiler Pro League",
+          "country": "Belgium",
+          "logo": "https://media.api-sports.io/football/leagues/144.png",
+          "flag": "https://media.api-sports.io/flags/be.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 261,
+            "name": "KVC Westerlo",
+            "logo": "https://media.api-sports.io/football/teams/261.png",
+            "winner": false
+          },
+          "away": {
+            "id": 1393,
+            "name": "Union St. Gilloise",
+            "logo": "https://media.api-sports.io/football/teams/1393.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 5
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 5
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-az-ado": {
+      "fixtureId": 1552121,
+      "signature": "m-2026-08-08-az-ado|2026-08-09|2026-08-09 04:00|AZ 2-0 ADOデン・ハーグ|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "AZ Alkmaar",
+      "providerAway": "ADO Den Haag",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1552121,
+          "referee": "E. Blank",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T04:00:00+09:00",
+          "timestamp": 1786215600,
+          "venue": {
+            "id": 1119,
+            "name": "AFAS Stadion",
+            "city": "Alkmaar"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 3
+          }
+        },
+        "league": {
+          "id": 88,
+          "name": "Eredivisie",
+          "country": "Netherlands",
+          "logo": "https://media.api-sports.io/football/leagues/88.png",
+          "flag": "https://media.api-sports.io/flags/nl.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 201,
+            "name": "AZ Alkmaar",
+            "logo": "https://media.api-sports.io/football/teams/201.png",
+            "winner": true
+          },
+          "away": {
+            "id": 198,
+            "name": "ADO Den Haag",
+            "logo": "https://media.api-sports.io/football/teams/198.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 2,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 2,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-colchester-southampton-cup": {
+      "fixtureId": 1567398,
+      "signature": "m-2026-08-08-colchester-southampton-cup|2026-08-09|2026-08-09 01:30|コルチェスター 0-2 サウサンプトン|verified",
+      "fixtureDate": "2026-08-09",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-09"
+      },
+      "providerHome": "Colchester",
+      "providerAway": "Southampton",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1567398,
+          "referee": "I. Searle",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-09T01:30:00+09:00",
+          "timestamp": 1786206600,
+          "venue": {
+            "id": null,
+            "name": "Colchester Community Stadium",
+            "city": "Colchester"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 48,
+          "name": "League Cup",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/48.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Round of 128",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 1361,
+            "name": "Colchester",
+            "logo": "https://media.api-sports.io/football/teams/1361.png",
+            "winner": false
+          },
+          "away": {
+            "id": 41,
+            "name": "Southampton",
+            "logo": "https://media.api-sports.io/football/teams/41.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-qpr-millwall-cup": {
+      "fixtureId": 1567411,
+      "signature": "m-2026-08-08-qpr-millwall-cup|2026-08-08|2026-08-08 22:00|QPR 1-1 ミルウォール（PK 0-2）|verified",
+      "fixtureDate": "2026-08-08",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-08"
+      },
+      "providerHome": "QPR",
+      "providerAway": "Millwall",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1567411,
+          "referee": "M. Donohue",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-08T22:00:00+09:00",
+          "timestamp": 1786194000,
+          "venue": {
+            "id": null,
+            "name": "Loftus Road",
+            "city": "London"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "PEN",
+            "elapsed": 120,
+            "extra": null
+          }
+        },
+        "league": {
+          "id": 48,
+          "name": "League Cup",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/48.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Round of 128",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 72,
+            "name": "QPR",
+            "logo": "https://media.api-sports.io/football/teams/72.png",
+            "winner": false
+          },
+          "away": {
+            "id": 58,
+            "name": "Millwall",
+            "logo": "https://media.api-sports.io/football/teams/58.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": 0,
+            "away": 2
+          }
+        }
+      }
+    },
+    "m-2026-08-08-swansea-birmingham-cup": {
+      "fixtureId": 1567417,
+      "signature": "m-2026-08-08-swansea-birmingham-cup|2026-08-08|2026-08-08 23:00|スウォンジー 0-1 バーミンガム|verified",
+      "fixtureDate": "2026-08-08",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-08"
+      },
+      "providerHome": "Swansea",
+      "providerAway": "Birmingham",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1567417,
+          "referee": "R. Ricardo",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-08T23:00:00+09:00",
+          "timestamp": 1786197600,
+          "venue": {
+            "id": null,
+            "name": "Swansea.com Stadium",
+            "city": "Swansea"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 7
+          }
+        },
+        "league": {
+          "id": 48,
+          "name": "League Cup",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/48.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Round of 128",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 76,
+            "name": "Swansea",
+            "logo": "https://media.api-sports.io/football/teams/76.png",
+            "winner": false
+          },
+          "away": {
+            "id": 54,
+            "name": "Birmingham",
+            "logo": "https://media.api-sports.io/football/teams/54.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-08-burton-blackburn-cup": {
+      "fixtureId": 1567394,
+      "signature": "m-2026-08-08-burton-blackburn-cup|2026-08-08|2026-08-08 23:00|バートン 1-2 ブラックバーン|verified",
+      "fixtureDate": "2026-08-08",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-08"
+      },
+      "providerHome": "Burton Albion",
+      "providerAway": "Blackburn",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1567394,
+          "referee": "A. Humphries",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-08T23:00:00+09:00",
+          "timestamp": 1786197600,
+          "venue": {
+            "id": null,
+            "name": "Pirelli Stadium",
+            "city": "Burton upon Trent"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 8
+          }
+        },
+        "league": {
+          "id": 48,
+          "name": "League Cup",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/48.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Round of 128",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 748,
+            "name": "Burton Albion",
+            "logo": "https://media.api-sports.io/football/teams/748.png",
+            "winner": false
+          },
+          "away": {
+            "id": 67,
+            "name": "Blackburn",
+            "logo": "https://media.api-sports.io/football/teams/67.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 2
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 2
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-06-bristol-walsall-cup": {
+      "fixtureId": 1567390,
+      "signature": "m-2026-08-06-bristol-walsall-cup|2026-08-07|2026-08-07 03:45|ブリストル・シティ 0-1 ウォルソール|verified",
+      "fixtureDate": "2026-08-07",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-07"
+      },
+      "providerHome": "Bristol City",
+      "providerAway": "Walsall",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1567390,
+          "referee": "J. Miles",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-07T03:45:00+09:00",
+          "timestamp": 1786041900,
+          "venue": {
+            "id": 20106,
+            "name": "Ashton Gate Stadium",
+            "city": "Bristol"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 48,
+          "name": "League Cup",
+          "country": "England",
+          "logo": "https://media.api-sports.io/football/leagues/48.png",
+          "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+          "season": 2026,
+          "round": "Round of 128",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 56,
+            "name": "Bristol City",
+            "logo": "https://media.api-sports.io/football/teams/56.png",
+            "winner": false
+          },
+          "away": {
+            "id": 1342,
+            "name": "Walsall",
+            "logo": "https://media.api-sports.io/football/teams/1342.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 0,
+          "away": 1
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 0,
+            "away": 1
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-03-celtic-dundee": {
+      "fixtureId": 1556633,
+      "signature": "m-2026-08-03-celtic-dundee|2026-08-04|2026-08-04 03:30|セルティック 1-0 ダンディー|verified",
+      "fixtureDate": "2026-08-04",
+      "discovery": {
+        "mode": "fixed_manifest_date",
+        "fixtureDate": "2026-08-04"
+      },
+      "providerHome": "Celtic",
+      "providerAway": "Dundee",
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1556633,
+          "referee": "M. MacDermid",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-04T03:30:00+09:00",
+          "timestamp": 1785781800,
+          "venue": {
+            "id": 1386,
+            "name": "Celtic Park",
+            "city": "Glasgow"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 179,
+          "name": "Premiership",
+          "country": "Scotland",
+          "logo": "https://media.api-sports.io/football/leagues/179.png",
+          "flag": "https://media.api-sports.io/flags/gb-sct.svg",
+          "season": 2026,
+          "round": "Regular Season - 1",
+          "standings": true
+        },
+        "teams": {
+          "home": {
+            "id": 247,
+            "name": "Celtic",
+            "logo": "https://media.api-sports.io/football/teams/247.png",
+            "winner": true
+          },
+          "away": {
+            "id": 253,
+            "name": "Dundee",
+            "logo": "https://media.api-sports.io/football/teams/253.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    }
+  },
+  "playerResolutions": {
+    "鈴木唯人": {
+      "providerPlayerId": 199143,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "後藤啓介": {
+      "providerPlayerId": 375930,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "小久保玲央ブライアン": {
+      "providerPlayerId": 162482,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "谷口彰悟": {
+      "providerPlayerId": 32954,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "石渡ネルソン": {
+      "providerPlayerId": 356714,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "松澤海斗": {
+      "providerPlayerId": 415721,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "荒木遼太郎": {
+      "providerPlayerId": 197972,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "旗手怜央": {
+      "providerPlayerId": 180758,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "福井太智": {
+      "providerPlayerId": 306615,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "上田綺世": {
+      "providerPlayerId": 72155,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "渡辺剛": {
+      "providerPlayerId": 32858,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "松木玖生": {
+      "providerPlayerId": 351013,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "岩田智輝": {
+      "providerPlayerId": 32938,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "伊東純也": {
+      "providerPlayerId": 1942,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "横山歩夢": {
+      "providerPlayerId": 304918,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "木村誠二": {
+      "providerPlayerId": 109271,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "坂本一彩": {
+      "providerPlayerId": 278950,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "齋藤俊輔": {
+      "providerPlayerId": 457169,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "市原吏音": {
+      "providerPlayerId": 422581,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "毎熊晟矢": {
+      "providerPlayerId": 199793,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "斉藤光毅": {
+      "providerPlayerId": 33838,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "平河悠": {
+      "providerPlayerId": 348800,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "三戸舜介": {
+      "providerPlayerId": 237131,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "森下龍矢": {
+      "providerPlayerId": 199150,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "大橋祐紀": {
+      "providerPlayerId": 33147,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "畑大雅": {
+      "providerPlayerId": 199153,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    },
+    "新川志音": {
+      "providerPlayerId": 510415,
+      "resolvedAt": "2026-08-21T06:40:33.539Z",
+      "method": "explicit_alias_in_expected_fixture"
+    }
+  },
+  "completedMatchIds": [
+    "m-2026-08-03-celtic-dundee",
+    "m-2026-08-06-bristol-walsall-cup",
+    "m-2026-08-08-az-ado",
+    "m-2026-08-08-burton-blackburn-cup",
+    "m-2026-08-08-colchester-southampton-cup",
+    "m-2026-08-08-qpr-millwall-cup",
+    "m-2026-08-08-stvv-lommel",
+    "m-2026-08-08-swansea-birmingham-cup",
+    "m-2026-08-08-vitoria-arouca",
+    "m-2026-08-08-westerlo-union",
+    "m-2026-08-09-kilmarnock-celtic",
+    "m-2026-08-09-sparta-feyenoord",
+    "m-2026-08-09-zulte-genk",
+    "m-2026-08-14-cercle-stvv",
+    "m-2026-08-14-telstar-sparta",
+    "m-2026-08-14-wolves-blackburn",
+    "m-2026-08-15-bristol-millwall",
+    "m-2026-08-15-genk-westerlo",
+    "m-2026-08-15-portsmouth-qpr",
+    "m-2026-08-15-sheffield-birmingham",
+    "m-2026-08-15-utrecht-az",
+    "m-2026-08-16-arouca-moreirense",
+    "m-2026-08-16-feyenoord-go-ahead",
+    "m-2026-08-16-watford-southampton",
+    "m-2026-08-19-celtic-lask",
+    "uecl-2026-08-20-motherwell-freiburg",
+    "uel-2026-08-20-stvv-omonia"
+  ],
+  "pendingMatchIds": [],
+  "unresolvedMatchIds": [],
+  "lastRun": {
+    "startedFromFixedManifest": true,
+    "completedAt": "2026-08-21T06:54:50.812Z",
+    "requestCount": 10,
+    "dailyRemaining": 7379,
+    "minuteRemaining": 290,
+    "reserve": 100,
+    "stoppedReason": null,
+    "resolvedFixtureCount": 27,
+    "completedFixtureCount": 27,
+    "unresolvedPlayers": {
+      "m-2026-08-16-watford-southampton": [
+        {
+          "name": "菅原由勢",
+          "reason": "not_observed_in_fixture"
+        }
+      ]
+    },
+    "error": null,
+    "errorDetails": null
+  },
+  "security": {
+    "apiKeyPersisted": false,
+    "rawResponsesPersisted": false,
+    "latestOrScheduledFixturesRequested": false,
+    "scheduledFixturesRequested": false,
+    "unlistedFixturesPersisted": false,
+    "fixedManifestDateDiscoveryUsed": true,
+    "teamLastDiscoveryUsed": false
+  },
+  "teamResolutions": {
+    "arouca": {
+      "providerTeamId": 240,
+      "providerTeamName": "Arouca",
+      "search": "Arouca",
+      "method": "exact_team_search_alias",
+      "resolvedAt": "2026-08-21T06:31:03.561Z"
+    }
+  },
+  "coachResolutions": {
+    "735|2026-08-21": {
+      "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
+      "fixtureDate": "2026-08-21",
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
+    },
+    "735|2026-08-15": {
+      "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
+      "fixtureDate": "2026-08-15",
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
+    },
+    "735|2026-08-09": {
+      "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
+      "fixtureDate": "2026-08-09",
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
+    }
+  }
+}

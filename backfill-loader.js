@@ -298,6 +298,15 @@
   function ratingInputsSignature(record) {
     try { return JSON.stringify(record?.ratingInputs || {}); } catch { return ''; }
   }
+  function mergeRatingInputs(current, incoming) {
+    const out = { ...(current || {}) };
+    for (const [field, next] of Object.entries(incoming || {})) {
+      const previous = out[field];
+      if (next?.state === 'missing' && previous?.state === 'value') continue;
+      out[field] = next;
+    }
+    return out;
+  }
   function clearCachedRating(record) {
     const out = { ...record };
     for (const key of ['jfwRating','ratingVersion','ratingCoverage','ratingBreakdown','ratingStatus','ratingReason','ratingOpsVersion']) {
@@ -363,7 +372,22 @@
       );
       if (i >= 0) {
         const prev = D.playerMatchStats[i];
-        const merged = { ...prev, ...r };
+        const ratingInputs = mergeRatingInputs(prev.ratingInputs, r.ratingInputs);
+        const missingFields = [...new Set([...(prev.missingFields || []), ...(r.missingFields || [])])]
+          .filter(field => ratingInputs[field]?.state !== 'value');
+        const merged = {
+          ...prev,
+          ...r,
+          ratingInputs,
+          missingFields,
+          priorityFields: missingFields,
+          priorityUpdate: missingFields.length > 0,
+          providerIds: mergeProviderIds(prev.providerIds, r.providerIds),
+          providerRatings: {
+            ...(prev.providerRatings || {}),
+            ...(r.providerRatings || {}),
+          },
+        };
         r = ratingInputsSignature(prev) !== ratingInputsSignature(merged)
           ? clearCachedRating(merged)
           : merged;

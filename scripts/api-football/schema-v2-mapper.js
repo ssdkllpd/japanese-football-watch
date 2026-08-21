@@ -330,7 +330,7 @@ function lineupCoach(lineup, options) {
   const providerCoachId = coach?.id;
   const key = providerCoachId === null || providerCoachId === undefined ? null : String(providerCoachId);
   const photo = resolvePhoto('coach', providerCoachId, [
-    { url: coach?.photo, source: 'api_football_lineup' },
+    { url: coach?.photo, source: coach?.photoSource || 'api_football_lineup' },
     { url: key === null ? null : options?.coachPhotosByProviderId?.[key], source: 'api_football_coach_registry' },
   ]);
   const name = (key === null ? null : options?.coachNamesByProviderId?.[key]) || coach?.name || null;

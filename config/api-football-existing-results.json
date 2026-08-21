@@ -1,0 +1,314 @@
+{
+  "version": "1.0",
+  "season": "2026-27",
+  "timezone": "Asia/Tokyo",
+  "competitionIds": {
+    "スコットランド": 179,
+    "ポルトガル": 94,
+    "ベルギー": 144,
+    "エールディヴィジ": 88,
+    "チャンピオンシップ": 40,
+    "カラバオカップ": 48,
+    "UEFAチャンピオンズリーグ": 2,
+    "UEFA Conference League": 848,
+    "UEFA Europa League": 3
+  },
+  "fixtureDiscoveryGroups": [
+    {
+      "key": "celtic",
+      "search": "Celtic",
+      "aliases": ["Celtic"],
+      "providerTeamId": 247,
+      "matchIds": ["m-2026-08-03-celtic-dundee", "m-2026-08-09-kilmarnock-celtic", "m-2026-08-19-celtic-lask"]
+    },
+    {
+      "key": "arouca",
+      "search": "Arouca",
+      "aliases": ["Arouca", "FC Arouca"],
+      "matchIds": ["m-2026-08-08-vitoria-arouca", "m-2026-08-16-arouca-moreirense"]
+    },
+    {
+      "key": "stvv",
+      "search": "St Truiden",
+      "aliases": ["St. Truiden", "St Truiden", "Sint-Truiden", "St. Truidense VV"],
+      "providerTeamId": 735,
+      "matchIds": ["m-2026-08-08-stvv-lommel", "m-2026-08-14-cercle-stvv", "uel-2026-08-20-stvv-omonia"]
+    },
+    {
+      "key": "sparta-rotterdam",
+      "search": "Sparta Rotterdam",
+      "aliases": ["Sparta Rotterdam"],
+      "matchIds": ["m-2026-08-09-sparta-feyenoord", "m-2026-08-14-telstar-sparta"]
+    },
+    {
+      "key": "blackburn",
+      "search": "Blackburn",
+      "aliases": ["Blackburn", "Blackburn Rovers"],
+      "matchIds": ["m-2026-08-14-wolves-blackburn", "m-2026-08-08-burton-blackburn-cup"]
+    },
+    {
+      "key": "qpr",
+      "search": "Queens Park Rangers",
+      "aliases": ["QPR", "Queens Park Rangers"],
+      "matchIds": ["m-2026-08-15-portsmouth-qpr", "m-2026-08-08-qpr-millwall-cup"]
+    },
+    {
+      "key": "birmingham",
+      "search": "Birmingham",
+      "aliases": ["Birmingham", "Birmingham City"],
+      "matchIds": ["m-2026-08-15-sheffield-birmingham", "m-2026-08-08-swansea-birmingham-cup"]
+    },
+    {
+      "key": "genk",
+      "search": "Genk",
+      "aliases": ["Genk", "KRC Genk"],
+      "matchIds": ["m-2026-08-15-genk-westerlo", "m-2026-08-09-zulte-genk"]
+    },
+    {
+      "key": "feyenoord",
+      "search": "Feyenoord",
+      "aliases": ["Feyenoord"],
+      "matchIds": ["m-2026-08-16-feyenoord-go-ahead"]
+    },
+    {
+      "key": "southampton",
+      "search": "Southampton",
+      "aliases": ["Southampton"],
+      "matchIds": ["m-2026-08-16-watford-southampton", "m-2026-08-08-colchester-southampton-cup"]
+    },
+    {
+      "key": "az",
+      "search": "AZ Alkmaar",
+      "aliases": ["AZ Alkmaar", "AZ"],
+      "matchIds": ["m-2026-08-08-az-ado", "m-2026-08-15-utrecht-az"]
+    },
+    {
+      "key": "bristol-city",
+      "search": "Bristol City",
+      "aliases": ["Bristol City"],
+      "matchIds": ["m-2026-08-15-bristol-millwall", "m-2026-08-06-bristol-walsall-cup"]
+    },
+    {
+      "key": "westerlo",
+      "search": "Westerlo",
+      "aliases": ["KVC Westerlo", "Westerlo"],
+      "matchIds": ["m-2026-08-08-westerlo-union"]
+    },
+    {
+      "key": "motherwell",
+      "search": "Motherwell",
+      "aliases": ["Motherwell"],
+      "providerTeamId": 256,
+      "matchIds": ["uecl-2026-08-20-motherwell-freiburg"]
+    }
+  ],
+  "selection": {
+    "status": "verified",
+    "requiresScore": true,
+    "allowUnlistedMatches": false,
+    "description": "Only matches already stored by JFW with a verified final score may be requested."
+  },
+  "providerPlanConstraints": {
+    "plan": "pro",
+    "historicalFixtureIdDiscoveryEnabled": true,
+    "discoveryMode": "fixed_manifest_dates",
+    "knownFixtureIdsRemainFetchable": true
+  },
+  "fixtures": [
+    {
+      "matchId": "uecl-2026-08-20-motherwell-freiburg",
+      "providerFixtureId": 1623399,
+      "fixtureDate": "2026-08-21",
+      "homeAliases": ["Motherwell"],
+      "awayAliases": ["SC Freiburg", "Freiburg"]
+    },
+    {
+      "matchId": "uel-2026-08-20-stvv-omonia",
+      "providerFixtureId": 1623438,
+      "fixtureDate": "2026-08-21",
+      "homeAliases": ["St. Truiden", "St Truiden", "Sint-Truiden", "St. Truidense VV"],
+      "awayAliases": ["Omonia Nicosia", "Omonia", "Omonia FC"]
+    },
+    {
+      "matchId": "m-2026-08-19-celtic-lask",
+      "providerFixtureId": 1610923,
+      "fixtureDate": "2026-08-20",
+      "homeAliases": ["Celtic"],
+      "awayAliases": ["LASK Linz", "Lask Linz", "LASK"]
+    },
+    {
+      "matchId": "m-2026-08-16-arouca-moreirense",
+      "fixtureDate": "2026-08-17",
+      "homeAliases": ["Arouca", "FC Arouca"],
+      "awayAliases": ["Moreirense", "Moreirense FC"]
+    },
+    {
+      "matchId": "m-2026-08-16-feyenoord-go-ahead",
+      "fixtureDate": "2026-08-16",
+      "homeAliases": ["Feyenoord"],
+      "awayAliases": ["GO Ahead Eagles", "Go Ahead Eagles"]
+    },
+    {
+      "matchId": "m-2026-08-16-watford-southampton",
+      "fixtureDate": "2026-08-16",
+      "homeAliases": ["Watford"],
+      "awayAliases": ["Southampton"]
+    },
+    {
+      "matchId": "m-2026-08-15-sheffield-birmingham",
+      "fixtureDate": "2026-08-16",
+      "homeAliases": ["Sheffield Utd", "Sheffield United"],
+      "awayAliases": ["Birmingham", "Birmingham City"]
+    },
+    {
+      "matchId": "m-2026-08-15-genk-westerlo",
+      "fixtureDate": "2026-08-16",
+      "homeAliases": ["Genk", "KRC Genk"],
+      "awayAliases": ["KVC Westerlo", "Westerlo"]
+    },
+    {
+      "matchId": "m-2026-08-15-utrecht-az",
+      "fixtureDate": "2026-08-16",
+      "homeAliases": ["Utrecht", "FC Utrecht"],
+      "awayAliases": ["AZ Alkmaar", "AZ"]
+    },
+    {
+      "matchId": "m-2026-08-15-portsmouth-qpr",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Portsmouth"],
+      "awayAliases": ["QPR", "Queens Park Rangers"]
+    },
+    {
+      "matchId": "m-2026-08-15-bristol-millwall",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Bristol City"],
+      "awayAliases": ["Millwall"]
+    },
+    {
+      "matchId": "m-2026-08-14-telstar-sparta",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Telstar", "SC Telstar"],
+      "awayAliases": ["Sparta Rotterdam"]
+    },
+    {
+      "matchId": "m-2026-08-14-wolves-blackburn",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Wolves", "Wolverhampton Wanderers"],
+      "awayAliases": ["Blackburn", "Blackburn Rovers"]
+    },
+    {
+      "matchId": "m-2026-08-14-cercle-stvv",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Cercle Brugge", "Cercle Brugge KSV"],
+      "awayAliases": ["St. Truiden", "St Truiden", "Sint-Truiden", "St. Truidense VV"]
+    },
+    {
+      "matchId": "m-2026-08-09-kilmarnock-celtic",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["Kilmarnock"],
+      "awayAliases": ["Celtic"]
+    },
+    {
+      "matchId": "m-2026-08-09-zulte-genk",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["Zulte Waregem", "SV Zulte Waregem"],
+      "awayAliases": ["Genk", "KRC Genk"]
+    },
+    {
+      "matchId": "m-2026-08-09-sparta-feyenoord",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["Sparta Rotterdam"],
+      "awayAliases": ["Feyenoord"]
+    },
+    {
+      "matchId": "m-2026-08-08-vitoria-arouca",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["Guimaraes", "Vitoria Guimaraes", "Vitoria SC"],
+      "awayAliases": ["Arouca", "FC Arouca"]
+    },
+    {
+      "matchId": "m-2026-08-08-stvv-lommel",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["St. Truiden", "St Truiden", "Sint-Truiden", "St. Truidense VV"],
+      "awayAliases": ["Lommel United", "Lommel", "Lommel SK"]
+    },
+    {
+      "matchId": "m-2026-08-08-westerlo-union",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["KVC Westerlo", "Westerlo"],
+      "awayAliases": ["Union St. Gilloise", "Union Saint-Gilloise", "Union SG"]
+    },
+    {
+      "matchId": "m-2026-08-08-az-ado",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["AZ Alkmaar", "AZ"],
+      "awayAliases": ["ADO Den Haag", "ADO"]
+    },
+    {
+      "matchId": "m-2026-08-08-colchester-southampton-cup",
+      "fixtureDate": "2026-08-09",
+      "homeAliases": ["Colchester", "Colchester United"],
+      "awayAliases": ["Southampton"]
+    },
+    {
+      "matchId": "m-2026-08-08-qpr-millwall-cup",
+      "fixtureDate": "2026-08-08",
+      "homeAliases": ["QPR", "Queens Park Rangers"],
+      "awayAliases": ["Millwall"]
+    },
+    {
+      "matchId": "m-2026-08-08-swansea-birmingham-cup",
+      "fixtureDate": "2026-08-08",
+      "homeAliases": ["Swansea", "Swansea City"],
+      "awayAliases": ["Birmingham", "Birmingham City"]
+    },
+    {
+      "matchId": "m-2026-08-08-burton-blackburn-cup",
+      "fixtureDate": "2026-08-08",
+      "homeAliases": ["Burton Albion", "Burton"] ,
+      "awayAliases": ["Blackburn", "Blackburn Rovers"]
+    },
+    {
+      "matchId": "m-2026-08-06-bristol-walsall-cup",
+      "fixtureDate": "2026-08-07",
+      "homeAliases": ["Bristol City"],
+      "awayAliases": ["Walsall"]
+    },
+    {
+      "matchId": "m-2026-08-03-celtic-dundee",
+      "fixtureDate": "2026-08-04",
+      "homeAliases": ["Celtic"],
+      "awayAliases": ["Dundee", "Dundee FC"]
+    }
+  ],
+  "playerAliases": {
+    "三戸舜介": ["Shunsuke Mito", "S. Mito"],
+    "上田綺世": ["Ayase Ueda", "A. Ueda"],
+    "伊東純也": ["Junya Ito", "J. Ito"],
+    "坂本一彩": ["Issei Sakamoto", "I. Sakamoto"],
+    "大橋祐紀": ["Yuki Ohashi", "Y. Ohashi"],
+    "小久保玲央ブライアン": ["Leo Kokubo", "Leo Brian Kokubo", "L. Kokubo"],
+    "岩田智輝": ["Tomoki Iwata", "T. Iwata"],
+    "市原吏音": ["Rion Ichihara", "R. Ichihara"],
+    "平河悠": ["Yu Hirakawa", "Y. Hirakawa"],
+    "後藤啓介": ["Keisuke Goto", "K. Goto"],
+    "斉藤光毅": ["Koki Saito", "K. Saito"],
+    "新川志音": ["Shion Shinkawa", "S. Shinkawa"],
+    "旗手怜央": ["Reo Hatate", "R. Hatate"],
+    "木村誠二": ["Seiji Kimura", "S. Kimura"],
+    "松木玖生": ["Kuryu Matsuki", "K. Matsuki"],
+    "松澤海斗": ["Kaito Matsuzawa", "K. Matsuzawa"],
+    "森下龍矢": ["Ryoya Morishita", "R. Morishita"],
+    "横山歩夢": ["Ayumu Yokoyama", "A. Yokoyama"],
+    "毎熊晟矢": ["Seiya Maikuma", "S. Maikuma"],
+    "渡辺剛": ["Tsuyoshi Watanabe", "T. Watanabe"],
+    "畑大雅": ["Taiga Hata", "T. Hata"],
+    "石渡ネルソン": ["Nelson Ishiwatari", "N. Ishiwatari"],
+    "福井太智": ["Taichi Fukui", "T. Fukui"],
+    "荒木遼太郎": ["Ryotaro Araki", "R. Araki"],
+    "菅原由勢": ["Yukinari Sugawara", "Y. Sugawara"],
+    "谷口彰悟": ["Shogo Taniguchi", "S. Taniguchi"],
+    "鈴木唯人": ["Yuito Suzuki", "Y. Suzuki"],
+    "齋藤俊輔": ["Shunsuke Saito", "S. Saito"]
+  }
+}
