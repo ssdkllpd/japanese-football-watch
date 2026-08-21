@@ -276,3 +276,20 @@
 
   start();
 })();
+
+(() => {
+  'use strict';
+  if (!document.querySelector('link[data-jfw-theme]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'theme.css';
+    link.dataset.jfwTheme = 'true';
+    document.head.appendChild(link);
+  }
+  if (!document.querySelector('script[data-jfw-theme]')) {
+    const script = document.createElement('script');
+    script.src = 'theme.js';
+    script.dataset.jfwTheme = 'true';
+    document.body.appendChild(script);
+  }
+})();

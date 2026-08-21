@@ -26,6 +26,7 @@ jobs:
           node --check formation-view.js
           node --check jfw-rating.js
           node --check match-detail.js
+          node --check theme.js
           node --check scripts/api-football/backfill-existing-results.js
           node --check scripts/api-football/client.js
           node --check scripts/api-football/field-inventory.js
