@@ -108,6 +108,11 @@ export function competitionDateIndexKey(competitionId, date) {
   return `football/v2/indexes/competition/${competitionId}/date-jst/${date}.json`;
 }
 
+export function standingsLatestKey(competitionId, seasonId) {
+  if (!competitionId || !seasonId) throw new Error('Competition and season IDs are required.');
+  return `football/v2/competitions/${competitionId}/seasons/${seasonId}/standings/latest.json`;
+}
+
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -202,6 +207,17 @@ async function handle(request, env) {
     return r2JsonObject(
       env,
       competitionDateIndexKey(decodeURIComponent(competitionDateMatch[1]), competitionDateMatch[2]),
+    );
+  }
+
+  const standingsMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/seasons\/([^/]+)\/standings$/);
+  if (standingsMatch) {
+    return r2JsonObject(
+      env,
+      standingsLatestKey(
+        decodeURIComponent(standingsMatch[1]),
+        decodeURIComponent(standingsMatch[2]),
+      ),
     );
   }
 

@@ -20,6 +20,7 @@ jobs:
           node-version: '22'
       - name: Syntax check runtime scripts
         run: |
+          node --check app-v2.js
           node --check backfill-loader.js
           node --check clubs.js
           node --check favorites.js
@@ -36,6 +37,7 @@ jobs:
           node --check scripts/v2/fixture-contract.js
           node --check scripts/v2/fetch-fixture-vertical-slice.js
           node --check scripts/v2/fetch-date-feed.js
+          node --check scripts/v2/fetch-standings.js
           node --check scripts/v2/merge-date-index.js
           node --check worker/index.mjs
       - name: Run tests

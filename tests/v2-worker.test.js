@@ -71,6 +71,10 @@ test('R2 lookup keys are deterministic', async () => {
     worker.competitionDateIndexKey('af:competition:39', '2026-08-22'),
     'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
   );
+  assert.equal(
+    worker.standingsLatestKey('af:competition:39', 'af:season:39:2026'),
+    'football/v2/competitions/af:competition:39/seasons/af:season:39:2026/standings/latest.json',
+  );
 });
 
 test('competition date route reads the competition-scoped R2 index', async () => {
@@ -95,4 +99,30 @@ test('competition date route reads the competition-scoped R2 index', async () =>
   const response = await worker.default.fetch(request, env);
   assert.equal(response.status, 200);
   assert.deepEqual(requested, ['football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json']);
+});
+
+test('standings route reads the latest competition-season snapshot', async () => {
+  const worker = await loadWorker();
+  const requested = [];
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    FOOTBALL_DATA: {
+      async get(key) {
+        requested.push(key);
+        return {
+          body: JSON.stringify({ groups: [] }),
+          httpMetadata: { contentType: 'application/json' },
+        };
+      },
+    },
+  };
+  const request = new Request(
+    'https://worker.example/api/v2/competitions/af%3Acompetition%3A39/seasons/af%3Aseason%3A39%3A2026/standings',
+    { headers: { origin: 'https://example.github.io' } },
+  );
+  const response = await worker.default.fetch(request, env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(requested, [
+    'football/v2/competitions/af:competition:39/seasons/af:season:39:2026/standings/latest.json',
+  ]);
 });

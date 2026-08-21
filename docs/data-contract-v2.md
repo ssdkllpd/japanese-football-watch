@@ -357,10 +357,25 @@ Initial routes:
 GET /api/v2/live
 GET /api/v2/fixtures/{fixtureId}
 GET /api/v2/dates/{YYYY-MM-DD}
+GET /api/v2/competitions/{competitionId}/dates/{YYYY-MM-DD}
+GET /api/v2/competitions/{competitionId}/seasons/{seasonId}/standings
 GET /health
 ```
 
 R2 is private from the browser. Worker origin checks and a soft per-isolate abuse guard are defense in depth. Production deployment should also use Cloudflare's account/zone rate limiting configuration rather than treating in-memory Worker counters as a globally consistent limiter.
+
+### Standings snapshots
+
+Standings are normalized from API-Football `/standings` by `scripts/v2/fetch-standings.js`. Competition and season identity are provider-native. Each row preserves explicit provider zeroes while missing rank, points, goal difference and record fields remain `null`.
+
+Every ingestion writes both an immutable timestamped snapshot and the latest object consumed by the Worker:
+
+```text
+football/v2/competitions/{competitionId}/seasons/{seasonId}/standings/snapshots/{timestamp}.json
+football/v2/competitions/{competitionId}/seasons/{seasonId}/standings/latest.json
+```
+
+The manual `.github/workflows/v2-standings.yml` workflow accepts one API-Football league ID and one provider season. It publishes both objects without storing provider responses in Git.
 
 ## 15. Fixture lifecycle
 
