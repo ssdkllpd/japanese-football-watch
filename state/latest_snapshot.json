@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-21T14:07:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, and Premier League Japanese-player roster corrections.",
+  "updatedAt": "2026-08-21T15:59:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, and Ko Itakura's confirmed return to Borussia Monchengladbach.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "6f73d31facf886ca844ba225c8b2e77e59cbee25",
+    "blobSha": "f52dba455d744ae3fb2c23c11c84f745aed7ce8b",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -22,7 +22,8 @@
       "rating-safety-fixes-2026-08-20.json",
       "latest-2026-08-21.json",
       "latest-2026-08-21-2.json",
-      "latest-2026-08-21-3.json"
+      "latest-2026-08-21-3.json",
+      "latest-2026-08-21-4.json"
     ]
   },
   "runtime": [
@@ -57,6 +58,7 @@
     "noNewRatingComputedFromIncompleteDisciplineInputs": true,
     "siteMatchDetailConsumesPlayerMatchStats": true,
     "premierLeagueRosterCorrectionsLoadThroughPlayerUpdates": true,
+    "bundesligaItakuraTransferLoadsThroughPlayerUpdates": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -64,14 +66,16 @@
     "STVV Japanese participation recorded from the available match report: Leo Brian Kokubo, Shogo Taniguchi, Nelson Ishiwatari and Kaito Matsuzawa started; Ryotaro Araki entered at 61 minutes; Ishiwatari and Matsuzawa left at 61.",
     "Motherwell 1-3 Freiburg records refined: Keisuke Goto entered at 80 minutes and scored at 90+6; Yuito Suzuki started and left at 74 minutes.",
     "Premier League roster correction: Hidemasa Morita is registered with Hull City, Tatsuhiro Sakamoto with Coventry City, and Takehiro Tomiyasu with Crystal Palace for 2026-27; all three were missing from the integrated player list.",
+    "Ko Itakura transferred from Ajax back to Borussia Monchengladbach on 2026-08-20; the Bundesliga membership is recorded as a transfer while preserving Ajax/Eredivisie as the previous membership.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "J1 remains excluded from this repository in accordance with workflow_policy v10."
+    "J1 remains excluded from this repository in accordance with workflow_policy v13."
   ],
   "declaredCoverageGaps": [
     "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
+    "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v13 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
