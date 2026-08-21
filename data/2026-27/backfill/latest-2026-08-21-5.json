@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-21 19:00 JST",
+  "sources": {
+    "brighton-mitoma-surgery-20260525": {
+      "id": "brighton-mitoma-surgery-20260525",
+      "name": "Brighton & Hove Albion official injury update",
+      "type": "club_official_injury_update",
+      "url": "https://www.brightonandhovealbion.com/media-article/successful-surgery-for-mitoma",
+      "retrievedAt": "2026-08-21T19:00:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["injuryType", "surgeryStatus"]
+    },
+    "guardian-brighton-mitoma-status-20260821": {
+      "id": "guardian-brighton-mitoma-status-20260821",
+      "name": "The Guardian current Brighton squad report",
+      "type": "reputable_secondary_current_availability",
+      "url": "https://www.theguardian.com/football/2026/aug/20/liverpool-see-50m-bid-for-yankuba-minteh-rejected-by-brighton",
+      "retrievedAt": "2026-08-21T19:00:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["currentAvailability"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "三笘薫",
+      "club": "ブライトン",
+      "league": "プレミアリーグ",
+      "pos": "FW/MF",
+      "status": "ハムストリング手術後のリハビリ継続・2026-08-21時点で負傷離脱扱い",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-27プレミアリーグ開幕前",
+      "stats": {
+        "apps": 0,
+        "starts": 0,
+        "minutes": 0,
+        "goals": 0,
+        "assists": 0
+      },
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": [
+        "brighton-mitoma-surgery-20260525",
+        "guardian-brighton-mitoma-status-20260821"
+      ]
+    }
+  ]
+}

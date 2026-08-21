@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updated": "2026-08-21 15:59 JST",
+  "updated": "2026-08-21 19:00 JST",
   "fragments": [
     "core.json",
     "scotland-portugal.json",
@@ -16,6 +16,7 @@
     "latest-2026-08-21-2.json",
     "latest-2026-08-21-3.json",
     "latest-2026-08-21-4.json",
-    "api-football-existing-results.json"
+    "api-football-existing-results.json",
+    "latest-2026-08-21-5.json"
   ]
 }

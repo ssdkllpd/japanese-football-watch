@@ -12,6 +12,7 @@ function createHarness() {
       this.tagName = tagName;
       this.children = [];
       this._html = '';
+      this.dataset = {};
     }
 
     set id(value) {
@@ -60,12 +61,24 @@ function createHarness() {
     { name: '上田綺世', club: 'フェイエノールト', league: 'エールディヴィジ', stats: { goals: 2, assists: null } }
   ];
   const favoriteData = { players: [], clubs: [{ name: 'STVV' }] };
+  const head = new Element('head');
+  const body = new Element('body');
   const context = {
     console,
     document: {
-      head: new Element('head'),
+      head,
+      body,
       createElement: tag => new Element(tag),
-      getElementById: id => elements.get(id) || null
+      getElementById: id => elements.get(id) || null,
+      querySelector: selector => {
+        if (selector === 'link[data-jfw-theme]') {
+          return head.children.find(child => child.tagName === 'link' && child.dataset?.jfwTheme === 'true') || null;
+        }
+        if (selector === 'script[data-jfw-theme]') {
+          return body.children.find(child => child.tagName === 'script' && child.dataset?.jfwTheme === 'true') || null;
+        }
+        return null;
+      }
     },
     window: {
       JFWFavorites: {
