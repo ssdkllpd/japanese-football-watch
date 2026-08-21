@@ -1,0 +1,18 @@
+name = "jfw-football-data-v2"
+main = "index.mjs"
+compatibility_date = "2026-08-21"
+
+# Copy this file to worker/wrangler.toml only after the real Cloudflare
+# resources exist. Do not commit API_FOOTBALL_KEY; set it with
+# `wrangler secret put API_FOOTBALL_KEY` or CI secrets.
+
+[[r2_buckets]]
+binding = "FOOTBALL_DATA"
+bucket_name = "REPLACE_WITH_R2_BUCKET"
+
+[vars]
+APP_ORIGINS = "https://REPLACE_WITH_PAGES_ORIGIN"
+ALLOW_NO_ORIGIN = "false"
+SOFT_RATE_LIMIT_PER_MINUTE = "120"
+# Comma-separated API-Football competition IDs. Empty means all live fixtures.
+LIVE_COMPETITION_IDS = ""
