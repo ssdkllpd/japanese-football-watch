@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-21 10:09 JST",
+  "sources": {
+    "pl-fpl-20260727": {"id":"pl-fpl-20260727","name":"Premier League official FPL additions","type":"league_official_roster","url":"https://www.premierleague.com/en/news/4681474/see-the-prices-of-new-players-added-to-202627-fantasy","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","position"]},
+    "parma-20260809": {"id":"parma-20260809","name":"Parma Calcio official squad call-up","type":"club_official_roster","url":"https://www.parmacalcio1913.com/news/pre-season-2026-27-trofeo-doppio-malto-i-convocati-per-parma-sampdoria/","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","squad"]},
+    "hac-mizuta": {"id":"hac-mizuta","name":"Le Havre AC official signing announcement - Kaito Mizuta","type":"club_official_transfer","url":"https://hac.football/fr/posts/kaito-mizuta-debarque-au-hac","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","position"]},
+    "hac-nakamura": {"id":"hac-nakamura","name":"Le Havre AC official signing announcement - Sota Nakamura","type":"club_official_transfer","url":"https://hac.football/fr/posts/sota-nakamura-nouveau-cielmarine","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","position"]},
+    "stvv-ito": {"id":"stvv-ito","name":"STVV Japan official player profile - Ryotaro Ito","type":"club_official_roster","url":"https://stvv.jp/team-member/ryotaro-ito/","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","position"]},
+    "bundesliga-sugawara": {"id":"bundesliga-sugawara","name":"Bundesliga official player profile - Yukinari Sugawara","type":"league_official_roster","url":"https://www.bundesliga.com/en/player/yukinari-sugawara","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["club","position","appearances","goals","assists"]},
+    "uefa-motherwell-freiburg": {"id":"uefa-motherwell-freiburg","name":"UEFA Conference League official fixture","type":"competition_official_match","url":"https://www.uefa.com/uefaconferenceleague/match/2049251--motherwell-vs-freiburg/lineups/","retrievedAt":"2026-08-21T10:09:00+09:00","priority":1,"exhaustiveFor":["competition","fixture"]},
+    "motherwell-freiburg-report": {"id":"motherwell-freiburg-report","name":"Motherwell 1-3 Freiburg match report","type":"match_report","url":"https://www.thescottishsun.co.uk/sport/16711998/motherwell-freiburg-conference-league-fir-park-var-moorman-red/","retrievedAt":"2026-08-21T10:09:00+09:00","priority":2,"exhaustiveFor":["result","goalscorers"]}
+  },
+  "playerUpdates": [
+    {"name":"守田英正","league":"プレミアリーグ","club":"ハル・シティ","pos":"MF","status":"開幕前・PL公式登録確認","rating":5,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0},"priorityUpdate":false,"sourceIds":["pl-fpl-20260727"]},
+    {"name":"鈴木彩艶","league":"セリエA","club":"パルマ","pos":"GK","status":"パルマ公式招集確認・リーグ開幕前","rating":5,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0,"cleanSheets":0},"priorityUpdate":false,"sourceIds":["parma-20260809"]},
+    {"name":"水多海斗","league":"リーグ・アン","club":"ル・アーヴル","pos":"MF/FW","status":"加入公式発表済み・開幕前","rating":4,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0},"priorityUpdate":false,"sourceIds":["hac-mizuta"]},
+    {"name":"中村草太","league":"リーグ・アン","club":"ル・アーヴル","pos":"FW/MF","status":"加入公式発表済み・開幕前","rating":4,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0},"priorityUpdate":false,"sourceIds":["hac-nakamura"]},
+    {"name":"瀬古歩夢","league":"リーグ・アン","club":"ル・アーヴル","pos":"DF/MF","status":"ル・アーヴル所属確認・開幕前","rating":4,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0,"cleanSheets":0},"priorityUpdate":false,"sourceIds":["hac-nakamura"]},
+    {"name":"伊藤涼太郎","league":"ベルギー","club":"STVV","pos":"MF","status":"STVV公式選手ページ掲載・出場状況再確認対象","rating":4,"statsStatus":"unverified","statsAsOf":"第2節終了時点で個人出場記録未再確認","stats":{},"priorityUpdate":true,"priorityFields":["appearance","start","bench","minutes","goals","assists"],"sourceIds":["stvv-ito"]},
+    {"name":"菅原由勢","league":"ブンデスリーガ","club":"ヴェルダー・ブレーメン","pos":"DF","status":"ブンデス公式2026/27登録確認・開幕前","rating":4,"statsStatus":"verified","statsAsOf":"開幕前","stats":{"apps":0,"starts":0,"minutes":0,"goals":0,"assists":0,"cleanSheets":0},"priorityUpdate":false,"sourceIds":["bundesliga-sugawara"]},
+    {"name":"後藤啓介","league":"ブンデスリーガ","club":"フライブルク","pos":"FW","status":"公式戦出場・Conference League PO第1戦で1G","rating":5,"statsStatus":"partial","statsAsOf":"2026-08-20公式戦","priorityUpdate":true,"priorityFields":["minutes","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"sourceIds":["uefa-motherwell-freiburg","motherwell-freiburg-report"]},
+    {"name":"鈴木唯人","league":"ブンデスリーガ","club":"フライブルク","pos":"MF/FW","status":"Conference League PO第1戦出場確認","rating":4,"statsStatus":"partial","statsAsOf":"2026-08-20公式戦","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"sourceIds":["uefa-motherwell-freiburg"]}
+  ],
+  "matchUpdates": [
+    {"matchId":"uecl-2026-08-20-motherwell-freiburg","league":"UEFA Conference League","round":"Play-off 1st leg","ko":"2026-08-20 18:30 CEST","match":"マザーウェル 1-3 フライブルク","players":"鈴木唯人 / 後藤啓介","appearance":"鈴木唯人、後藤啓介の出場を確認。後藤が終盤に3点目。","note":"フライブルクが敵地で3-1勝利。後藤啓介がアディショナルタイムに公式戦ゴール。","status":"verified","addIfMissing":true,"addToTopMatches":true,"rank":1,"reason":"後藤啓介が途中出場から公式戦初戦でゴール。","rating":"S+","sourceIds":["uefa-motherwell-freiburg","motherwell-freiburg-report"]}
+  ],
+  "playerMatchStats": [
+    {"recordId":"uecl-2026-08-20-motherwell-freiburg-goto","matchId":"uecl-2026-08-20-motherwell-freiburg","playerName":"後藤啓介","player":"後藤啓介","ratingPosition":"FW","appearance":true,"start":false,"bench":true,"values":{"goals":1},"missingFields":["minutes","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"sourceIds":["motherwell-freiburg-report","uefa-motherwell-freiburg"],"priorityUpdate":true,"priorityFields":["minutes","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]},
+    {"recordId":"uecl-2026-08-20-motherwell-freiburg-suzuki","matchId":"uecl-2026-08-20-motherwell-freiburg","playerName":"鈴木唯人","player":"鈴木唯人","ratingPosition":"AM","appearance":true,"missingFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"],"sourceIds":["uefa-motherwell-freiburg"],"priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]}
+  ],
+  "gaResultsAdd": [
+    {"matchId":"uecl-2026-08-20-motherwell-freiburg","ko":"2026-08-20 18:30 CEST","league":"UEFA Conference League","match":"マザーウェル 1-3 フライブルク","player":"後藤啓介","club":"フライブルク","goals":1,"assists":null,"status":"verified_goal_only","sourceIds":["motherwell-freiburg-report"]}
+  ]
+}
