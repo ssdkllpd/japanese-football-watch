@@ -1,0 +1,123 @@
+.entity-row.is-link {
+  cursor: pointer;
+}
+
+.entity-row.is-link:hover {
+  background: var(--panel2);
+}
+
+.competition-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.competition-hero > img,
+.competition-placeholder {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.competition-placeholder {
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--panel2);
+  font-size: 24px;
+}
+
+.competition-hero h2 {
+  margin: 3px 0 0;
+  font-size: 17px;
+}
+
+.competition-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 9px 0;
+}
+
+.competition-summary > div {
+  display: grid;
+  place-items: center;
+  padding: 9px 4px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel);
+}
+
+.competition-summary strong {
+  font-size: 16px;
+}
+
+.competition-summary span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.standings-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.standings-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 34px 38px 42px;
+  align-items: center;
+  gap: 5px;
+  min-height: 42px;
+  padding: 5px 8px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  font-size: 10px;
+  text-align: center;
+}
+
+.standings-row:first-child {
+  border-top: 0;
+}
+
+.standings-head {
+  min-height: 30px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.standings-team {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  text-align: left;
+}
+
+.standings-team img {
+  flex: 0 0 auto;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+}
+
+.standings-team b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.standings-rank {
+  color: var(--muted);
+  font-weight: 900;
+}

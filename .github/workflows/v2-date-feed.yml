@@ -1,0 +1,92 @@
+name: V2 Date Feed
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: JST date to ingest (YYYY-MM-DD)
+        required: true
+        type: string
+      league:
+        description: Optional API-Football league ID
+        required: false
+        type: string
+      season:
+        description: Optional API-Football season value
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  ingest-date:
+    runs-on: ubuntu-latest
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required secrets and variables
+        run: |
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY secret is required'; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN secret is required'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID secret is required'; exit 1; }
+          test -n "$R2_BUCKET" || { echo 'R2_BUCKET repository variable is required'; exit 1; }
+
+      - name: Build generic JST date feed
+        shell: bash
+        run: |
+          args=(--date "${{ inputs.date }}" --out .tmp/v2/date-feed)
+          if [ -n "${{ inputs.league }}" ]; then args+=(--league "${{ inputs.league }}"); fi
+          if [ -n "${{ inputs.season }}" ]; then args+=(--season "${{ inputs.season }}"); fi
+          node scripts/v2/fetch-date-feed.js "${args[@]}"
+
+      - name: Merge and publish date indexes
+        shell: bash
+        run: |
+          mkdir -p .tmp/v2/r2-merge
+          jq -c '.r2Objects[] | select(.merge == "date_index")' .tmp/v2/date-feed/manifest.json | while IFS= read -r item; do
+            key=$(jq -r '.key' <<<"$item")
+            file=$(jq -r '.file' <<<"$item")
+            token=$(printf '%s' "$key" | sha256sum | cut -d' ' -f1)
+            current=".tmp/v2/r2-merge/current-$token.json"
+            merged=".tmp/v2/r2-merge/merged-$token.json"
+            rm -f "$current" "$merged"
+            npx --yes wrangler@4 r2 object get "$R2_BUCKET/$key" --file "$current" --remote || true
+            if [ -s "$current" ]; then
+              node scripts/v2/merge-date-index.js "$current" ".tmp/v2/date-feed/$file" "$merged"
+            else
+              node scripts/v2/merge-date-index.js - ".tmp/v2/date-feed/$file" "$merged"
+            fi
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" --file "$merged" --content-type application/json --remote
+          done
+
+      - name: Publish summary fixture bundles and pointers
+        shell: bash
+        run: |
+          jq -c '.r2Objects[] | select(.merge != "date_index")' .tmp/v2/date-feed/manifest.json | while IFS= read -r item; do
+            key=$(jq -r '.key' <<<"$item")
+            file=$(jq -r '.file' <<<"$item")
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" --file ".tmp/v2/date-feed/$file" --content-type application/json --remote
+          done
+
+      - name: Date feed summary
+        run: |
+          jq '{date, fixtureCount, competitionCount, query, quota}' .tmp/v2/date-feed/manifest.json
+
+      - name: Upload normalized date feed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-date-feed-${{ inputs.date }}
+          path: .tmp/v2/date-feed
+          if-no-files-found: error

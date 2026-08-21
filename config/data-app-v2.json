@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "mode": "vertical_slice",
+  "provider": {
+    "name": "api-football",
+    "apiVersion": "v3",
+    "generalIdentity": "provider_native",
+    "idPrefix": "af"
+  },
+  "time": {
+    "canonicalFixtureTime": "UTC",
+    "productTimeZone": "Asia/Tokyo",
+    "dateIndex": "JST"
+  },
+  "storage": {
+    "machineFactsCanonicalStore": "cloudflare_r2",
+    "r2Prefix": "football/v2",
+    "r2BrowserDirectAccess": false,
+    "hotCache": "cloudflare_kv",
+    "liveCache": "cloudflare_cache_api",
+    "gitStoresMachineFacts": false,
+    "gitStoresManualCorrections": true
+  },
+  "live": {
+    "enabled": true,
+    "mode": "demand_driven",
+    "cacheTtlSeconds": 60,
+    "workerResponsibility": [
+      "api_key_secrecy",
+      "origin_restriction",
+      "soft_rate_limit",
+      "cache",
+      "live_fixture_dto_projection",
+      "r2_delivery"
+    ],
+    "workerMustNotPerform": [
+      "full_normalization",
+      "reconciliation",
+      "jfw_rating"
+    ]
+  },
+  "finalization": {
+    "liveAndFinalizationAreSeparate": true,
+    "missingFinalizedFixtureReconcileHours": 6,
+    "eligibleAfterKickoffHours": 3,
+    "states": [
+      "scheduled",
+      "live",
+      "provisional_final",
+      "finalized",
+      "needs_review"
+    ]
+  },
+  "identity": {
+    "general": "api_football_provider_id",
+    "tracking": "provider_independent_jfw_player_id",
+    "generalExamples": [
+      "af:competition:39",
+      "af:season:39:2026",
+      "af:fixture:123456",
+      "af:team:40",
+      "af:player:1942"
+    ]
+  },
+  "provenance": {
+    "defaultGranularity": "record",
+    "fieldOverrides": "sparse",
+    "presence": [
+      "present",
+      "not_fetched",
+      "provider_missing",
+      "not_applicable"
+    ],
+    "verification": [
+      "verified",
+      "provider",
+      "legacy_unverified"
+    ],
+    "issues": [
+      "stale",
+      "conflict"
+    ]
+  }
+}

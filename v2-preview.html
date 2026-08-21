@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Football Data v2 Preview</title>
+<style>
+:root{color-scheme:dark;--bg:#080c12;--surface:#121820;--surface2:#18212b;--line:#27313d;--text:#f5f7fa;--muted:#98a4b3;--accent:#45d483;--live:#ff4f64}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}.app{max-width:760px;margin:auto;padding:14px 12px 48px}.top{position:sticky;top:0;z-index:5;background:#080c12ee;backdrop-filter:blur(10px);padding:8px 0 12px}.title{font-weight:900;font-size:20px}.sub{font-size:11px;color:var(--muted);margin-top:3px}.controls{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}.controls input,.controls button{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:10px;padding:10px}.controls .api{grid-column:1/-1}.controls button{font-weight:800;cursor:pointer}.notice,.card{border:1px solid var(--line);background:var(--surface);border-radius:13px;padding:12px;margin:10px 0}.notice{color:var(--muted);font-size:12px}.competition{margin-top:16px}.competition h2{font-size:13px;margin:0 0 7px;color:#c8d1dc}.fixture{display:grid;grid-template-columns:52px 1fr auto;gap:9px;align-items:center;border-top:1px solid #ffffff0b;padding:10px 0;cursor:pointer}.fixture:first-child{border-top:0}.time{font-size:11px;color:var(--muted)}.teams{min-width:0}.team{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0}.score{font-weight:900}.status{font-size:10px;border-radius:999px;padding:4px 6px;background:var(--surface2);color:var(--muted)}.status.live{background:#52212a;color:#ffb0ba}.detailHead{display:flex;justify-content:space-between;gap:10px}.back{border:0;background:transparent;color:var(--accent);font-weight:800;cursor:pointer}.pitch{position:relative;width:min(100%,420px);aspect-ratio:2/3;margin:12px auto;border:2px solid #dffff099;border-radius:10px;background:repeating-linear-gradient(0deg,#187747 0,#187747 11.11%,#147040 11.11%,#147040 22.22%);overflow:hidden}.pitch:before{content:"";position:absolute;inset:4%;border:1px solid #e9fff899}.player{position:absolute;width:58px;transform:translate(-50%,-50%);text-align:center;font-size:8px;font-weight:800;text-shadow:0 1px 2px #000}.disc{display:grid;place-items:center;width:32px;height:32px;margin:auto;border-radius:50%;background:#102b45;border:2px solid #e8fff7}.estimate{display:inline-block;margin-left:6px;border:1px solid #f5b94266;color:#f5b942;border-radius:999px;padding:2px 5px;font-size:8px}.events{font-size:11px}.event{display:flex;gap:8px;padding:6px 0;border-top:1px solid #ffffff0b}.muted{color:var(--muted)}.hidden{display:none}@media(min-width:700px){.app{padding-top:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="title">Football Data v2 Preview</div>
+    <div class="sub">1試合 vertical slice / General Core の確認用。日本人registryに依存しません。</div>
+    <div class="controls">
+      <input id="apiBase" class="api" placeholder="Worker base URL 例: https://example.workers.dev">
+      <input id="dateInput" type="date">
+      <button id="loadBtn" type="button">読み込む</button>
+    </div>
+  </div>
+  <div id="message" class="notice">Worker URLと日付を指定すると、R2のJST日付indexを読み込みます。</div>
+  <main id="listView"></main>
+  <main id="detailView" class="hidden"></main>
+</div>
+<script src="formation-view.js"></script>
+<script src="v2-preview.js"></script>
+</body>
+</html>

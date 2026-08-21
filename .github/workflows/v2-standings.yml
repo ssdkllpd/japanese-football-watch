@@ -1,0 +1,68 @@
+name: V2 Standings
+
+on:
+  workflow_dispatch:
+    inputs:
+      league:
+        description: API-Football league ID
+        required: true
+        type: string
+      season:
+        description: API-Football season value
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  ingest-standings:
+    runs-on: ubuntu-latest
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required secrets and variables
+        run: |
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY secret is required'; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN secret is required'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID secret is required'; exit 1; }
+          test -n "$R2_BUCKET" || { echo 'R2_BUCKET repository variable is required'; exit 1; }
+
+      - name: Fetch and normalize standings
+        run: |
+          node scripts/v2/fetch-standings.js \
+            --league "${{ inputs.league }}" \
+            --season "${{ inputs.season }}" \
+            --out .tmp/v2/standings
+
+      - name: Publish standings snapshot and latest object
+        shell: bash
+        run: |
+          jq -c '.r2Objects[]' .tmp/v2/standings/manifest.json | while IFS= read -r item; do
+            key=$(jq -r '.key' <<<"$item")
+            file=$(jq -r '.file' <<<"$item")
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" \
+              --file ".tmp/v2/standings/$file" --content-type application/json --remote
+          done
+
+      - name: Standings summary
+        run: |
+          jq '{competitionId, seasonId, groupCount, rowCount, quota}' .tmp/v2/standings/manifest.json
+
+      - name: Upload normalized standings artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
+          path: .tmp/v2/standings
+          if-no-files-found: error

@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "updatedAt": "2026-08-21T22:34:00+09:00",
+  "product": {
+    "primaryMode": "general_football_data_app",
+    "uiReference": "fotmob_inspired_information_architecture",
+    "japaneseTrackingRole": "optional_first_class_module",
+    "legacyJapaneseDashboardIsDefault": false
+  },
+  "coreFootballData": {
+    "provider": "api-football",
+    "providerApiVersion": "v3",
+    "identity": "provider_native_af_ids",
+    "mustNotDependOnJapanesePlayerPresence": true,
+    "unknownProviderPlayersAccepted": true,
+    "j1Allowed": true,
+    "requiredDomains": [
+      "competitions",
+      "seasons",
+      "fixtures",
+      "fixture_status",
+      "teams",
+      "standings",
+      "players",
+      "coaches",
+      "lineups",
+      "formations",
+      "substitutions",
+      "events",
+      "match_statistics",
+      "player_match_statistics",
+      "provider_ratings"
+    ],
+    "missingValuesNeverBecomeZero": true,
+    "apiKeyBrowserExposureForbidden": true,
+    "factsOwnedOnlyByCore": true
+  },
+  "japaneseTracking": {
+    "scope": "Japanese players in configured overseas leagues",
+    "identity": "provider_independent_jfw_player_id",
+    "j1ExcludedFromTrackingWorkflow": true,
+    "j1MustNotBlockTrackingUpdates": true,
+    "failClosedAppliesOnlyToTrackingRegistry": true,
+    "ownsFootballFacts": false,
+    "features": [
+      "tracked_player_ids",
+      "membership_corrections",
+      "jfw_rating",
+      "player_rankings",
+      "attention_scores",
+      "tracking_insights",
+      "notification_rules",
+      "tracking_data_quality"
+    ]
+  },
+  "runtime": {
+    "staticUi": "github_pages",
+    "productionDataGateway": "cloudflare_worker",
+    "machineFactsCanonicalStore": "cloudflare_r2",
+    "hotCacheAndIndexes": "cloudflare_kv",
+    "liveCache": "cloudflare_cache_api",
+    "liveMode": "demand_driven_60_second_ttl",
+    "normalizationLocation": "github_actions_node",
+    "workerFullNormalizationForbidden": true,
+    "r2DirectBrowserAccess": false
+  },
+  "time": {
+    "fixtureCanonical": "UTC",
+    "productTimeZone": "Asia/Tokyo",
+    "dateIndexes": "JST"
+  },
+  "navigation": [
+    "matches",
+    "leagues",
+    "following",
+    "japanese_players",
+    "more"
+  ],
+  "newsTab": {
+    "enabled": false,
+    "reason": "No authoritative news provider is currently integrated"
+  },
+  "migrationOrder": [
+    "define_v2_data_contract",
+    "build_one_fixture_vertical_slice",
+    "build_generic_core_feed",
+    "move_existing_japanese_tracking_onto_core",
+    "build_matches_home_and_match_detail",
+    "build_league_club_player_views",
+    "migrate_favourites_to_follow_model",
+    "remove_legacy_default_dashboard_after_parity"
+  ]
+}

@@ -20,6 +20,7 @@ jobs:
           node-version: '22'
       - name: Syntax check runtime scripts
         run: |
+          node --check app-v2.js
           node --check backfill-loader.js
           node --check clubs.js
           node --check favorites.js
@@ -27,10 +28,17 @@ jobs:
           node --check jfw-rating.js
           node --check match-detail.js
           node --check theme.js
+          node --check v2-preview.js
           node --check scripts/api-football/backfill-existing-results.js
           node --check scripts/api-football/client.js
           node --check scripts/api-football/field-inventory.js
           node --check scripts/api-football/schema-v2-mapper.js
           node --check scripts/api-football/smoke-test.js
+          node --check scripts/v2/fixture-contract.js
+          node --check scripts/v2/fetch-fixture-vertical-slice.js
+          node --check scripts/v2/fetch-date-feed.js
+          node --check scripts/v2/fetch-standings.js
+          node --check scripts/v2/merge-date-index.js
+          node --check worker/index.mjs
       - name: Run tests
         run: node --test tests/*.test.js
