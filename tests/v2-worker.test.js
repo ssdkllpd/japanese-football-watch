@@ -67,4 +67,32 @@ test('R2 lookup keys are deterministic', async () => {
   const worker = await loadWorker();
   assert.equal(worker.fixturePointerKey('af:fixture:123'), 'football/v2/indexes/fixture/af:fixture:123.json');
   assert.equal(worker.dateIndexKey('2026-08-22'), 'football/v2/indexes/date-jst/2026-08-22.json');
+  assert.equal(
+    worker.competitionDateIndexKey('af:competition:39', '2026-08-22'),
+    'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
+  );
+});
+
+test('competition date route reads the competition-scoped R2 index', async () => {
+  const worker = await loadWorker();
+  const requested = [];
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    FOOTBALL_DATA: {
+      async get(key) {
+        requested.push(key);
+        return {
+          body: JSON.stringify({ date: '2026-08-22', fixtures: [] }),
+          httpMetadata: { contentType: 'application/json' },
+          etag: 'test-etag',
+        };
+      },
+    },
+  };
+  const request = new Request('https://worker.example/api/v2/competitions/af%3Acompetition%3A39/dates/2026-08-22', {
+    headers: { origin: 'https://example.github.io' },
+  });
+  const response = await worker.default.fetch(request, env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(requested, ['football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json']);
 });

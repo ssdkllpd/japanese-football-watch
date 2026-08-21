@@ -102,6 +102,12 @@ export function dateIndexKey(date) {
   return `football/v2/indexes/date-jst/${date}.json`;
 }
 
+export function competitionDateIndexKey(competitionId, date) {
+  if (!competitionId) throw new Error('Competition ID is required.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) throw new Error('JST date must use YYYY-MM-DD.');
+  return `football/v2/indexes/competition/${competitionId}/date-jst/${date}.json`;
+}
+
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -190,6 +196,14 @@ async function handle(request, env) {
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (dateMatch) return r2JsonObject(env, dateIndexKey(dateMatch[1]));
+
+  const competitionDateMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/dates\/(\d{4}-\d{2}-\d{2})$/);
+  if (competitionDateMatch) {
+    return r2JsonObject(
+      env,
+      competitionDateIndexKey(decodeURIComponent(competitionDateMatch[1]), competitionDateMatch[2]),
+    );
+  }
 
   return json({ error: 'Not found' }, 404);
 }
