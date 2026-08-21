@@ -7,6 +7,11 @@ on:
         description: API-Football fixture ID to normalize and publish
         required: true
         type: string
+      mark_finalized:
+        description: Mark a final-status fixture as finalized instead of provisional_final
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -39,6 +44,7 @@ jobs:
         run: |
           node scripts/v2/fetch-fixture-vertical-slice.js \
             --fixture "${{ inputs.fixture_id }}" \
+            --finalized "${{ inputs.mark_finalized }}" \
             --out .tmp/v2/fixture
 
       - name: Read publish manifest
@@ -47,6 +53,7 @@ jobs:
           echo "fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
           echo "pointer_key=$(jq -r '.r2Objects[] | select(.role=="fixture_pointer") | .key' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
           echo "date_key=$(jq -r '.r2Objects[] | select(.role=="date_index") | .key' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "ingestion_state=$(jq -r '.ingestionState' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
 
       - name: Merge existing JST date index when present
         run: |
@@ -79,6 +86,13 @@ jobs:
         run: |
           npx --yes wrangler@4 r2 object put "$R2_BUCKET/${{ steps.manifest.outputs.date_key }}" \
             --file .tmp/v2/merged-date-index.json --content-type application/json --remote
+
+      - name: Vertical slice summary
+        run: |
+          echo "Fixture: ${{ inputs.fixture_id }}"
+          echo "Ingestion state: ${{ steps.manifest.outputs.ingestion_state }}"
+          echo "R2 fixture: ${{ steps.manifest.outputs.fixture_key }}"
+          echo "R2 date index: ${{ steps.manifest.outputs.date_key }}"
 
       - name: Upload normalized vertical slice artifact
         uses: actions/upload-artifact@v4
