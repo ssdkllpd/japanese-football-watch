@@ -1,31 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-function makeElement() {
-  return {
-    textContent: '',
-    innerHTML: '',
-    dataset: {},
-    querySelectorAll() { return []; },
-    querySelector() { return null; },
-    appendChild() {},
-    insertAdjacentElement() {}
-  };
-}
+const { buildBackfillHarness } = require('./helpers/backfill-harness');
 
 function buildHarness({ player, fragments }) {
-  const context = {
-    console,
-    window: {},
-    document: {
-      body: makeElement(),
-      querySelector() { return null; },
-      createElement() { return makeElement(); }
-    },
-    D: {
+  return buildBackfillHarness({
+    data: {
       updated: '2026-08-10 10:00 JST',
       players: [player],
       matches: [],
@@ -33,61 +12,14 @@ function buildHarness({ player, fragments }) {
       playerMatchStats: [],
       gaResults: []
     },
-    selectedSeason: '2026-27',
-    loadSeason: async () => {},
-    renderAll() {},
-    renderPlayerDetail() {},
-    renderClubDetail() {},
-    renderAttention() {},
-    renderStats() {},
-    relevantClubMatches() { return []; },
-    clubPlayers() { return []; },
-    clubMatchCard() { return ''; },
-    pcard() { return ''; },
-    mcard() { return ''; },
-    bindEntities() {},
-    bindWatch() {},
-    btns() {},
-    eligible() { return true; },
-    playerRef(p) { return p.playerId || p.name; },
-    playerByRef(ref) { return context.D.players.find(p => p.playerId === ref || p.name === ref); },
-    roundNo() { return null; },
-    fmt(v) { return v == null ? '—' : String(v); },
-    E(v) { return String(v ?? ''); },
-    $() { return makeElement(); },
-    R: { updated: makeElement(), leagueBtns: makeElement(), players: makeElement(), scopeBtns: makeElement(), metricBtns: makeElement(), statRank: makeElement(), playerDetail: makeElement(), clubDetail: makeElement() },
-    order: ['すべて', 'プレミアリーグ', 'ブンデスリーガ'],
-    scope: 'すべて',
-    metric: 'goals',
-    metrics: { goals: '得点' },
-    attLeague: 'すべて',
-    page: 'home',
-    activePlayer: null,
-    activeClub: null,
-    clubRoundFrom: null,
-    clubRoundTo: null,
-    clearDetailParams() {},
-    showPage() {},
-    lastPage: 'home',
-    fetch: async url => {
-      if (String(url).includes('index.json')) return { ok: true, json: async () => ({ fragments: fragments.map((_, i) => `${i}.json`) }) };
-      const match = String(url).match(/\/(\d+)\.json/);
-      const index = match ? Number(match[1]) : -1;
-      if (index >= 0) return { ok: true, json: async () => fragments[index] };
-      return { ok: false, status: 404, json: async () => ({}) };
-    },
-    setTimeout,
-    clearTimeout
-  };
-  context.window = context;
-  vm.createContext(context);
-  const source = fs.readFileSync(path.join(__dirname, '..', 'backfill-loader.js'), 'utf8');
-  vm.runInContext(source, context, { filename: 'backfill-loader.js' });
-  return context;
+    season: '2026-27',
+    fragments,
+    order: ['すべて', 'プレミアリーグ', 'ブンデスリーガ']
+  });
 }
 
 async function apply(context) {
-  await context.window.JFWBackfill.applyCurrentBackfill();
+  await context.window.JFWBackfill.initialLoad;
   return context.D.players[0];
 }
 
