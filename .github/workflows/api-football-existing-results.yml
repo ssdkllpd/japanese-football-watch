@@ -1,0 +1,68 @@
+name: API-Football Existing Results Backfill
+
+on:
+  push:
+    branches:
+      - data/api-football-existing-results
+    paths:
+      - .github/workflows/api-football-existing-results.yml
+      - config/api-football-existing-results.json
+      - config/api-football.json
+      - scripts/api-football/backfill-existing-results.js
+      - scripts/api-football/client.js
+      - scripts/api-football/schema-v2-mapper.js
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: api-football-existing-results-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    if: github.ref == 'refs/heads/data/api-football-existing-results'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      API_FOOTBALL_BASE_URL: https://v3.football.api-sports.io
+    steps:
+      - name: Checkout requested branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify secret and fixed target manifest
+        shell: bash
+        run: |
+          if [ -z "$API_FOOTBALL_KEY" ]; then
+            echo "API_FOOTBALL_KEY repository secret is not configured."
+            exit 1
+          fi
+          node --check scripts/api-football/backfill-existing-results.js
+          node --test tests/api-football-existing-results.test.js
+
+      - name: Fetch only existing verified results
+        run: node scripts/api-football/backfill-existing-results.js
+
+      - name: Persist mapped data and resumable state
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            data/2026-27/backfill/api-football-existing-results.json \
+            data/2026-27/backfill/index.json \
+            state/api-football-existing-results.json
+          if git diff --cached --quiet; then
+            echo "No generated data changes to commit."
+          else
+            git commit -m "Backfill existing results from API-Football"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

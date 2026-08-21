@@ -1,6 +1,6 @@
 {
-  "version": 13,
-  "updatedAt": "2026-08-21T14:49:11+09:00",
+  "version": 14,
+  "updatedAt": "2026-08-21T15:15:30+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -141,6 +141,21 @@
     "mappingImplementation": "scripts/api-football/schema-v2-mapper.js",
     "fieldInventoryImplementation": "scripts/api-football/field-inventory.js",
     "scheduledSynchronizationEnabled": false,
+    "manualExistingResultBackfill": {
+      "enabled": true,
+      "targetManifest": "config/api-football-existing-results.json",
+      "targetRule": "stored match must already have status verified and a final score",
+      "targetCountAtAuthorization": 27,
+      "requestLatestFixtures": false,
+      "requestScheduledFixtures": false,
+      "fixedDateDiscoveryOnly": true,
+      "detailEndpoints": ["/fixtures/events", "/fixtures/lineups", "/fixtures/players"],
+      "outputFragment": "data/2026-27/backfill/api-football-existing-results.json",
+      "resumableState": "state/api-football-existing-results.json",
+      "dailyRequestReserve": 20,
+      "minimumRequestIntervalMs": 6500,
+      "persistRawResponses": false
+    },
     "enableScheduledSynchronizationOnlyAfter": [
       "tracked_league_team_and_player_provider_ids_are_registered",
       "one_completed_fixture_per_tracked_league_has_field_inventory",

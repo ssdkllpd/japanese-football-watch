@@ -10,6 +10,7 @@
     "plan": "free",
     "configuredDailyBudget": 100,
     "configuredPerMinuteLimit": 10,
+    "minimumRequestIntervalMs": 6500,
     "trustResponseHeadersOverConfiguredLimits": true,
     "reserveForTrackedFixtures": 20,
     "softStopRemaining": 5
@@ -22,6 +23,10 @@
     "persistQuotaHeaders": true,
     "schemaMapping": "config/api-football-schema-v2-map.json",
     "scheduledSynchronizationEnabled": false,
+    "manualExistingResultsBackfillEnabled": true,
+    "manualExistingResultsManifest": "config/api-football-existing-results.json",
+    "manualExistingResultsState": "state/api-football-existing-results.json",
+    "manualExistingResultsNeverRequestsLatestOrScheduledFixtures": true,
     "enableOnlyAfterCoverageInventoryAndConsistencyTests": true
   }
 }
