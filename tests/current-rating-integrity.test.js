@@ -25,6 +25,7 @@ function contextForCurrentSeason() {
       return { ok:true, json:async()=>JSON.parse(fs.readFileSync(file,'utf8')) };
     },
     setTimeout, clearTimeout,
+    addEventListener(){},
     loadSeason: async()=>{}, renderAll(){}, renderPlayerDetail(){}, renderClubDetail(){}, renderAttention(){}, renderStats(){},
     relevantClubMatches(){return[];}, clubPlayers(){return[];}, clubMatchCard(){return'';}, pcard(){return'';}, mcard(){return'';},
     bindEntities(){}, bindWatch(){}, btns(){}, eligible(){return true;},
