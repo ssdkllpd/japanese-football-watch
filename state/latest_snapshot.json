@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-21T10:09:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after resuming updates with J1 explicitly excluded from this app's scope.",
+  "updatedAt": "2026-08-21T10:57:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates and competition-scoped aggregate UI fixes.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "4cdcc39f330374bf50c4036a3146cb0dd21e5432",
+    "blobSha": "49f2b12653a6c3067765f36342778050bbb6e744",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -20,7 +20,8 @@
       "latest-2026-08-20.json",
       "source-fixes-2026-08-20.json",
       "rating-safety-fixes-2026-08-20.json",
-      "latest-2026-08-21.json"
+      "latest-2026-08-21.json",
+      "latest-2026-08-21-2.json"
     ]
   },
   "runtime": [
@@ -29,6 +30,9 @@
     "backfill-loader.js",
     "match-detail.js"
   ],
+  "runtimeBlobs": {
+    "backfill-loader.js": "20ec37d17600857d57d958141e3fca2fd5ff7b69"
+  },
   "trackingScope": {
     "type": "overseas_japanese_players",
     "j1Included": false,
@@ -40,29 +44,30 @@
     "allManifestFragmentsPresent": true,
     "storedMatchCorrectionsAppliedByStableMatchIdOrLegacyMatchKey": true,
     "playerMatchStatsUpsertedByRecordIdOrMatchPlayerKey": true,
-    "aggregateLeagueStatsExcludeCupAndUefaRecords": true,
-    "gaResultsDeduplicatedByMatchAndPlayer": true,
-    "missingValuesNeverConvertedToZeroByBackfillUnlessExplicitDisciplineClean": true,
-    "nonExhaustiveCupDisciplineInputsForcedToMissing": true,
+    "playerSeasonAggregatesRebuiltAfterMatchMutation": true,
+    "leagueCompetitionAndAllCompetitionsStatsSeparated": true,
+    "competitionScopedRankingUsesCompetitionStats": true,
+    "playerPageCompetitionBreakdownAvailable": true,
+    "j1RemovedFromRuntimeLeagueFilter": true,
+    "missingValuesNeverConvertedToZeroWithoutExhaustiveSource": true,
     "jfwRatingVersion": "1.0",
     "ratingRequiresExplicitDisciplineInputs": true,
     "ratingCacheInvalidatedWhenRatingInputsChange": true,
+    "noNewRatingComputedFromIncompleteDisciplineInputs": true,
     "siteMatchDetailConsumesPlayerMatchStats": true
   },
   "verifiedCorrections": [
-    "J1 removed from japanese-football-watch tracking and validation scope; it belongs to the separate analysis app.",
-    "Hidemasa Morita added as Hull City / Premier League from Premier League official 2026/27 registration.",
-    "Zion Suzuki corrected from Aston Villa to Parma based on Parma official August 2026 squad information.",
-    "Kaito Mizuta, Sota Nakamura and Ayumu Seko added for Le Havre; Mizuta and Nakamura transfers confirmed by club official announcements.",
-    "Ryotaro Ito added as an STVV tracking target from STVV official player profile, with current match participation left as priority-update pending verification.",
-    "Yukinari Sugawara corrected to Werder Bremen from Bundesliga official 2026/27 player registration.",
-    "Motherwell 1-3 Freiburg on 2026-08-20 added; Keisuke Goto's goal is verified and incomplete individual rating inputs remain explicitly missing.",
-    "Backfill loader now clears cached JFW Rating outputs whenever normalized ratingInputs change, allowing required recalculation."
+    "Sint-Truidense 1-0 Omonia on 2026-08-20 added as a UEFA Europa League play-off first leg; Shogo Taniguchi scored the 90+4 winner.",
+    "STVV Japanese participation recorded from the available match report: Leo Brian Kokubo, Shogo Taniguchi, Nelson Ishiwatari and Kaito Matsuzawa started; Ryotaro Araki entered at 61 minutes; Ishiwatari and Matsuzawa left at 61.",
+    "Motherwell 1-3 Freiburg records refined: Keisuke Goto entered at 80 minutes and scored at 90+6; Yuito Suzuki started and left at 74 minutes.",
+    "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
+    "Runtime ranking scope now reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail adds a competition breakdown.",
+    "J1 remains excluded from this repository in accordance with workflow_policy v8."
   ],
   "declaredCoverageGaps": [
+    "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
+    "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
-    "Ryotaro Ito's current 2026/27 match-by-match participation is not yet verified despite the current STVV official profile, so no appearance totals were guessed.",
-    "Motherwell-Freiburg individual minutes and exhaustive discipline inputs are still incomplete for the tracked Japanese players; JFW Rating remains intentionally uncomputed until required values are verified.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
