@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const DISC = ['yellowCards','secondYellowRed','straightRed','penaltiesConceded','ownGoals'];
+  const AGG_FIELDS = ['apps','starts','minutes','goals','assists','cleanSheets','yellowCards'];
+  const NON_OFFICIAL_RE = /friendly|pre[- ]?season|親善|プレシーズン/i;
   let loading = null;
 
   async function getJson(path){
@@ -99,6 +101,68 @@
       (!x.matchId&&x.player===y.player&&x.ko===y.ko&&(!x.match||x.match===y.match))
     ));
   }
+  function valueOfRecord(r,field){
+    if(r?.ratingInputs?.[field]?.state==='value') return Number(r.ratingInputs[field].value);
+    if(r?.[field]!==undefined&&r?.[field]!==null&&Number.isFinite(Number(r[field]))) return Number(r[field]);
+    return null;
+  }
+  function recordPlayerName(r){ return r?.playerName||r?.player||r?.name||null; }
+  function matchForRecord(r){
+    return (D.matches||[]).find(m=>(r.matchId&&m.matchId===r.matchId)||(r.match&&r.ko&&m.match===r.match&&m.ko===r.ko));
+  }
+  function isOfficialNonLeagueRecord(r,p){
+    const m=matchForRecord(r);
+    const competition=String(r.competition||r.league||m?.league||'');
+    if(!competition||NON_OFFICIAL_RE.test(competition)||NON_OFFICIAL_RE.test(String(m?.round||''))) return false;
+    return competition!==String(p.league||'');
+  }
+  function rebuildPlayerSeasonAggregates(){
+    D.players=D.players||[];
+    const records=D.playerMatchStats||[];
+    for(const p of D.players){
+      if(!p._leagueStats) p._leagueStats={...(p.stats||{})};
+      const leagueStats={...p._leagueStats};
+      const extra={apps:0,starts:0,minutes:0,goals:0,assists:0,cleanSheets:0,yellowCards:0};
+      const coverage={apps:true,starts:true,minutes:true,goals:true,assists:true,cleanSheets:true,yellowCards:true};
+      const mine=records.filter(r=>recordPlayerName(r)===p.name&&isOfficialNonLeagueRecord(r,p));
+      for(const r of mine){
+        if(r.appearance===true) extra.apps+=1;
+        else if(r.appearance==null&&valueOfRecord(r,'minutes')==null) coverage.apps=false;
+        if(r.start===true) extra.starts+=1;
+        else if(r.start==null) coverage.starts=false;
+        for(const field of ['minutes','goals','assists','cleanSheets','yellowCards']){
+          const v=valueOfRecord(r,field);
+          if(v==null){coverage[field]=false;continue;}
+          extra[field]+=v;
+        }
+      }
+      const all={...leagueStats};
+      for(const field of AGG_FIELDS){
+        const base=Number(leagueStats[field]);
+        const hasBase=Number.isFinite(base);
+        const add=extra[field]||0;
+        if(hasBase) all[field]=base+add;
+        else if(add!==0||coverage[field]) all[field]=add;
+      }
+      p.leagueStats=leagueStats;
+      p.allCompetitionsStats=all;
+      p.competitionStats=p.competitionStats||{};
+      if(p.league) p.competitionStats[p.league]=leagueStats;
+      for(const r of mine){
+        const m=matchForRecord(r),competition=String(r.competition||r.league||m?.league||'その他公式戦');
+        const s=p.competitionStats[competition]||{};
+        if(r.appearance===true) s.apps=(Number(s.apps)||0)+1;
+        if(r.start===true) s.starts=(Number(s.starts)||0)+1;
+        for(const field of ['minutes','goals','assists','cleanSheets','yellowCards']){
+          const v=valueOfRecord(r,field); if(v!=null) s[field]=(Number(s[field])||0)+v;
+        }
+        p.competitionStats[competition]=s;
+      }
+      p.stats=all;
+      p.statsScope='all_official_competitions';
+      if(mine.length) p.statsAsOf=`${p.statsAsOf||selectedSeason} / 全公式戦集計`;
+    }
+  }
   function applyFragments(parts){
     const sources={};
     for(const p of parts) Object.assign(sources,p.sources||{});
@@ -109,6 +173,7 @@
       mergeGA(p.gaResultsAdd);
       removeGA(p.gaResultsRemove);
     }
+    rebuildPlayerSeasonAggregates();
     const newest=parts.map(x=>x.updated).filter(Boolean).sort().at(-1);
     if(newest) D.updated=newest;
     D._playerMatchBackfill={season:selectedSeason,updated:newest,fragments:parts.length,records:(D.playerMatchStats||[]).length};
@@ -144,7 +209,7 @@
     await applyCurrentBackfill();
     await refreshViews();
   };
-  window.JFWBackfill={applyCurrentBackfill,boot};
+  window.JFWBackfill={applyCurrentBackfill,boot,rebuildPlayerSeasonAggregates};
   boot().finally(()=>{
     if(document.querySelector('script[data-jfw-match-detail]')) return;
     const s=document.createElement('script');
