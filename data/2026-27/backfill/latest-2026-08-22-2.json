@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 04:57 JST",
+  "sources": {
+    "livesoccertv-sttonis-frankfurt-20260821": {
+      "id": "livesoccertv-sttonis-frankfurt-20260821",
+      "name": "LiveSoccerTV match events",
+      "type": "reputable_secondary_match_events",
+      "url": "https://www.livesoccertv.com/match/eintracht-frankfurt-vs-sc-st-tonis/3ffh0y",
+      "retrievedAt": "2026-08-22T04:57:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "goals", "assists", "startingLineup"]
+    },
+    "fussballtransfers-eintracht-lineup-20260821": {
+      "id": "fussballtransfers-eintracht-lineup-20260821",
+      "name": "FussballTransfers report quoting Eintracht Frankfurt official lineup notice",
+      "type": "secondary_with_club_official_lineup_quote",
+      "url": "https://www.fussballtransfers.com/a4708381487684048816-frankfurt-streicht-theate",
+      "retrievedAt": "2026-08-22T04:57:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["currentAvailability", "squadAbsence"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
+      "league": "DFB-Pokal",
+      "round": "1st round",
+      "ko": "2026-08-21 18:00 CEST",
+      "match": "SC St. Tönis 0-11 フランクフルト",
+      "players": "小杉啓太 / 堂安律",
+      "appearance": "小杉啓太が先発し2アシスト。堂安律は筋肉系の不調によりメンバー外。",
+      "note": "フランクフルトが11-0で勝利。小杉は29分のブルカルト、34分のウズンの得点をアシスト。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": true,
+      "rank": 1,
+      "reason": "小杉啓太がDFBポカール1回戦で2アシスト。",
+      "rating": "S+",
+      "sourceIds": ["livesoccertv-sttonis-frankfurt-20260821", "fussballtransfers-eintracht-lineup-20260821"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "小杉啓太",
+      "club": "フランクフルト",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "status": "DFBポカール1回戦先発・2アシスト",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-21公式戦",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"],
+      "sourceIds": ["livesoccertv-sttonis-frankfurt-20260821"]
+    },
+    {
+      "name": "堂安律",
+      "club": "フランクフルト",
+      "league": "ブンデスリーガ",
+      "pos": "FW/MF",
+      "status": "2026-08-21 DFBポカール1回戦は筋肉系の不調でメンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-21",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["fussballtransfers-eintracht-lineup-20260821"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-kosugi-sttonis-frankfurt-20260821",
+      "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
+      "player": "小杉啓太",
+      "club": "フランクフルト",
+      "league": "DFB-Pokal",
+      "match": "SC St. Tönis 0-11 フランクフルト",
+      "ko": "2026-08-21 18:00 CEST",
+      "round": "1st round",
+      "appearance": "starter",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["livesoccertv-sttonis-frankfurt-20260821"],
+      "values": {"goals": 0, "assists": 2},
+      "missingFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"],
+      "start": true,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"]
+    }
+  ]
+}
