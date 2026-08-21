@@ -10,6 +10,7 @@ const {
 const {
   RequestBudget,
   aliasMatches,
+  buildPlayerRegistryIndexes,
   buildTargets,
   enrichMissingLineupCoaches,
   fixtureMatchesTarget,
@@ -26,8 +27,8 @@ const {
 const ROOT = path.join(__dirname, '..');
 const manifest = require('../config/api-football-existing-results.json');
 
-test('fixed manifest covers every currently stored verified result and nothing else', () => {
-  const data = mergeCurrentData(ROOT, manifest.season);
+test('fixed manifest covers every currently stored verified result and nothing else', async () => {
+  const data = await mergeCurrentData(ROOT, manifest.season);
   const targets = buildTargets(data, manifest);
 
   assert.equal(targets.length, 27);
@@ -106,7 +107,7 @@ test('request budget honors the configured Pro request interval', () => {
   assert.equal(budget.maxRequests, 7400);
 });
 
-test('tracked player IDs resolve only through configured exact aliases in the expected fixture', () => {
+test('tracked player IDs resolve through registry identity and exact provider aliases', () => {
   const data = {
     players: [{ name: '後藤啓介', playerId: 'jp-goto', pos: 'FW' }],
   };
@@ -121,13 +122,39 @@ test('tracked player IDs resolve only through configured exact aliases in the ex
     events: [],
   };
   const state = { playerResolutions: {} };
+  const registry = buildPlayerRegistryIndexes({
+    players: [{
+      playerId: 'jp-goto',
+      name: '後藤啓介',
+      aliases: ['Keisuke Goto', 'K. Goto'],
+      providerIds: {},
+    }],
+  });
   const result = resolvedTrackedPlayers(data, target, fixture, {
     playerAliases: { '後藤啓介': ['Keisuke Goto', 'K. Goto'] },
-  }, state, '2026-08-21T00:00:00Z');
+  }, state, '2026-08-21T00:00:00Z', registry);
 
   assert.equal(result.unresolved.length, 0);
+  assert.equal(result.tracked[0].playerId, 'jp-goto');
   assert.equal(result.tracked[0].apiFootballPlayerId, 99);
   assert.equal(state.playerResolutions['後藤啓介'].method, 'explicit_alias_in_expected_fixture');
+});
+
+test('unknown tracked player stays unresolved and never mints a runtime playerId', () => {
+  const data = { players: [{ name: '既存選手', playerId: 'jp-existing' }] };
+  const registry = buildPlayerRegistryIndexes({
+    players: [{ playerId: 'jp-existing', name: '既存選手', aliases: [], providerIds: {} }],
+  });
+  const target = { playerNames: ['新加入太郎'] };
+  const state = { playerResolutions: {} };
+  const result = resolvedTrackedPlayers(data, target, { lineups: [], players: [], events: [] }, {
+    playerAliases: { '新加入太郎': ['New Player'] },
+  }, state, '2026-08-21T00:00:00Z', registry);
+
+  assert.deepEqual(result.unresolved, [{ name: '新加入太郎', reason: 'player_registry_missing' }]);
+  assert.equal(result.tracked.length, 0);
+  assert.equal(data.players.length, 1);
+  assert.equal(data.players.some(player => player.name === '新加入太郎'), false);
 });
 
 test('fragment merge upserts provider IDs without dropping existing provider namespaces', () => {
