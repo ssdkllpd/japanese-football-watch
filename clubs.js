@@ -16,6 +16,10 @@
     try { return D || null; } catch { return null; }
   }
 
+  function trackingApi() {
+    try { return window.JFWTracking || null; } catch { return null; }
+  }
+
   function favoriteState() {
     try { return window.JFWFavorites?.read() || { players: [], clubs: [] }; }
     catch { return { players: [], clubs: [] }; }
@@ -25,9 +29,21 @@
     return new Set((state.clubs || []).map(club => club.name));
   }
 
-  function knownStat(players, key) {
+  function currentTrackedPlayer(player) {
+    const api = trackingApi();
+    if (!api) return player?.trackingStatus !== 'out_of_scope' && player?.trackingStatus !== 'unattached';
+    return player?.trackingStatus === 'active' || api.isTrackedLeague?.(player?.league);
+  }
+
+  function playerClubStats(player, club) {
+    const api = trackingApi();
+    if (api?.statsForClub) return api.statsForClub(player, club) || {};
+    return player?.stats || {};
+  }
+
+  function knownStat(players, key, club) {
     const values = players
-      .map(player => player.stats?.[key])
+      .map(player => playerClubStats(player, club)?.[key])
       .filter(value => value != null && Number.isFinite(Number(value)))
       .map(Number);
     return {
@@ -38,7 +54,9 @@
   }
 
   function matchesForClub(name, players) {
+    const api = trackingApi();
     try {
+      if (api?.matchesForClub) return api.matchesForClub(name);
       if (typeof relevantClubMatches === 'function') return relevantClubMatches(name);
     } catch {}
     const names = players.map(player => player.name);
@@ -51,7 +69,7 @@
   function clubRows() {
     const clubs = new Map();
     for (const player of currentData()?.players || []) {
-      if (!player.club) continue;
+      if (!player.club || !currentTrackedPlayer(player)) continue;
       if (!clubs.has(player.club)) {
         clubs.set(player.club, {
           name: player.club,
@@ -64,12 +82,14 @@
 
     return [...clubs.values()].map(club => ({
       ...club,
-      goals: knownStat(club.players, 'goals'),
-      assists: knownStat(club.players, 'assists'),
+      goals: knownStat(club.players, 'goals', club.name),
+      assists: knownStat(club.players, 'assists', club.name),
       matches: matchesForClub(club.name, club.players)
     })).sort((a, b) => {
       const orderList = typeof order !== 'undefined' ? order : [];
-      const leagueDiff = orderList.indexOf(a.league) - orderList.indexOf(b.league);
+      const ai = orderList.indexOf(a.league);
+      const bi = orderList.indexOf(b.league);
+      const leagueDiff = (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
       return leagueDiff || a.name.localeCompare(b.name, 'ja');
     });
   }
@@ -107,17 +127,18 @@
   function clubCard(row, favoriteNames) {
     const selected = favoriteNames.has(row.name);
     const names = row.players.map(player => player.name).join('、');
+    const partial = row.goals.coverage < row.goals.total || row.assists.coverage < row.assists.total;
     return `<div class="card clickable clubDirectoryCard" data-open-club="${esc(row.name)}">
       ${favoriteControl(row, selected)}
       <div class="clubCardHead">
         <div class="clubMonogram" aria-hidden="true">${esc(monogram(row.name))}</div>
         <div class="grow"><div class="name">${esc(row.name)}</div><div class="sub">${esc(row.league)}</div></div>
       </div>
-      <div class="clubPills"><span class="pill">日本人 ${row.players.length}人</span>${selected ? '<span class="pill clubFavoritePill">★ お気に入り</span>' : ''}</div>
+      <div class="clubPills"><span class="pill">現在所属 日本人 ${row.players.length}人</span>${selected ? '<span class="pill clubFavoritePill">★ お気に入り</span>' : ''}${partial ? '<span class="pill part">一部未取得</span>' : ''}</div>
       <div class="clubPlayerNames">${esc(names)}</div>
       <div class="clubMiniStats">
-        <div><b>${formatStat(row.goals)}</b><span>今季得点</span></div>
-        <div><b>${formatStat(row.assists)}</b><span>今季アシスト</span></div>
+        <div><b>${formatStat(row.goals)}</b><span>このクラブで今季得点</span></div>
+        <div><b>${formatStat(row.assists)}</b><span>このクラブで今季アシスト</span></div>
         <div><b>${row.matches.length}</b><span>登録試合</span></div>
       </div>
       <div class="sub clubMatchNote">${esc(matchNote(row))}</div>
@@ -167,15 +188,19 @@
       (selectedLeague === 'すべて' || row.league === selectedLeague) &&
       (favoriteMode === 'すべて' || favorites.has(row.name))
     );
-    filtered.sort((a, b) => Number(favorites.has(b.name)) - Number(favorites.has(a.name)) || a.name.localeCompare(b.name, 'ja'));
+    filtered.sort((a, b) =>
+      Number(favorites.has(b.name)) - Number(favorites.has(a.name)) ||
+      a.name.localeCompare(b.name, 'ja')
+    );
+
     const trackedPlayers = allRows.reduce((sum, row) => sum + row.players.length, 0);
     const favoriteCount = allRows.filter(row => favorites.has(row.name)).length;
 
     root.innerHTML = `<section>
-      <div class="sectionTitleRow"><div><h2>クラブ</h2><div class="lead">追跡中の日本人所属クラブを、リーグやお気に入りから探せます。</div></div><span class="pill">${esc(selectedSeason)}</span></div>
+      <div class="sectionTitleRow"><div><h2>クラブ</h2><div class="lead">現在追跡中の日本人所属クラブ。移籍前の成績は新クラブへ付け替えません。</div></div><span class="pill">${esc(selectedSeason)}</span></div>
       <div class="summary clubSummary">
         <div class="sum"><div class="num">${allRows.length}</div><div class="muted">追跡クラブ</div></div>
-        <div class="sum"><div class="num">${trackedPlayers}</div><div class="muted">所属日本人</div></div>
+        <div class="sum"><div class="num">${trackedPlayers}</div><div class="muted">現在所属日本人</div></div>
         <div class="sum"><div class="num">${favoriteCount}</div><div class="muted">お気に入り</div></div>
       </div>
     </section>
