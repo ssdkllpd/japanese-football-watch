@@ -183,6 +183,20 @@ test('coach fallback requires one exact team career assignment covering the fixt
   assert.equal(selectCoachForDate(rows, 999, '2026-08-21'), null);
 });
 
+test('coach fallback selects the unique latest start when provider history has overlapping open assignments', () => {
+  const rows = [{
+    id: 90,
+    name: 'Earlier Coach',
+    career: [{ team: { id: 735 }, start: '2025-07-01', end: null }],
+  }, {
+    id: 91,
+    name: 'Current Coach',
+    career: [{ team: { id: 735 }, start: '2026-06-01', end: null }],
+  }];
+
+  assert.equal(selectCoachForDate(rows, 735, '2026-08-21').id, 91);
+});
+
 test('completed matches are reopened only when a lineup team lacks a coach portrait', () => {
   const fragment = {
     matchUpdates: [{
@@ -231,5 +245,5 @@ test('an empty lineup coach object triggers the dated coach registry fallback', 
   assert.equal(result.lineups[0].coach.id, 91);
   assert.equal(result.lineups[0].coach.photoSource, 'api_football_coach_registry');
   assert.deepEqual(result.supplementalEndpoints, ['/coachs?team=735']);
-  assert.equal(state.coachResolutions['735|2026-08-21'].method, 'team_career_date_exact');
+  assert.equal(state.coachResolutions['735|2026-08-21'].method, 'team_career_date_latest_start');
 });

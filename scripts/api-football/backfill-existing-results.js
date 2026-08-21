@@ -587,9 +587,28 @@ function coachCoversDate(coach, teamId, fixtureDate) {
   });
 }
 
+function activeCoachAssignment(coach, teamId, fixtureDate) {
+  return (coach?.career || [])
+    .filter(assignment => {
+      if (!sameProviderId(assignment?.team?.id, teamId)) return false;
+      const start = String(assignment?.start || '');
+      const end = String(assignment?.end || '');
+      return (!start || start <= fixtureDate) && (!end || fixtureDate <= end);
+    })
+    .sort((left, right) => String(right?.start || '').localeCompare(String(left?.start || '')))[0] || null;
+}
+
 function selectCoachForDate(rows, teamId, fixtureDate) {
-  const candidates = (rows || []).filter(coach => coachCoversDate(coach, teamId, fixtureDate));
-  return candidates.length === 1 ? candidates[0] : null;
+  const candidates = (rows || [])
+    .map(coach => ({ coach, assignment: activeCoachAssignment(coach, teamId, fixtureDate) }))
+    .filter(candidate => candidate.assignment);
+  if (candidates.length === 1) return candidates[0].coach;
+  const latestStart = candidates
+    .map(candidate => String(candidate.assignment?.start || ''))
+    .sort()
+    .at(-1);
+  const latest = candidates.filter(candidate => String(candidate.assignment?.start || '') === latestStart);
+  return latest.length === 1 ? latest[0].coach : null;
 }
 
 function matchNeedsCoachEnrichment(fragment, matchId) {
@@ -629,11 +648,17 @@ async function enrichMissingLineupCoaches(lineups, target, client, budget, state
     const selected = selectCoachForDate(rows, teamId, target.fixtureDate);
     const resolutionKey = `${teamId}|${target.fixtureDate}`;
     if (!selected) {
-      const candidateCount = rows.filter(coach => coachCoversDate(coach, teamId, target.fixtureDate)).length;
+      const candidates = rows.filter(coach => coachCoversDate(coach, teamId, target.fixtureDate));
+      const candidateCount = candidates.length;
       state.coachResolutions[resolutionKey] = {
         providerTeamId: teamId,
         fixtureDate: target.fixtureDate,
         candidateCount,
+        candidates: candidates.map(coach => ({
+          providerCoachId: coach?.id ?? null,
+          providerCoachName: coach?.name || null,
+          activeAssignmentStart: activeCoachAssignment(coach, teamId, target.fixtureDate)?.start || null,
+        })),
         reason: candidateCount ? 'ambiguous_coach_assignment' : 'coach_assignment_not_found',
         resolvedAt: updated,
       };
@@ -650,7 +675,8 @@ async function enrichMissingLineupCoaches(lineups, target, client, budget, state
       providerCoachId: selected.id ?? null,
       providerCoachName: lineup.coach.name,
       fixtureDate: target.fixtureDate,
-      method: 'team_career_date_exact',
+      activeAssignmentStart: activeCoachAssignment(selected, teamId, target.fixtureDate)?.start || null,
+      method: 'team_career_date_latest_start',
       resolvedAt: updated,
     };
   }
