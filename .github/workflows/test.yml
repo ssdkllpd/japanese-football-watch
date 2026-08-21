@@ -1,0 +1,29 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check runtime scripts
+        run: |
+          node --check backfill-loader.js
+          node --check clubs.js
+          node --check favorites.js
+          node --check jfw-rating.js
+          node --check match-detail.js
+      - name: Run tests
+        run: node --test tests/*.test.js
