@@ -674,7 +674,7 @@
     main.innerHTML = `<div class="settings-grid"><section class="settings-block"><h3>Football Data Worker</h3><p>API-Footballキーはブラウザに置かず、Cloudflare Worker経由でCoreデータを読み込みます。</p><input id="workerInput" class="settings-input" value="${esc(state.workerBase)}" placeholder="https://example.workers.dev"><button id="saveWorker" class="plain-button" type="button">保存して試合を再読込</button></section><section class="settings-block"><h3>表示テーマ</h3><p>通常 / ダークは端末内に保存します。</p><button id="moreTheme" class="plain-button" type="button">テーマを切り替える</button></section><section class="settings-block"><h3>既存機能</h3><p>移行中も日本人追跡の旧画面は削除していません。</p><button id="legacyOpen" class="plain-button" type="button">旧画面を開く</button></section>${coverage.length ? `<section class="settings-block"><h3>既存データ取得状況</h3>${coverage.map(item => `<p><b>${esc(item.label)}</b> · ${esc(item.level)}<br>${esc(item.note)}</p>`).join('')}</section>` : ''}</div>`;
     $('saveWorker').addEventListener('click', () => { state.workerBase = String($('workerInput').value || '').trim().replace(/\/+$/,''); if(state.workerBase){localStorage.setItem('football-v2-api-base',state.workerBase);}else{localStorage.removeItem('football-v2-api-base');} state.page='matches'; syncNav(); loadMatches(); });
     $('moreTheme').addEventListener('click', toggleTheme);
-    $('legacyOpen').addEventListener('click', () => { location.href = 'index.html'; });
+    $('legacyOpen').addEventListener('click', () => { location.href = 'legacy.html'; });
   }
 
   function isFollowing(type,id) {
