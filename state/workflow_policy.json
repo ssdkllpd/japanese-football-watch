@@ -1,6 +1,6 @@
 {
-  "version": 9,
-  "updatedAt": "2026-08-21T11:13:00+09:00",
+  "version": 10,
+  "updatedAt": "2026-08-21T12:00:00+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -160,13 +160,26 @@
     "recalculateWhenInputChanges": true,
     "recentWindow": "last_5_appearances",
     "seasonAverage": "minutes_weighted",
-    "crossPositionRanking": false
+    "crossPositionRanking": false,
+    "finalRatingRange": {"min": 3.0, "max": 10.0},
+    "runtimeValidityGuard": "JFWRating.isRatingValue",
+    "unratedStoredValue": null,
+    "unratedAppearanceCountsAsAppearance": true,
+    "unratedAppearanceCountsAsRatedGame": false,
+    "unratedAppearanceExcludedFromSeasonAverage": true,
+    "unratedAppearanceExcludedFromRecentAverage": true,
+    "averageDenominator": "minutes_of_valid_rated_games_only",
+    "neverCoerceNullRatingToZero": true,
+    "outOfRangeCachedRatingMustBeRejectedAndRecomputed": true,
+    "allRatingConsumersMustUseValidityGuard": true
   },
   "siteViewPolicy": {
     "playerDetail": {
       "primaryStats": "seasonStats",
       "mustExpose": ["currentMembership", "previousClub", "membershipHistory", "seasonStats", "competitionStats", "clubStats", "recentPlayerMatchStats"],
-      "recentMatchMustShow": ["club", "competition", "match", "ko"]
+      "recentMatchMustShow": ["club", "competition", "match", "ko"],
+      "ratingDisplayMustUseValidityGuard": true,
+      "unratedMatchMustDisplayAs": "—"
     },
     "clubDetail": {
       "mustUseCurrentTrackedMembership": true,
@@ -179,7 +192,9 @@
       "dataSources": ["matches", "topMatches", "playerMatchStats"],
       "mustExpose": ["matchSummary", "appearanceSummary", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
       "showMissingExplicitly": true,
-      "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"]
+      "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"],
+      "ratingDisplayMustUseValidityGuard": true,
+      "unratedMatchMustDisplayAs": "—"
     }
   },
   "consistencyPolicy": {
@@ -193,7 +208,12 @@
       "out_of_scope_destination_must_not_become_a_tracked_club",
       "correction_must_not_create_fake_transfer_membership",
       "derived_totals_must_remain_traceable_to_match_records_or_explicit_aggregate_baselines",
-      "missing_must_never_become_zero_without_exhaustive_source"
+      "missing_must_never_become_zero_without_exhaustive_source",
+      "final_jfw_rating_must_be_null_or_between_3_and_10",
+      "unrated_match_must_not_count_as_rated_game",
+      "unrated_match_minutes_must_not_enter_rating_average_denominator",
+      "null_jfw_rating_must_never_render_or_aggregate_as_zero",
+      "out_of_range_cached_jfw_rating_must_not_be_reused"
     ],
     "restartFullWorkflowOnUserMismatchReport": true
   }
