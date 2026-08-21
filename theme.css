@@ -1,0 +1,52 @@
+:root{color-scheme:dark}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{--bg:#f4f7fb;--p:#ffffff;--p2:#f1f5f9;--t:#172033;--m:#667085;--a:#0f766e;--b:#2563eb;--l:#d7dee8;--y:#a16207;--r:#dc2626;--g:#15803d;--vio:#7c3aed;color-scheme:light}
+
+.themeBox{display:flex;align-items:center;gap:7px;margin-left:auto;color:var(--m);font-size:11px}
+.themeLabel{font-weight:750;white-space:nowrap}
+.themeToggle{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--l);border-radius:999px;background:var(--p)}
+.themeOption{border:0;background:transparent;color:var(--m);border-radius:999px;padding:6px 9px;font:inherit;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}
+.themeOption:hover{color:var(--t)}
+.themeOption:focus-visible{outline:3px solid #60a5fa66;outline-offset:2px}
+.themeOption.on{background:var(--a);color:#06211d}
+
+:root[data-theme="light"] body{background:linear-gradient(#f8fafc,#eef2f7 55%,#f8fafc)}
+:root[data-theme="light"] .topnav{background:#f8fafcf2}
+:root[data-theme="light"] .suggestions{background:#fff;box-shadow:0 16px 40px #33415526}
+:root[data-theme="light"] .card{background:linear-gradient(#fff,#f8fafc)}
+:root[data-theme="light"] .clickable:hover{border-color:#a8b4c3}
+:root[data-theme="light"] .entityLink{text-decoration-color:#17203340}
+:root[data-theme="light"] .date{color:var(--b)}
+:root[data-theme="light"] .watchbtn.done{background:#ecfdf3}
+:root[data-theme="light"] .ratingMain{background:radial-gradient(circle at top right,#ccfbf155,transparent 45%),linear-gradient(#fff,#f8fafc)}
+:root[data-theme="light"] .ratingBar{background:#e5eaf1}
+:root[data-theme="light"] .btn.on,
+:root[data-theme="light"] .navbtn.on,
+:root[data-theme="light"] .themeOption.on{color:#fff}
+
+/* Favorites module currently injects dark surface colors after the base stylesheet. */
+:root[data-theme="light"] .favoritebtn{border-color:var(--l)!important;background:var(--p)!important;color:var(--t)!important}
+:root[data-theme="light"] .favoritebtn.on{border-color:#d9770666!important;background:#fffbeb!important;color:#92400e!important}
+:root[data-theme="light"] .favoritebtn:focus-visible{outline-color:#2563eb55!important}
+
+/* Club directory module. */
+:root[data-theme="light"] .clubMonogram{background:linear-gradient(145deg,#f8fafc,#e9eef5)!important;border-color:var(--l)!important;color:var(--a)!important}
+:root[data-theme="light"] .clubPlayerNames{color:var(--t)!important}
+
+/* Match-detail overrides are included so the theme remains correct when that view is enabled. */
+:root[data-theme="light"] .matchdetailbtn{border-color:var(--l)!important;background:var(--p2)!important;color:var(--t)!important}
+:root[data-theme="light"] .mdPhotoWrap{border-color:var(--l)!important;background:linear-gradient(145deg,#f8fafc,#e6edf5)!important;color:var(--t)!important}
+:root[data-theme="light"] .mdProfilePhoto{box-shadow:0 8px 24px #33415522!important}
+:root[data-theme="light"] .mdRatingSwitch{background:#e8edf4!important}
+:root[data-theme="light"] .mdRatingSwitch button.on{background:#fff!important;color:var(--t)!important;box-shadow:0 1px 5px #33415522!important}
+:root[data-theme="light"] .mdFormationTeam{background:var(--p)!important}
+:root[data-theme="light"] .mdCoachRow{border-color:var(--l)!important;background:var(--p2)!important}
+:root[data-theme="light"] .mdBenchTitle,
+:root[data-theme="light"] .mdBlockTitle{color:var(--t)!important}
+:root[data-theme="light"] .mdSource{border-bottom-color:var(--l)!important}
+:root[data-theme="light"] .mdSource a{color:var(--b)!important}
+
+@media(max-width:540px){
+  .themeBox{width:100%;margin-left:0;justify-content:space-between}
+  .themeToggle{margin-left:auto}
+}
