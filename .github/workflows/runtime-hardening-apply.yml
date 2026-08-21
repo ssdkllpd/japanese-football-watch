@@ -1,14 +1,12 @@
 name: Apply runtime hardening review
 on:
-  push:
-    branches:
-      - fix/runtime-hardening-2026-08-21
-    paths:
-      - '.github/workflows/runtime-hardening-apply.yml'
+  pull_request:
+    types: [opened]
 permissions:
   contents: write
 jobs:
   harden:
+    if: github.head_ref == 'fix/runtime-hardening-2026-08-21'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
