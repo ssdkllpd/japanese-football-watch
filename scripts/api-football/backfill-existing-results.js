@@ -2,9 +2,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { createClientFromEnv, ApiFootballError } = require('./client');
 const { FINAL_FIXTURE_STATUSES, mapFixtureToSchemaV2 } = require('./schema-v2-mapper');
+const { loadIntegratedSeasonData } = require('../shared/runtime-data-loader');
 
 const ROOT = path.join(__dirname, '..', '..');
 const DEFAULT_MANIFEST_PATH = path.join(ROOT, 'config', 'api-football-existing-results.json');
@@ -47,12 +47,9 @@ function stableHash(value) {
   return (hash >>> 0).toString(36);
 }
 
+// Migration/bootstrap helper only. Runtime writers must never mint identity from names.
 function stablePlayerId(name) {
   return `jp-${stableHash(name)}`;
-}
-
-function matchKeyOf(match) {
-  return [match?.league, match?.ko, match?.match].join('|');
 }
 
 function mergeProviderIds(current, incoming) {
@@ -63,13 +60,51 @@ function mergeProviderIds(current, incoming) {
   return output;
 }
 
-function mergeCurrentData(root = ROOT, season = '2026-27') {
-  const loader = path.join(root, 'scripts', 'shared', 'runtime-data-loader-cli.js');
-  const output = execFileSync(process.execPath, [loader, '--root', root, '--season', season], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return JSON.parse(output);
+async function mergeCurrentData(root = ROOT, season = '2026-27') {
+  return loadIntegratedSeasonData(root, season);
+}
+
+function buildPlayerRegistryIndexes(registry) {
+  const rows = Array.isArray(registry?.players) ? registry.players : [];
+  if (!rows.length) throw new Error('player registry is empty');
+  const byId = new Map();
+  const byName = new Map();
+  const byProvider = new Map();
+  for (const row of rows) {
+    const playerId = String(row?.playerId || '').trim();
+    const name = textKey(row?.name);
+    if (!playerId || !name) throw new Error('player registry contains an empty playerId/name');
+    if (byId.has(playerId)) throw new Error(`duplicate playerId in registry: ${playerId}`);
+    byId.set(playerId, row);
+    for (const alias of [name, ...(row.aliases || []).map(textKey)].filter(Boolean)) {
+      const existing = byName.get(alias);
+      if (existing && existing.playerId !== playerId) throw new Error(`ambiguous player alias in registry: ${alias}`);
+      byName.set(alias, row);
+    }
+    const providerPlayerId = row?.providerIds?.apiFootball?.player;
+    if (providerPlayerId !== null && providerPlayerId !== undefined) {
+      const key = String(providerPlayerId);
+      const existing = byProvider.get(key);
+      if (existing && existing.playerId !== playerId) throw new Error(`duplicate API-Football player id in registry: ${key}`);
+      byProvider.set(key, row);
+    }
+  }
+  return { rows, byId, byName, byProvider };
+}
+
+function loadPlayerRegistry(root = ROOT) {
+  return buildPlayerRegistryIndexes(readJson(path.join(root, 'config', 'player-registry.json')));
+}
+
+function registryEntryForCandidate(value, registry) {
+  if (!value || !registry) return null;
+  if (value.playerId && registry.byId.has(String(value.playerId))) return registry.byId.get(String(value.playerId));
+  const providerPlayerId = value?.providerIds?.apiFootball?.player ?? value?.apiFootballPlayerId ?? value?.providerPlayerId;
+  if (providerPlayerId !== null && providerPlayerId !== undefined && registry.byProvider.has(String(providerPlayerId))) {
+    return registry.byProvider.get(String(providerPlayerId));
+  }
+  const name = textKey(value.name || value.playerName || value.player);
+  return name ? (registry.byName.get(name) || null) : null;
 }
 
 function parseStoredScore(matchLabel) {
@@ -292,38 +327,47 @@ function providerPeople(fixture) {
   return people;
 }
 
-function resolvedTrackedPlayers(data, target, fixture, manifest, state, updated) {
+function resolvedTrackedPlayers(data, target, fixture, manifest, state, updated, registry) {
   const people = providerPeople(fixture);
-  const playersByName = new Map((data.players || []).map(player => [player.name, player]));
+  const playersById = new Map((data.players || []).filter(player => player.playerId).map(player => [String(player.playerId), player]));
   const unresolved = [];
 
   for (const name of target.playerNames) {
-    let local = playersByName.get(name);
-    if (!local) {
-      local = { name, playerId: stablePlayerId(name) };
-      data.players.push(local);
-      playersByName.set(name, local);
+    const registryEntry = registryEntryForCandidate({ name }, registry);
+    if (!registryEntry) {
+      unresolved.push({ name, reason: 'player_registry_missing' });
+      continue;
     }
-    const existingId = local?.providerIds?.apiFootball?.player ?? state.playerResolutions?.[name]?.providerPlayerId;
+    const local = playersById.get(String(registryEntry.playerId));
+    if (!local) {
+      unresolved.push({ name, playerId: registryEntry.playerId, reason: 'player_record_missing' });
+      continue;
+    }
+    const resolutionKeys = [name, registryEntry.name].filter(Boolean);
+    const persistedResolution = resolutionKeys.map(key => state.playerResolutions?.[key]).find(Boolean);
+    const existingId = registryEntry?.providerIds?.apiFootball?.player ?? local?.providerIds?.apiFootball?.player ?? persistedResolution?.providerPlayerId;
     if (existingId !== null && existingId !== undefined) {
       state.playerResolutions[name] = {
         providerPlayerId: existingId,
-        resolvedAt: state.playerResolutions?.[name]?.resolvedAt || updated,
-        method: state.playerResolutions?.[name]?.method || 'persisted_provider_id',
+        resolvedAt: persistedResolution?.resolvedAt || updated,
+        method: persistedResolution?.method || (registryEntry?.providerIds?.apiFootball?.player != null ? 'player_registry_provider_id' : 'persisted_provider_id'),
       };
       continue;
     }
 
-    const aliases = manifest.playerAliases?.[name] || [];
+    const aliases = [...new Set([
+      ...(manifest.playerAliases?.[name] || []),
+      ...(registryEntry.aliases || []),
+    ])];
     if (!aliases.length) {
-      unresolved.push({ name, reason: 'aliases_not_configured' });
+      unresolved.push({ name, playerId: registryEntry.playerId, reason: 'aliases_not_configured' });
       continue;
     }
     const candidates = [...people.values()].filter(person =>
       [...person.names].some(providerName => aliasMatches(providerName, aliases))
     );
     if (candidates.length !== 1) {
-      unresolved.push({ name, reason: candidates.length ? 'ambiguous_provider_players' : 'not_observed_in_fixture' });
+      unresolved.push({ name, playerId: registryEntry.playerId, reason: candidates.length ? 'ambiguous_provider_players' : 'not_observed_in_fixture' });
       continue;
     }
     state.playerResolutions[name] = {
@@ -336,16 +380,19 @@ function resolvedTrackedPlayers(data, target, fixture, manifest, state, updated)
   const byProviderId = new Map();
   const tracked = [];
   for (const player of data.players || []) {
-    const providerPlayerId = player?.providerIds?.apiFootball?.player ?? state.playerResolutions?.[player.name]?.providerPlayerId;
+    const registryEntry = registryEntryForCandidate(player, registry);
+    if (!registryEntry) continue;
+    const persistedResolution = state.playerResolutions?.[player.name] ?? state.playerResolutions?.[registryEntry.name];
+    const providerPlayerId = registryEntry?.providerIds?.apiFootball?.player ?? player?.providerIds?.apiFootball?.player ?? persistedResolution?.providerPlayerId;
     if (providerPlayerId === null || providerPlayerId === undefined) continue;
     const key = String(providerPlayerId);
-    if (byProviderId.has(key) && byProviderId.get(key) !== player.name) {
-      throw new Error(`API-Football player ${key} resolved to both ${byProviderId.get(key)} and ${player.name}.`);
+    if (byProviderId.has(key) && byProviderId.get(key) !== registryEntry.playerId) {
+      throw new Error(`API-Football player ${key} resolved to both ${byProviderId.get(key)} and ${registryEntry.playerId}.`);
     }
-    byProviderId.set(key, player.name);
+    byProviderId.set(key, registryEntry.playerId);
     tracked.push({
       ...player,
-      playerId: player.playerId || stablePlayerId(player.name),
+      playerId: registryEntry.playerId,
       apiFootballPlayerId: providerPlayerId,
     });
   }
@@ -735,7 +782,8 @@ async function runBackfill(options = {}) {
   const providerConfigPath = options.providerConfigPath || path.join(root, 'config', 'api-football.json');
   const manifest = readJson(manifestPath);
   const providerConfig = readJson(providerConfigPath);
-  const data = mergeCurrentData(root, manifest.season);
+  const data = await mergeCurrentData(root, manifest.season);
+  const registry = loadPlayerRegistry(root);
   const targets = buildTargets(data, manifest);
   const backfillDirectory = path.join(root, 'data', manifest.season, 'backfill');
   const indexPath = path.join(backfillDirectory, 'index.json');
@@ -790,7 +838,7 @@ async function runBackfill(options = {}) {
         throw new Error(`Resolved API-Football fixture no longer matches stored result: ${target.matchId}`);
       }
 
-      const playerResolution = resolvedTrackedPlayers(data, target, fixture, manifest, state, updated);
+      const playerResolution = resolvedTrackedPlayers(data, target, fixture, manifest, state, updated, registry);
       delete unresolvedPlayers[target.matchId];
       if (playerResolution.unresolved.length) unresolvedPlayers[target.matchId] = playerResolution.unresolved;
       const names = localNameMaps(target, resolution.baseFixture);
@@ -915,16 +963,19 @@ module.exports = {
   RequestBudget,
   safeApiErrorDetails,
   aliasMatches,
+  buildPlayerRegistryIndexes,
   buildTargets,
   compactFixture,
   eligibleMatches,
   fixtureMatchesTarget,
+  loadPlayerRegistry,
   mergeCurrentData,
   mergeFragment,
   matchNeedsCoachEnrichment,
   enrichMissingLineupCoaches,
   normalizeProviderName,
   parseStoredScore,
+  registryEntryForCandidate,
   resolvedTrackedPlayers,
   runBackfill,
   selectCoachForDate,
