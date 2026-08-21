@@ -94,6 +94,7 @@ async function compactSeason(options = {}) {
       path: `data/${season}/backfill/index.json`,
       blobSha: blobSha(manifestContent),
       orderedFragments: [],
+      fragmentBlobs: {},
     };
     snapshot.compaction = {
       ...(snapshot.compaction || {}),
