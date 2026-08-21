@@ -262,10 +262,10 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:25:27.921Z",
-    "requestCount": 1,
-    "dailyRemaining": null,
-    "minuteRemaining": null,
+    "completedAt": "2026-08-21T06:31:03.561Z",
+    "requestCount": 2,
+    "dailyRemaining": 96,
+    "minuteRemaining": 9,
     "reserve": 20,
     "stoppedReason": null,
     "resolvedFixtureCount": 3,
@@ -275,7 +275,7 @@
     "errorDetails": {
       "status": 200,
       "apiErrors": {
-        "plan": "Free plans do not have access to this season, try from 2022 to 2024."
+        "plan": "Free plans do not have access to the Last parameter."
       }
     }
   },
@@ -283,5 +283,14 @@
     "apiKeyPersisted": false,
     "rawResponsesPersisted": false,
     "latestOrScheduledFixturesRequested": false
+  },
+  "teamResolutions": {
+    "arouca": {
+      "providerTeamId": 240,
+      "providerTeamName": "Arouca",
+      "search": "Arouca",
+      "method": "exact_team_search_alias",
+      "resolvedAt": "2026-08-21T06:31:03.561Z"
+    }
   }
 }
