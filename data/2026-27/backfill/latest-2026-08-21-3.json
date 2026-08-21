@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-21 14:07 JST",
+  "sources": {
+    "pl-hull-morita-20260726": {
+      "id": "pl-hull-morita-20260726",
+      "name": "Premier League summer transfer overview",
+      "type": "league_official_transfer_overview",
+      "url": "https://www.premierleague.com/es/news/4681361/-202627/",
+      "retrievedAt": "2026-08-21T14:07:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "currentLeague"]
+    },
+    "pl-coventry-sakamoto-squad-20260821": {
+      "id": "pl-coventry-sakamoto-squad-20260821",
+      "name": "Premier League Coventry City squad",
+      "type": "league_official_squad",
+      "url": "https://www.premierleague.com/en/clubs/9/coventry-city/squad",
+      "retrievedAt": "2026-08-21T14:07:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "currentLeague", "position"]
+    },
+    "cpfc-tomiyasu-signing-20260807": {
+      "id": "cpfc-tomiyasu-signing-20260807",
+      "name": "Crystal Palace official announcement",
+      "type": "club_official_transfer_announcement",
+      "url": "https://www.cpfc.co.uk/news/announcement/",
+      "retrievedAt": "2026-08-21T14:07:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "currentLeague"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "守田英正",
+      "club": "ハル・シティ",
+      "league": "プレミアリーグ",
+      "pos": "MF",
+      "status": "Hull City所属・プレミアリーグ開幕前",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-27プレミアリーグ開幕前",
+      "stats": {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0},
+      "effectiveDate": "2026-07-24",
+      "membershipChangeType": "transfer",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["pl-hull-morita-20260726"]
+    },
+    {
+      "name": "坂元達裕",
+      "club": "コヴェントリー・シティ",
+      "league": "プレミアリーグ",
+      "pos": "MF",
+      "status": "Coventry City登録・プレミアリーグ開幕前",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-27プレミアリーグ開幕前",
+      "stats": {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0},
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["pl-coventry-sakamoto-squad-20260821"]
+    },
+    {
+      "name": "冨安健洋",
+      "club": "クリスタル・パレス",
+      "league": "プレミアリーグ",
+      "pos": "DF",
+      "status": "Crystal Palace加入正式発表済み・プレミアリーグ開幕前",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-27プレミアリーグ開幕前",
+      "stats": {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0, "cleanSheets": 0},
+      "effectiveDate": "2026-08-07",
+      "membershipChangeType": "transfer",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["cpfc-tomiyasu-signing-20260807"]
+    }
+  ]
+}
