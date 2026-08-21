@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function loadRating() {
+function loadRatingContext() {
   const context = {
     console,
     window: { addEventListener() {} },
@@ -16,7 +16,11 @@ function loadRating() {
   vm.createContext(context);
   const source = fs.readFileSync(path.join(__dirname, '..', 'jfw-rating.js'), 'utf8');
   vm.runInContext(source, context, { filename: 'jfw-rating.js' });
-  return context.window.JFWRating;
+  return context;
+}
+
+function loadRating() {
+  return loadRatingContext().window.JFWRating;
 }
 
 function value(value) { return { state: 'value', value }; }
@@ -91,4 +95,48 @@ test('rating validity guard accepts only the documented 3.0 to 10.0 range', () =
   assert.equal(rating.isRatingValue(3), true);
   assert.equal(rating.isRatingValue(10), true);
   assert.equal(rating.isRatingValue(10.01), false);
+});
+
+test('API-Football provider rating is read without converting missing data to zero', () => {
+  const rating = loadRating();
+  assert.equal(rating.providerRatingValue({ providerRatings: { apiFootball: { value: '7.6' } } }), 7.6);
+  assert.equal(rating.providerRatingValue({ apiFootballRating: 6.8 }), 6.8);
+  assert.equal(rating.providerRatingValue({ providerRatings: { apiFootball: { value: null } } }), null);
+  assert.equal(rating.providerRatingValue({}), null);
+});
+
+test('player rating comparison renders JFW and API-Football side by side', () => {
+  const rating = loadRating();
+  const html = rating.playerRatingComparisonHtml({
+    jfwRating: 7.4,
+    providerRatings: { apiFootball: { value: 7.1 } }
+  });
+  assert.match(html, />JFW</);
+  assert.match(html, />7\.4</);
+  assert.match(html, />API-Football</);
+  assert.match(html, />7\.1</);
+
+  const missingApi = rating.playerRatingComparisonHtml({ jfwRating: 6.9 });
+  assert.match(missingApi, />API-Football</);
+  assert.match(missingApi, />—</);
+});
+
+test('player detail card renderer is wrapped once to expose provider rating', () => {
+  const context = loadRatingContext();
+  const rating = context.window.JFWRating;
+  context.window.playerRecordCard = record =>
+    `<div class="card"><div class="metricValue">${record.jfwRating ?? '—'}</div></div>`;
+
+  assert.equal(rating.installProviderRatingUi(), true);
+  assert.equal(rating.installProviderRatingUi(), false);
+
+  const html = context.window.playerRecordCard({
+    ratingVersion: '1.0',
+    jfwRating: 7.4,
+    providerRatings: { apiFootball: { value: 7.1 } }
+  });
+  assert.match(html, />JFW</);
+  assert.match(html, />7\.4</);
+  assert.match(html, />API-Football</);
+  assert.match(html, />7\.1</);
 });
