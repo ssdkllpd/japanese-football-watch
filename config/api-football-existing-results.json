@@ -108,21 +108,30 @@
     "allowUnlistedMatches": false,
     "description": "Only matches already stored by JFW with a verified final score may be requested."
   },
+  "providerPlanConstraints": {
+    "plan": "pro",
+    "historicalFixtureIdDiscoveryEnabled": true,
+    "discoveryMode": "fixed_manifest_dates",
+    "knownFixtureIdsRemainFetchable": true
+  },
   "fixtures": [
     {
       "matchId": "uecl-2026-08-20-motherwell-freiburg",
+      "providerFixtureId": 1623399,
       "fixtureDate": "2026-08-21",
       "homeAliases": ["Motherwell"],
       "awayAliases": ["SC Freiburg", "Freiburg"]
     },
     {
       "matchId": "uel-2026-08-20-stvv-omonia",
+      "providerFixtureId": 1623438,
       "fixtureDate": "2026-08-21",
       "homeAliases": ["St. Truiden", "St Truiden", "Sint-Truiden", "St. Truidense VV"],
       "awayAliases": ["Omonia Nicosia", "Omonia", "Omonia FC"]
     },
     {
       "matchId": "m-2026-08-19-celtic-lask",
+      "providerFixtureId": 1610923,
       "fixtureDate": "2026-08-20",
       "homeAliases": ["Celtic"],
       "awayAliases": ["LASK Linz", "Lask Linz", "LASK"]

@@ -89,6 +89,20 @@ test('request budget preserves the configured daily reserve', async () => {
   assert.equal(budget.hasCapacity(3), false);
 });
 
+test('request budget honors the configured Pro request interval', () => {
+  const budget = new RequestBudget({
+    quota: {
+      configuredDailyBudget: 7500,
+      configuredPerMinuteLimit: 300,
+      minimumRequestIntervalMs: 300,
+      reserveForTrackedFixtures: 100,
+    },
+  });
+
+  assert.equal(budget.minimumIntervalMs, 300);
+  assert.equal(budget.maxRequests, 7400);
+});
+
 test('tracked player IDs resolve only through configured exact aliases in the expected fixture', () => {
   const data = {
     players: [{ name: '後藤啓介', playerId: 'jp-goto', pos: 'FW' }],

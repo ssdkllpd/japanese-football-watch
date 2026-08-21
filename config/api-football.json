@@ -7,13 +7,13 @@
     "keyEnv": "API_FOOTBALL_KEY"
   },
   "quota": {
-    "plan": "free",
-    "configuredDailyBudget": 100,
-    "configuredPerMinuteLimit": 10,
-    "minimumRequestIntervalMs": 6500,
+    "plan": "pro",
+    "configuredDailyBudget": 7500,
+    "configuredPerMinuteLimit": 300,
+    "minimumRequestIntervalMs": 300,
     "trustResponseHeadersOverConfiguredLimits": true,
-    "reserveForTrackedFixtures": 20,
-    "softStopRemaining": 5
+    "reserveForTrackedFixtures": 100,
+    "softStopRemaining": 50
   },
   "sync": {
     "timezone": "Asia/Tokyo",
@@ -26,7 +26,7 @@
     "manualExistingResultsBackfillEnabled": true,
     "manualExistingResultsManifest": "config/api-football-existing-results.json",
     "manualExistingResultsState": "state/api-football-existing-results.json",
-    "manualExistingResultsUsesTeamLastOnlyForFixtureIdDiscovery": true,
+    "manualExistingResultsDiscoveryMode": "fixed_manifest_dates",
     "manualExistingResultsNeverPersistsUnlistedOrScheduledFixtures": true,
     "enableOnlyAfterCoverageInventoryAndConsistencyTests": true
   }

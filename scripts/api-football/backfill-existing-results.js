@@ -252,7 +252,8 @@ function emptyState(manifest) {
       rawResponsesPersisted: false,
       scheduledFixturesRequested: false,
       unlistedFixturesPersisted: false,
-      teamLastDiscoveryUsed: true,
+      fixedManifestDateDiscoveryUsed: true,
+      teamLastDiscoveryUsed: false,
     },
   };
 }
@@ -411,7 +412,8 @@ class RequestBudget {
       Math.max(1, Number(quota.configuredDailyBudget || 100) - this.reserve));
     this.perMinuteLimit = Number(quota.configuredPerMinuteLimit || 10);
     this.minimumIntervalMs = Number(options.minimumIntervalMs ??
-      Math.ceil(60000 / Math.max(1, this.perMinuteLimit)) + 500);
+      quota.minimumRequestIntervalMs ??
+      Math.ceil(60000 / Math.max(1, this.perMinuteLimit)) + 100);
     this.wait = options.wait || sleep;
     this.now = options.now || Date.now;
     this.requestCount = 0;
@@ -465,66 +467,24 @@ function resolutionStillValid(resolution, target) {
 }
 
 async function resolveFixtures(targets, client, budget, state, manifest, updated) {
-  state.teamResolutions = state.teamResolutions || {};
-  const byGroup = new Map();
+  const byDate = new Map();
   for (const target of targets) {
     if (resolutionStillValid(state.fixtureResolutions?.[target.matchId], target)) continue;
-    const key = target.discoveryGroup.key;
-    if (!byGroup.has(key)) byGroup.set(key, { group: target.discoveryGroup, targets: [] });
-    byGroup.get(key).targets.push(target);
+    if (!byDate.has(target.fixtureDate)) byDate.set(target.fixtureDate, []);
+    byDate.get(target.fixtureDate).push(target);
   }
 
-  for (const { group, targets: groupTargets } of byGroup.values()) {
-    let providerTeamId = group.providerTeamId ?? state.teamResolutions?.[group.key]?.providerTeamId ?? null;
-    if (providerTeamId === null) {
-      if (!budget.hasCapacity(1)) {
-        budget.stoppedReason = 'daily_quota_reserve';
-        break;
-      }
-      const teamResult = await budget.get(client, '/teams', { search: group.search });
-      const candidates = responseRows(teamResult)
-        .map(row => row?.team)
-        .filter(team => team?.id !== null && team?.id !== undefined && aliasMatches(team?.name, group.aliases));
-      if (candidates.length !== 1) {
-        state.teamResolutions[group.key] = {
-          providerTeamId: null,
-          search: group.search,
-          candidateCount: candidates.length,
-          reason: candidates.length ? 'ambiguous_team' : 'team_not_found',
-          resolvedAt: updated,
-        };
-        for (const target of groupTargets) {
-          state.fixtureResolutions[target.matchId] = {
-            fixtureId: null,
-            signature: selectionSignature(target),
-            reason: 'discovery_team_unresolved',
-            discoveryGroup: group.key,
-            resolvedAt: updated,
-          };
-        }
-        continue;
-      }
-      providerTeamId = candidates[0].id;
-    }
-    state.teamResolutions[group.key] = {
-      providerTeamId,
-      providerTeamName: state.teamResolutions?.[group.key]?.providerTeamName || group.aliases[0],
-      search: group.search,
-      method: group.providerTeamId ? 'verified_fixture_manifest' : 'exact_team_search_alias',
-      resolvedAt: state.teamResolutions?.[group.key]?.resolvedAt || updated,
-    };
-
+  for (const [fixtureDate, dateTargets] of byDate) {
     if (!budget.hasCapacity(1)) {
       budget.stoppedReason = 'daily_quota_reserve';
       break;
     }
     const { data } = await budget.get(client, '/fixtures', {
-      team: providerTeamId,
-      last: 20,
+      date: fixtureDate,
       timezone: manifest.timezone,
     });
     const fixtures = Array.isArray(data?.response) ? data.response : [];
-    for (const target of groupTargets) {
+    for (const target of dateTargets) {
       const candidates = fixtures.filter(fixture => fixtureMatchesTarget(fixture, target));
       if (candidates.length === 1) {
         state.fixtureResolutions[target.matchId] = {
@@ -532,10 +492,8 @@ async function resolveFixtures(targets, client, budget, state, manifest, updated
           signature: selectionSignature(target),
           fixtureDate: target.fixtureDate,
           discovery: {
-            mode: 'team_last_completed',
-            groupKey: group.key,
-            providerTeamId,
-            last: 20,
+            mode: 'fixed_manifest_date',
+            fixtureDate,
           },
           providerHome: candidates[0]?.teams?.home?.name || null,
           providerAway: candidates[0]?.teams?.away?.name || null,
@@ -561,10 +519,8 @@ async function resolveFixtures(targets, client, budget, state, manifest, updated
           signature: selectionSignature(target),
           fixtureDate: target.fixtureDate,
           discovery: {
-            mode: 'team_last_completed',
-            groupKey: group.key,
-            providerTeamId,
-            last: 20,
+            mode: 'fixed_manifest_date',
+            fixtureDate,
           },
           candidateCount: candidates.length,
           scoreCandidates,
@@ -573,6 +529,43 @@ async function resolveFixtures(targets, client, budget, state, manifest, updated
         };
       }
     }
+  }
+}
+
+async function resolveManifestFixtureIds(targets, client, budget, state, manifest, updated) {
+  for (const target of targets) {
+    if (resolutionStillValid(state.fixtureResolutions?.[target.matchId], target)) continue;
+    if (target.providerFixtureId === null || target.providerFixtureId === undefined) continue;
+    if (!budget.hasCapacity(1)) {
+      budget.stoppedReason = 'daily_quota_reserve';
+      break;
+    }
+    const result = await budget.get(client, '/fixtures', {
+      id: target.providerFixtureId,
+      timezone: manifest.timezone,
+    });
+    const candidates = responseRows(result).filter(fixture => fixtureMatchesTarget(fixture, target));
+    if (candidates.length !== 1) {
+      state.fixtureResolutions[target.matchId] = {
+        fixtureId: null,
+        signature: selectionSignature(target),
+        reason: candidates.length ? 'ambiguous_manifest_fixture_id' : 'manifest_fixture_id_not_found',
+        resolvedAt: updated,
+      };
+      continue;
+    }
+    state.fixtureResolutions[target.matchId] = {
+      fixtureId: candidates[0].fixture.id,
+      signature: selectionSignature(target),
+      fixtureDate: target.fixtureDate,
+      providerHome: candidates[0]?.teams?.home?.name || null,
+      providerAway: candidates[0]?.teams?.away?.name || null,
+      resolvedAt: updated,
+      discovery: {
+        mode: 'manifest_fixture_id',
+      },
+      baseFixture: compactFixture(candidates[0]),
+    };
   }
 }
 
@@ -626,9 +619,9 @@ function normalizeMappedFragment(mapped, target, fixtureId, updated, discovery) 
   }
   const sourceId = `api-football-fixture-${fixtureId}`;
   if (mapped.sources?.[sourceId]) {
-    const discoveryEndpoint = discovery?.mode === 'team_last_completed'
-      ? `/fixtures?team=${discovery.providerTeamId}&last=${discovery.last}`
-      : `/fixtures?date=${target.fixtureDate}`;
+    const discoveryEndpoint = discovery?.mode === 'manifest_fixture_id'
+        ? `/fixtures?id=${fixtureId}`
+        : `/fixtures?date=${target.fixtureDate}`;
     mapped.sources[sourceId] = {
       ...mapped.sources[sourceId],
       name: 'API-Football existing-result fixture bundle',
@@ -679,9 +672,7 @@ async function runBackfill(options = {}) {
   const unresolvedPlayers = {};
   let runError = null;
 
-  try {
-    await resolveFixtures(targets, client, budget, state, manifest, updated);
-
+  async function processResolvedTargets() {
     for (const target of targets) {
       if (completed.has(target.matchId)) continue;
       const resolution = state.fixtureResolutions?.[target.matchId];
@@ -724,11 +715,40 @@ async function runBackfill(options = {}) {
       ));
       completed.add(target.matchId);
     }
+  }
+
+  try {
+    await resolveManifestFixtureIds(targets, client, budget, state, manifest, updated);
+    await processResolvedTargets();
+    if (manifest.providerPlanConstraints?.historicalFixtureIdDiscoveryEnabled !== false) {
+      await resolveFixtures(targets, client, budget, state, manifest, updated);
+      await processResolvedTargets();
+    } else {
+      for (const target of targets) {
+        if (completed.has(target.matchId) || resolutionStillValid(state.fixtureResolutions?.[target.matchId], target)) continue;
+        state.fixtureResolutions[target.matchId] = {
+          ...(state.fixtureResolutions?.[target.matchId] || {}),
+          fixtureId: null,
+          signature: selectionSignature(target),
+          reason: 'historical_fixture_id_discovery_disabled',
+          resolvedAt: updated,
+        };
+      }
+    }
   } catch (error) {
     if (!(error instanceof QuotaStop)) runError = error;
     else budget.stoppedReason = budget.stoppedReason || 'daily_quota_reserve';
   } finally {
     const resolved = targets.filter(target => resolutionStillValid(state.fixtureResolutions?.[target.matchId], target));
+    state.security = {
+      ...(state.security || {}),
+      apiKeyPersisted: false,
+      rawResponsesPersisted: false,
+      scheduledFixturesRequested: false,
+      unlistedFixturesPersisted: false,
+      fixedManifestDateDiscoveryUsed: manifest.providerPlanConstraints?.historicalFixtureIdDiscoveryEnabled !== false,
+      teamLastDiscoveryUsed: false,
+    };
     state.targetCount = targets.length;
     state.completedMatchIds = sortedUnique([...completed]);
     state.unresolvedMatchIds = sortedUnique(targets
@@ -773,7 +793,8 @@ async function runBackfill(options = {}) {
     rawResponsesPersisted: false,
     scheduledFixturesRequested: false,
     unlistedFixturesPersisted: false,
-    teamLastDiscoveryUsed: true,
+    fixedManifestDateDiscoveryUsed: manifest.providerPlanConstraints?.historicalFixtureIdDiscoveryEnabled !== false,
+    teamLastDiscoveryUsed: false,
   };
   if (runError) throw Object.assign(runError, { summary });
   return summary;

@@ -1,6 +1,6 @@
 {
-  "version": 16,
-  "updatedAt": "2026-08-21T15:29:50+09:00",
+  "version": 18,
+  "updatedAt": "2026-08-21T15:38:00+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -148,14 +148,15 @@
       "targetCountAtAuthorization": 27,
       "requestLatestFeed": false,
       "requestScheduledFixtures": false,
-      "fixtureDiscovery": "explicit team identity + last 20 completed fixtures; match only stored home/away/score",
-      "teamLastDiscoveryMayReadUnlistedCompletedResults": true,
+      "providerPlan": "pro",
+      "fixtureDiscovery": "only the nine fixed manifest dates; never latest, next, or last",
+      "teamLastDiscoveryMayReadUnlistedCompletedResults": false,
       "persistUnlistedCompletedResults": false,
       "detailEndpoints": ["/fixtures/events", "/fixtures/lineups", "/fixtures/players"],
       "outputFragment": "data/2026-27/backfill/api-football-existing-results.json",
       "resumableState": "state/api-football-existing-results.json",
-      "dailyRequestReserve": 20,
-      "minimumRequestIntervalMs": 6500,
+      "dailyRequestReserve": 100,
+      "minimumRequestIntervalMs": 300,
       "persistRawResponses": false
     },
     "enableScheduledSynchronizationOnlyAfter": [
