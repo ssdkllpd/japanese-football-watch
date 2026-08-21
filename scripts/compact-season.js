@@ -22,30 +22,26 @@ const blobSha = content => {
 };
 const unique = values => [...new Set((values || []).filter(Boolean))];
 
-(async () => {
-  const seasons = readJson(path.join(ROOT, 'seasons.json'));
-  const season = arg('--season', seasons.current);
-  const manifestPath = path.join(ROOT, 'data', season, 'backfill', 'index.json');
+async function compactSeason(options = {}) {
+  const root = options.root || ROOT;
+  const seasonsPath = path.join(root, 'seasons.json');
+  const seasons = readJson(seasonsPath);
+  const season = options.season || seasons.current;
+  const manifestPath = path.join(root, 'data', season, 'backfill', 'index.json');
   const manifest = readJson(manifestPath);
   const fragments = manifest.fragments || [];
   const bytes = fragments.reduce((sum, name) => sum + fs.statSync(path.join(path.dirname(manifestPath), name)).size, 0);
-  const thresholdFragments = Number(arg('--threshold-fragments', 40));
-  const thresholdBytes = Number(arg('--threshold-bytes', 5 * 1024 * 1024));
+  const thresholdFragments = Number(options.thresholdFragments ?? 40);
+  const thresholdBytes = Number(options.thresholdBytes ?? 5 * 1024 * 1024);
   const eligible = fragments.length >= thresholdFragments || bytes >= thresholdBytes;
   const plan = { season, fragmentCount: fragments.length, fragmentBytes: bytes, thresholdFragments, thresholdBytes, eligible };
 
-  if (!has('--apply')) {
-    process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
-    return;
-  }
-  if (!fragments.length) {
-    process.stdout.write(`${JSON.stringify({ ...plan, applied: false, reason: 'no_new_fragments' }, null, 2)}\n`);
-    return;
-  }
-  if (!eligible && !has('--force')) throw new Error(`compaction threshold not reached: ${JSON.stringify(plan)}`);
+  if (!options.apply) return plan;
+  if (!fragments.length) return { ...plan, applied: false, reason: 'no_new_fragments' };
+  if (!eligible && !options.force) throw new Error(`compaction threshold not reached: ${JSON.stringify(plan)}`);
 
-  const data = await loadIntegratedSeasonData(ROOT, season);
-  const compactedAt = new Date().toISOString();
+  const data = await loadIntegratedSeasonData(root, season);
+  const compactedAt = options.compactedAt || new Date().toISOString();
   const previousCompactedThrough = Array.isArray(data.compaction?.compactedThroughFragments)
     ? data.compaction.compactedThroughFragments
     : [];
@@ -65,7 +61,7 @@ const unique = values => [...new Set((values || []).filter(Boolean))];
   };
 
   const baseRel = `data/${season}/compacted/base.json`;
-  const basePath = path.join(ROOT, baseRel);
+  const basePath = path.join(root, baseRel);
   const baseContent = `${JSON.stringify(data, null, 2)}\n`;
   fs.mkdirSync(path.dirname(basePath), { recursive: true });
   fs.writeFileSync(basePath, baseContent, 'utf8');
@@ -86,9 +82,9 @@ const unique = values => [...new Set((values || []).filter(Boolean))];
   const seasonRow = (seasons.seasons || []).find(row => String(row.id) === String(season));
   if (!seasonRow) throw new Error(`season missing: ${season}`);
   seasonRow.data = baseRel;
-  writeJson(path.join(ROOT, 'seasons.json'), seasons);
+  writeJson(seasonsPath, seasons);
 
-  const snapshotPath = path.join(ROOT, 'state', 'latest_snapshot.json');
+  const snapshotPath = path.join(root, 'state', 'latest_snapshot.json');
   if (fs.existsSync(snapshotPath) && String(seasons.current) === String(season)) {
     const snapshot = readJson(snapshotPath);
     snapshot.updatedAt = compactedAt;
@@ -107,8 +103,26 @@ const unique = values => [...new Set((values || []).filter(Boolean))];
     writeJson(snapshotPath, snapshot);
   }
 
-  process.stdout.write(`${JSON.stringify({ ...plan, applied: true, base: baseRel, compactedThroughFragments }, null, 2)}\n`);
-})().catch(error => {
-  console.error(error?.stack || error);
-  process.exitCode = 1;
-});
+  return { ...plan, applied: true, base: baseRel, compactedThroughFragments };
+}
+
+async function main() {
+  const result = await compactSeason({
+    root: ROOT,
+    season: arg('--season'),
+    thresholdFragments: Number(arg('--threshold-fragments', 40)),
+    thresholdBytes: Number(arg('--threshold-bytes', 5 * 1024 * 1024)),
+    apply: has('--apply'),
+    force: has('--force'),
+  });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error(error?.stack || error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { blobSha, compactSeason };
