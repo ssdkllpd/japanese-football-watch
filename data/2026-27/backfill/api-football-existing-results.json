@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "season": "2026-27",
-  "updated": "2026-08-21T06:52:37.749Z",
+  "updated": "2026-08-21T06:54:50.812Z",
   "provider": "api-football",
   "sources": {
     "api-football-fixture-1623399": {
@@ -31,7 +31,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1623438/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:52:37.749Z",
+      "retrievedAt": "2026-08-21T06:54:50.812Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -296,7 +296,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558590/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:52:37.749Z",
+      "retrievedAt": "2026-08-21T06:54:50.812Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -407,7 +407,7 @@
       "name": "API-Football existing-result fixture bundle",
       "type": "provider_api",
       "endpoint": "/fixtures/1558584/existing-result-enrichment",
-      "retrievedAt": "2026-08-21T06:52:37.749Z",
+      "retrievedAt": "2026-08-21T06:54:50.812Z",
       "priority": 1,
       "exhaustiveFor": [
         "result",
@@ -1570,7 +1570,12 @@
             "teamName": "STVV",
             "formation": null,
             "lineupAvailable": true,
-            "coach": null,
+            "coach": {
+              "providerCoachId": 25770,
+              "name": "Wouter Vrancken",
+              "photo": "https://media.api-sports.io/football/coachs/25770.png",
+              "photoSource": "api_football_coach_registry"
+            },
             "startXI": [
               {
                 "providerPlayerId": 162482,
@@ -12279,7 +12284,12 @@
             "teamName": "STVV",
             "formation": null,
             "lineupAvailable": true,
-            "coach": null,
+            "coach": {
+              "providerCoachId": 25770,
+              "name": "Wouter Vrancken",
+              "photo": "https://media.api-sports.io/football/coachs/25770.png",
+              "photoSource": "api_football_coach_registry"
+            },
             "startXI": [
               {
                 "providerPlayerId": 162482,
@@ -16137,7 +16147,12 @@
             "teamName": "STVV",
             "formation": null,
             "lineupAvailable": true,
-            "coach": null,
+            "coach": {
+              "providerCoachId": 25770,
+              "name": "Wouter Vrancken",
+              "photo": "https://media.api-sports.io/football/coachs/25770.png",
+              "photoSource": "api_football_coach_registry"
+            },
             "startXI": [
               {
                 "providerPlayerId": 162482,

@@ -2270,9 +2270,9 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:52:37.749Z",
+    "completedAt": "2026-08-21T06:54:50.812Z",
     "requestCount": 10,
-    "dailyRemaining": 7389,
+    "dailyRemaining": 7379,
     "minuteRemaining": 290,
     "reserve": 100,
     "stoppedReason": null,
@@ -2310,24 +2310,30 @@
   "coachResolutions": {
     "735|2026-08-21": {
       "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
       "fixtureDate": "2026-08-21",
-      "candidateCount": 3,
-      "reason": "ambiguous_coach_assignment",
-      "resolvedAt": "2026-08-21T06:52:37.749Z"
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
     },
     "735|2026-08-15": {
       "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
       "fixtureDate": "2026-08-15",
-      "candidateCount": 3,
-      "reason": "ambiguous_coach_assignment",
-      "resolvedAt": "2026-08-21T06:52:37.749Z"
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
     },
     "735|2026-08-09": {
       "providerTeamId": 735,
+      "providerCoachId": 25770,
+      "providerCoachName": "Wouter Vrancken",
       "fixtureDate": "2026-08-09",
-      "candidateCount": 3,
-      "reason": "ambiguous_coach_assignment",
-      "resolvedAt": "2026-08-21T06:52:37.749Z"
+      "activeAssignmentStart": "2025-07-01",
+      "method": "team_career_date_latest_start",
+      "resolvedAt": "2026-08-21T06:54:50.812Z"
     }
   }
 }
