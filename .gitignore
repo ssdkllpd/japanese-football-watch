@@ -5,3 +5,11 @@
 
 # Local API-Football runtime/debug output
 .api-football/
+
+# V2 vertical-slice build output
+.tmp/
+
+# Local Cloudflare Worker binding config
+worker/wrangler.toml
+worker/.dev.vars
+.wrangler/
