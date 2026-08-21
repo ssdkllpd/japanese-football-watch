@@ -9,11 +9,11 @@ JFWに結果を反映済みの試合だけをAPI-Footballで補完し、フォ�
 - `config/api-football-existing-results.json`に記載した試合のみを対象とする。
 - 保存済みデータ上で`status = verified`かつ最終スコアを持つことを実行時に再検証する。
 - 現在の対象は27試合。保存済み対象とマニフェストが一致しなければAPIリクエスト前に停止する。
-- `/fixtures`はマニフェストに固定した過去日付だけで検索する。最新試合、今後の日程、J1は取得しない。
+- `/fixtures`は対象大会・2026年シーズン・終了済みステータス（FT/AET/PEN）だけで検索する。最新フィード、今後の日程、J1は取得しない。
 
 ## リクエストとクォータ
 
-1. 固定日付の`/fixtures`でprovider fixture IDを解決する。
+1. 対象大会の終了済み試合だけを`/fixtures`で取得し、保存済みスコアと明示的なチーム別名からprovider fixture IDを解決する。Freeプランの日付指定範囲外でも、予定試合を取得しない。
 2. 解決済みfixture IDに限り、`/fixtures/events`、`/fixtures/lineups`、`/fixtures/players`を取得する。
 3. Free planの10 requests/minuteを超えないよう、呼出し間隔を6.5秒以上にする。
 4. 日次枠を最低20リクエスト残す。1回で完了しない場合は状態を保存して次回に続きから再開する。

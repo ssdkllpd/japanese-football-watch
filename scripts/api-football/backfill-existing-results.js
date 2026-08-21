@@ -156,7 +156,11 @@ function buildTargets(data, manifest) {
       awayAliases: configured.awayAliases || [],
       score,
       playerNames: splitPlayerNames(stored.players),
+      providerLeagueId: manifest.competitionIds?.[stored.league] ?? null,
     });
+    if (targets.at(-1).providerLeagueId === null) {
+      throw new Error(`API-Football competition id is not configured for ${stored.league}.`);
+    }
   }
 
   const omitted = [...eligibleById.keys()].filter(matchId => !configuredIds.has(matchId));
@@ -441,28 +445,40 @@ function resolutionStillValid(resolution, target) {
   return !!resolution?.fixtureId && !!resolution?.baseFixture && resolution.signature === selectionSignature(target);
 }
 
-async function resolveFixtures(targets, client, budget, state, timezone, updated) {
-  const byDate = new Map();
+async function resolveFixtures(targets, client, budget, state, manifest, updated) {
+  const byCompetition = new Map();
   for (const target of targets) {
     if (resolutionStillValid(state.fixtureResolutions?.[target.matchId], target)) continue;
-    if (!byDate.has(target.fixtureDate)) byDate.set(target.fixtureDate, []);
-    byDate.get(target.fixtureDate).push(target);
+    const key = String(target.providerLeagueId);
+    if (!byCompetition.has(key)) byCompetition.set(key, []);
+    byCompetition.get(key).push(target);
   }
 
-  for (const [fixtureDate, dateTargets] of byDate) {
+  const seasonYear = Number(String(manifest.season).slice(0, 4));
+  for (const [providerLeagueId, competitionTargets] of byCompetition) {
     if (!budget.hasCapacity(1)) {
       budget.stoppedReason = 'daily_quota_reserve';
       break;
     }
-    const { data } = await budget.get(client, '/fixtures', { date: fixtureDate, timezone });
+    const { data } = await budget.get(client, '/fixtures', {
+      league: providerLeagueId,
+      season: seasonYear,
+      status: 'FT-AET-PEN',
+      timezone: manifest.timezone,
+    });
     const fixtures = Array.isArray(data?.response) ? data.response : [];
-    for (const target of dateTargets) {
+    for (const target of competitionTargets) {
       const candidates = fixtures.filter(fixture => fixtureMatchesTarget(fixture, target));
       if (candidates.length === 1) {
         state.fixtureResolutions[target.matchId] = {
           fixtureId: candidates[0]?.fixture?.id,
           signature: selectionSignature(target),
-          fixtureDate,
+          fixtureDate: target.fixtureDate,
+          discovery: {
+            providerLeagueId: Number(providerLeagueId),
+            season: seasonYear,
+            finalStatusesOnly: true,
+          },
           providerHome: candidates[0]?.teams?.home?.name || null,
           providerAway: candidates[0]?.teams?.away?.name || null,
           resolvedAt: updated,
@@ -485,7 +501,12 @@ async function resolveFixtures(targets, client, budget, state, timezone, updated
         state.fixtureResolutions[target.matchId] = {
           fixtureId: null,
           signature: selectionSignature(target),
-          fixtureDate,
+          fixtureDate: target.fixtureDate,
+          discovery: {
+            providerLeagueId: Number(providerLeagueId),
+            season: seasonYear,
+            finalStatusesOnly: true,
+          },
           candidateCount: candidates.length,
           scoreCandidates,
           reason: candidates.length ? 'ambiguous_fixture' : 'fixture_not_found',
@@ -512,7 +533,7 @@ function localNameMaps(target, baseFixture) {
   };
 }
 
-function normalizeMappedFragment(mapped, target, fixtureId, updated) {
+function normalizeMappedFragment(mapped, target, fixtureId, updated, seasonYear) {
   const matchUpdate = mapped.matchUpdates?.[0];
   if (matchUpdate) {
     Object.assign(matchUpdate, {
@@ -551,7 +572,7 @@ function normalizeMappedFragment(mapped, target, fixtureId, updated) {
       name: 'API-Football existing-result fixture bundle',
       endpoint: `/fixtures/${fixtureId}/existing-result-enrichment`,
       endpoints: [
-        `/fixtures?date=${target.fixtureDate}`,
+        `/fixtures?league=${target.providerLeagueId}&season=${seasonYear}&status=FT-AET-PEN`,
         `/fixtures/events?fixture=${fixtureId}`,
         `/fixtures/lineups?fixture=${fixtureId}`,
         `/fixtures/players?fixture=${fixtureId}`,
@@ -597,7 +618,7 @@ async function runBackfill(options = {}) {
   let runError = null;
 
   try {
-    await resolveFixtures(targets, client, budget, state, manifest.timezone, updated);
+    await resolveFixtures(targets, client, budget, state, manifest, updated);
 
     for (const target of targets) {
       if (completed.has(target.matchId)) continue;
@@ -632,7 +653,13 @@ async function runBackfill(options = {}) {
         trackedPlayers: playerResolution.tracked,
         ...names,
       });
-      fragment = mergeFragment(fragment, normalizeMappedFragment(mapped, target, fixtureId, updated));
+      fragment = mergeFragment(fragment, normalizeMappedFragment(
+        mapped,
+        target,
+        fixtureId,
+        updated,
+        Number(String(manifest.season).slice(0, 4))
+      ));
       completed.add(target.matchId);
     }
   } catch (error) {

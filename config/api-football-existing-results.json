@@ -2,6 +2,17 @@
   "version": "1.0",
   "season": "2026-27",
   "timezone": "Asia/Tokyo",
+  "competitionIds": {
+    "スコットランド": 179,
+    "ポルトガル": 94,
+    "ベルギー": 144,
+    "エールディヴィジ": 88,
+    "チャンピオンシップ": 40,
+    "カラバオカップ": 48,
+    "UEFAチャンピオンズリーグ": 2,
+    "UEFA Conference League": 848,
+    "UEFA Europa League": 3
+  },
   "selection": {
     "status": "verified",
     "requiresScore": true,
