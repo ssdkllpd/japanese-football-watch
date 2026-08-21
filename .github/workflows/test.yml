@@ -32,5 +32,9 @@ jobs:
           node --check scripts/api-football/field-inventory.js
           node --check scripts/api-football/schema-v2-mapper.js
           node --check scripts/api-football/smoke-test.js
+          node --check scripts/v2/fixture-contract.js
+          node --check scripts/v2/fetch-fixture-vertical-slice.js
+          node --check scripts/v2/merge-date-index.js
+          node --check worker/index.mjs
       - name: Run tests
         run: node --test tests/*.test.js
