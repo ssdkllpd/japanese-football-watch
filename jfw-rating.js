@@ -196,10 +196,55 @@
     };
   }
 
-  window.JFWRating = { VERSION, compute, withComputedRating, seasonSummary, isRatingValue };
+  function providerRatingValue(record, provider = 'apiFootball') {
+    const direct = provider === 'apiFootball' ? record?.apiFootballRating : null;
+    const value = record?.providerRatings?.[provider]?.value ?? direct;
+    if (value === null || value === undefined || value === '') return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 && numeric <= 10 ? numeric : null;
+  }
+
+  function playerRatingComparisonHtml(record) {
+    const jfw = isRatingValue(record?.jfwRating) ? Number(record.jfwRating).toFixed(1) : '—';
+    const api = providerRatingValue(record, 'apiFootball');
+    const apiText = api == null ? '—' : api.toFixed(1);
+    return `<div style="display:flex;gap:12px;align-items:flex-end;justify-content:flex-end;flex-wrap:wrap"><div><div class="sub">JFW</div><div class="metricValue">${jfw}</div></div><div><div class="sub">API-Football</div><div class="metricValue" style="color:var(--b)">${apiText}</div></div></div>`;
+  }
+
+  function installProviderRatingUi() {
+    const original = window.playerRecordCard;
+    if (typeof original !== 'function' || original.__jfwProviderRatings) return false;
+    const wrapped = record => {
+      const computed = withComputedRating(record);
+      const html = original(computed);
+      return html.replace(/<div class="metricValue">[\s\S]*?<\/div>/, playerRatingComparisonHtml(computed));
+    };
+    wrapped.__jfwProviderRatings = true;
+    window.playerRecordCard = wrapped;
+    try {
+      if (typeof renderPlayerDetail === 'function' && typeof activePlayer !== 'undefined' && activePlayer) {
+        renderPlayerDetail();
+      }
+    } catch {}
+    return true;
+  }
+
+  window.JFWRating = {
+    VERSION,
+    compute,
+    withComputedRating,
+    seasonSummary,
+    isRatingValue,
+    providerRatingValue,
+    playerRatingComparisonHtml,
+    installProviderRatingUi
+  };
 })();
 
 window.addEventListener('load', () => {
+  try { window.JFWRating?.installProviderRatingUi?.(); } catch (error) {
+    console.warn('provider rating UI install failed', error);
+  }
   let tries = 0;
   const bootBackfill = () => {
     let ready = false;
