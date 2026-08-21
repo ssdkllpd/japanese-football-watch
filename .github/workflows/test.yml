@@ -31,5 +31,8 @@ jobs:
           node --check scripts/api-football/field-inventory.js
           node --check scripts/api-football/schema-v2-mapper.js
           node --check scripts/api-football/smoke-test.js
+          node --check scripts/compact-season.js
+          node --check scripts/shared/runtime-data-loader.js
+          node --check scripts/shared/runtime-data-loader-cli.js
       - name: Run tests
         run: node --test tests/*.test.js
