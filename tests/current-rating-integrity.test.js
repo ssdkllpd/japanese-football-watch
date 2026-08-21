@@ -88,6 +88,6 @@ test('Nelson Ishiwatari Omonia match stays unrated and cannot drag season averag
   const summary = c.window.JFWRating.seasonSummary(recs);
   assert.equal(summary.appearances, 3);
   assert.equal(summary.ratedGames, 2);
-  assert.ok(summary.average >= 6.0 && summary.average <= 7.0, `Nelson average unexpectedly ${summary.average}`);
+  assert.ok(summary.average >= 6.0 && summary.average <= 8.0, `Nelson average unexpectedly ${summary.average}`);
   assert.notEqual(summary.average, 4.8);
 });

@@ -273,3 +273,51 @@ test('formation data and provider rating survive the runtime backfill merge', as
   assert.equal(record.substitution.direction, 'out');
   assert.equal(record.ratingInputs.minutes.value, 90);
 });
+
+test('a later provider fragment enriches rating inputs without erasing earlier known values', async () => {
+  const player = {
+    playerId: 'jp-rating-player',
+    name: '採点六郎',
+    club: 'Club A',
+    league: 'プレミアリーグ',
+    stats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 }
+  };
+  const matchUpdate = {
+    matchId: 'rating-match', league: 'プレミアリーグ', ko: '2026-08-21 20:00',
+    match: 'Club A 1-0 Club B', addIfMissing: true
+  };
+  const fragments = [{
+    updated: '2026-08-21 14:00 JST',
+    matchUpdates: [matchUpdate],
+    playerMatchStats: [{
+      recordId: 'manual-rating-record', matchId: 'rating-match', playerId: 'jp-rating-player',
+      player: '採点六郎', club: 'Club A', league: 'プレミアリーグ', appearance: true, start: true,
+      values: { minutes: 90, goals: 0, shotsOnTarget: 0 },
+      disciplineClean: true,
+      missingFields: ['tackles']
+    }]
+  }, {
+    updated: '2026-08-21 15:00 JST',
+    sources: { apiFixture: { id: 'apiFixture', name: 'API-Football fixture bundle' } },
+    playerMatchStats: [{
+      recordId: 'api-rating-record', matchId: 'rating-match', playerId: 'jp-rating-player',
+      player: '採点六郎', club: 'Club A', league: 'プレミアリーグ', appearance: true, start: true,
+      values: { minutes: 90, goals: 0, tackles: 4 },
+      missingFields: ['shotsOnTarget', 'penaltiesConceded'],
+      providerIds: { apiFootball: { player: 60, fixture: 600 } },
+      providerRatings: { apiFootball: { value: 7.1, sourceId: 'apiFixture' } },
+      sourceIds: ['apiFixture']
+    }]
+  }];
+  const context = buildHarness({ player, fragments });
+  await apply(context);
+
+  const record = context.D.playerMatchStats[0];
+  assert.equal(record.ratingInputs.shotsOnTarget.value, 0);
+  assert.equal(record.ratingInputs.shotsOnTarget.state, 'value');
+  assert.equal(record.ratingInputs.penaltiesConceded.value, 0);
+  assert.equal(record.ratingInputs.tackles.value, 4);
+  assert.equal(record.providerRatings.apiFootball.value, 7.1);
+  assert.equal(record.missingFields.includes('shotsOnTarget'), false);
+  assert.equal(record.missingFields.includes('penaltiesConceded'), false);
+});
