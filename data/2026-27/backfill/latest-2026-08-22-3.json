@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 05:53 JST",
+  "sources": {
+    "sportdaten-sttonis-frankfurt-20260821": {
+      "id": "sportdaten-sttonis-frankfurt-20260821",
+      "name": "Sportdaten structured DFB-Pokal match events",
+      "type": "structured_secondary_match_events",
+      "url": "https://m.sportdaten.sportbild.bild.de/fussball/dfb-pokal/ma12109036/sc-st-toenis-11-20_eintracht-frankfurt/aufstellung/",
+      "retrievedAt": "2026-08-22T05:53:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "goals", "assists", "startingLineup", "substitutions"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
+      "league": "DFB-Pokal",
+      "round": "1st round",
+      "ko": "2026-08-21 18:00 CEST",
+      "match": "SC St. Tönis 0-11 フランクフルト",
+      "players": "小杉啓太 / 堂安律",
+      "appearance": "小杉啓太が先発し3アシスト。堂安律は筋肉系の不調によりメンバー外。",
+      "note": "フランクフルトが11-0で勝利。小杉は29分のブルカルト、34分のウズン、45+5分のゲッツェの得点をアシスト。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": true,
+      "rank": 1,
+      "reason": "小杉啓太がDFBポカール1回戦で3アシスト。",
+      "rating": "S+",
+      "sourceIds": ["sportdaten-sttonis-frankfurt-20260821"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "小杉啓太",
+      "club": "フランクフルト",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "status": "DFBポカール1回戦先発・3アシスト",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-21公式戦",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"],
+      "sourceIds": ["sportdaten-sttonis-frankfurt-20260821"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-kosugi-sttonis-frankfurt-20260821",
+      "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
+      "player": "小杉啓太",
+      "club": "フランクフルト",
+      "league": "DFB-Pokal",
+      "match": "SC St. Tönis 0-11 フランクフルト",
+      "ko": "2026-08-21 18:00 CEST",
+      "round": "1st round",
+      "appearance": "starter",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["sportdaten-sttonis-frankfurt-20260821"],
+      "values": {"goals": 0, "assists": 3},
+      "missingFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"],
+      "start": true,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast", "gaOnPitch"],
+      "ratingConflicts": [
+        {
+          "field": "assists",
+          "keptValue": 3,
+          "keptSourceId": "sportdaten-sttonis-frankfurt-20260821",
+          "discardedValue": 2,
+          "discardedSourceId": "livesoccertv-sttonis-frankfurt-20260821",
+          "reason": "Higher-priority structured event feed explicitly credits Kosugi with the 29th-, 34th- and 45+5-minute assists."
+        }
+      ]
+    }
+  ]
+}
