@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-20T12:46:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the active season after stored-match player-data backfill and latest verified corrections.",
+  "updatedAt": "2026-08-21T10:09:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after resuming updates with J1 explicitly excluded from this app's scope.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "852ee5b8b3be80a28d502891efb181b1bb58b5bf",
+    "blobSha": "4cdcc39f330374bf50c4036a3146cb0dd21e5432",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -19,7 +19,8 @@
       "belgium-genk.json",
       "latest-2026-08-20.json",
       "source-fixes-2026-08-20.json",
-      "rating-safety-fixes-2026-08-20.json"
+      "rating-safety-fixes-2026-08-20.json",
+      "latest-2026-08-21.json"
     ]
   },
   "runtime": [
@@ -28,6 +29,12 @@
     "backfill-loader.js",
     "match-detail.js"
   ],
+  "trackingScope": {
+    "type": "overseas_japanese_players",
+    "j1Included": false,
+    "j1Owner": "separate analysis app",
+    "j1MayBlockUpdate": false
+  },
   "validation": {
     "manifestOrderChecked": true,
     "allManifestFragmentsPresent": true,
@@ -39,16 +46,23 @@
     "nonExhaustiveCupDisciplineInputsForcedToMissing": true,
     "jfwRatingVersion": "1.0",
     "ratingRequiresExplicitDisciplineInputs": true,
+    "ratingCacheInvalidatedWhenRatingInputsChange": true,
     "siteMatchDetailConsumesPlayerMatchStats": true
   },
   "verifiedCorrections": [
-    "Telstar 0-0 Sparta corrected to Telstar 1-3 Sparta; Shunsuke Mito assist added.",
-    "Genk-Westerlo result and Japanese player participation expanded; Ayumu Yokoyama and Junya Ito assists retained on separate Genk goals.",
-    "Previously stored completed matches now receive playerMatchStats records where appearance state and minimum facts were verifiable."
+    "J1 removed from japanese-football-watch tracking and validation scope; it belongs to the separate analysis app.",
+    "Hidemasa Morita added as Hull City / Premier League from Premier League official 2026/27 registration.",
+    "Zion Suzuki corrected from Aston Villa to Parma based on Parma official August 2026 squad information.",
+    "Kaito Mizuta, Sota Nakamura and Ayumu Seko added for Le Havre; Mizuta and Nakamura transfers confirmed by club official announcements.",
+    "Ryotaro Ito added as an STVV tracking target from STVV official player profile, with current match participation left as priority-update pending verification.",
+    "Yukinari Sugawara corrected to Werder Bremen from Bundesliga official 2026/27 player registration.",
+    "Motherwell 1-3 Freiburg on 2026-08-20 added; Keisuke Goto's goal is verified and incomplete individual rating inputs remain explicitly missing.",
+    "Backfill loader now clears cached JFW Rating outputs whenever normalized ratingInputs change, allowing required recalculation."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
-    "J1 does not yet have a defined tracked-player roster in the current data.json, so no J1 player records were invented during this corrective backfill.",
-    "Some cup/UEFA records have minutes and G/A but intentionally no JFW Rating because discipline inputs are not exhaustively verified."
+    "Ryotaro Ito's current 2026/27 match-by-match participation is not yet verified despite the current STVV official profile, so no appearance totals were guessed.",
+    "Motherwell-Freiburg individual minutes and exhaustive discipline inputs are still incomplete for the tracked Japanese players; JFW Rating remains intentionally uncomputed until required values are verified.",
+    "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
