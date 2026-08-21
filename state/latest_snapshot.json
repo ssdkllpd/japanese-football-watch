@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-21T17:30:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after API-Football manifest synchronization and runtime-hardening: fail-closed current-season overlays, explicit player registry, shared runtime merge semantics, and aggregate regression guards.",
+  "updatedAt": "2026-08-21T19:30:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after API-Football manifest synchronization and runtime hardening: structural fail-closed loading, player-level degraded identity handling, explicit registry identity, shared runtime merge semantics, compaction reproducibility, and aggregate regression guards.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
@@ -25,7 +25,23 @@
       "latest-2026-08-21-3.json",
       "latest-2026-08-21-4.json",
       "api-football-existing-results.json"
-    ]
+    ],
+    "fragmentBlobs": {
+      "core.json": "30d28ad22998ce0dc71e6792e169efdcaf0e61f9",
+      "scotland-portugal.json": "031cacdce030019eba3c675d426f7b3b5844315c",
+      "belgium-stvv.json": "9081cb81dfaeabdef54e40629401c3de1132d60b",
+      "eredivisie.json": "5adcf8584ef86069b4c8b64c1fdcd213cdb5dad2",
+      "championship.json": "79c3d3d0400c62735b2820fe19251ce9b96cf197",
+      "belgium-genk.json": "0260d1aa6de2990d7038c9debe489ec4a865e4c0",
+      "latest-2026-08-20.json": "a767d89148de7efa514c7cf2678c2de0fa5ba5fd",
+      "source-fixes-2026-08-20.json": "ff848b97fc86f92a31e5b4d7e2e663bd26a19c1a",
+      "rating-safety-fixes-2026-08-20.json": "02a97b7f8a9fb403a451a65809ed679d68a1a5cf",
+      "latest-2026-08-21.json": "af92bea51f124e3480449b1b322d07fcff5a868c",
+      "latest-2026-08-21-2.json": "667f4c540baf99e590911e8233aaac40299caed2",
+      "latest-2026-08-21-3.json": "1ae9eef694fc7f773a2a36356697da6f705cb780",
+      "latest-2026-08-21-4.json": "2cc43771dc664923ec0feda3feea256fbff965ea",
+      "api-football-existing-results.json": "ea3278829bfc2dbc8e07a946ef6517c612b1edad"
+    }
   },
   "runtime": [
     "data.json",
@@ -35,8 +51,8 @@
     "config/player-registry.json"
   ],
   "runtimeBlobs": {
-    "backfill-loader.js": "87f73d265f7204005ed382e98931851787ebd1c6",
-    "config/player-registry.json": "7a42266712ac09c61b20101ffcba05ec5175a969"
+    "backfill-loader.js": "a5b30ff211c6d2661a8bfde367f9320e6135e622",
+    "config/player-registry.json": "e47f361e763f1a4883f368391eb0a5adba22d811"
   },
   "trackingScope": {
     "type": "overseas_japanese_players",
@@ -48,6 +64,7 @@
     "manifestOrderChecked": true,
     "allManifestFragmentsPresent": true,
     "snapshotManifestMatchesCurrentManifest": true,
+    "individualFragmentBlobsPinned": true,
     "storedMatchCorrectionsAppliedByStableMatchIdOrLegacyMatchKey": true,
     "playerMatchStatsUpsertedByRecordIdOrMatchPlayerKey": true,
     "playerSeasonAggregatesRebuiltAfterMatchMutation": true,
@@ -64,10 +81,15 @@
     "premierLeagueRosterCorrectionsLoadThroughPlayerUpdates": true,
     "bundesligaItakuraTransferLoadsThroughPlayerUpdates": true,
     "noHistoricalSeasonDataOverwritten": true,
-    "currentSeasonOverlayFailureFailsClosed": true,
+    "currentSeasonStructuralOverlayFailureFailsClosed": true,
+    "missingPlayerIdentityDegradesWithoutBlocking": true,
     "runtimeIdentityUsesExplicitRegistry": true,
+    "runtimeWriterDoesNotMintNameHashIds": true,
     "baselineDoubleCountRegressionCovered": true,
     "allCompetitionsIncludesOfficialCups": true,
+    "allCompetitionsExcludesFriendlies": true,
+    "compactionIsIdempotent": true,
+    "compactionAuditChainRetained": true,
     "scheduledSynchronizationEnabled": false
   },
   "verifiedCorrections": [
@@ -78,7 +100,7 @@
     "Ko Itakura transferred from Ajax back to Borussia Monchengladbach on 2026-08-20; the Bundesliga membership is recorded as a transfer while preserving Ajax/Eredivisie as the previous membership.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot now mirrors the current backfill manifest including api-football-existing-results.json and the current backfill-loader blob.",
+    "The retained snapshot pins the current backfill manifest, every ordered fragment blob, backfill-loader, and player registry.",
     "J1 remains excluded from this repository in accordance with workflow_policy v20."
   ],
   "declaredCoverageGaps": [
