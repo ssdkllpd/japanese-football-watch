@@ -114,4 +114,4 @@ async function loadIntegratedSeasonData(root, season) {
   return JSON.parse(JSON.stringify(context.D));
 }
 
-module.exports = { loadIntegratedSeasonData };
+module.exports = { createRuntimeContext, loadIntegratedSeasonData, makeElement };
