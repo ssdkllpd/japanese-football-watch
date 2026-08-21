@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-21T15:59:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, and Ko Itakura's confirmed return to Borussia Monchengladbach.",
+  "updatedAt": "2026-08-21T16:56:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, and API-Football backfill manifest integrity repair.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "f52dba455d744ae3fb2c23c11c84f745aed7ce8b",
+    "blobSha": "87f83003900fc3cc2ddd61a322ccc2656e5858e0",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -23,7 +23,8 @@
       "latest-2026-08-21.json",
       "latest-2026-08-21-2.json",
       "latest-2026-08-21-3.json",
-      "latest-2026-08-21-4.json"
+      "latest-2026-08-21-4.json",
+      "api-football-existing-results.json"
     ]
   },
   "runtime": [
@@ -33,7 +34,7 @@
     "match-detail.js"
   ],
   "runtimeBlobs": {
-    "backfill-loader.js": "20ec37d17600857d57d958141e3fca2fd5ff7b69"
+    "backfill-loader.js": "f1c842e4f7080d8a666b67ecbdc3e16e1148c63b"
   },
   "trackingScope": {
     "type": "overseas_japanese_players",
@@ -44,6 +45,7 @@
   "validation": {
     "manifestOrderChecked": true,
     "allManifestFragmentsPresent": true,
+    "allManifestFragmentsValidJson": true,
     "storedMatchCorrectionsAppliedByStableMatchIdOrLegacyMatchKey": true,
     "playerMatchStatsUpsertedByRecordIdOrMatchPlayerKey": true,
     "playerSeasonAggregatesRebuiltAfterMatchMutation": true,
@@ -59,6 +61,7 @@
     "siteMatchDetailConsumesPlayerMatchStats": true,
     "premierLeagueRosterCorrectionsLoadThroughPlayerUpdates": true,
     "bundesligaItakuraTransferLoadsThroughPlayerUpdates": true,
+    "apiFootballBackfillFragmentIsParseableNoOpUntilMappedDetailUpdatesExist": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -69,13 +72,14 @@
     "Ko Itakura transferred from Ajax back to Borussia Monchengladbach on 2026-08-20; the Bundesliga membership is recorded as a transfer while preserving Ajax/Eredivisie as the previous membership.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "J1 remains excluded from this repository in accordance with workflow_policy v13."
+    "API-Football existing-result discovery resolved all 27 authorized fixtures, but no mapped detail updates were persisted in its output fragment; the fragment is therefore retained as a valid no-op JSON object so the runtime manifest remains loadable.",
+    "J1 remains excluded from this repository in accordance with workflow_policy."
   ],
   "declaredCoverageGaps": [
     "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
-    "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v13 pass.",
+    "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
