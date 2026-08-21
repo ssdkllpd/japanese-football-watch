@@ -1,0 +1,158 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const ROOT = path.join(__dirname, '..');
+
+function json(rel) {
+  return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+}
+
+function makeElement() {
+  return {
+    textContent: '',
+    innerHTML: '',
+    dataset: {},
+    querySelectorAll() { return []; },
+    querySelector() { return null; },
+    appendChild() {},
+    insertAdjacentElement() {}
+  };
+}
+
+function buildHarness() {
+  const seasons = json('seasons.json');
+  const season = seasons.seasons.find(s => s.id === seasons.current);
+  assert.ok(season, 'current season must resolve from seasons.json');
+  const data = json(season.data);
+
+  const context = {
+    console,
+    window: {},
+    document: {
+      body: makeElement(),
+      querySelector() { return null; },
+      createElement() { return makeElement(); }
+    },
+    D: data,
+    selectedSeason: seasons.current,
+    loadSeason: async () => {},
+    renderAll() {},
+    renderPlayerDetail() {},
+    renderClubDetail() {},
+    renderAttention() {},
+    renderStats() {},
+    relevantClubMatches() { return []; },
+    clubPlayers() { return []; },
+    clubMatchCard() { return ''; },
+    pcard() { return ''; },
+    mcard() { return ''; },
+    bindEntities() {},
+    bindWatch() {},
+    btns() {},
+    eligible() { return true; },
+    playerRef(p) { return p.playerId || p.name; },
+    playerByRef(ref) { return context.D.players.find(p => p.playerId === ref || p.name === ref); },
+    roundNo() { return null; },
+    fmt(v) { return v == null ? '—' : String(v); },
+    E(v) { return String(v ?? ''); },
+    $() { return makeElement(); },
+    R: { updated: makeElement(), leagueBtns: makeElement(), players: makeElement(), scopeBtns: makeElement(), metricBtns: makeElement(), statRank: makeElement(), playerDetail: makeElement(), clubDetail: makeElement() },
+    order: ['すべて','プレミアリーグ','チャンピオンシップ','ブンデスリーガ','ラ・リーガ','リーグ・アン','セリエA','エールディヴィジ','ベルギー','ポルトガル','スコットランド'],
+    scope: 'すべて',
+    metric: 'goals',
+    metrics: { goals: '得点', assists: 'アシスト' },
+    attLeague: 'すべて',
+    page: 'home',
+    activePlayer: null,
+    activeClub: null,
+    clubRoundFrom: null,
+    clubRoundTo: null,
+    clearDetailParams() {},
+    showPage() {},
+    lastPage: 'home',
+    fetch: async url => {
+      const clean = String(url).replace(/[?&]v=\d+$/, '').replace(/^\.\//, '');
+      const rel = clean.startsWith('data/') ? clean : clean;
+      const file = path.join(ROOT, rel);
+      if (!fs.existsSync(file)) return { ok: false, status: 404, json: async () => ({}) };
+      return { ok: true, json: async () => JSON.parse(fs.readFileSync(file, 'utf8')) };
+    },
+    setTimeout,
+    clearTimeout
+  };
+
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-loader.js'), 'utf8'), context, { filename: 'backfill-loader.js' });
+  return context;
+}
+
+async function loadedData() {
+  const context = buildHarness();
+  await context.window.JFWBackfill.applyCurrentBackfill();
+  return { context, data: context.D };
+}
+
+test('current season player identities and memberships satisfy tracking invariants', async () => {
+  const { data } = await loadedData();
+  const ids = data.players.map(p => p.playerId);
+  assert.equal(new Set(ids).size, ids.length, 'playerId must be unique');
+
+  for (const p of data.players) {
+    assert.ok(p.playerId, `${p.name}: playerId missing`);
+    assert.ok(['active', 'out_of_scope', 'unattached'].includes(p.trackingStatus), `${p.name}: invalid trackingStatus`);
+    assert.ok(Array.isArray(p.membershipHistory), `${p.name}: membershipHistory missing`);
+    assert.ok(p.membershipHistory.filter(m => !m.to).length <= 1, `${p.name}: multiple open memberships`);
+    assert.equal(p.rankingEligible, true, `${p.name}: tracked-season ranking eligibility unexpectedly lost`);
+    assert.ok(p.seasonStats && typeof p.seasonStats === 'object', `${p.name}: seasonStats missing`);
+    assert.ok(p.competitionStats && typeof p.competitionStats === 'object', `${p.name}: competitionStats missing`);
+    assert.ok(p.clubStats && typeof p.clubStats === 'object', `${p.name}: clubStats missing`);
+    assert.ok(p.clubCompetitionStats && typeof p.clubCompetitionStats === 'object', `${p.name}: clubCompetitionStats missing`);
+    if (p.trackingStatus !== 'active' && p.club) {
+      assert.equal(p.clubStats[p.club], undefined, `${p.name}: out-of-scope destination must not receive tracked club stats`);
+    }
+  }
+});
+
+test('current playerMatchStats preserve player, match, club and competition provenance', async () => {
+  const { data } = await loadedData();
+  const players = new Map(data.players.map(p => [p.playerId, p]));
+  const matchIds = new Set((data.matches || []).map(m => m.matchId).filter(Boolean));
+
+  for (const r of data.playerMatchStats || []) {
+    assert.ok(r.playerId, `${r.recordId || r.matchId}: playerId missing`);
+    assert.ok(players.has(r.playerId), `${r.recordId || r.matchId}: unknown playerId ${r.playerId}`);
+    assert.ok(r.matchId, `${r.recordId || r.playerName}: matchId missing`);
+    assert.ok(matchIds.has(r.matchId), `${r.recordId || r.playerName}: matchId not found in matches`);
+    assert.ok(r.club, `${r.recordId || r.playerName}: club-at-match missing`);
+    assert.ok(r.competition, `${r.recordId || r.playerName}: competition missing`);
+  }
+});
+
+test('verified match G/A are reflected in matching club and season aggregates when aggregate fields are known', async () => {
+  const { data } = await loadedData();
+  const players = new Map(data.players.map(p => [p.playerId, p]));
+
+  for (const r of data.playerMatchStats || []) {
+    const p = players.get(r.playerId);
+    if (!p || r.trackedAtMatch === false) continue;
+    for (const field of ['goals', 'assists']) {
+      const input = r.ratingInputs?.[field];
+      if (input?.state !== 'value' || Number(input.value) <= 0) continue;
+      const clubValue = p.clubStats?.[r.club]?.[field];
+      const seasonValue = p.seasonStats?.[field];
+      if (clubValue != null) assert.ok(Number(clubValue) >= Number(input.value), `${p.name}: ${field} missing from ${r.club} aggregate`);
+      if (seasonValue != null) assert.ok(Number(seasonValue) >= Number(input.value), `${p.name}: ${field} missing from season aggregate`);
+    }
+  }
+});
+
+test('J1 is not an active tracking league or tracked-club source', async () => {
+  const { context, data } = await loadedData();
+  assert.equal(context.window.JFWTracking.isTrackedLeague('J1'), false);
+  const activeJ1 = data.players.filter(p => p.trackingStatus === 'active' && p.league === 'J1');
+  assert.equal(activeJ1.length, 0);
+});
