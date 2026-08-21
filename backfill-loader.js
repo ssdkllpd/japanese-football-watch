@@ -230,20 +230,33 @@
       if (oldLeague && oldLeague !== nextLeague) p.previousLeague = u.previousLeague || oldLeague;
     }
   }
+  function mergeProviderIds(current, incoming) {
+    const out = { ...(current || {}) };
+    for (const [provider, ids] of Object.entries(incoming || {})) {
+      out[provider] = {
+        ...(out[provider] || {}),
+        ...(ids || {})
+      };
+    }
+    return out;
+  }
   function mergePlayerUpdates(rows, fragmentUpdated) {
     D.players = D.players || [];
     for (const u of rows || []) {
       let p = playerByIncoming(u);
       const incomingStats = u.stats ? { ...u.stats } : null;
-      const { stats, ...meta } = u;
+      const incomingProviderIds = u.providerIds ? { ...u.providerIds } : null;
+      const { stats, providerIds, ...meta } = u;
       if (!p) {
         p = { ...meta, stats: {} };
+        if (incomingProviderIds) p.providerIds = mergeProviderIds(null, incomingProviderIds);
         ensurePlayerIdentity(p);
         D.players.push(p);
       } else {
         ensurePlayerIdentity(p);
         applyMembershipChange(p, u, fragmentUpdated);
         Object.assign(p, meta);
+        if (incomingProviderIds) p.providerIds = mergeProviderIds(p.providerIds, incomingProviderIds);
       }
       ensurePlayerIdentity(p);
       if (incomingStats) saveBaseline(p, p.club, p.league, incomingStats, u.statsAsOfDate || u.aggregateAsOf || fragmentUpdated, u.statsAsOf);
@@ -677,6 +690,15 @@
         baseRenderPlayerDetail();
         const p = playerByRef(activePlayer);
         if (!p || !R.playerDetail) return;
+
+        const detailHead = R.playerDetail.querySelector('.detailHead');
+        const identity = detailHead?.firstElementChild;
+        if (identity && !identity.dataset?.playerProfilePhoto && typeof profilePhotoHtml === 'function') {
+          identity.className = 'mdPlayerHero';
+          identity.dataset.playerProfilePhoto = '1';
+          identity.innerHTML = `${profilePhotoHtml(p)}<div>${identity.innerHTML}</div>`;
+          try { window.bindJFWPhotos?.(identity); } catch {}
+        }
 
         if (p.trackingStatus !== 'active' && !R.playerDetail.querySelector('[data-tracking-state-note]')) {
           const note = document.createElement('section');

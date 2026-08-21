@@ -150,6 +150,30 @@ test('verified match G/A are reflected in matching club and season aggregates wh
   }
 });
 
+test('後藤啓介のMotherwell戦ゴールは試合事実から全ての個人成績集計へ反映される', async () => {
+  const { data } = await loadedData();
+  const player = data.players.find(p => p.name === '後藤啓介');
+  assert.ok(player, '後藤啓介の選手レコードが必要');
+
+  const record = (data.playerMatchStats || []).find(r =>
+    r.playerId === player.playerId &&
+    r.matchId === 'uecl-2026-08-20-motherwell-freiburg'
+  );
+  assert.ok(record, 'Motherwell戦のplayerMatchStatsが必要');
+  assert.equal(record.club, 'フライブルク');
+  assert.equal(record.competition, 'UEFA Conference League');
+  assert.equal(record.ratingInputs?.goals?.state, 'value');
+  assert.equal(record.ratingInputs?.goals?.value, 1);
+
+  assert.equal(player.seasonStats?.goals, 1);
+  assert.equal(player.competitionStats?.['UEFA Conference League']?.goals, 1);
+  assert.equal(player.clubStats?.['フライブルク']?.goals, 1);
+  assert.equal(
+    player.clubCompetitionStats?.['フライブルク']?.['UEFA Conference League']?.goals,
+    1
+  );
+});
+
 test('J1 is not an active tracking league or tracked-club source', async () => {
   const { context, data } = await loadedData();
   assert.equal(context.window.JFWTracking.isTrackedLeague('J1'), false);
