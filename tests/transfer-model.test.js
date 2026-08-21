@@ -241,6 +241,11 @@ test('formation data and provider rating survive the runtime backfill merge', as
   const fragments = [{
     updated: '2026-08-21 15:00 JST',
     sources: { apiFixture: { id: 'apiFixture', name: 'API-Football fixture bundle' } },
+    playerUpdates: [{
+      playerId: 'jp-formation-player', name: '配置五郎',
+      photo: 'https://media.api-sports.io/football/players/55.png',
+      photoSource: 'api_football_media_template'
+    }],
     matchUpdates: [{
       matchId: 'formation-match', league: 'プレミアリーグ', ko: '2026-08-21 20:00',
       match: 'Club A 1-0 Club B', addIfMissing: true, formationData
@@ -249,6 +254,7 @@ test('formation data and provider rating survive the runtime backfill merge', as
       recordId: 'formation-match-player', matchId: 'formation-match', playerId: 'jp-formation-player',
       playerName: '配置五郎', club: 'Club A', competition: 'プレミアリーグ', appearance: true, start: true,
       values: { minutes: 90, goals: 0, assists: 0 }, missingFields: [], sourceIds: ['apiFixture'],
+      photo: 'https://media.api-sports.io/football/players/55.png',
       providerIds: { apiFootball: { player: 55, fixture: 500 } },
       providerRatings: { apiFootball: { value: 7.2, sourceId: 'apiFixture' } },
       lineup: { role: 'starter', number: 8, position: 'MF', grid: '3:2' },
@@ -259,7 +265,9 @@ test('formation data and provider rating survive the runtime backfill merge', as
   await apply(context);
 
   assert.deepEqual(JSON.parse(JSON.stringify(context.D.matches[0].formationData)), formationData);
+  assert.equal(context.D.players[0].photo, 'https://media.api-sports.io/football/players/55.png');
   const record = context.D.playerMatchStats[0];
+  assert.equal(record.photo, context.D.players[0].photo);
   assert.equal(record.providerRatings.apiFootball.value, 7.2);
   assert.equal(record.lineup.grid, '3:2');
   assert.equal(record.substitution.direction, 'out');

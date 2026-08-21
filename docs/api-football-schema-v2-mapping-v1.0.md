@@ -44,6 +44,15 @@ API-Football公式ドキュメントでは、fixture ID指定によりイベン�
 - 試合詳細では両チームのピッチを表示し、API-Football評価とJFW独自評価を切り替えられる。JFW評価は追跡対象かつ算出可能な選手だけに表示する。
 - 個人カードではAPI-Football評価とJFW独自評価を並べる。どちらも未取得・未算出を0へ変換せず`—`とする。
 
+## 選手・監督写真
+
+- APIレスポンスの選手写真URLを優先し、未添付の場合はprovider player IDから公式公開URL `https://media.api-sports.io/football/players/{player_id}.png` を構築する。
+- 追跡選手の写真URLは`playerUpdates[].photo`と`playerMatchStats[].photo`へ保存し、選手詳細と試合別個人カードで共用する。
+- フォーメーションの先発・ベンチにも同じ写真URLを保存し、ピッチ上の顔写真と背番号を併記する。
+- `lineups[].coach`をhome/away各チームの`formationData.teams[].coach`へ保存する。写真が未添付なら公式公開URL `https://media.api-sports.io/football/coachs/{coach_id}.png` を構築する。
+- 画像URLはHTTP/HTTPSだけを許可する。画像ファイルが存在しない、または読み込みに失敗した場合は、壊れた画像を出さず選手は背番号・氏名、監督は氏名イニシャルへフォールバックする。
+- 公式メディアURLの表示にAPIキーを付けない。APIキーは引き続きブラウザへ渡さない。
+
 ## ID方針
 
 - JFWの`playerId`と`matchId`を主キーとして維持する。

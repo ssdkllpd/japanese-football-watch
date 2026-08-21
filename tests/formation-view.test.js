@@ -42,3 +42,11 @@ test('substitution minute includes stoppage time when supplied', () => {
   assert.equal(formation.formatMinute({ elapsed: 78, extra: null }), '78′');
   assert.equal(formation.formatMinute({ elapsed: null }), '時刻未取得');
 });
+
+test('person photo helpers allow web images and produce readable fallbacks', () => {
+  assert.equal(formation.safeImageUrl('https://media.api-sports.io/football/players/10.png'), 'https://media.api-sports.io/football/players/10.png');
+  assert.equal(formation.safeImageUrl('data:image/png;base64,aaa'), null);
+  assert.equal(formation.safeImageUrl('javascript:alert(1)'), null);
+  assert.equal(formation.personInitials('Keisuke Goto'), 'KG');
+  assert.equal(formation.personInitials('後藤啓介'), '後藤');
+});

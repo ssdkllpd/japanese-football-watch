@@ -104,6 +104,19 @@
       <div class="mdRating mdRatingJfw"><span>JFW独自</span><b>${jfwRating==null?'—':jfwRating.toFixed(1)}</b><small>${jfwRating==null?esc(reason):`充足率 ${esc(cov)}`}</small></div>
     </div>`;
   }
+  function safePhotoUrl(value){
+    if(window.JFWFormation?.safeImageUrl) return window.JFWFormation.safeImageUrl(value);
+    if(value===null||value===undefined||value==='') return null;
+    try{ const url=new URL(String(value)); return /https?:/.test(url.protocol)?url.toString():null; }catch{ return null; }
+  }
+  function personInitials(value){
+    if(window.JFWFormation?.personInitials) return window.JFWFormation.personInitials(value);
+    return Array.from(String(value||'—').trim()).slice(0,2).join('')||'—';
+  }
+  function personPhotoHtml(photo,name,className='mdPersonPhoto'){
+    const url=safePhotoUrl(photo), missing=url?'':' is-photo-missing';
+    return `<span class="mdPhotoWrap ${esc(className)}${missing}" data-photo-wrap>${url?`<img src="${esc(url)}" alt="${esc(name||'人物')}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-jfw-photo>`:''}<span class="mdPhotoFallback" aria-hidden="true">${esc(personInitials(name))}</span></span>`;
+  }
   function playerRecordHtml(r){
     const d=currentData();
     const player=(d.players||[]).find(p=>String(p.playerId||p.name)===String(r.playerId||r.player||r.playerName)||p.name===r.player||p.name===r.playerName);
@@ -115,9 +128,12 @@
     const conflicts=r.ratingConflicts||[];
     return `<div class="card mdPlayerCard">
       <div class="mdPlayerHead">
-        <div>
-          <div class="name ${player?'entityLink':''}" ${player?`data-open-player="${esc(player.playerId||player.name)}"`:''}>${esc(name)}</div>
-          <div class="sub">${esc(r.club||player?.club||'')} ${r.ratingPosition?`・ Rating ${esc(r.ratingPosition)}`:''}${r.ratingPositionSource?` ・ ${esc(r.ratingPositionSource)}`:''}</div>
+        <div class="mdPlayerIdentity">
+          ${personPhotoHtml(r.photo||player?.photo,name,'mdRecordPhoto')}
+          <div>
+            <div class="name ${player?'entityLink':''}" ${player?`data-open-player="${esc(player.playerId||player.name)}"`:''}>${esc(name)}</div>
+            <div class="sub">${esc(r.club||player?.club||'')} ${r.ratingPosition?`・ Rating ${esc(r.ratingPosition)}`:''}${r.ratingPositionSource?` ・ ${esc(r.ratingPositionSource)}`:''}</div>
+          </div>
         </div>
         ${individualRatingsHtml(r,reason,cov)}
       </div>
@@ -146,9 +162,9 @@
   function pitchPlayerHtml(player,recs){
     const rating=pitchRating(player,recs), sub=player?.substitution, isOut=sub?.direction==='out';
     const minute=isOut?minuteText(sub):'', replacement=isOut&&sub?.replacementName?` → ${sub.replacementName}`:'';
-    const tracked=!!player?.playerId, name=player?.name||'選手', number=player?.number??'—';
+    const tracked=!!player?.playerId, name=player?.name||'選手', number=player?.number??'—', photo=safePhotoUrl(player?.photo);
     return `<div class="mdPitchPlayer ${isOut?'is-subbed-out':''} ${tracked?'is-tracked':''}" style="left:${Number(player.x)||50}%;top:${Number(player.y)||50}%" ${tracked?`data-open-player="${esc(player.playerId)}"`:''} title="${esc(name+(isOut?` ${minute} OUT${replacement}`:''))}">
-      <span class="mdPlayerDisc"><span class="mdShirtNo">${esc(number)}</span><span class="mdPitchRating ${formationRatingMode==='jfw'?'is-jfw':'is-api'}">${rating==null?'—':Number(rating).toFixed(1)}</span></span>
+      <span class="mdPlayerDisc ${photo?'has-photo':'is-photo-missing'}">${photo?`<img class="mdPitchPhoto" src="${esc(photo)}" alt="${esc(name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-jfw-photo>`:''}<span class="mdShirtNo">${esc(number)}</span><span class="mdPitchRating ${formationRatingMode==='jfw'?'is-jfw':'is-api'}">${rating==null?'—':Number(rating).toFixed(1)}</span></span>
       <span class="mdPitchName">${esc(name)}</span>
       ${isOut?`<span class="mdSubFlag is-out">↘ OUT ${esc(minute)}</span>`:''}
     </div>`;
@@ -157,10 +173,15 @@
     const rating=pitchRating(player,recs), sub=player?.substitution, isIn=sub?.direction==='in', tracked=!!player?.playerId;
     const counterpart=isIn&&sub?.replacedName?`<small>← ${esc(sub.replacedName)}</small>`:'';
     return `<div class="mdBenchPlayer ${isIn?'is-subbed-in':''} ${tracked?'is-tracked':''}" ${tracked?`data-open-player="${esc(player.playerId)}"`:''}>
+      ${personPhotoHtml(player?.photo,player?.name||'選手','mdBenchPhoto')}
       <span class="mdBenchState ${isIn?'is-in':''}">${isIn?`↗ IN ${esc(minuteText(sub))}`:'ベンチ'}</span>
       <span class="mdBenchIdentity"><b>${esc(player?.number??'—')} ${esc(player?.name||'選手')}</b>${counterpart}</span>
       <span class="mdBenchRating ${formationRatingMode==='jfw'?'is-jfw':'is-api'}">${rating==null?'—':Number(rating).toFixed(1)}</span>
     </div>`;
+  }
+  function coachHtml(coach){
+    const name=coach?.name||'監督情報未取得';
+    return `<div class="mdCoachRow">${personPhotoHtml(coach?.photo,name,'mdCoachPhoto')}<div><span>監督</span><b>${esc(name)}</b>${coach&&!coach.photo?'<small>写真未取得</small>':''}</div></div>`;
   }
   function teamFormationHtml(team,recs){
     const api=formationApi();
@@ -169,6 +190,7 @@
     const side=team?.side==='home'?'HOME':'AWAY', formation=team?.formation||'配置未取得';
     return `<article class="mdFormationTeam">
       <div class="mdFormationHead"><div><span class="mdSideTag">${side}</span><b>${esc(team?.teamName||'クラブ名未取得')}</b></div><div class="mdFormationName">${esc(formation)}<small>${starters.length?`${starters.length}人`:'先発未取得'}</small></div></div>
+      ${coachHtml(team?.coach)}
       ${starters.length?`<div class="mdPitch" aria-label="${esc(team?.teamName||'チーム')} ${esc(formation)}"><div class="mdHalfwayLine"></div><div class="mdCenterCircle"></div>${laidOut.map(player=>pitchPlayerHtml(player,recs)).join('')}</div>`:'<div class="mdFormationEmpty">このチームの先発配置は未取得です。</div>'}
       <div class="mdBench"><div class="mdBenchTitle">交代・ベンチ <span>緑=IN / 橙=OUT</span></div>${(team?.substitutes||[]).length?(team.substitutes||[]).map(player=>benchPlayerHtml(player,recs)).join(''):'<div class="mdFormationEmpty">ベンチ情報は未取得です。</div>'}</div>
     </article>`;
@@ -183,6 +205,19 @@
       <button type="button" class="${formationRatingMode==='apiFootball'?'on':''}" data-formation-rating="apiFootball" aria-pressed="${formationRatingMode==='apiFootball'}">API-Football</button>
       <button type="button" class="${formationRatingMode==='jfw'?'on':''}" data-formation-rating="jfw" aria-pressed="${formationRatingMode==='jfw'}">JFW独自</button>
     </div></div><div class="mdFormationGrid">${teams.map(team=>teamFormationHtml(team,recs)).join('')}</div>`;
+  }
+  function markPhotoMissing(image){
+    const holder=image?.closest?.('[data-photo-wrap],.mdPlayerDisc');
+    if(holder) holder.classList.add('is-photo-missing');
+  }
+  function bindPhotoFallback(root=document){
+    root.querySelectorAll?.('img[data-jfw-photo]').forEach(image=>{
+      if(image.dataset.jfwPhotoBound!=='1'){
+        image.dataset.jfwPhotoBound='1';
+        image.addEventListener('error',()=>markPhotoMissing(image),{once:true});
+      }
+      if(image.complete&&image.naturalWidth===0) markPhotoMissing(image);
+    });
   }
   function relatedClubButtons(m){
     const d=currentData();
@@ -231,6 +266,7 @@
       formationRatingMode=button.dataset.formationRating==='jfw'?'jfw':'apiFootball';
       renderMatchDetail();
     });
+    bindPhotoFallback(root);
     try { bindEntities(root); } catch {}
     try { bindWatch(root,currentData().matches||[]); } catch {}
   }
@@ -261,13 +297,14 @@
       const style=document.createElement('style'); style.id='match-detail-style'; style.textContent=`
         .matchdetailbtn{margin-top:8px;width:100%;border:1px solid #36506f;background:#12213a;color:var(--t);border-radius:10px;padding:9px;font-size:12px;font-weight:800;cursor:pointer}
         .matchdetailbtn:hover{border-color:var(--a)}
-        .mdKpis{margin-top:10px}.mdClubLinks{display:flex;gap:7px;flex-wrap:wrap}.mdPlayerCard{overflow:hidden}.mdPlayerHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+        .mdKpis{margin-top:10px}.mdClubLinks{display:flex;gap:7px;flex-wrap:wrap}.mdPlayerCard{overflow:hidden}.mdPlayerHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mdPlayerIdentity,.mdPlayerHero{display:flex;align-items:center;gap:11px;min-width:0}.mdPlayerIdentity>div,.mdPlayerHero>div{min-width:0}
+        .mdPhotoWrap{position:relative;display:grid;flex:0 0 auto;place-items:center;overflow:hidden;border:1px solid #ffffff33;border-radius:50%;background:linear-gradient(145deg,#24405f,#101827);color:#dbeafe;font-weight:900}.mdPhotoWrap img{width:100%;height:100%;object-fit:cover;object-position:center top}.mdPhotoFallback{display:grid;width:100%;height:100%;place-items:center}.mdPhotoWrap:not(.is-photo-missing) .mdPhotoFallback{display:none}.mdPhotoWrap.is-photo-missing img{display:none}.mdRecordPhoto{width:54px;height:54px;font-size:14px}.mdProfilePhoto{width:82px;height:82px;border:2px solid #5eead477;font-size:20px;box-shadow:0 8px 24px #0007}.mdBenchPhoto{width:30px;height:30px;font-size:8px}.mdCoachPhoto{width:36px;height:36px;font-size:9px}
         .mdRatingCompare{display:flex;gap:7px;flex:0 0 auto}.mdRating{text-align:center;min-width:82px;background:var(--p2);border:1px solid var(--l);border-radius:10px;padding:7px 8px}.mdRating span,.mdRating small{display:block;color:var(--m);font-size:9px;white-space:nowrap}.mdRating b{display:block;font-size:28px;line-height:1.05}.mdRatingApi b{color:#fbbf24}.mdRatingJfw b{color:var(--a)}
         .mdFormationNotice{margin-top:10px}.mdFormationToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0;padding:10px 12px;background:var(--p2);border:1px solid var(--l);border-radius:12px}.mdFormationToolbar b,.mdFormationToolbar span{display:block}.mdFormationToolbar b{font-size:12px}.mdFormationToolbar span{margin-top:3px;color:var(--m);font-size:10px;max-width:620px}.mdRatingSwitch{display:flex;flex:0 0 auto;background:#07111f;border:1px solid var(--l);border-radius:10px;padding:3px}.mdRatingSwitch button{border:0;background:transparent;color:var(--m);border-radius:7px;padding:7px 10px;font-size:10px;font-weight:850;cursor:pointer}.mdRatingSwitch button.on{background:#24405f;color:#fff;box-shadow:0 1px 5px #0006}
-        .mdFormationGrid{display:grid;gap:12px}.mdFormationTeam{overflow:hidden;background:#0b1728;border:1px solid var(--l);border-radius:15px}.mdFormationHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px}.mdFormationHead>div:first-child{display:flex;align-items:center;gap:7px;min-width:0}.mdFormationHead b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdSideTag{color:#93c5fd;font-size:9px;font-weight:900;letter-spacing:.08em}.mdFormationName{font-size:18px;font-weight:900;text-align:right;white-space:nowrap}.mdFormationName small{display:block;color:var(--m);font-size:9px;font-weight:600}
+        .mdFormationGrid{display:grid;gap:12px}.mdFormationTeam{overflow:hidden;background:#0b1728;border:1px solid var(--l);border-radius:15px}.mdFormationHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px 8px}.mdFormationHead>div:first-child{display:flex;align-items:center;gap:7px;min-width:0}.mdFormationHead b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdSideTag{color:#93c5fd;font-size:9px;font-weight:900;letter-spacing:.08em}.mdFormationName{font-size:18px;font-weight:900;text-align:right;white-space:nowrap}.mdFormationName small{display:block;color:var(--m);font-size:9px;font-weight:600}.mdCoachRow{display:flex;align-items:center;gap:8px;margin:0 12px 10px;padding:7px 8px;border:1px solid #ffffff14;border-radius:10px;background:#ffffff08}.mdCoachRow>div{min-width:0}.mdCoachRow span,.mdCoachRow small{display:block;color:var(--m);font-size:8px}.mdCoachRow b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
         .mdPitch{position:relative;height:clamp(430px,70vw,590px);margin:0 10px 10px;overflow:hidden;border:2px solid #dfffee99;border-radius:10px;background:repeating-linear-gradient(0deg,#187747 0,#187747 11.11%,#147040 11.11%,#147040 22.22%);box-shadow:inset 0 0 30px #031b1177}.mdPitch:before{content:'';position:absolute;inset:4%;border:1px solid #e9fff899;border-radius:2px;pointer-events:none}.mdHalfwayLine{position:absolute;left:4%;right:4%;top:50%;height:1px;background:#e9fff899}.mdCenterCircle{position:absolute;left:50%;top:50%;width:72px;height:72px;border:1px solid #e9fff899;border-radius:50%;transform:translate(-50%,-50%)}
-        .mdPitchPlayer{position:absolute;z-index:2;width:84px;transform:translate(-50%,-50%);text-align:center;color:#fff}.mdPitchPlayer.is-tracked{cursor:pointer}.mdPlayerDisc{position:relative;display:block;width:44px;height:44px;margin:0 auto;border:2px solid #dfffee;background:#102b45;border-radius:50%;box-shadow:0 3px 9px #001b}.mdPitchPlayer.is-tracked .mdPlayerDisc{box-shadow:0 0 0 2px #38bdf8,0 3px 9px #001b}.mdPitchPlayer.is-subbed-out .mdPlayerDisc{border-color:#fb923c}.mdShirtNo{display:block;padding-top:6px;font-size:15px;font-weight:950;line-height:1}.mdPitchRating{position:absolute;right:-8px;bottom:-5px;min-width:29px;border:2px solid #0b1728;border-radius:10px;background:#111827;padding:2px 4px;font-size:10px;font-weight:950}.mdPitchRating.is-api,.mdBenchRating.is-api{color:#fbbf24}.mdPitchRating.is-jfw,.mdBenchRating.is-jfw{color:#67e8f9}.mdPitchName{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:850;text-shadow:0 1px 3px #001}.mdSubFlag{display:inline-block;margin-top:2px;border-radius:8px;padding:2px 5px;font-size:8px;font-weight:950}.mdSubFlag.is-out{background:#7c2d12;color:#fed7aa}
-        .mdBench{padding:0 10px 10px}.mdBenchTitle{display:flex;justify-content:space-between;padding:2px 2px 7px;color:#cbd5e1;font-size:11px;font-weight:850}.mdBenchTitle span{color:var(--m);font-size:9px;font-weight:600}.mdBenchPlayer{display:grid;grid-template-columns:68px minmax(0,1fr) 35px;align-items:center;gap:7px;margin-top:5px;border-left:3px solid #334155;border-radius:8px;background:var(--p2);padding:7px 8px;font-size:10px}.mdBenchPlayer.is-subbed-in{border-left-color:#22c55e}.mdBenchPlayer.is-tracked{cursor:pointer}.mdBenchState{color:var(--m);font-size:9px;font-weight:850}.mdBenchState.is-in{color:#86efac}.mdBenchIdentity{min-width:0}.mdBenchIdentity b,.mdBenchIdentity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdBenchIdentity small{margin-top:2px;color:var(--m);font-size:8px}.mdBenchRating{text-align:right;font-size:11px;font-weight:950}.mdFormationEmpty{padding:22px;color:var(--m);font-size:11px;text-align:center}
+        .mdPitchPlayer{position:absolute;z-index:2;width:84px;transform:translate(-50%,-50%);text-align:center;color:#fff}.mdPitchPlayer.is-tracked{cursor:pointer}.mdPlayerDisc{position:relative;display:block;width:46px;height:46px;margin:0 auto;overflow:visible;border:2px solid #dfffee;background:#102b45;border-radius:50%;box-shadow:0 3px 9px #001b}.mdPitchPhoto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:50%}.mdPlayerDisc.is-photo-missing .mdPitchPhoto{display:none}.mdPitchPlayer.is-tracked .mdPlayerDisc{box-shadow:0 0 0 2px #38bdf8,0 3px 9px #001b}.mdPitchPlayer.is-subbed-out .mdPlayerDisc{border-color:#fb923c}.mdShirtNo{display:block;padding-top:7px;font-size:15px;font-weight:950;line-height:1}.mdPlayerDisc.has-photo:not(.is-photo-missing) .mdShirtNo{position:absolute;left:-4px;bottom:-4px;z-index:2;min-width:18px;border:2px solid #0b1728;border-radius:9px;background:#102b45;padding:2px 4px;font-size:8px}.mdPitchRating{position:absolute;z-index:3;right:-8px;bottom:-5px;min-width:29px;border:2px solid #0b1728;border-radius:10px;background:#111827;padding:2px 4px;font-size:10px;font-weight:950}.mdPitchRating.is-api,.mdBenchRating.is-api{color:#fbbf24}.mdPitchRating.is-jfw,.mdBenchRating.is-jfw{color:#67e8f9}.mdPitchName{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:850;text-shadow:0 1px 3px #001}.mdSubFlag{display:inline-block;margin-top:2px;border-radius:8px;padding:2px 5px;font-size:8px;font-weight:950}.mdSubFlag.is-out{background:#7c2d12;color:#fed7aa}
+        .mdBench{padding:0 10px 10px}.mdBenchTitle{display:flex;justify-content:space-between;padding:2px 2px 7px;color:#cbd5e1;font-size:11px;font-weight:850}.mdBenchTitle span{color:var(--m);font-size:9px;font-weight:600}.mdBenchPlayer{display:grid;grid-template-columns:30px 68px minmax(0,1fr) 35px;align-items:center;gap:7px;margin-top:5px;border-left:3px solid #334155;border-radius:8px;background:var(--p2);padding:7px 8px;font-size:10px}.mdBenchPlayer.is-subbed-in{border-left-color:#22c55e}.mdBenchPlayer.is-tracked{cursor:pointer}.mdBenchState{color:var(--m);font-size:9px;font-weight:850}.mdBenchState.is-in{color:#86efac}.mdBenchIdentity{min-width:0}.mdBenchIdentity b,.mdBenchIdentity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdBenchIdentity small{margin-top:2px;color:var(--m);font-size:8px}.mdBenchRating{text-align:right;font-size:11px;font-weight:950}.mdFormationEmpty{padding:22px;color:var(--m);font-size:11px;text-align:center}
         .mdBlockTitle{font-size:12px;font-weight:850;margin:14px 0 7px;color:#cbd5e1}.mdStatGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.mdStat{background:var(--p2);border:1px solid var(--l);border-radius:9px;padding:8px;min-width:0}.mdStat>span{display:block;color:var(--m);font-size:10px;margin-bottom:3px}.mdStat>div{font-size:12px;word-break:break-word}.mdMissing{color:var(--y)}.mdNA{color:var(--m)}.mdSourceId{color:var(--m);font-size:9px;margin-left:5px}.mdBreakdown{margin-top:12px;border-top:1px solid var(--l);padding-top:9px}.mdBreakdown>div{display:flex;justify-content:space-between;gap:10px;font-size:11px;padding:3px 0}.mdSource{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #ffffff0d;font-size:11px}.mdSource a{color:#93c5fd}.mdSourceTime{color:var(--m);font-size:9px;text-align:right}
         @media(max-width:620px){.mdPlayerHead{display:block}.mdRatingCompare{margin-top:10px}.mdRating{flex:1}.mdFormationToolbar{align-items:stretch;flex-direction:column}.mdRatingSwitch{align-self:flex-start}.mdPitchPlayer{width:70px}.mdPitchName{font-size:9px}}
         @media(min-width:720px){.mdStatGrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -313,6 +350,7 @@
     }
   }
   function installEvents(){
+    document.addEventListener('error',e=>{ if(e.target?.matches?.('img[data-jfw-photo]')) markPhotoMissing(e.target); },true);
     document.addEventListener('click',e=>{
       const btn=e.target.closest('[data-open-match-btn]');
       if(btn){ e.preventDefault(); e.stopPropagation(); openMatch(btn.dataset.openMatchBtn); return; }
@@ -331,6 +369,8 @@
       try { renderAll(); if(page==='player') renderPlayerDetail(); if(page==='club') renderClubDetail(); } catch {}
       const ref=new URL(location.href).searchParams.get('match'); if(ref) openMatch(ref,{push:false,scroll:false});
       window.openMatchDetail=openMatch;
+      window.bindJFWPhotos=bindPhotoFallback;
+      bindPhotoFallback(document);
     } catch(err){ console.error('match-detail init failed',err); }
   }
 

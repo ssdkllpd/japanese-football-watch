@@ -15,6 +15,26 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  function safeImageUrl(value) {
+    if (value === null || value === undefined || value === '') return null;
+    try {
+      const url = new URL(String(value));
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function personInitials(value) {
+    const text = String(value || '').trim();
+    if (!text) return '—';
+    const parts = text.split(/\s+/).filter(Boolean);
+    if (parts.length > 1 && parts.every(part => /^[A-Za-z]/.test(part))) {
+      return parts.slice(0, 2).map(part => part[0].toUpperCase()).join('');
+    }
+    return Array.from(text).slice(0, 2).join('');
+  }
+
   function parseGrid(value) {
     const match = String(value || '').trim().match(/^(\d+)\s*:\s*(\d+)$/);
     if (!match) return null;
@@ -102,7 +122,9 @@
     jfwRating,
     layoutPlayers,
     parseGrid,
+    personInitials,
     ratingForPlayer,
     recordForPlayer,
+    safeImageUrl,
   };
 });

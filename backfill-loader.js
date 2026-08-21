@@ -691,6 +691,15 @@
         const p = playerByRef(activePlayer);
         if (!p || !R.playerDetail) return;
 
+        const detailHead = R.playerDetail.querySelector('.detailHead');
+        const identity = detailHead?.firstElementChild;
+        if (identity && !identity.dataset?.playerProfilePhoto && typeof profilePhotoHtml === 'function') {
+          identity.className = 'mdPlayerHero';
+          identity.dataset.playerProfilePhoto = '1';
+          identity.innerHTML = `${profilePhotoHtml(p)}<div>${identity.innerHTML}</div>`;
+          try { window.bindJFWPhotos?.(identity); } catch {}
+        }
+
         if (p.trackingStatus !== 'active' && !R.playerDetail.querySelector('[data-tracking-state-note]')) {
           const note = document.createElement('section');
           note.dataset.trackingStateNote = '1';

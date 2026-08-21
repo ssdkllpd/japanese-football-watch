@@ -1,6 +1,6 @@
 {
-  "version": 12,
-  "updatedAt": "2026-08-21T14:36:43+09:00",
+  "version": 13,
+  "updatedAt": "2026-08-21T14:49:11+09:00",
   "scope": {
     "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
     "focus": "Japanese players and their overseas clubs",
@@ -158,7 +158,12 @@
     "formationDataPath": "matches[].formationData",
     "formationUsesProviderGrid": true,
     "providerRatingPath": "playerMatchStats[].providerRatings.apiFootball",
-    "providerAndJfwRatingsRemainSeparate": true
+    "providerAndJfwRatingsRemainSeparate": true,
+    "playerPhotoPath": "players[].photo and playerMatchStats[].photo and matches[].formationData.teams[].startXI[].photo",
+    "coachPath": "matches[].formationData.teams[].coach",
+    "publicMediaUrlsRequireNoApiKey": true,
+    "unsafeImageSchemesRejected": true,
+    "brokenImageMustUseFallback": true
   },
   "rankingPolicy": {
     "overallSource": "seasonStats",
@@ -203,7 +208,7 @@
   "siteViewPolicy": {
     "playerDetail": {
       "primaryStats": "seasonStats",
-      "mustExpose": ["currentMembership", "previousClub", "membershipHistory", "seasonStats", "competitionStats", "clubStats", "recentPlayerMatchStats"],
+      "mustExpose": ["playerPhoto", "currentMembership", "previousClub", "membershipHistory", "seasonStats", "competitionStats", "clubStats", "recentPlayerMatchStats"],
       "recentMatchMustShow": ["club", "competition", "match", "ko"],
       "ratingDisplayMustUseValidityGuard": true,
       "unratedMatchMustDisplayAs": "—"
@@ -217,7 +222,7 @@
       "script": "match-detail.js",
       "routeParam": "match",
       "dataSources": ["matches", "topMatches", "playerMatchStats"],
-      "mustExpose": ["matchSummary", "appearanceSummary", "homeAndAwayFormation", "startingXI", "substitutions", "bench", "apiFootballRating", "ratingModeSwitch", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
+      "mustExpose": ["matchSummary", "appearanceSummary", "homeAndAwayFormation", "startingXI", "playerPhotos", "coach", "coachPhoto", "substitutions", "bench", "apiFootballRating", "ratingModeSwitch", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
       "formationDisplay": "two_pitch_fotmob_inspired",
       "formationRatingModes": ["apiFootball", "jfw"],
       "individualRatingDisplay": "apiFootball_and_jfw_side_by_side",

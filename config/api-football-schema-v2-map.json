@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "provider": "api-football",
   "apiVersion": "v3",
   "updatedAt": "2026-08-21",
@@ -25,6 +25,11 @@
       "endpoint": "/players/squads",
       "purpose": "Resolve provider player identifiers for the tracked Japanese-player registry.",
       "requiredBeforeSync": true
+    },
+    {
+      "endpoint": "/coachs",
+      "purpose": "Coach identity and career-history fallback when a lineup omits coach details.",
+      "requiredBeforeSync": false
     },
     {
       "endpoint": "/fixtures",
@@ -84,6 +89,14 @@
     "shirtNumber": {
       "providerPaths": ["lineups[].startXI[].player.number", "lineups[].substitutes[].player.number"],
       "strategy": "Persist the match-lineup shirt number for display."
+    },
+    "playerPhoto": {
+      "providerPaths": ["players[].players[].player.photo", "lineups[].startXI[].player.id", "lineups[].substitutes[].player.id"],
+      "strategy": "Prefer a returned HTTPS photo URL; otherwise build the documented public media URL /football/players/{player_id}.png. Display a fallback when the media file is unavailable."
+    },
+    "coach": {
+      "providerPaths": ["lineups[].coach.id", "lineups[].coach.name", "lineups[].coach.photo"],
+      "strategy": "Persist the head coach with each home/away formation. Prefer a returned HTTPS photo URL; otherwise build /football/coachs/{coach_id}.png."
     },
     "substitution": {
       "providerPaths": ["events[].type", "events[].time.elapsed", "events[].time.extra", "events[].player.id", "events[].assist.id"],

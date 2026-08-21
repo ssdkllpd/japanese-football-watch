@@ -1,8 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  apiFootballMediaUrl,
   mapFixtureToSchemaV2,
   normalizeTrackedPlayers,
+  safeImageUrl,
 } = require('../scripts/api-football/schema-v2-mapper');
 const {
   inventoryFixture,
@@ -187,11 +189,13 @@ test('both teams formation, grid, substitutions and provider ratings are preserv
     }],
     lineups: [{
       team: { id: 300, name: 'Motherwell' },
+      coach: { id: 401, name: 'Home Coach', photo: null },
       formation: '4-3-3',
       startXI: [{ player: { id: 301, name: 'Home starter', number: 1, pos: 'G', grid: '1:1' } }],
       substitutes: [{ player: { id: 302, name: 'Home substitute', number: 12, pos: 'G', grid: null } }],
     }, {
       team: { id: 200, name: 'SC Freiburg' },
+      coach: { id: 402, name: 'Away Coach', photo: 'https://cdn.example.test/coaches/402.png' },
       formation: '4-2-3-1',
       startXI: [{ player: { id: 100, name: 'Keisuke Goto', number: 9, pos: 'F', grid: '4:1' } }],
       substitutes: [{ player: { id: 101, name: 'Away replacement', number: 19, pos: 'F', grid: null } }],
@@ -199,7 +203,7 @@ test('both teams formation, grid, substitutions and provider ratings are preserv
     players: [{
       team: { id: 300, name: 'Motherwell' },
       players: [{
-        player: { id: 301, name: 'Home starter' },
+        player: { id: 301, name: 'Home starter', photo: 'https://cdn.example.test/players/301.png' },
         statistics: [{ games: { minutes: 90, position: 'G', substitute: false, rating: '6.8' } }],
       }],
     }, {
@@ -230,12 +234,18 @@ test('both teams formation, grid, substitutions and provider ratings are preserv
   assert.equal(home.teamName, 'マザーウェル');
   assert.equal(home.formation, '4-3-3');
   assert.equal(home.startXI[0].apiFootballRating, 6.8);
+  assert.equal(home.startXI[0].photo, 'https://cdn.example.test/players/301.png');
   assert.equal(home.startXI[0].playerId, null);
+  assert.equal(home.coach.name, 'Home Coach');
+  assert.equal(home.coach.photo, 'https://media.api-sports.io/football/coachs/401.png');
   assert.equal(away.teamName, 'フライブルク');
   assert.equal(away.formation, '4-2-3-1');
+  assert.equal(away.coach.name, 'Away Coach');
+  assert.equal(away.coach.photo, 'https://cdn.example.test/coaches/402.png');
   assert.equal(away.startXI[0].grid, '4:1');
   assert.equal(away.startXI[0].playerId, 'jp-goto-keisuke');
   assert.equal(away.startXI[0].apiFootballRating, 7.6);
+  assert.equal(away.startXI[0].photo, 'https://media.api-sports.io/football/players/100.png');
   assert.deepEqual(away.startXI[0].substitution, {
     direction: 'out', elapsed: 63, extra: 2,
     replacementProviderPlayerId: 101, replacementName: 'Away replacement',
@@ -245,8 +255,18 @@ test('both teams formation, grid, substitutions and provider ratings are preserv
 
   const record = fragment.playerMatchStats[0];
   assert.equal(record.providerRatings.apiFootball.value, 7.6);
+  assert.equal(record.photo, 'https://media.api-sports.io/football/players/100.png');
+  assert.equal(fragment.playerUpdates[0].photo, record.photo);
   assert.equal(record.lineup.grid, '4:1');
   assert.equal(record.substitution.direction, 'out');
+});
+
+test('official media templates are deterministic and unsafe image schemes are rejected', () => {
+  assert.equal(apiFootballMediaUrl('player', 55), 'https://media.api-sports.io/football/players/55.png');
+  assert.equal(apiFootballMediaUrl('coach', 77), 'https://media.api-sports.io/football/coachs/77.png');
+  assert.equal(safeImageUrl('https://media.api-sports.io/football/players/55.png'), 'https://media.api-sports.io/football/players/55.png');
+  assert.equal(safeImageUrl('javascript:alert(1)'), null);
+  assert.equal(safeImageUrl('not a url'), null);
 });
 
 test('complete event timeline wins over a conflicting zero player-stat goal', () => {

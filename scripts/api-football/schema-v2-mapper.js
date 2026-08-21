@@ -41,6 +41,31 @@ function numeric(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function safeImageUrl(value) {
+  if (value === null || value === undefined || value === '') return null;
+  try {
+    const url = new URL(String(value));
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function apiFootballMediaUrl(kind, providerId) {
+  if (providerId === null || providerId === undefined || providerId === '') return null;
+  const folder = kind === 'coach' ? 'coachs' : 'players';
+  return `https://media.api-sports.io/football/${folder}/${encodeURIComponent(String(providerId))}.png`;
+}
+
+function resolvePhoto(kind, providerId, candidates = []) {
+  for (const candidate of candidates) {
+    const url = safeImageUrl(candidate?.url);
+    if (url) return { url, source: candidate?.source || 'api_football_payload' };
+  }
+  const url = apiFootballMediaUrl(kind, providerId);
+  return url ? { url, source: 'api_football_media_template' } : null;
+}
+
 function sameId(left, right) {
   return left !== null && left !== undefined && right !== null && right !== undefined &&
     String(left) === String(right);
@@ -265,18 +290,25 @@ function collectSubstitutions(fixture) {
   return { byPlayer, events };
 }
 
-function lineupPlayer(item, role, trackedPlayers, playerStats, substitutions) {
+function lineupPlayer(item, role, trackedPlayers, playerStats, substitutions, options) {
   const player = item?.player || {};
   const providerPlayerId = player?.id;
   if (providerPlayerId === null || providerPlayerId === undefined) return null;
   const key = String(providerPlayerId);
   const tracked = trackedPlayers.get(key) || null;
-  const stats = playerStats.get(key)?.statistics || {};
+  const statsRow = playerStats.get(key) || null;
+  const stats = statsRow?.statistics || {};
   const rating = numeric(stats?.games?.rating);
+  const photo = resolvePhoto('player', providerPlayerId, [
+    { url: statsRow?.player?.photo, source: 'api_football_fixture_players' },
+    { url: player?.photo, source: 'api_football_lineup' },
+    { url: options?.playerPhotosByProviderId?.[key], source: 'api_football_player_registry' },
+    { url: tracked?.photo, source: 'tracked_player_registry' },
+  ]);
   const row = {
     providerPlayerId: numeric(providerPlayerId) ?? providerPlayerId,
     playerId: tracked?.playerId || null,
-    name: tracked?.name || player?.name || playerStats.get(key)?.player?.name || null,
+    name: tracked?.name || player?.name || statsRow?.player?.name || null,
     number: numeric(player?.number),
     position: playerPosition(player?.pos || stats?.games?.position),
     grid: String(player?.grid || '').trim() || null,
@@ -284,10 +316,31 @@ function lineupPlayer(item, role, trackedPlayers, playerStats, substitutions) {
     apiFootballRating: rating,
     minutes: numeric(stats?.games?.minutes),
     captain: typeof stats?.games?.captain === 'boolean' ? stats.games.captain : null,
+    photo: photo?.url || null,
+    photoSource: photo?.source || null,
   };
   const substitution = substitutions.byPlayer.get(key);
   if (substitution) row.substitution = substitution;
   return row;
+}
+
+function lineupCoach(lineup, options) {
+  const coach = lineup?.coach || null;
+  if (!coach) return null;
+  const providerCoachId = coach?.id;
+  const key = providerCoachId === null || providerCoachId === undefined ? null : String(providerCoachId);
+  const photo = resolvePhoto('coach', providerCoachId, [
+    { url: coach?.photo, source: 'api_football_lineup' },
+    { url: key === null ? null : options?.coachPhotosByProviderId?.[key], source: 'api_football_coach_registry' },
+  ]);
+  const name = (key === null ? null : options?.coachNamesByProviderId?.[key]) || coach?.name || null;
+  if ((providerCoachId === null || providerCoachId === undefined) && !name && !photo) return null;
+  return {
+    providerCoachId: numeric(providerCoachId) ?? providerCoachId ?? null,
+    name,
+    photo: photo?.url || null,
+    photoSource: photo?.source || null,
+  };
 }
 
 function buildFormationData(fixture, options, trackedPlayers, playerStats, substitutions, sourceId) {
@@ -310,11 +363,12 @@ function buildFormationData(fixture, options, trackedPlayers, playerStats, subst
       teamName: teamResolver(options, sourceTeam),
       formation: String(lineup?.formation || '').trim() || null,
       lineupAvailable: !!lineup,
+      coach: lineupCoach(lineup, options),
       startXI: (lineup?.startXI || [])
-        .map(item => lineupPlayer(item, 'starter', trackedPlayers, playerStats, substitutions))
+        .map(item => lineupPlayer(item, 'starter', trackedPlayers, playerStats, substitutions, options))
         .filter(Boolean),
       substitutes: (lineup?.substitutes || [])
-        .map(item => lineupPlayer(item, 'substitute', trackedPlayers, playerStats, substitutions))
+        .map(item => lineupPlayer(item, 'substitute', trackedPlayers, playerStats, substitutions, options))
         .filter(Boolean),
     };
   });
@@ -500,6 +554,12 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
       },
     };
     const apiFootballRating = numeric(stats?.games?.rating);
+    const playerPhoto = resolvePhoto('player', providerPlayerId, [
+      { url: statsRow?.player?.photo, source: 'api_football_fixture_players' },
+      { url: line?.player?.photo, source: 'api_football_lineup' },
+      { url: options?.playerPhotosByProviderId?.[String(providerPlayerId)], source: 'api_football_player_registry' },
+      { url: tracked?.photo, source: 'tracked_player_registry' },
+    ]);
 
     const record = {
       recordId: `${matchId}-${tracked.playerId}`,
@@ -526,6 +586,10 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
       priorityUpdate: missingFields.length > 0,
       priorityFields: missingFields,
     };
+    if (playerPhoto) {
+      record.photo = playerPhoto.url;
+      record.photoSource = playerPhoto.source;
+    }
     if (apiFootballRating !== null) {
       record.providerRatings = {
         apiFootball: { value: apiFootballRating, sourceId },
@@ -544,7 +608,7 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
     if (conflicts.length) record.ratingConflicts = conflicts;
     records.push(record);
 
-    playerUpdates.push({
+    const playerUpdate = {
       playerId: tracked.playerId,
       name: tracked.name,
       providerIds: { apiFootball: { player: providerIds.apiFootball.player } },
@@ -552,7 +616,12 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
       priorityUpdate: missingFields.length > 0,
       priorityFields: missingFields,
       sourceIds: [sourceId],
-    });
+    };
+    if (playerPhoto) {
+      playerUpdate.photo = playerPhoto.url;
+      playerUpdate.photoSource = playerPhoto.source;
+    }
+    playerUpdates.push(playerUpdate);
 
     const goals = numeric(values.goals);
     const assists = numeric(values.assists);
@@ -625,6 +694,7 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
 
 module.exports = {
   FINAL_FIXTURE_STATUSES,
+  apiFootballMediaUrl,
   buildFormationData,
   collectSubstitutions,
   fixtureEventsAreComplete,
@@ -632,4 +702,5 @@ module.exports = {
   normalizeTrackedPlayers,
   numeric,
   playerPosition,
+  safeImageUrl,
 };
