@@ -28,6 +28,10 @@ function parseArgs(argv) {
   return result;
 }
 
+function flag(value) {
+  return value === true || String(value || '').toLowerCase() === 'true';
+}
+
 function responseArray(result) {
   return Array.isArray(result?.data?.response) ? result.data.response : [];
 }
@@ -75,9 +79,10 @@ async function main() {
   const client = createClientFromEnv(process.env);
   const envelope = await fetchFixtureEnvelope(client, fixtureId);
   const fetchedAt = new Date().toISOString();
+  const finalStatus = ['FT', 'AET', 'PEN'].includes(String(envelope.fixture?.fixture?.status?.short || '').toUpperCase());
   const bundle = normalizeFixtureBundle(envelope.fixture, {
     fetchedAt,
-    finalized: ['FT', 'AET', 'PEN'].includes(String(envelope.fixture?.fixture?.status?.short || '').toUpperCase()),
+    finalized: finalStatus && flag(args.finalized),
   });
   const errors = validateFixtureBundle(bundle);
   if (errors.length) throw new Error(`Fixture contract validation failed: ${errors.join('; ')}`);
@@ -102,6 +107,7 @@ async function main() {
     fixtureId: bundle.fixture.id,
     providerFixtureId: bundle.fixture.providerId,
     fetchedAt,
+    ingestionState: bundle.fixture.ingestionState,
     r2Objects: [
       { role: 'fixture', key: canonicalKey, file: 'fixture.json' },
       { role: 'fixture_pointer', key: pointerKey, file: 'fixture-pointer.json' },
@@ -127,6 +133,7 @@ if (require.main === module) {
 
 module.exports = {
   fetchFixtureEnvelope,
+  flag,
   parseArgs,
   responseArray,
 };
