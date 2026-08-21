@@ -11,6 +11,7 @@
   ];
   const NON_OFFICIAL_RE = /friendly|pre[- ]?season|親善|プレシーズン/i;
   const OUT_OF_SCOPE_BUCKET = '無所属・追跡対象外';
+  const SEASON_TOTAL_SUFFIX = ' / シーズン通算（クラブ別保持）';
   const TRACKED_LEAGUES = new Set([
     'Premier League','プレミアリーグ',
     'EFL Championship','Championship','チャンピオンシップ',
@@ -30,6 +31,7 @@
   let registryById = new Map();
   let registryByName = new Map();
   let registryByApiFootballId = new Map();
+  let registryDegradation = new Map();
 
   async function getJson(path) {
     const sep = path.includes('?') ? '&' : '?';
@@ -130,6 +132,61 @@
   function registryPlayerIdForName(name) {
     return registryByName.get(textKey(name))?.playerId || null;
   }
+  function noteRegistryDegradation(value, source, reason = 'registry_missing') {
+    const name = textKey(value?.name || value?.playerName || value?.player) || null;
+    const providerPlayerId = value?.providerIds?.apiFootball?.player ?? value?.apiFootballPlayerId ?? value?.providerPlayerId ?? null;
+    const playerId = value?.playerId ? String(value.playerId) : null;
+    const key = [reason, playerId || '', providerPlayerId == null ? '' : String(providerPlayerId), name || ''].join('|');
+    if (!registryDegradation.has(key)) {
+      registryDegradation.set(key, {
+        name,
+        playerId,
+        apiFootballPlayerId: providerPlayerId,
+        source,
+        reason,
+      });
+    }
+    return null;
+  }
+  function resetRegistryDegradation() {
+    registryDegradation = new Map();
+    if (D?._dataIntegrity?.reason === 'player_registry_missing_entries') delete D._dataIntegrity;
+    document.getElementById?.('dataIntegrityWarning')?.remove?.();
+  }
+  function publishRegistryDegradation() {
+    const missingPlayers = [...registryDegradation.values()];
+    if (!missingPlayers.length) return;
+    D = D || {};
+    D._dataIntegrity = {
+      blocked: false,
+      degraded: true,
+      reason: 'player_registry_missing_entries',
+      season: String(selectedSeason || ''),
+      missingPlayers,
+    };
+    const main = document.querySelector('main');
+    if (main) main.hidden = false;
+    let banner = document.getElementById?.('dataIntegrityWarning');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'dataIntegrityWarning';
+      banner.setAttribute?.('role', 'status');
+      banner.style.cssText = 'margin:16px 0;padding:12px;border:1px solid #fbbf24;border-radius:12px;background:#3b2f12;color:#fff;line-height:1.6';
+      const host = document.querySelector('.wrap') || document.body;
+      host?.insertBefore?.(banner, main || host.firstChild || null);
+    }
+    const labels = missingPlayers.map(x => x.name || x.playerId || x.apiFootballPlayerId || 'identity不明').slice(0, 5);
+    const extra = missingPlayers.length > labels.length ? ` 他${missingPlayers.length - labels.length}件` : '';
+    if (banner) banner.textContent = `一部の選手データをplayer registryで解決できなかったため、その選手だけ更新を保留しています: ${labels.join('、')}${extra}`;
+    console.warn('player registry degraded', missingPlayers);
+  }
+  function seasonTotalStatsAsOf(value) {
+    let base = String(value || selectedSeason || '').trim();
+    while (base.endsWith(SEASON_TOTAL_SUFFIX)) {
+      base = base.slice(0, -SEASON_TOTAL_SUFFIX.length).trimEnd();
+    }
+    return `${base || selectedSeason}${SEASON_TOTAL_SUFFIX}`;
+  }
   function isTrackedLeague(league) {
     const value = textKey(league);
     return !!value && value !== 'J1' && TRACKED_LEAGUES.has(value);
@@ -148,11 +205,12 @@
   function baselineKey(club, competition) {
     return `${String(club || '')}|||${String(competition || '')}`;
   }
-  function ensurePlayerIdentity(p) {
-    if (!p || !p.name) return p;
+  function ensurePlayerIdentity(p, source = 'player') {
+    if (!p) return null;
     const registryEntry = registryEntryForCandidate(p);
-    if (!registryEntry) throw new Error(`player registry missing: ${p.name}`);
+    if (!registryEntry) return noteRegistryDegradation(p, source);
     p.playerId = registryEntry.playerId;
+    p.name = p.name || registryEntry.name;
     p.providerIds = mergeProviderIds(registryEntry.providerIds, p.providerIds);
     p.membershipHistory = Array.isArray(p.membershipHistory) ? p.membershipHistory : [];
     p.membershipCorrections = Array.isArray(p.membershipCorrections) ? p.membershipCorrections : [];
@@ -179,7 +237,11 @@
   }
   function initializePlayers() {
     D.players = D.players || [];
-    for (const p of D.players) ensurePlayerIdentity(p);
+    const resolved = [];
+    for (const p of D.players) {
+      if (ensurePlayerIdentity(p, 'base_player')) resolved.push(p);
+    }
+    D.players = resolved;
   }
   function playerByIncoming(u) {
     if (!u) return null;
@@ -302,22 +364,27 @@
   function mergePlayerUpdates(rows, fragmentUpdated) {
     D.players = D.players || [];
     for (const u of rows || []) {
+      const registryEntry = registryEntryForCandidate(u);
+      if (!registryEntry) {
+        noteRegistryDegradation(u, 'playerUpdates');
+        continue;
+      }
       let p = playerByIncoming(u);
       const incomingStats = u.stats ? { ...u.stats } : null;
       const incomingProviderIds = u.providerIds ? { ...u.providerIds } : null;
       const { stats, providerIds, ...meta } = u;
       if (!p) {
-        p = { ...meta, stats: {} };
+        p = { ...meta, playerId: registryEntry.playerId, name: meta.name || registryEntry.name, stats: {} };
         if (incomingProviderIds) p.providerIds = mergeProviderIds(null, incomingProviderIds);
-        ensurePlayerIdentity(p);
+        if (!ensurePlayerIdentity(p, 'playerUpdates')) continue;
         D.players.push(p);
       } else {
-        ensurePlayerIdentity(p);
+        if (!ensurePlayerIdentity(p, 'playerUpdates')) continue;
         applyMembershipChange(p, u, fragmentUpdated);
         Object.assign(p, meta);
         if (incomingProviderIds) p.providerIds = mergeProviderIds(p.providerIds, incomingProviderIds);
       }
-      ensurePlayerIdentity(p);
+      if (!ensurePlayerIdentity(p, 'playerUpdates')) continue;
       if (incomingStats) saveBaseline(p, p.club, p.league, incomingStats, u.statsAsOfDate || u.aggregateAsOf || fragmentUpdated, u.statsAsOf);
       setTrackingState(p);
     }
@@ -407,21 +474,28 @@
   function upsertPlayerMatchStats(rows, sources) {
     D.playerMatchStats = D.playerMatchStats || [];
     for (const raw of rows || []) {
+      const registryEntry = registryEntryForCandidate(raw);
+      if (!registryEntry) {
+        noteRegistryDegradation(raw, 'playerMatchStats');
+        continue;
+      }
       let r = normalizeRecord(raw, sources);
       const p = playerForRecord(r);
-      if (p) {
-        ensurePlayerIdentity(p);
-        const m = matchForRecord(r);
-        r.playerId = p.playerId;
-        r.playerName = r.playerName || p.name;
-        r.player = r.player || p.name;
-        r.match = r.match || m?.match || null;
-        r.ko = r.ko || m?.ko || null;
-        r.round = r.round || m?.round || null;
-        r.club = clubForRecord(r, p);
-        r.competition = competitionOfRecord(r);
-        r.trackedAtMatch = recordWasTracked(r, p);
+      if (!p) {
+        noteRegistryDegradation(raw, 'playerMatchStats', 'player_record_missing');
+        continue;
       }
+      if (!ensurePlayerIdentity(p, 'playerMatchStats')) continue;
+      const m = matchForRecord(r);
+      r.playerId = p.playerId;
+      r.playerName = r.playerName || p.name;
+      r.player = r.player || p.name;
+      r.match = r.match || m?.match || null;
+      r.ko = r.ko || m?.ko || null;
+      r.round = r.round || m?.round || null;
+      r.club = clubForRecord(r, p);
+      r.competition = competitionOfRecord(r);
+      r.trackedAtMatch = recordWasTracked(r, p);
       const i = D.playerMatchStats.findIndex(x =>
         (r.recordId && x.recordId === r.recordId) ||
         (x.matchId === r.matchId &&
@@ -460,10 +534,16 @@
     for (const raw of rows || []) {
       const x = { ...raw };
       const registryEntry = registryEntryForCandidate(x);
-      const p = registryEntry
-        ? (D.players || []).find(p => String(p.playerId || '') === String(registryEntry.playerId))
-        : null;
-      if (p) x.playerId = p.playerId;
+      if (!registryEntry) {
+        noteRegistryDegradation(x, 'gaResultsAdd');
+        continue;
+      }
+      const p = (D.players || []).find(p => String(p.playerId || '') === String(registryEntry.playerId));
+      if (!p) {
+        noteRegistryDegradation(x, 'gaResultsAdd', 'player_record_missing');
+        continue;
+      }
+      x.playerId = p.playerId;
       const i = D.gaResults.findIndex(y =>
         (x.matchId && y.matchId === x.matchId &&
           ((x.playerId && y.playerId === x.playerId) || y.player === x.player)) ||
@@ -475,7 +555,13 @@
   }
   function removeGA(rows) {
     if (!rows?.length || !D.gaResults) return;
-    D.gaResults = D.gaResults.filter(y => !(rows || []).some(x =>
+    const safeRows = [];
+    for (const row of rows || []) {
+      if (registryEntryForCandidate(row)) safeRows.push(row);
+      else noteRegistryDegradation(row, 'gaResultsRemove');
+    }
+    if (!safeRows.length) return;
+    D.gaResults = D.gaResults.filter(y => !safeRows.some(x =>
       (x.matchId && y.matchId === x.matchId && (!x.player || y.player === x.player)) ||
       (!x.matchId && x.player === y.player && x.ko === y.ko && (!x.match || x.match === y.match))
     ));
@@ -555,7 +641,7 @@
     const records = D.playerMatchStats || [];
 
     for (const p of D.players) {
-      ensurePlayerIdentity(p);
+      if (!ensurePlayerIdentity(p, 'aggregate')) continue;
 
       if (!Object.keys(p._aggregateBaselines || {}).length && hasNumericStats(p._initialStats)) {
         ensureInitialBaseline(p, p.club, p.league, D.updated);
@@ -611,7 +697,7 @@
       p.statsScope = 'tracked_official_season_total';
       p.statsTrackingState = p.trackingStatus === 'active' ? 'active' : 'frozen_out_of_scope';
       if (mine.length || Object.keys(p._aggregateBaselines || {}).length) {
-        p.statsAsOf = `${p.statsAsOf || selectedSeason} / シーズン通算（クラブ別保持）`;
+        p.statsAsOf = seasonTotalStatsAsOf(p.statsAsOf);
       }
     }
   }
@@ -903,6 +989,7 @@
   }
 
   function applyFragments(parts) {
+    resetRegistryDegradation();
     initializePlayers();
     const sources = {};
     for (const p of parts) Object.assign(sources, p.sources || {});
@@ -917,13 +1004,16 @@
     installUiScopePolicy();
     const newest = parts.map(x => x.updated).filter(Boolean).sort().at(-1);
     if (newest) D.updated = newest;
-    D._playerMatchBackfill = {
-      season: selectedSeason,
-      updated: newest,
-      fragments: parts.length,
-      records: (D.playerMatchStats || []).length,
-      trackingModelVersion: '1.0'
-    };
+    if (parts.length) {
+      D._playerMatchBackfill = {
+        season: selectedSeason,
+        updated: newest,
+        fragments: parts.length,
+        records: (D.playerMatchStats || []).length,
+        trackingModelVersion: '1.0'
+      };
+    }
+    publishRegistryDegradation();
   }
 
   function blockCurrentSeasonData(error) {
@@ -931,10 +1021,12 @@
     D = D || {};
     D._dataIntegrity = {
       blocked: true,
+      degraded: false,
       reason: 'current_season_overlay_load_failed',
       season: String(selectedSeason || ''),
       detail
     };
+    document.getElementById?.('dataIntegrityWarning')?.remove?.();
     const main = document.querySelector('main');
     if (main) main.hidden = true;
     let banner = document.getElementById?.('dataIntegrityError');
