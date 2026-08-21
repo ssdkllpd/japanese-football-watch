@@ -180,3 +180,13 @@ test('J1 is not an active tracking league or tracked-club source', async () => {
   const activeJ1 = data.players.filter(p => p.trackingStatus === 'active' && p.league === 'J1');
   assert.equal(activeJ1.length, 0);
 });
+
+
+test('伊東純也のシーズン通算アシストはbaselineと試合明細を二重計上せず2で固定される', async () => {
+  const { data } = await loadedData();
+  const player = data.players.find(p => p.name === '伊東純也');
+  assert.ok(player, '伊東純也の選手レコードが必要');
+  assert.equal(player.seasonStats?.assists, 2);
+  assert.equal(player.competitionStats?.['ベルギー']?.assists, 2);
+  assert.equal(player.clubStats?.['KRCヘンク']?.assists, 2);
+});

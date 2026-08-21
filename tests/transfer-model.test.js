@@ -70,6 +70,10 @@ function buildHarness({ player, fragments }) {
     showPage() {},
     lastPage: 'home',
     fetch: async url => {
+      if (String(url).includes('config/player-registry.json')) return {
+        ok: true,
+        json: async () => ({ players: [{ playerId: player.playerId || 'jp-synthetic-player', name: player.name, aliases: [], providerIds: player.providerIds || {} }] })
+      };
       if (String(url).includes('index.json')) return { ok: true, json: async () => ({ fragments: fragments.map((_, i) => `${i}.json`) }) };
       const match = String(url).match(/\/(\d+)\.json/);
       const index = match ? Number(match[1]) : -1;
@@ -320,4 +324,30 @@ test('a later provider fragment enriches rating inputs without erasing earlier k
   assert.equal(record.providerRatings.apiFootball.value, 7.1);
   assert.equal(record.missingFields.includes('shotsOnTarget'), false);
   assert.equal(record.missingFields.includes('penaltiesConceded'), false);
+});
+
+
+test('すべては親善試合を除く全公式戦通算で大会別集計とは分離される', async () => {
+  const player = {
+    name: '公式戦太郎',
+    club: 'Club A',
+    league: 'プレミアリーグ',
+    stats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 }
+  };
+  const fragments = [{
+    updated: '2026-08-20 12:00 JST',
+    matchUpdates: [{ matchId: 'ucl-1', league: 'UEFA Champions League', competition: 'UEFA Champions League', ko: '2026-08-18 20:00', match: 'Club A 1-0 X', addIfMissing: true }],
+    playerMatchStats: [{
+      recordId: 'ucl-1-p', matchId: 'ucl-1', player: '公式戦太郎', club: 'Club A', competition: 'UEFA Champions League',
+      appearance: true, start: false, values: { minutes: 25, goals: 0, assists: 0 }, missingFields: []
+    }]
+  }];
+  const context = buildHarness({ player, fragments });
+  // Synthetic migration records must also use an explicit registry entry.
+  context.window.JFWTracking.registryPlayerIdForName = context.window.JFWTracking.registryPlayerIdForName || (() => null);
+  const p = await apply(context);
+  assert.equal(p.seasonStats.apps, 1);
+  assert.equal(p.seasonStats.minutes, 25);
+  assert.equal(p.competitionStats['プレミアリーグ'].apps, 0);
+  assert.equal(p.competitionStats['UEFA Champions League'].apps, 1);
 });

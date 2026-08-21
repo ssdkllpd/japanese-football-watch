@@ -26,6 +26,10 @@
 
   let loading = null;
   let uiPolicyInstalled = false;
+  let playerRegistry = null;
+  let registryById = new Map();
+  let registryByName = new Map();
+  let registryByApiFootballId = new Map();
 
   async function getJson(path) {
     const sep = path.includes('?') ? '&' : '?';
@@ -71,7 +75,61 @@
     }
     return (h >>> 0).toString(36);
   }
+  // Migration helper only. Runtime identity must resolve through config/player-registry.json.
   function stablePlayerId(name) { return `jp-${stableHash(name)}`; }
+  function installPlayerRegistry(registry) {
+    const rows = Array.isArray(registry?.players) ? registry.players : [];
+    if (!rows.length) throw new Error('player registry is empty');
+    const byId = new Map();
+    const byName = new Map();
+    const byProvider = new Map();
+    for (const row of rows) {
+      const playerId = String(row?.playerId || '').trim();
+      const name = textKey(row?.name);
+      if (!playerId || !name) throw new Error('player registry contains an empty playerId/name');
+      if (byId.has(playerId)) throw new Error(`duplicate playerId in registry: ${playerId}`);
+      byId.set(playerId, row);
+      for (const alias of [name, ...(row.aliases || []).map(textKey)].filter(Boolean)) {
+        const existing = byName.get(alias);
+        if (existing && existing.playerId !== playerId) throw new Error(`ambiguous player alias in registry: ${alias}`);
+        byName.set(alias, row);
+      }
+      const providerId = row?.providerIds?.apiFootball?.player;
+      if (providerId !== null && providerId !== undefined) {
+        const key = String(providerId);
+        const existing = byProvider.get(key);
+        if (existing && existing.playerId !== playerId) throw new Error(`duplicate API-Football player id in registry: ${key}`);
+        byProvider.set(key, row);
+      }
+    }
+    playerRegistry = registry;
+    registryById = byId;
+    registryByName = byName;
+    registryByApiFootballId = byProvider;
+  }
+  async function ensurePlayerRegistryLoaded() {
+    if (playerRegistry) return playerRegistry;
+    const registry = await getJson('config/player-registry.json');
+    installPlayerRegistry(registry);
+    return registry;
+  }
+  function registryEntryForCandidate(value) {
+    if (!value) return null;
+    if (value.playerId) {
+      const byId = registryById.get(String(value.playerId));
+      if (byId) return byId;
+    }
+    const providerId = value?.providerIds?.apiFootball?.player ?? value?.apiFootballPlayerId ?? value?.providerPlayerId;
+    if (providerId !== null && providerId !== undefined) {
+      const byProvider = registryByApiFootballId.get(String(providerId));
+      if (byProvider) return byProvider;
+    }
+    const name = textKey(value.name || value.playerName || value.player);
+    return name ? (registryByName.get(name) || null) : null;
+  }
+  function registryPlayerIdForName(name) {
+    return registryByName.get(textKey(name))?.playerId || null;
+  }
   function isTrackedLeague(league) {
     const value = textKey(league);
     return !!value && value !== 'J1' && TRACKED_LEAGUES.has(value);
@@ -92,7 +150,10 @@
   }
   function ensurePlayerIdentity(p) {
     if (!p || !p.name) return p;
-    if (!p.playerId) p.playerId = stablePlayerId(p.name);
+    const registryEntry = registryEntryForCandidate(p);
+    if (!registryEntry) throw new Error(`player registry missing: ${p.name}`);
+    p.playerId = registryEntry.playerId;
+    p.providerIds = mergeProviderIds(registryEntry.providerIds, p.providerIds);
     p.membershipHistory = Array.isArray(p.membershipHistory) ? p.membershipHistory : [];
     p.membershipCorrections = Array.isArray(p.membershipCorrections) ? p.membershipCorrections : [];
     p._aggregateBaselines = p._aggregateBaselines || {};
@@ -122,11 +183,9 @@
   }
   function playerByIncoming(u) {
     if (!u) return null;
-    if (u.playerId) {
-      const byId = (D.players || []).find(p => String(p.playerId || '') === String(u.playerId));
-      if (byId) return byId;
-    }
-    return (D.players || []).find(p => p.name === u.name) || null;
+    const entry = registryEntryForCandidate(u);
+    if (!entry) return null;
+    return (D.players || []).find(p => String(p.playerId || '') === String(entry.playerId)) || null;
   }
   function setTrackingState(p) {
     const tracked = isTrackedLeague(p.league);
@@ -155,10 +214,10 @@
     return openMembership(p) || rows.at(-1) || null;
   }
   function recordsForIdentity(p) {
-    return (D.playerMatchStats || []).filter(r =>
-      (r.playerId && String(r.playerId) === String(p.playerId)) ||
-      r.player === p.name || r.playerName === p.name
-    );
+    return (D.playerMatchStats || []).filter(r => {
+      const entry = registryEntryForCandidate(r);
+      return entry && String(entry.playerId) === String(p.playerId);
+    });
   }
   function inferMembershipChangeType(p, u) {
     if (u.membershipChangeType) return u.membershipChangeType;
@@ -315,11 +374,9 @@
     return out;
   }
   function playerForRecord(r) {
-    const name = r?.playerName || r?.player || null;
-    return (D.players || []).find(p =>
-      (r?.playerId && String(p.playerId) === String(r.playerId)) ||
-      (!!name && p.name === name)
-    ) || null;
+    const entry = registryEntryForCandidate(r);
+    if (!entry) return null;
+    return (D.players || []).find(p => String(p.playerId || '') === String(entry.playerId)) || null;
   }
   function matchForRecord(r) {
     return (D.matches || []).find(m =>
@@ -402,10 +459,10 @@
     D.gaResults = D.gaResults || [];
     for (const raw of rows || []) {
       const x = { ...raw };
-      const p = (D.players || []).find(p =>
-        (x.playerId && String(p.playerId) === String(x.playerId)) ||
-        p.name === x.player
-      );
+      const registryEntry = registryEntryForCandidate(x);
+      const p = registryEntry
+        ? (D.players || []).find(p => String(p.playerId || '') === String(registryEntry.playerId))
+        : null;
       if (p) x.playerId = p.playerId;
       const i = D.gaResults.findIndex(y =>
         (x.matchId && y.matchId === x.matchId &&
@@ -441,7 +498,8 @@
   }
   function recordPlayerName(r) { return r?.playerName || r?.player || r?.name || null; }
   function recordBelongsToPlayer(r, p) {
-    return (r.playerId && String(r.playerId) === String(p.playerId)) || recordPlayerName(r) === p.name;
+    const entry = registryEntryForCandidate(r);
+    return !!entry && String(entry.playerId) === String(p.playerId);
   }
   function bucket() {
     return { values: {}, known: {}, hasData: false };
@@ -868,23 +926,62 @@
     };
   }
 
+  function blockCurrentSeasonData(error) {
+    const detail = String(error?.message || error || 'unknown backfill load failure');
+    D = D || {};
+    D._dataIntegrity = {
+      blocked: true,
+      reason: 'current_season_overlay_load_failed',
+      season: String(selectedSeason || ''),
+      detail
+    };
+    const main = document.querySelector('main');
+    if (main) main.hidden = true;
+    let banner = document.getElementById?.('dataIntegrityError');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'dataIntegrityError';
+      banner.setAttribute?.('role', 'alert');
+      banner.style.cssText = 'margin:16px 0;padding:14px;border:1px solid #fca5a5;border-radius:12px;background:#3f151b;color:#fff;line-height:1.6';
+      const host = document.querySelector('.wrap') || document.body;
+      host?.insertBefore?.(banner, main || host.firstChild || null);
+    }
+    if (banner) banner.textContent = `最新データの読み込みに失敗したため表示を停止しました。再読み込みしても続く場合は更新処理を確認してください。 (${detail})`;
+    try { R.updated.textContent = 'データ整合性エラー・表示停止'; } catch {}
+    console.error('current season data blocked', error);
+  }
+  function clearCurrentSeasonDataBlock() {
+    if (D?._dataIntegrity?.reason === 'current_season_overlay_load_failed') delete D._dataIntegrity;
+    const main = document.querySelector('main');
+    if (main) main.hidden = false;
+    document.getElementById?.('dataIntegrityError')?.remove?.();
+  }
+
   async function applyCurrentBackfill() {
     const season = String(selectedSeason || '');
     if (!season) return false;
     try {
+      await ensurePlayerRegistryLoaded();
       const base = `data/${encodeURIComponent(season)}/backfill/`;
       const manifest = await getJson(base + 'index.json');
       const parts = await Promise.all((manifest.fragments || []).map(f => getJson(base + f)));
+      clearCurrentSeasonDataBlock();
       applyFragments(parts);
       try { R.updated.textContent = `${season} ・ 最終更新: ${D.updated || '未取得'}`; } catch {}
       return true;
     } catch (e) {
+      const isCurrentSeason = String(seasonManifest?.current || '') === season;
+      if (isCurrentSeason) {
+        blockCurrentSeasonData(e);
+        return false;
+      }
       if (!String(e).includes('404')) console.warn('player match backfill load failed', e);
       return false;
     }
   }
 
   async function refreshViews() {
+    if (D?._dataIntegrity?.blocked) return;
     try { renderAll(); } catch {}
     try {
       if (page === 'player') renderPlayerDetail();
@@ -916,6 +1013,7 @@
     VERSION: '1.0',
     OUT_OF_SCOPE_BUCKET,
     stablePlayerId,
+    registryPlayerIdForName,
     isTrackedLeague,
     membershipAt,
     clubForRecord,

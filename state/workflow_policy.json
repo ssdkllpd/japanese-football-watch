@@ -1,10 +1,23 @@
 {
-  "version": 19,
-  "updatedAt": "2026-08-21T15:51:00+09:00",
+  "version": 20,
+  "updatedAt": "2026-08-21T17:25:25+09:00",
   "scope": {
-    "leagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
+    "leagues": [
+      "Premier League",
+      "EFL Championship",
+      "Bundesliga",
+      "Belgian Pro League",
+      "Eredivisie",
+      "La Liga",
+      "Ligue 1",
+      "Serie A",
+      "Scottish Premiership",
+      "Primeira Liga"
+    ],
     "focus": "Japanese players and their overseas clubs",
-    "exclusions": ["J1"],
+    "exclusions": [
+      "J1"
+    ],
     "scopeNote": "J1 belongs to the separate analysis app and must not block or participate in japanese-football-watch collection, validation, snapshot, or update decisions. Players who transfer from the tracked scope to J1 or any other non-tracked league remain in the player dataset as out-of-scope records."
   },
   "seasonPolicy": {
@@ -19,7 +32,20 @@
       "snapshotPath": "state/latest_snapshot.json"
     },
     "neverOverwritePreviousSeason": true,
-    "onSeasonRollover": ["freeze_previous_season_data", "create_new_season_data_path", "append_new_season_to_manifest", "move_manifest_current_to_new_season"]
+    "onSeasonRollover": [
+      "freeze_previous_season_data",
+      "create_new_season_data_path",
+      "append_new_season_to_manifest",
+      "move_manifest_current_to_new_season"
+    ],
+    "compactionPolicy": {
+      "tool": "scripts/compact-season.js",
+      "defaultThresholdFragments": 40,
+      "defaultThresholdBytes": 5242880,
+      "archiveFragmentsInsteadOfDeleting": true,
+      "materializedBaseMustUseRuntimeMerge": true,
+      "applyRequiresValidationAfterCompaction": true
+    }
   },
   "workflow": [
     "resolve_active_season_and_data_bundle",
@@ -46,14 +72,28 @@
     "nameMatchingFallback": "migration_only",
     "matchRecordsPreferPlayerId": true,
     "membershipHistoryRequired": true,
-    "membershipCorrectionsRequiredForHistoricalCorrection": true
+    "membershipCorrectionsRequiredForHistoricalCorrection": true,
+    "registryPath": "config/player-registry.json",
+    "runtimeRegistryRequired": true,
+    "nameHashGeneration": "migration_only_registry_bootstrap",
+    "newUpdatesMayJoinByDisplayName": false,
+    "providerJoinPath": "provider_id -> player_registry -> playerId"
   },
   "transferPolicy": {
     "modelVersion": "1.0",
     "documentation": "docs/player-tracking-data-model-v1.0.md",
-    "membershipChangeTypes": ["transfer", "loan", "loan_return", "registration", "correction"],
+    "membershipChangeTypes": [
+      "transfer",
+      "loan",
+      "loan_return",
+      "registration",
+      "correction"
+    ],
     "confirmedMovementShouldProvideEffectiveDate": true,
-    "effectiveDateFields": ["effectiveDate", "transferDate"],
+    "effectiveDateFields": [
+      "effectiveDate",
+      "transferDate"
+    ],
     "keepPreviousClub": true,
     "keepPreviousLeague": true,
     "keepMembershipHistory": true,
@@ -101,7 +141,44 @@
     "doNotLeaveKnownMatchWithoutVerifiedPlayerDetailWhenPublicDataExists": true
   },
   "playerDataPolicy": {
-    "fields": ["appearance", "start", "bench", "minutes", "goals", "assists", "cleanSheets", "yellowCards", "secondYellowRed", "straightRed", "substitution", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "clearances", "blocks", "saves", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted", "shotsOnTargetFaced", "penaltiesSaved", "penaltiesConceded", "ownGoals", "highClaims", "errorsLeadingToGoal", "gaOnPitch"],
+    "fields": [
+      "appearance",
+      "start",
+      "bench",
+      "minutes",
+      "goals",
+      "assists",
+      "cleanSheets",
+      "yellowCards",
+      "secondYellowRed",
+      "straightRed",
+      "substitution",
+      "shots",
+      "shotsOnTarget",
+      "keyPasses",
+      "tackles",
+      "interceptions",
+      "clearances",
+      "blocks",
+      "saves",
+      "duelsWon",
+      "duelsTotal",
+      "aerialDuelsWon",
+      "aerialDuelsTotal",
+      "dribbles",
+      "dribbledPast",
+      "bigChancesMissed",
+      "possessionsLost",
+      "passesCompleted",
+      "passesAttempted",
+      "shotsOnTargetFaced",
+      "penaltiesSaved",
+      "penaltiesConceded",
+      "ownGoals",
+      "highClaims",
+      "errorsLeadingToGoal",
+      "gaOnPitch"
+    ],
     "missingData": {
       "setPriorityUpdate": true,
       "priorityFlagField": "priorityUpdate",
@@ -113,7 +190,10 @@
     },
     "aggregation": {
       "sourceOfTruth": "playerMatchStats plus verified aggregate baselines with machine-readable cutoff",
-      "aggregateCutoffFields": ["aggregateAsOf", "statsAsOfDate"],
+      "aggregateCutoffFields": [
+        "aggregateAsOf",
+        "statsAsOfDate"
+      ],
       "rebuildAfterEveryMatchOrMembershipMutation": true,
       "seasonStatsField": "seasonStats",
       "competitionStatsField": "competitionStats",
@@ -152,7 +232,12 @@
       "fixtureDiscovery": "only the nine fixed manifest dates; never latest, next, or last",
       "teamLastDiscoveryMayReadUnlistedCompletedResults": false,
       "persistUnlistedCompletedResults": false,
-      "detailEndpoints": ["/fixtures/events", "/fixtures/lineups", "/fixtures/players", "/coachs?team={teamId} only when the fixture lineup omits its coach"],
+      "detailEndpoints": [
+        "/fixtures/events",
+        "/fixtures/lineups",
+        "/fixtures/players",
+        "/coachs?team={teamId} only when the fixture lineup omits its coach"
+      ],
       "outputFragment": "data/2026-27/backfill/api-football-existing-results.json",
       "resumableState": "state/api-football-existing-results.json",
       "dailyRequestReserve": 100,
@@ -181,7 +266,10 @@
     "coachPath": "matches[].formationData.teams[].coach",
     "publicMediaUrlsRequireNoApiKey": true,
     "unsafeImageSchemesRejected": true,
-    "brokenImageMustUseFallback": true
+    "brokenImageMustUseFallback": true,
+    "playerRegistry": "config/player-registry.json",
+    "providerPlayerIdMustResolveThroughRegistry": true,
+    "runtimeMergeForExistingResultSelection": "scripts/shared/runtime-data-loader.js"
   },
   "rankingPolicy": {
     "overallSource": "seasonStats",
@@ -199,9 +287,23 @@
     "opsVersion": "ops-v1.0",
     "engine": "jfw-rating.js",
     "matchDataField": "playerMatchStats",
-    "minimumInputs": ["minutes", "goals", "assists"],
-    "requiredDisciplineInputs": ["yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals"],
-    "states": ["value", "missing", "notApplicable"],
+    "minimumInputs": [
+      "minutes",
+      "goals",
+      "assists"
+    ],
+    "requiredDisciplineInputs": [
+      "yellowCards",
+      "secondYellowRed",
+      "straightRed",
+      "penaltiesConceded",
+      "ownGoals"
+    ],
+    "states": [
+      "value",
+      "missing",
+      "notApplicable"
+    ],
     "neverConvertMissingToZero": true,
     "zeroMayBeDerivedOnlyFromExhaustiveSource": true,
     "saveRawInputs": true,
@@ -211,7 +313,10 @@
     "recentWindow": "last_5_appearances",
     "seasonAverage": "minutes_weighted",
     "crossPositionRanking": false,
-    "finalRatingRange": {"min": 3.0, "max": 10.0},
+    "finalRatingRange": {
+      "min": 3.0,
+      "max": 10.0
+    },
     "runtimeValidityGuard": "JFWRating.isRatingValue",
     "unratedStoredValue": null,
     "unratedAppearanceCountsAsAppearance": true,
@@ -226,8 +331,22 @@
   "siteViewPolicy": {
     "playerDetail": {
       "primaryStats": "seasonStats",
-      "mustExpose": ["playerPhoto", "currentMembership", "previousClub", "membershipHistory", "seasonStats", "competitionStats", "clubStats", "recentPlayerMatchStats"],
-      "recentMatchMustShow": ["club", "competition", "match", "ko"],
+      "mustExpose": [
+        "playerPhoto",
+        "currentMembership",
+        "previousClub",
+        "membershipHistory",
+        "seasonStats",
+        "competitionStats",
+        "clubStats",
+        "recentPlayerMatchStats"
+      ],
+      "recentMatchMustShow": [
+        "club",
+        "competition",
+        "match",
+        "ko"
+      ],
       "ratingDisplayMustUseValidityGuard": true,
       "unratedMatchMustDisplayAs": "—"
     },
@@ -239,19 +358,75 @@
     "matchDetail": {
       "script": "match-detail.js",
       "routeParam": "match",
-      "dataSources": ["matches", "topMatches", "playerMatchStats"],
-      "mustExpose": ["matchSummary", "appearanceSummary", "homeAndAwayFormation", "startingXI", "playerPhotos", "coach", "coachPhoto", "substitutions", "bench", "apiFootballRating", "ratingModeSwitch", "japanesePlayerRecords", "ratingInputs", "inputStates", "jfwRating", "ratingCoverage", "ratingBreakdown", "ratingSources", "ratingConflicts"],
+      "dataSources": [
+        "matches",
+        "topMatches",
+        "playerMatchStats"
+      ],
+      "mustExpose": [
+        "matchSummary",
+        "appearanceSummary",
+        "homeAndAwayFormation",
+        "startingXI",
+        "playerPhotos",
+        "coach",
+        "coachPhoto",
+        "substitutions",
+        "bench",
+        "apiFootballRating",
+        "ratingModeSwitch",
+        "japanesePlayerRecords",
+        "ratingInputs",
+        "inputStates",
+        "jfwRating",
+        "ratingCoverage",
+        "ratingBreakdown",
+        "ratingSources",
+        "ratingConflicts"
+      ],
       "formationDisplay": "two_pitch_fotmob_inspired",
-      "formationRatingModes": ["apiFootball", "jfw"],
+      "formationRatingModes": [
+        "apiFootball",
+        "jfw"
+      ],
       "individualRatingDisplay": "apiFootball_and_jfw_side_by_side",
       "showMissingExplicitly": true,
-      "openFrom": ["matchLog", "featuredMatches", "searchMatches", "clubMatches", "playerMatchHistory"],
+      "openFrom": [
+        "matchLog",
+        "featuredMatches",
+        "searchMatches",
+        "clubMatches",
+        "playerMatchHistory"
+      ],
       "ratingDisplayMustUseValidityGuard": true,
       "unratedMatchMustDisplayAs": "—"
-    }
+    },
+    "currentSeasonOverlayFailure": "fail_closed_hide_data_views"
   },
   "consistencyPolicy": {
-    "crossCheck": ["players", "playerId", "membershipHistory", "membershipCorrections", "trackingStatus", "matches", "playerMatchStats", "seasonStats", "competitionStats", "clubStats", "clubCompetitionStats", "gaResults", "topMatches", "insights", "analysis", "rankings", "jfwRating", "matchDetail", "clubDetail", "backfillFragments", "latestSnapshot"],
+    "crossCheck": [
+      "players",
+      "playerId",
+      "membershipHistory",
+      "membershipCorrections",
+      "trackingStatus",
+      "matches",
+      "playerMatchStats",
+      "seasonStats",
+      "competitionStats",
+      "clubStats",
+      "clubCompetitionStats",
+      "gaResults",
+      "topMatches",
+      "insights",
+      "analysis",
+      "rankings",
+      "jfwRating",
+      "matchDetail",
+      "clubDetail",
+      "backfillFragments",
+      "latestSnapshot"
+    ],
     "invariants": [
       "one_logical_player_must_not_split_on_transfer",
       "historical_match_club_must_not_change_when_current_club_changes",
@@ -266,7 +441,11 @@
       "unrated_match_must_not_count_as_rated_game",
       "unrated_match_minutes_must_not_enter_rating_average_denominator",
       "null_jfw_rating_must_never_render_or_aggregate_as_zero",
-      "out_of_range_cached_jfw_rating_must_not_be_reused"
+      "out_of_range_cached_jfw_rating_must_not_be_reused",
+      "current_season_overlay_failure_must_not_render_stale_base_as_current",
+      "runtime_player_identity_must_resolve_through_explicit_registry",
+      "baseline_covered_match_records_must_not_double_count",
+      "all_competitions_scope_must_include_official_cups_and_exclude_friendlies"
     ],
     "restartFullWorkflowOnUserMismatchReport": true
   }
