@@ -30,8 +30,8 @@ test('fixed manifest covers every currently stored verified result and nothing e
   const data = mergeCurrentData(ROOT, manifest.season);
   const targets = buildTargets(data, manifest);
 
-  assert.equal(targets.length, 27);
-  assert.equal(new Set(targets.map(target => target.matchId)).size, 27);
+  assert.equal(targets.length, 29);
+  assert.equal(new Set(targets.map(target => target.matchId)).size, 29);
   assert.equal(new Set(targets.map(target => target.fixtureDate)).size, 9);
   assert.ok(targets.every(target => Number.isInteger(target.providerLeagueId)));
   assert.ok(targets.every(target => target.discoveryGroup?.key));
