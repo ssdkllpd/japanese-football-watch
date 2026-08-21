@@ -262,7 +262,7 @@
   "unresolvedMatchIds": [],
   "lastRun": {
     "startedFromFixedManifest": true,
-    "completedAt": "2026-08-21T06:22:26.937Z",
+    "completedAt": "2026-08-21T06:25:27.921Z",
     "requestCount": 1,
     "dailyRemaining": null,
     "minuteRemaining": null,
@@ -275,7 +275,7 @@
     "errorDetails": {
       "status": 200,
       "apiErrors": {
-        "plan": "Free plans do not have access to this date, try from 2026-08-20 to 2026-08-22."
+        "plan": "Free plans do not have access to this season, try from 2022 to 2024."
       }
     }
   },
