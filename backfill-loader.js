@@ -61,12 +61,24 @@
     delete out.values; delete out.sourceIds; delete out.fieldSources; delete out.disciplineClean;
     return out;
   }
+  function ratingInputsSignature(record){
+    try{return JSON.stringify(record?.ratingInputs||{});}catch{return '';}
+  }
+  function clearCachedRating(record){
+    const out={...record};
+    for(const key of ['jfwRating','ratingVersion','ratingCoverage','ratingBreakdown','ratingStatus','ratingReason','ratingOpsVersion']) delete out[key];
+    return out;
+  }
   function upsertPlayerMatchStats(rows,sources){
     D.playerMatchStats=D.playerMatchStats||[];
     for(const raw of rows||[]){
       const r=normalizeRecord(raw,sources);
       const i=D.playerMatchStats.findIndex(x=>(r.recordId&&x.recordId===r.recordId)||(x.matchId===r.matchId&&(x.playerId||x.player||x.playerName)===(r.playerId||r.player||r.playerName)));
-      if(i>=0) D.playerMatchStats[i]={...D.playerMatchStats[i],...r}; else D.playerMatchStats.push(r);
+      if(i>=0){
+        const prev=D.playerMatchStats[i];
+        const merged={...prev,...r};
+        D.playerMatchStats[i]=ratingInputsSignature(prev)!==ratingInputsSignature(merged)?clearCachedRating(merged):merged;
+      } else D.playerMatchStats.push(r);
     }
   }
   function mergeGA(rows){
