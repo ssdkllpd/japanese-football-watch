@@ -200,7 +200,8 @@
     const list = Array.isArray(players) ? players : [];
     if (!list.length) return { players: [], confidence: 'none', source: 'empty', formation: null };
 
-    const parsedFormationPlan = formationPlan(formation);
+    const hintedFormation = formation || list.find(player => player?.formation)?.formation || null;
+    const parsedFormationPlan = formationPlan(hintedFormation);
     const parsedGridPlan = gridPlan(list);
     const plan = parsedFormationPlan || parsedGridPlan;
 
@@ -329,6 +330,56 @@
     if (elapsed === null) return '時刻未取得';
     return `${Math.trunc(elapsed)}${extra !== null && extra > 0 ? `+${Math.trunc(extra)}` : ''}′`;
   }
+
+  function installBrowserLayoutUi() {
+    if (typeof document === 'undefined') return;
+    const install = () => {
+      if (!document.getElementById('jfw-formation-layout-style')) {
+        const style = document.createElement('style');
+        style.id = 'jfw-formation-layout-style';
+        style.textContent = `
+          .mdPitch{width:min(calc(100% - 20px),420px)!important;height:auto!important;aspect-ratio:2/3!important;margin:0 auto 10px!important}
+          .mdPitchPlayer{width:55px!important}
+          .mdPitchName{font-size:9px!important}
+          .mdFormationEstimate{display:inline-block;margin-left:6px;border:1px solid #fbbf2466;border-radius:999px;padding:2px 5px;color:#fbbf24;font-size:8px;font-weight:800;vertical-align:middle}
+        `;
+        document.head?.appendChild(style);
+      }
+      const annotate = root => {
+        root?.querySelectorAll?.('.mdFormationName').forEach(label => {
+          const textNode = Array.from(label.childNodes || []).find(node => node.nodeType === 3 && String(node.textContent || '').trim());
+          const raw = String(textNode?.textContent || '').trim();
+          const existing = label.querySelector?.('.mdFormationEstimate');
+          if (parseFormation(raw)) {
+            existing?.remove?.();
+            return;
+          }
+          if (!existing) {
+            const badge = document.createElement('span');
+            badge.className = 'mdFormationEstimate';
+            badge.textContent = '配置は推定';
+            label.insertBefore(badge, label.querySelector?.('small') || null);
+          }
+        });
+      };
+      annotate(document);
+      if (typeof MutationObserver !== 'undefined' && !globalThis.__jfwFormationLayoutObserver) {
+        const observer = new MutationObserver(records => {
+          for (const record of records) {
+            for (const node of record.addedNodes || []) {
+              if (node?.nodeType === 1) annotate(node);
+            }
+          }
+        });
+        observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        globalThis.__jfwFormationLayoutObserver = observer;
+      }
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
+    else install();
+  }
+
+  installBrowserLayoutUi();
 
   return {
     BAND_Y,
