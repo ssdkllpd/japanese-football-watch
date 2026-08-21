@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "provider": "api-football",
+  "mode": "existing_verified_results_only",
+  "season": "2026-27",
+  "targetCount": 27,
+  "fixtureResolutions": {
+    "uecl-2026-08-20-motherwell-freiburg": {
+      "fixtureId": 1623399,
+      "signature": "uecl-2026-08-20-motherwell-freiburg|2026-08-21|2026-08-20 18:30 CEST|マザーウェル 1-3 フライブルク|verified",
+      "fixtureDate": "2026-08-21",
+      "providerHome": "Motherwell",
+      "providerAway": "SC Freiburg",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1623399,
+          "referee": "Radu Marian Petrescu, Romania",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-21T03:30:00+09:00",
+          "timestamp": 1787250600,
+          "venue": {
+            "id": null,
+            "name": "Fir Park",
+            "city": "Motherwell"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 848,
+          "name": "UEFA Europa Conference League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/848.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Playoff round",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 256,
+            "name": "Motherwell",
+            "logo": "https://media.api-sports.io/football/teams/256.png",
+            "winner": false
+          },
+          "away": {
+            "id": 160,
+            "name": "SC Freiburg",
+            "logo": "https://media.api-sports.io/football/teams/160.png",
+            "winner": true
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 3
+        },
+        "score": {
+          "halftime": {
+            "home": 1,
+            "away": 1
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 3
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "uel-2026-08-20-stvv-omonia": {
+      "fixtureId": 1623438,
+      "signature": "uel-2026-08-20-stvv-omonia|2026-08-21|2026-08-20 20:00 CEST|STVV 1-0 オモニア|verified",
+      "fixtureDate": "2026-08-21",
+      "providerHome": "St. Truiden",
+      "providerAway": "Omonia Nicosia",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1623438,
+          "referee": "Georgi Kabakov, Bulgaria",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-21T03:00:00+09:00",
+          "timestamp": 1787248800,
+          "venue": {
+            "id": null,
+            "name": "Stayen",
+            "city": "Sint- Truiden"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 6
+          }
+        },
+        "league": {
+          "id": 3,
+          "name": "UEFA Europa League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/3.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Play-offs",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 735,
+            "name": "St. Truiden",
+            "logo": "https://media.api-sports.io/football/teams/735.png",
+            "winner": true
+          },
+          "away": {
+            "id": 3402,
+            "name": "Omonia Nicosia",
+            "logo": "https://media.api-sports.io/football/teams/3402.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 1,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 0,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 1,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    },
+    "m-2026-08-19-celtic-lask": {
+      "fixtureId": 1610923,
+      "signature": "m-2026-08-19-celtic-lask|2026-08-20|2026-08-20 04:00|セルティック 3-0 LASK|verified",
+      "fixtureDate": "2026-08-20",
+      "providerHome": "Celtic",
+      "providerAway": "Lask Linz",
+      "resolvedAt": "2026-08-21T06:18:33.773Z",
+      "baseFixture": {
+        "fixture": {
+          "id": 1610923,
+          "referee": "Sandro Schärer, Switzerland",
+          "timezone": "Asia/Tokyo",
+          "date": "2026-08-20T04:00:00+09:00",
+          "timestamp": 1787166000,
+          "venue": {
+            "id": null,
+            "name": "Celtic Park",
+            "city": "Glasgow"
+          },
+          "status": {
+            "long": "Match Finished",
+            "short": "FT",
+            "elapsed": 90,
+            "extra": 4
+          }
+        },
+        "league": {
+          "id": 2,
+          "name": "UEFA Champions League",
+          "country": "World",
+          "logo": "https://media.api-sports.io/football/leagues/2.png",
+          "flag": null,
+          "season": 2026,
+          "round": "Play-offs",
+          "standings": false
+        },
+        "teams": {
+          "home": {
+            "id": 247,
+            "name": "Celtic",
+            "logo": "https://media.api-sports.io/football/teams/247.png",
+            "winner": true
+          },
+          "away": {
+            "id": 1026,
+            "name": "Lask Linz",
+            "logo": "https://media.api-sports.io/football/teams/1026.png",
+            "winner": false
+          }
+        },
+        "goals": {
+          "home": 3,
+          "away": 0
+        },
+        "score": {
+          "halftime": {
+            "home": 2,
+            "away": 0
+          },
+          "fulltime": {
+            "home": 3,
+            "away": 0
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        }
+      }
+    }
+  },
+  "playerResolutions": {},
+  "completedMatchIds": [],
+  "pendingMatchIds": [
+    "m-2026-08-03-celtic-dundee",
+    "m-2026-08-06-bristol-walsall-cup",
+    "m-2026-08-08-az-ado",
+    "m-2026-08-08-burton-blackburn-cup",
+    "m-2026-08-08-colchester-southampton-cup",
+    "m-2026-08-08-qpr-millwall-cup",
+    "m-2026-08-08-stvv-lommel",
+    "m-2026-08-08-swansea-birmingham-cup",
+    "m-2026-08-08-vitoria-arouca",
+    "m-2026-08-08-westerlo-union",
+    "m-2026-08-09-kilmarnock-celtic",
+    "m-2026-08-09-sparta-feyenoord",
+    "m-2026-08-09-zulte-genk",
+    "m-2026-08-14-cercle-stvv",
+    "m-2026-08-14-telstar-sparta",
+    "m-2026-08-14-wolves-blackburn",
+    "m-2026-08-15-bristol-millwall",
+    "m-2026-08-15-genk-westerlo",
+    "m-2026-08-15-portsmouth-qpr",
+    "m-2026-08-15-sheffield-birmingham",
+    "m-2026-08-15-utrecht-az",
+    "m-2026-08-16-arouca-moreirense",
+    "m-2026-08-16-feyenoord-go-ahead",
+    "m-2026-08-16-watford-southampton",
+    "m-2026-08-19-celtic-lask",
+    "uecl-2026-08-20-motherwell-freiburg",
+    "uel-2026-08-20-stvv-omonia"
+  ],
+  "unresolvedMatchIds": [],
+  "lastRun": {
+    "startedFromFixedManifest": true,
+    "completedAt": "2026-08-21T06:18:33.773Z",
+    "requestCount": 3,
+    "dailyRemaining": 97,
+    "minuteRemaining": 8,
+    "reserve": 20,
+    "stoppedReason": null,
+    "resolvedFixtureCount": 3,
+    "completedFixtureCount": 0,
+    "unresolvedPlayers": {},
+    "error": "API-Football returned an API-level error."
+  },
+  "security": {
+    "apiKeyPersisted": false,
+    "rawResponsesPersisted": false,
+    "latestOrScheduledFixturesRequested": false
+  }
+}
