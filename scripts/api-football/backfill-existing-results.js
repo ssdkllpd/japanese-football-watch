@@ -605,7 +605,12 @@ async function enrichMissingLineupCoaches(lineups, target, client, budget, state
   state.coachResolutions = state.coachResolutions || {};
 
   for (const lineup of enriched) {
-    if (lineup?.coach) continue;
+    const existingCoach = lineup?.coach;
+    if (existingCoach && (
+      existingCoach.id !== null && existingCoach.id !== undefined ||
+      existingCoach.name ||
+      existingCoach.photo
+    )) continue;
     const teamId = lineup?.team?.id;
     if (teamId === null || teamId === undefined) continue;
     const cacheKey = String(teamId);
@@ -921,6 +926,7 @@ module.exports = {
   mergeCurrentData,
   mergeFragment,
   matchNeedsCoachEnrichment,
+  enrichMissingLineupCoaches,
   normalizeProviderName,
   parseStoredScore,
   resolvedTrackedPlayers,

@@ -11,6 +11,7 @@ const {
   RequestBudget,
   aliasMatches,
   buildTargets,
+  enrichMissingLineupCoaches,
   fixtureMatchesTarget,
   mergeCurrentData,
   mergeFragment,
@@ -195,4 +196,40 @@ test('completed matches are reopened only when a lineup team lacks a coach portr
 
   assert.equal(matchNeedsCoachEnrichment(fragment, 'complete'), false);
   assert.equal(matchNeedsCoachEnrichment(fragment, 'missing'), true);
+});
+
+test('an empty lineup coach object triggers the dated coach registry fallback', async () => {
+  const budget = new RequestBudget({
+    quota: { configuredDailyBudget: 7500, configuredPerMinuteLimit: 300, reserveForTrackedFixtures: 100 },
+  }, { minimumIntervalMs: 0 });
+  const client = {
+    async get(endpoint, parameters) {
+      assert.equal(endpoint, '/coachs');
+      assert.deepEqual(parameters, { team: 735 });
+      return {
+        data: { response: [{
+          id: 91,
+          name: 'Current Coach',
+          photo: 'https://media.api-sports.io/football/coachs/91.png',
+          career: [{ team: { id: 735 }, start: '2026-06-01', end: null }],
+        }] },
+        quota: { dailyRemaining: 7499, minuteRemaining: 299 },
+      };
+    },
+  };
+  const state = {};
+  const result = await enrichMissingLineupCoaches(
+    [{ team: { id: 735 }, coach: {}, startXI: [], substitutes: [] }],
+    { fixtureDate: '2026-08-21' },
+    client,
+    budget,
+    state,
+    new Map(),
+    '2026-08-21T00:00:00Z'
+  );
+
+  assert.equal(result.lineups[0].coach.id, 91);
+  assert.equal(result.lineups[0].coach.photoSource, 'api_football_coach_registry');
+  assert.deepEqual(result.supplementalEndpoints, ['/coachs?team=735']);
+  assert.equal(state.coachResolutions['735|2026-08-21'].method, 'team_career_date_exact');
 });
