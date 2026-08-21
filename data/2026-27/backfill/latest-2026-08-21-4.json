@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-21 15:59 JST",
+  "sources": {
+    "ajax-itakura-bmg-20260820": {
+      "id": "ajax-itakura-bmg-20260820",
+      "name": "AFC Ajax official transfer announcement",
+      "type": "club_official_transfer_announcement",
+      "url": "https://www.ajax.nl/club/pers/persberichten/ko-itakura-terug-naar-borussia-moenchengladbach/",
+      "retrievedAt": "2026-08-21T15:59:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "currentLeague", "membershipChange"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "板倉滉",
+      "club": "ボルシアMG",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "status": "ボルシアMG復帰正式発表済み・ブンデスリーガ開幕前",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-27ブンデスリーガ開幕前",
+      "stats": {
+        "apps": 0,
+        "starts": 0,
+        "minutes": 0,
+        "goals": 0,
+        "assists": 0,
+        "cleanSheets": 0
+      },
+      "previousClub": "アヤックス",
+      "previousLeague": "エールディヴィジ",
+      "effectiveDate": "2026-08-20",
+      "membershipChangeType": "transfer",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["ajax-itakura-bmg-20260820"]
+    }
+  ]
+}
