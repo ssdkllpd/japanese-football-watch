@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T06:56:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability and squad-number updates, Eintracht Frankfurt's verified DFB-Pokal opener with Keita Kosugi's corrected three assists and Ritsu Doan's muscular-complaint absence, and Coventry's verified Premier League opener with Tatsuhiro Sakamoto an unused substitute.",
+  "updatedAt": "2026-08-22T08:53:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability and squad-number updates, Eintracht Frankfurt's verified DFB-Pokal opener with Keita Kosugi's corrected three assists and Ritsu Doan's muscular-complaint absence, Coventry's verified Premier League opener with Tatsuhiro Sakamoto an unused substitute, and Kodai Sano's confirmed PSV transfer and official debut at Excelsior.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "c32248a9a1930d0d698ff5cadea1b4b9a0e899a2",
+    "blobSha": "ed83461157b8ffa866df09adb43f449baca53890",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -29,7 +29,8 @@
       "latest-2026-08-22.json",
       "latest-2026-08-22-2.json",
       "latest-2026-08-22-3.json",
-      "latest-2026-08-22-4.json"
+      "latest-2026-08-22-4.json",
+      "latest-2026-08-22-5.json"
     ]
   },
   "runtime": [
@@ -72,6 +73,8 @@
     "frankfurtCupKosugiThirdAssistCorrectionLoadsThroughPlayerMatchStats": true,
     "doanCurrentAvailabilityLoadsThroughPlayerUpdates": true,
     "premierLeagueSakamotoOpeningBenchStatusLoadsThroughPlayerMatchStats": true,
+    "eredivisieSanoTransferLoadsThroughPlayerUpdates": true,
+    "eredivisieSanoDebutLoadsThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -85,15 +88,17 @@
     "Kaoru Mitoma's current player status reflects his verified hamstring surgery and current injury absence instead of the generic pre-season status; no league appearance statistics were changed.",
     "Brighton officially registered Kaoru Mitoma as squad number 7 for 2026/27, replacing his previous number 22; the player master now retains squadNumber=7.",
     "Tatsuhiro Sakamoto was an unused Coventry substitute in the 3-0 Premier League defeat at Arsenal on 2026-08-21; the match record remains unrated because he played zero minutes.",
+    "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json, latest-2026-08-21-5.json, latest-2026-08-22.json, latest-2026-08-22-2.json, latest-2026-08-22-3.json and latest-2026-08-22-4.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-5.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
     "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "St. Tonis-Frankfurt: Keita Kosugi's start and three assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
+    "Excelsior-PSV: Kodai Sano's 63rd-minute debut and zero goal/assist/discipline events are verified from PSV's exhaustive match center, but exact played minutes and advanced individual statistics remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
