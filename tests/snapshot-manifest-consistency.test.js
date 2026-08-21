@@ -20,7 +20,13 @@ test('retained snapshot mirrors current-season backfill manifest and runtime dep
 
   assert.equal(snapshot.season, seasons.current);
   assert.equal(snapshot.overlayManifest.path, manifestPath);
+  assert.equal(snapshot.overlayManifest.blobSha, gitBlobSha(manifestPath));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
+  assert.deepEqual(Object.keys(snapshot.overlayManifest.fragmentBlobs || {}), manifest.fragments);
+  for (const fragment of manifest.fragments) {
+    const rel = `data/${seasons.current}/backfill/${fragment}`;
+    assert.equal(snapshot.overlayManifest.fragmentBlobs[fragment], gitBlobSha(rel), `${fragment}: snapshot blob mismatch`);
+  }
   assert.equal(snapshot.runtimeBlobs['backfill-loader.js'], gitBlobSha('backfill-loader.js'));
   assert.equal(snapshot.runtimeBlobs['config/player-registry.json'], gitBlobSha('config/player-registry.json'));
 });
