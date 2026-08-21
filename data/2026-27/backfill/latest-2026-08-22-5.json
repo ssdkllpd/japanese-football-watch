@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 08:53 JST",
+  "sources": {
+    "psv-sano-transfer-20260808": {
+      "id": "psv-sano-transfer-20260808",
+      "name": "PSV official Kodai Sano transfer announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.psv.nl/en/media/artikel/transfer-psv-neemt-kodai-sano-over-van-nec",
+      "retrievedAt": "2026-08-22T08:53:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "transferDate", "contract", "squadNumber"]
+    },
+    "psv-excelsior-matchcenter-20260815": {
+      "id": "psv-excelsior-matchcenter-20260815",
+      "name": "PSV official Excelsior v PSV match center",
+      "type": "club_official_match_events",
+      "url": "https://www.psv.nl/match-center/wedstrijd/excelsior-psv-15-08-2026?toplevel=timeline",
+      "retrievedAt": "2026-08-22T08:53:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "goals", "assists", "substitutions", "teamYellowCards", "teamRedCards"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "eredivisie-2026-08-15-excelsior-psv",
+      "league": "エールディヴィジ",
+      "round": "第2節 / 全34節",
+      "ko": "2026-08-15 20:00 CEST",
+      "match": "エクセルシオール 1-2 PSV",
+      "players": "佐野航大",
+      "appearance": "佐野航大が63分から途中出場し、PSV公式戦デビュー。",
+      "note": "PSVは2-1で勝利。佐野は63分にPaul Wannerとの交代で出場。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["psv-excelsior-matchcenter-20260815"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "pos": "MF",
+      "previousClub": "NEC",
+      "previousLeague": "エールディヴィジ",
+      "membershipChangeType": "transfer",
+      "transferDate": "2026-08-08",
+      "squadNumber": 24,
+      "status": "PSV加入後、2026-08-15エクセルシオール戦で公式戦デビュー",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-15 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "sourceIds": ["psv-sano-transfer-20260808", "psv-excelsior-matchcenter-20260815"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sano-excelsior-psv-20260815",
+      "matchId": "eredivisie-2026-08-15-excelsior-psv",
+      "player": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "match": "エクセルシオール 1-2 PSV",
+      "ko": "2026-08-15 20:00 CEST",
+      "round": "第2節 / 全34節",
+      "appearance": "substitute",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["psv-excelsior-matchcenter-20260815"],
+      "values": {
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "missingFields": ["minutes", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "start": false,
+      "bench": true,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted"]
+    }
+  ]
+}
