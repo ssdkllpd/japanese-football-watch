@@ -133,6 +133,12 @@
       "search": "Rangers",
       "aliases": ["Rangers", "Rangers FC"],
       "matchIds": ["uecl-2026-08-20-rangers-jablonec"]
+    },
+    {
+      "key": "hull",
+      "search": "Hull City",
+      "aliases": ["Hull City", "Hull"],
+      "matchIds": ["premier-2026-08-22-hull-manunited"]
     }
   ],
   "selection": {
@@ -148,6 +154,12 @@
     "knownFixtureIdsRemainFetchable": true
   },
   "fixtures": [
+    {
+      "matchId": "premier-2026-08-22-hull-manunited",
+      "fixtureDate": "2026-08-22",
+      "homeAliases": ["Hull City", "Hull"],
+      "awayAliases": ["Manchester United", "Man Utd", "Man United"]
+    },
     {
       "matchId": "dfbpokal-2026-08-21-st-tonis-frankfurt",
       "fixtureDate": "2026-08-21",
@@ -377,6 +389,7 @@
     "菅原由勢": ["Yukinari Sugawara", "Y. Sugawara"],
     "谷口彰悟": ["Shogo Taniguchi", "S. Taniguchi"],
     "鈴木唯人": ["Yuito Suzuki", "Y. Suzuki"],
-    "齋藤俊輔": ["Shunsuke Saito", "S. Saito"]
+    "齋藤俊輔": ["Shunsuke Saito", "S. Saito"],
+    "守田英正": ["Hidemasa Morita", "H. Morita"]
   }
 }
