@@ -28,7 +28,7 @@
     {"key":"feyenoord","search":"Feyenoord","aliases":["Feyenoord"],"matchIds":["m-2026-08-16-feyenoord-go-ahead"]},
     {"key":"southampton","search":"Southampton","aliases":["Southampton"],"matchIds":["championship-2026-08-22-southampton-stoke","m-2026-08-16-watford-southampton","m-2026-08-08-colchester-southampton-cup"]},
     {"key":"az","search":"AZ Alkmaar","aliases":["AZ Alkmaar","AZ"],"matchIds":["eredivisie-2026-08-22-fortuna-az","m-2026-08-08-az-ado","m-2026-08-15-utrecht-az"]},
-    {"key":"bristol-city","search":"Bristol City","aliases":["Bristol City"],"matchIds":["championship-2026-08-22-birmingham-bristol","m-2026-08-15-bristol-millwall","m-2026-08-06-bristol-walsall-cup"]},
+    {"key":"bristol-city","search":"Bristol City","aliases":["Bristol City"],"matchIds":["m-2026-08-15-bristol-millwall","m-2026-08-06-bristol-walsall-cup"]},
     {"key":"westerlo","search":"Westerlo","aliases":["KVC Westerlo","Westerlo"],"matchIds":["m-2026-08-08-westerlo-union"]},
     {"key":"motherwell","search":"Motherwell","aliases":["Motherwell"],"providerTeamId":256,"matchIds":["uecl-2026-08-20-motherwell-freiburg"]},
     {"key":"eintracht-frankfurt","search":"Eintracht Frankfurt","aliases":["Eintracht Frankfurt","Frankfurt"],"matchIds":["dfbpokal-2026-08-21-st-tonis-frankfurt"]},
