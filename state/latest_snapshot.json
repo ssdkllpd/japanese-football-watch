@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T12:11:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-21 updates, including STVV-Omonia event-field refinement, Takefusa Kubo's La Liga second-round appearance, Daisuke Yokota's Rangers transfer and European assist, and all prior current-season corrections.",
+  "updatedAt": "2026-08-22T14:55:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-22 updates, including STVV-Omonia event-field refinement, Takefusa Kubo's La Liga second-round appearance, Daisuke Yokota's Rangers transfer and European assist, and Borussia Mönchengladbach Japanese-squad completeness corrections.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "a362f8682ec59c98d98b67979953bacde027dc00",
+    "blobSha": "251270d87c58f1fcde9fc81c120ff0259da8580d",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -31,7 +31,8 @@
       "latest-2026-08-22-3.json",
       "latest-2026-08-22-4.json",
       "latest-2026-08-22-5.json",
-      "latest-2026-08-22-6.json"
+      "latest-2026-08-22-6.json",
+      "latest-2026-08-22-7.json"
     ]
   },
   "runtime": [
@@ -68,6 +69,9 @@
     "siteMatchDetailConsumesPlayerMatchStats": true,
     "premierLeagueRosterCorrectionsLoadThroughPlayerUpdates": true,
     "bundesligaItakuraTransferLoadsThroughPlayerUpdates": true,
+    "bundesligaGladbachMachinoMembershipLoadsThroughPlayerUpdates": true,
+    "bundesligaGladbachUnoTransferLoadsThroughPlayerUpdates": true,
+    "bundesligaGladbachHashiokaLoanLoadsThroughPlayerUpdates": true,
     "premierLeagueMitomaAvailabilityLoadsThroughPlayerUpdates": true,
     "premierLeagueMitomaSquadNumberLoadsThroughPlayerUpdates": true,
     "frankfurtCupKosugiUpdateLoadsThroughPlayerMatchStats": true,
@@ -91,6 +95,7 @@
     "SC St. Tonis 0-11 Eintracht Frankfurt on 2026-08-21 added as a DFB-Pokal first-round result; Keita Kosugi started and is now credited with three assists, at 29, 34 and 45+5 minutes. The earlier two-assist record is retained as an explicit source conflict and superseded by the higher-priority structured event feed.",
     "Ritsu Doan was absent from Eintracht Frankfurt's 2026-08-21 DFB-Pokal squad because of muscular complaints; no appearance record or zero match statistics were created for him.",
     "Premier League roster correction: Hidemasa Morita is registered with Hull City, Tatsuhiro Sakamoto with Coventry City, and Takehiro Tomiyasu with Crystal Palace for 2026-27; all three were missing from the integrated player list.",
+    "Borussia Monchengladbach roster completeness correction: Shuto Machino, Zento Uno and Daiki Hashioka are added alongside already-recorded Ko Itakura. Uno joined from Shimizu S-Pulse for 2026/27, and Hashioka joined on a season-long loan from Slavia Prague with an option to buy; current Bundesliga squad data confirms all four Japanese players.",
     "Ko Itakura transferred from Ajax back to Borussia Monchengladbach on 2026-08-20; the Bundesliga membership is recorded as a transfer while preserving Ajax/Eredivisie as the previous membership.",
     "Kaoru Mitoma's current player status reflects his verified hamstring surgery and current injury absence instead of the generic pre-season status; no league appearance statistics were changed.",
     "Brighton officially registered Kaoru Mitoma as squad number 7 for 2026/27, replacing his previous number 22; the player master now retains squadNumber=7.",
@@ -98,7 +103,7 @@
     "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-6.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-7.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
