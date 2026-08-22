@@ -24,7 +24,7 @@
     {"key":"blackburn","search":"Blackburn","aliases":["Blackburn","Blackburn Rovers"],"matchIds":["championship-2026-08-22-blackburn-middlesbrough","m-2026-08-14-wolves-blackburn","m-2026-08-08-burton-blackburn-cup"]},
     {"key":"qpr","search":"Queens Park Rangers","aliases":["QPR","Queens Park Rangers"],"matchIds":["championship-2026-08-22-qpr-bolton","m-2026-08-15-portsmouth-qpr","m-2026-08-08-qpr-millwall-cup"]},
     {"key":"birmingham","search":"Birmingham","aliases":["Birmingham","Birmingham City"],"matchIds":["championship-2026-08-22-birmingham-bristol","m-2026-08-15-sheffield-birmingham","m-2026-08-08-swansea-birmingham-cup"]},
-    {"key":"genk","search":"Genk","aliases":["Genk","KRC Genk"],"matchIds":["m-2026-08-15-genk-westerlo","m-2026-08-09-zulte-genk"]},
+    {"key":"genk","search":"Genk","aliases":["Genk","KRC Genk"],"matchIds":["belgium-2026-08-22-antwerp-genk","m-2026-08-15-genk-westerlo","m-2026-08-09-zulte-genk"]},
     {"key":"feyenoord","search":"Feyenoord","aliases":["Feyenoord"],"matchIds":["m-2026-08-16-feyenoord-go-ahead"]},
     {"key":"southampton","search":"Southampton","aliases":["Southampton"],"matchIds":["championship-2026-08-22-southampton-stoke","m-2026-08-16-watford-southampton","m-2026-08-08-colchester-southampton-cup"]},
     {"key":"az","search":"AZ Alkmaar","aliases":["AZ Alkmaar","AZ"],"matchIds":["eredivisie-2026-08-22-fortuna-az","m-2026-08-08-az-ado","m-2026-08-15-utrecht-az"]},
@@ -55,6 +55,7 @@
     "knownFixtureIdsRemainFetchable": true
   },
   "fixtures": [
+    {"matchId":"belgium-2026-08-22-antwerp-genk","fixtureDate":"2026-08-22","homeAliases":["Royal Antwerp","Royal Antwerp FC","R. Antwerp F.C."],"awayAliases":["Genk","KRC Genk"]},
     {"matchId":"championship-2026-08-22-birmingham-bristol","fixtureDate":"2026-08-22","homeAliases":["Birmingham","Birmingham City"],"awayAliases":["Bristol City"]},
     {"matchId":"championship-2026-08-22-blackburn-middlesbrough","fixtureDate":"2026-08-22","homeAliases":["Blackburn","Blackburn Rovers"],"awayAliases":["Middlesbrough"]},
     {"matchId":"championship-2026-08-22-qpr-bolton","fixtureDate":"2026-08-22","homeAliases":["QPR","Queens Park Rangers"],"awayAliases":["Bolton","Bolton Wanderers"]},
@@ -138,6 +139,8 @@
     "鎌田大地":["Daichi Kamada","D. Kamada"],
     "冨安健洋":["Takehiro Tomiyasu","T. Tomiyasu"],
     "前田大然":["Daizen Maeda","D. Maeda"],
-    "田中碧":["Ao Tanaka","A. Tanaka"]
+    "田中碧":["Ao Tanaka","A. Tanaka"],
+    "野澤大志ブランドン":["Taishi Brandon Nozawa","Taishi Nozawa","T. Nozawa"],
+    "綱島悠斗":["Yuto Tsunashima","Y. Tsunashima"]
   }
 }
