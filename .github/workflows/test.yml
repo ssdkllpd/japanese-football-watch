@@ -21,6 +21,7 @@ jobs:
       - name: Syntax check runtime scripts
         run: |
           node --check app-v2.js
+          node --check backfill-merge.js
           node --check backfill-loader.js
           node --check clubs.js
           node --check favorites.js
