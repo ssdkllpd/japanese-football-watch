@@ -4,6 +4,9 @@
   const mergeCore = window.JFWBackfillMerge;
   if (!mergeCore) throw new Error('backfill-merge.js must load before backfill-loader.js');
 
+  // D is intentionally replaced after a merge/rebuild. Runtime consumers must
+  // resolve D when they render instead of retaining D or child-object references.
+
   const OUT_OF_SCOPE_BUCKET = mergeCore.OUT_OF_SCOPE_BUCKET;
   let loading = null;
   let uiPolicyInstalled = false;

@@ -20,7 +20,7 @@ function buildHarness({ player, fragments }) {
 
 async function apply(context) {
   await context.window.JFWBackfill.initialLoad;
-  return context.D.players[0];
+  return context.getData().players[0];
 }
 
 test('tracked-to-tracked transfer keeps one player and splits club stats while preserving season total', async () => {
@@ -50,7 +50,7 @@ test('tracked-to-tracked transfer keeps one player and splits club stats while p
   const context = buildHarness({ player, fragments });
   const p = await apply(context);
 
-  assert.equal(context.D.players.length, 1);
+  assert.equal(context.getData().players.length, 1);
   assert.match(p.playerId, /^jp-/);
   assert.equal(p.membershipHistory.length, 2);
   assert.equal(p.membershipHistory[0].club, 'Club A');
@@ -84,7 +84,7 @@ test('tracked-to-out-of-scope transfer retains player and ranking with frozen tr
   const context = buildHarness({ player, fragments });
   const p = await apply(context);
 
-  assert.equal(context.D.players.length, 1);
+  assert.equal(context.getData().players.length, 1);
   assert.equal(p.club, 'Jクラブ');
   assert.equal(p.previousClub, 'Club A');
   assert.equal(p.trackingStatus, 'out_of_scope');
@@ -196,10 +196,10 @@ test('formation data and provider rating survive the runtime backfill merge', as
   const context = buildHarness({ player, fragments });
   await apply(context);
 
-  assert.deepEqual(JSON.parse(JSON.stringify(context.D.matches[0].formationData)), formationData);
-  assert.equal(context.D.players[0].photo, 'https://media.api-sports.io/football/players/55.png');
-  const record = context.D.playerMatchStats[0];
-  assert.equal(record.photo, context.D.players[0].photo);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getData().matches[0].formationData)), formationData);
+  assert.equal(context.getData().players[0].photo, 'https://media.api-sports.io/football/players/55.png');
+  const record = context.getData().playerMatchStats[0];
+  assert.equal(record.photo, context.getData().players[0].photo);
   assert.equal(record.providerRatings.apiFootball.value, 7.2);
   assert.equal(record.lineup.grid, '3:2');
   assert.equal(record.substitution.direction, 'out');
@@ -244,7 +244,7 @@ test('a later provider fragment enriches rating inputs without erasing earlier k
   const context = buildHarness({ player, fragments });
   await apply(context);
 
-  const record = context.D.playerMatchStats[0];
+  const record = context.getData().playerMatchStats[0];
   assert.equal(record.ratingInputs.shotsOnTarget.value, 0);
   assert.equal(record.ratingInputs.shotsOnTarget.state, 'value');
   assert.equal(record.ratingInputs.penaltiesConceded.value, 0);

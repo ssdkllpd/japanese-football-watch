@@ -5,7 +5,7 @@ const { buildBackfillHarness } = require('./helpers/backfill-harness');
 async function loadedData() {
   const context = buildBackfillHarness();
   await context.window.JFWBackfill.initialLoad;
-  return { context, data: context.D };
+  return { context, data: context.getData() };
 }
 
 test('current season player identities and memberships satisfy tracking invariants', async () => {

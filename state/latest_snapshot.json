@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T01:55:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability update, and Brighton's confirmed 2026/27 squad-number registration.",
+  "updatedAt": "2026-08-22T10:24:30+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability update, Brighton's confirmed 2026/27 squad-number registration, and extraction of the shared pure backfill merge core.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
@@ -31,12 +31,16 @@
   },
   "runtime": [
     "data.json",
+    "backfill-merge.js",
     "jfw-rating.js",
     "backfill-loader.js",
     "match-detail.js"
   ],
   "runtimeBlobs": {
-    "backfill-loader.js": "f1c842e4f7080d8a666b67ecbdc3e16e1148c63b"
+    "backfill-merge.js": "7949794a0d05c2f667d8ca7ce15ca69a14870dbe",
+    "jfw-rating.js": "7e53ebeccd21aa38fd5bd97a586ef193c9ee4996",
+    "backfill-loader.js": "c380f0c47b14a7ac47c7da9e7947072d28e9be98",
+    "match-detail.js": "61c01b08a2de5f16bf77a5e9caa2afa0a6268b6f"
   },
   "trackingScope": {
     "type": "overseas_japanese_players",

@@ -1,7 +1,7 @@
 (function(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root) root.JFWBackfillMerge = api;
+  else if (root) root.JFWBackfillMerge = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
@@ -89,6 +89,8 @@
     return p?.trackingStatus === 'active' ? (p.league || 'リーグ未取得') : OUT_OF_SCOPE_BUCKET;
   }
 
+  // The merge contract accepts JSON-loaded data only. JSON cloning deliberately
+  // rejects circular values and does not preserve Date, undefined, NaN or Infinity.
   function cloneJson(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -644,6 +646,9 @@
     function applyFragments(parts) {
       initializePlayers();
       const sources = {};
+      // Source definitions are resolved for the whole ordered manifest before any
+      // records are normalized. Reusing an id is a correction: the later fragment
+      // wins and therefore applies retroactively to every record with that id.
       for (const part of parts) Object.assign(sources, part.sources || {});
       for (const part of parts) {
         mergeMatchUpdates(part.matchUpdates);

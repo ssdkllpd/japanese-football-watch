@@ -58,7 +58,7 @@ function repositoryFetch() {
   };
 }
 
-function buildBackfillHarness(options = {}) {
+function createBackfillContext(options = {}) {
   const current = options.data ? null : currentSeasonData();
   const season = options.season || current?.season || '2026-27';
   const data = options.data || current.data;
@@ -89,6 +89,7 @@ function buildBackfillHarness(options = {}) {
     eligible() { return true; },
     playerRef(player) { return player.playerId || player.name; },
     playerByRef(ref) { return context.D.players.find(player => player.playerId === ref || player.name === ref); },
+    getData() { return context.D; },
     roundNo() { return null; },
     fmt(value) { return value == null ? '—' : String(value); },
     E(value) { return String(value ?? ''); },
@@ -125,6 +126,11 @@ function buildBackfillHarness(options = {}) {
 
   context.window = context;
   vm.createContext(context);
+  return context;
+}
+
+function buildBackfillHarness(options = {}) {
+  const context = createBackfillContext(options);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-merge.js'), 'utf8'), context, { filename: 'backfill-merge.js' });
   if (options.loadRating) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'jfw-rating.js'), 'utf8'), context, { filename: 'jfw-rating.js' });
@@ -136,6 +142,7 @@ function buildBackfillHarness(options = {}) {
 module.exports = {
   ROOT,
   buildBackfillHarness,
+  createBackfillContext,
   currentSeasonData,
   makeElement,
   readJson
