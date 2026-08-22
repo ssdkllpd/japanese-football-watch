@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 14:55 JST",
+  "sources": {
+    "bundesliga-gladbach-squad-20260822": {
+      "id": "bundesliga-gladbach-squad-20260822",
+      "name": "Bundesliga official Borussia Mönchengladbach 2026/27 squad",
+      "type": "league_official_squad",
+      "url": "https://www.bundesliga.com/en/bundesliga/clubs/borussia-moenchengladbach",
+      "retrievedAt": "2026-08-22T14:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentSquad", "currentClub", "positionGroup", "headCoach"]
+    },
+    "bundesliga-uno-transfer-20260618": {
+      "id": "bundesliga-uno-transfer-20260618",
+      "name": "Bundesliga official Zento Uno signing report",
+      "type": "league_official_transfer",
+      "url": "https://www.bundesliga.com/en/bundesliga/news/zento-uno-borussia-monchengladbach-transfer-japan-international-midfielder-37872",
+      "retrievedAt": "2026-08-22T14:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "contract", "position"]
+    },
+    "bundesliga-hashioka-loan-20260730": {
+      "id": "bundesliga-hashioka-loan-20260730",
+      "name": "Bundesliga official Daiki Hashioka loan report",
+      "type": "league_official_transfer",
+      "url": "https://www.bundesliga.com/en/bundesliga/news/daiki-hashioka-borussia-monchengladbach-loan-prague-japan-38420",
+      "retrievedAt": "2026-08-22T14:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "loanStatus", "squadNumber", "position"]
+    },
+    "bundesliga-machino-profile-20260822": {
+      "id": "bundesliga-machino-profile-20260822",
+      "name": "Bundesliga official Shuto Machino player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.bundesliga.com/en/player/shuto-machino",
+      "retrievedAt": "2026-08-22T14:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "position", "nationality", "squadNumber"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "町野修斗",
+      "club": "ボルシアMG",
+      "league": "ブンデスリーガ",
+      "pos": "FW",
+      "squadNumber": 18,
+      "status": "ボルシアMG所属・2026/27ブンデスリーガ登録確認済み",
+      "statsStatus": "preseason",
+      "statsAsOf": "2026-08-22 開幕前",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["bundesliga-gladbach-squad-20260822", "bundesliga-machino-profile-20260822"]
+    },
+    {
+      "name": "宇野禅斗",
+      "club": "ボルシアMG",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "previousClub": "清水エスパルス",
+      "previousLeague": "J1",
+      "membershipChangeType": "transfer",
+      "status": "清水エスパルスからボルシアMGへ加入・2030年までの契約",
+      "statsStatus": "preseason",
+      "statsAsOf": "2026-08-22 開幕前",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["bundesliga-gladbach-squad-20260822", "bundesliga-uno-transfer-20260618"]
+    },
+    {
+      "name": "橋岡大樹",
+      "club": "ボルシアMG",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "previousClub": "スラヴィア・プラハ",
+      "previousLeague": "Czech First League",
+      "membershipChangeType": "loan",
+      "transferDate": "2026-07-30",
+      "squadNumber": 14,
+      "status": "スラヴィア・プラハからボルシアMGへ2026/27シーズン期限付き移籍・買取オプション付き",
+      "statsStatus": "preseason",
+      "statsAsOf": "2026-08-22 開幕前",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["bundesliga-gladbach-squad-20260822", "bundesliga-hashioka-loan-20260730"]
+    }
+  ]
+}
