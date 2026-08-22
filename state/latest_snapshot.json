@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-23T06:18:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2, AZ-Fortuna participation, Koki Saito's JFW Rating refinement, and Ryunosuke Sato's Valencia debut minute/discipline refinement.",
+  "updatedAt": "2026-08-23T07:20:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2, AZ-Fortuna participation, Koki Saito and Ryunosuke Sato rating refinements, and Reo Hatate's verified Celtic-LASK appearance.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "968ff70125edbba4d3f15159dc970b85d6978c4a",
+    "blobSha": "6933b93e7282ac575d9af2ab187c4c10b7c48382",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -39,7 +39,8 @@
       "latest-2026-08-23-2.json",
       "latest-2026-08-23-3.json",
       "latest-2026-08-23-4.json",
-      "latest-2026-08-23-5.json"
+      "latest-2026-08-23-5.json",
+      "latest-2026-08-23-6.json"
     ]
   },
   "runtime": [
@@ -101,6 +102,7 @@
     "championshipRound2JapaneseAppearancesLoadThroughPlayerMatchStats": true,
     "championshipSaitoRatingRefinementLoadsThroughPlayerMatchStats": true,
     "eredivisieAzThirdRoundJapaneseAppearancesLoadThroughPlayerMatchStats": true,
+    "scotlandHatateLaskAppearanceLoadsThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -129,9 +131,10 @@
     "QPR drew Bolton 0-0 on 2026-08-22; Koki Saito started and was substituted at 76 minutes. The exhaustive event log verifies zero goals, assists, shots, shots on target and discipline events plus one key pass, yielding JFW Rating v1.0 = 6.08 with 0.764 coverage (high confidence); dribbles, duels and big-chance-missed data remain missing and priorityUpdate stays true.",
     "Southampton beat Stoke 3-1 on 2026-08-22 with Kuryu Matsuki starting.",
     "AZ beat Fortuna Sittard 2-0 on 2026-08-22; Seiya Maikuma entered at 86 minutes and Rion Ichihara was an unused substitute.",
+    "Celtic beat LASK 3-0 in the 2026-08-19 UEFA Champions League play-off first leg; Reo Hatate entered at 65 minutes and played 25 minutes. Goals, assists and card events are verified as zero, while penaltiesConceded and advanced performance inputs remain missing, so JFW Rating is intentionally null. FotMob's 6.5 rating is retained only as an external provider rating.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-5.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-6.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
@@ -147,6 +150,7 @@
     "Championship round 2: Iwata, Hirakawa, Morishita, Ohashi and Matsuki have verified participation states, but required discipline inputs and most advanced statistics remain incomplete; their records stay priorityUpdate and no JFW Rating is computed. Fujimoto is verified as an unused substitute.",
     "QPR-Bolton: Saito's JFW Rating is now valid at 6.08 with high confidence, but dribbles, duelsWon, duelsTotal and bigChancesMissed remain missing; priorityUpdate therefore remains true for those fields.",
     "Fortuna-AZ: Maikuma's 86th-minute entry and Ichihara's unused-bench status are verified, but Maikuma's exact played minutes, required discipline inputs, gaOnPitch and advanced defensive statistics remain incomplete; his record stays priorityUpdate and no JFW Rating is computed.",
+    "Celtic-LASK: Hatate's 65th-minute entry, 25 minutes, zero goals/assists/card events and external FotMob 6.5 rating are verified. penaltiesConceded and advanced MF performance inputs remain missing; priorityUpdate therefore stays true and JFW Rating remains intentionally null.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
