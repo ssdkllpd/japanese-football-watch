@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-23T04:01:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2, AZ-Fortuna participation and the verified Koki Saito JFW Rating refinement.",
+  "updatedAt": "2026-08-23T06:10:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2, AZ-Fortuna participation, the verified Koki Saito JFW Rating refinement, and Ryunosuke Sato's Valencia La Liga debut.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "48e29d30a94563aecaac922156ab99f538a68af6",
+    "blobSha": "27d92c07bb1b076c61e0eea47b748b281078db01",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -37,7 +37,8 @@
       "latest-2026-08-22-9.json",
       "latest-2026-08-23.json",
       "latest-2026-08-23-2.json",
-      "latest-2026-08-23-3.json"
+      "latest-2026-08-23-3.json",
+      "latest-2026-08-23-4.json"
     ]
   },
   "runtime": [
@@ -90,6 +91,7 @@
     "scotlandYokotaTransferLoadsThroughPlayerUpdates": true,
     "scotlandYokotaEuropeanAssistLoadsThroughPlayerMatchStats": true,
     "laligaSatoValenciaTransferLoadsThroughPlayerUpdates": true,
+    "laligaSatoValenciaDebutLoadsThroughPlayerMatchStats": true,
     "premierLeagueMoritaOpeningSquadAbsenceLoadsThroughPlayerMatchStats": true,
     "premierLeaguePalaceOpeningJapaneseAppearancesLoadThroughPlayerMatchStats": true,
     "premierLeagueMaedaOpeningStartLoadsThroughPlayerMatchStats": true,
@@ -115,6 +117,7 @@
     "Tatsuhiro Sakamoto was an unused Coventry substitute in the 3-0 Premier League defeat at Arsenal on 2026-08-21; the match record remains unrated because he played zero minutes.",
     "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Ryunosuke Sato transferred permanently from FC Tokyo to Valencia CF on 2026-07-07 on a five-season contract through 2031; FC Tokyo/J1 is retained only as previous membership while Valencia/La Liga becomes the tracked current membership.",
+    "Ryunosuke Sato made his official La Liga debut as a starter for Valencia in the 0-0 home draw with Celta on 2026-08-22. Exact minutes, discipline and advanced player statistics remain unresolved, so his JFW Rating stays null and the record is priorityUpdate.",
     "Hull City beat Manchester United 2-0 in the 2026-08-22 Premier League opener; Hidemasa Morita was absent from both the confirmed starting XI and substitutes, so his match appearance state is stored as absent_not_in_squad with zero appearances and no JFW Rating.",
     "Everton beat Crystal Palace 2-0 on 2026-08-22; Daichi Kamada started and Takehiro Tomiyasu entered at 72 minutes. Their advanced and required discipline inputs remain incomplete, so neither receives a JFW Rating yet.",
     "Ipswich Town beat Sunderland 2-1 on 2026-08-22; Daizen Maeda started and was substituted at 80 minutes. Required Rating inputs beyond verified minutes remain incomplete, so no JFW Rating is computed.",
@@ -126,12 +129,13 @@
     "AZ beat Fortuna Sittard 2-0 on 2026-08-22; Seiya Maikuma entered at 86 minutes and Rion Ichihara was an unused substitute.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-3.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-4.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
     "STVV-Omonia penaltiesConceded and advanced individual statistics remain unverified; assists/cards/own-goal event fields were resolved from the additional exhaustive event log, but affected records remain priorityUpdate and no JFW Rating is computed.",
     "Real Betis-Real Sociedad: Kubo's start, 58-minute substitution and zero goal/assist/card/own-goal event counts are verified, but match rating position, penaltiesConceded and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
+    "Valencia-Celta: Sato's start and team-level 0-0 result are verified. His exact minutes, required discipline inputs and advanced performance statistics remain missing; goals and assists are safely zero because Valencia scored zero, but priorityUpdate stays true and JFW Rating is intentionally null.",
     "Rangers-Jablonec: Yokota's transfer, start, 69-minute substitution and one assist are verified, but match rating position, penaltiesConceded and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "St. Tonis-Frankfurt: Keita Kosugi's start and three assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
