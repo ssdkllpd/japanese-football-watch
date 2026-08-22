@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 07:05 JST",
+  "sources": {
+    "fotmob-ipswich-sunderland-20260822": {
+      "id": "fotmob-ipswich-sunderland-20260822",
+      "name": "FotMob Ipswich Town v Sunderland full event and lineup feed",
+      "type": "structured_secondary_exhaustive_events",
+      "url": "https://www.fotmob.com/en-GB/matches/sunderland-vs-ipswich/2sif4z",
+      "retrievedAt": "2026-08-23T07:05:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+    },
+    "fotmob-everton-palace-20260822": {
+      "id": "fotmob-everton-palace-20260822",
+      "name": "FotMob Everton v Crystal Palace full event and lineup feed",
+      "type": "structured_secondary_exhaustive_events",
+      "url": "https://www.fotmob.com/matches/crystal-palace-vs-everton/2tttz7",
+      "retrievedAt": "2026-08-23T07:05:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions", "gaOnPitch"]
+    },
+    "fotmob-tomiyasu-profile-20260823": {
+      "id": "fotmob-tomiyasu-profile-20260823",
+      "name": "FotMob Takehiro Tomiyasu 2026-27 match log",
+      "type": "structured_secondary_player_log",
+      "url": "https://www.fotmob.com/en-GB/players/664444/t-tomiyasu",
+      "retrievedAt": "2026-08-23T07:05:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["minutes", "goals", "assists", "yellowCards", "straightRed"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "premier-2026-08-22-everton-palace",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "エヴァートン 2-0 クリスタル・パレス",
+      "players": "鎌田大地 / 冨安健洋",
+      "appearance": "鎌田大地はフル出場し30分に警告。冨安健洋は72分から出場し18分プレー。両失点は冨安投入前。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["fotmob-everton-palace-20260822", "fotmob-tomiyasu-profile-20260823"]
+    },
+    {
+      "matchId": "premier-2026-08-22-ipswich-sunderland",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "イプスウィッチ・タウン 2-1 サンダーランド",
+      "players": "前田大然",
+      "appearance": "前田大然は先発し80分に交代。得点・アシスト・カードなし。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["fotmob-ipswich-sunderland-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "鎌田大地",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "status": "第1節フル出場・30分警告",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "sourceIds": ["fotmob-everton-palace-20260822"]
+    },
+    {
+      "name": "冨安健洋",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "status": "第1節72分途中出場・18分・在場中失点0",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["tackles", "interceptions", "clearances", "blocks", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbledPast"],
+      "sourceIds": ["fotmob-everton-palace-20260822", "fotmob-tomiyasu-profile-20260823"]
+    },
+    {
+      "name": "前田大然",
+      "club": "イプスウィッチ",
+      "league": "Premier League",
+      "status": "第1節先発・80分交代",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "duelsWon", "duelsTotal", "dribbles", "bigChancesMissed"],
+      "sourceIds": ["fotmob-ipswich-sunderland-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-kamada-everton-palace-20260822",
+      "matchId": "premier-2026-08-22-everton-palace",
+      "player": "鎌田大地",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "match": "エヴァートン 2-0 クリスタル・パレス",
+      "ko": "2026-08-22 23:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "starter_full",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["fotmob-everton-palace-20260822"],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 1,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "disciplineClean": false,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "fotmob-everton-palace-20260822"},
+        "goals": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 1, "sourceId": "fotmob-everton-palace-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "fotmob-everton-palace-20260822",
+          "name": "FotMob Everton v Crystal Palace full event and lineup feed",
+          "type": "structured_secondary_exhaustive_events",
+          "url": "https://www.fotmob.com/matches/crystal-palace-vs-everton/2tttz7",
+          "retrievedAt": "2026-08-23T07:05:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "startingLineup", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions", "gaOnPitch"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 5.8,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.447,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.778, "minutes": 1.0},
+      "deltaPerformance": 0,
+      "deltaDiscipline": -0.2,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"]
+    },
+    {
+      "recordId": "r-tomiyasu-everton-palace-20260822",
+      "matchId": "premier-2026-08-22-everton-palace",
+      "player": "冨安健洋",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "match": "エヴァートン 2-0 クリスタル・パレス",
+      "ko": "2026-08-22 23:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "substitute_72",
+      "substitution": {"on": 72},
+      "start": false,
+      "bench": true,
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["fotmob-everton-palace-20260822", "fotmob-tomiyasu-profile-20260823"],
+      "values": {
+        "minutes": 18,
+        "goals": 0,
+        "assists": 0,
+        "gaOnPitch": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "disciplineClean": true,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 18, "sourceId": "fotmob-tomiyasu-profile-20260823"},
+        "goals": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "gaOnPitch": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "clearances": {"state": "missing"},
+        "blocks": {"state": "missing"},
+        "aerialDuelsWon": {"state": "missing"},
+        "aerialDuelsTotal": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbledPast": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "fotmob-everton-palace-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "fotmob-everton-palace-20260822",
+          "name": "FotMob Everton v Crystal Palace full event and lineup feed",
+          "type": "structured_secondary_exhaustive_events",
+          "url": "https://www.fotmob.com/matches/crystal-palace-vs-everton/2tttz7",
+          "retrievedAt": "2026-08-23T07:05:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "startingLineup", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions", "gaOnPitch"]
+        },
+        {
+          "id": "fotmob-tomiyasu-profile-20260823",
+          "name": "FotMob Takehiro Tomiyasu 2026-27 match log",
+          "type": "structured_secondary_player_log",
+          "url": "https://www.fotmob.com/en-GB/players/664444/t-tomiyasu",
+          "retrievedAt": "2026-08-23T07:05:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["minutes", "goals", "assists", "yellowCards", "straightRed"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.25,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.481,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.8, "minutes": 0.579},
+      "deltaPerformance": 0.55,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "gaOnPitch", "value": 0, "points": 0.55},
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["tackles", "interceptions", "clearances", "blocks", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbledPast"]
+    },
+    {
+      "recordId": "r-maeda-ipswich-sunderland-20260822",
+      "matchId": "premier-2026-08-22-ipswich-sunderland",
+      "player": "前田大然",
+      "club": "イプスウィッチ",
+      "league": "Premier League",
+      "match": "イプスウィッチ・タウン 2-1 サンダーランド",
+      "ko": "2026-08-22 23:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "starter_sub_80",
+      "substitution": {"off": 80},
+      "start": true,
+      "bench": false,
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["fotmob-ipswich-sunderland-20260822"],
+      "values": {
+        "minutes": 80,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "disciplineClean": true,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 80, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "goals": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "shotsOnTarget": {"state": "missing"},
+        "shots": {"state": "missing"},
+        "keyPasses": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "bigChancesMissed": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "fotmob-ipswich-sunderland-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "fotmob-ipswich-sunderland-20260822",
+          "name": "FotMob Ipswich Town v Sunderland full event and lineup feed",
+          "type": "structured_secondary_exhaustive_events",
+          "url": "https://www.fotmob.com/en-GB/matches/sunderland-vs-ipswich/2sif4z",
+          "retrievedAt": "2026-08-23T07:05:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "startingLineup", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.0,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.513,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.82, "minutes": 0.978},
+      "deltaPerformance": 0,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "duelsWon", "duelsTotal", "dribbles", "bigChancesMissed"]
+    }
+  ]
+}

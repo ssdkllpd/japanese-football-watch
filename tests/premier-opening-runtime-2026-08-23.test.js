@@ -57,7 +57,7 @@ function buildHarness() {
   return context;
 }
 
-test('runtime backfill exposes verified Premier League opening-round records without inventing ratings', async () => {
+test('runtime backfill exposes verified Premier League opening-round records and only computes ratings after explicit gates resolve', async () => {
   const context = buildHarness();
   await context.window.JFWBackfill.applyCurrentBackfill();
   const merged = context.D;
@@ -73,10 +73,31 @@ test('runtime backfill exposes verified Premier League opening-round records wit
     assert.equal(match.match, label);
   }
 
-  const records = merged.playerMatchStats.filter(record => expectedMatches.has(record.matchId));
-  assert.ok(records.some(record => record.player === '鎌田大地' && record.start === true));
-  assert.ok(records.some(record => record.player === '冨安健洋' && record.substitution?.on === 72));
-  assert.ok(records.some(record => record.player === '前田大然' && record.minutes === 80));
-  assert.ok(records.some(record => record.player === '田中碧' && record.minutes === 0));
-  for (const record of records) assert.equal(record.jfwRating, null);
+  const byRecordId = recordId => merged.playerMatchStats.find(record => record.recordId === recordId);
+  const kamada = byRecordId('r-kamada-everton-palace-20260822');
+  const tomiyasu = byRecordId('r-tomiyasu-everton-palace-20260822');
+  const maeda = byRecordId('r-maeda-ipswich-sunderland-20260822');
+  const tanaka = merged.playerMatchStats.find(record => record.matchId === 'premier-2026-08-22-forest-leeds' && record.player === '田中碧');
+
+  assert.ok(kamada);
+  assert.ok(tomiyasu);
+  assert.ok(maeda);
+  assert.ok(tanaka);
+
+  assert.equal(kamada.start, true);
+  assert.equal(kamada.jfwRating, 5.8);
+  assert.equal(kamada.ratingCoverage, 0.447);
+  assert.equal(kamada.ratingConfidence, 'medium');
+
+  assert.equal(tomiyasu.substitution?.on, 72);
+  assert.equal(tomiyasu.jfwRating, 6.25);
+  assert.equal(tomiyasu.ratingCoverage, 0.481);
+  assert.equal(tomiyasu.ratingInputs.gaOnPitch.value, 0);
+
+  assert.equal(maeda.minutes, 80);
+  assert.equal(maeda.jfwRating, 6.0);
+  assert.equal(maeda.ratingCoverage, 0.513);
+
+  assert.equal(tanaka.minutes, 0);
+  assert.equal(tanaka.jfwRating, null);
 });

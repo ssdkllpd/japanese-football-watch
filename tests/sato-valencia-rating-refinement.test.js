@@ -35,10 +35,10 @@ test('Sato Valencia debut refinement keeps verified rating inputs and unresolved
   assert.ok(!record.priorityFields.includes('yellowCards'));
 });
 
-test('snapshot and manifest both include the Sato refinement fragment', () => {
+test('snapshot and manifest retain the Sato refinement fragment while allowing later verified fragments', () => {
   const manifest = readJson('data/2026-27/backfill/index.json');
   const snapshot = readJson('state/latest_snapshot.json');
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-5.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-23-5.json'));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.laligaSatoRatingRefinementLoadsThroughPlayerMatchStats, true);
   assert.match(snapshot.verifiedCorrections.join('\n'), /JFW Rating is 6\.00 at 0\.447 coverage/);
