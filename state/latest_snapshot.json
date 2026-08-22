@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T21:53:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-22 updates, including STVV-Omonia event-field refinement, Takefusa Kubo's La Liga second-round appearance, Daisuke Yokota's Rangers transfer and European assist, Borussia Mönchengladbach Japanese-squad completeness corrections, and Ryunosuke Sato's Valencia transfer.",
+  "updatedAt": "2026-08-22T23:05:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-22 updates, now including Hull City's Premier League opening win and Hidemasa Morita's verified squad absence.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "0be6ae59a965ad74954ae2e3dd8fbf5b222a0d5f",
+    "blobSha": "d425e9700c47046070120832e7bfa843d83b7e78",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -33,7 +33,8 @@
       "latest-2026-08-22-5.json",
       "latest-2026-08-22-6.json",
       "latest-2026-08-22-7.json",
-      "latest-2026-08-22-8.json"
+      "latest-2026-08-22-8.json",
+      "latest-2026-08-22-9.json"
     ]
   },
   "runtime": [
@@ -86,6 +87,7 @@
     "scotlandYokotaTransferLoadsThroughPlayerUpdates": true,
     "scotlandYokotaEuropeanAssistLoadsThroughPlayerMatchStats": true,
     "laligaSatoValenciaTransferLoadsThroughPlayerUpdates": true,
+    "premierLeagueMoritaOpeningSquadAbsenceLoadsThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -104,9 +106,10 @@
     "Tatsuhiro Sakamoto was an unused Coventry substitute in the 3-0 Premier League defeat at Arsenal on 2026-08-21; the match record remains unrated because he played zero minutes.",
     "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Ryunosuke Sato transferred permanently from FC Tokyo to Valencia CF on 2026-07-07 on a five-season contract through 2031; FC Tokyo/J1 is retained only as previous membership while Valencia/La Liga becomes the tracked current membership.",
+    "Hull City beat Manchester United 2-0 in the 2026-08-22 Premier League opener; Hidemasa Morita was absent from both the confirmed starting XI and substitutes, so his match appearance state is stored as absent_not_in_squad with zero appearances and no JFW Rating.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-8.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-9.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
