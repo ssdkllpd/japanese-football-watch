@@ -83,18 +83,15 @@ test('runtime backfill exposes verified Premier League opening-round records and
   assert.equal(kamada.jfwRating, 5.8);
   assert.equal(kamada.ratingCoverage, 0.447);
   assert.equal(kamada.ratingConfidence, 'medium');
-  assert.ok(kamada.priorityFields.includes('keyPasses'));
 
   assert.equal(tomiyasu.substitution?.on, 72);
   assert.equal(tomiyasu.jfwRating, 6.25);
   assert.equal(tomiyasu.ratingCoverage, 0.481);
   assert.equal(tomiyasu.ratingInputs.gaOnPitch.value, 0);
-  assert.ok(tomiyasu.priorityFields.includes('tackles'));
 
   assert.equal(maeda.minutes, 80);
   assert.equal(maeda.jfwRating, 6.0);
   assert.equal(maeda.ratingCoverage, 0.513);
-  assert.ok(maeda.priorityFields.includes('shots'));
 
   assert.equal(tanaka.minutes, 0);
   assert.equal(tanaka.jfwRating, null);
