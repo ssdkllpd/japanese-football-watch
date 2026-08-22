@@ -13,7 +13,8 @@ function ratingEngine() {
     window: {},
     document: { body: { appendChild() {} }, querySelector() { return null; }, createElement() { return { dataset: {} }; } },
     setTimeout() {},
-    clearTimeout() {}
+    clearTimeout() {},
+    addEventListener() {}
   };
   context.window = context;
   vm.createContext(context);
