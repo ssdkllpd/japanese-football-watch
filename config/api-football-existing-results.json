@@ -10,6 +10,7 @@
     "チャンピオンシップ": 40,
     "カラバオカップ": 48,
     "Premier League": 39,
+    "ラ・リーガ": 140,
     "DFB-Pokal": 81,
     "UEFAチャンピオンズリーグ": 2,
     "UEFA Conference League": 848,
@@ -114,6 +115,24 @@
       "search": "Coventry",
       "aliases": ["Coventry", "Coventry City"],
       "matchIds": ["premier-2026-08-21-arsenal-coventry"]
+    },
+    {
+      "key": "psv",
+      "search": "PSV Eindhoven",
+      "aliases": ["PSV", "PSV Eindhoven"],
+      "matchIds": ["eredivisie-2026-08-15-excelsior-psv"]
+    },
+    {
+      "key": "real-sociedad",
+      "search": "Real Sociedad",
+      "aliases": ["Real Sociedad"],
+      "matchIds": ["laliga-2026-08-21-betis-real-sociedad"]
+    },
+    {
+      "key": "rangers",
+      "search": "Rangers",
+      "aliases": ["Rangers", "Rangers FC"],
+      "matchIds": ["uecl-2026-08-20-rangers-jablonec"]
     }
   ],
   "selection": {
@@ -140,6 +159,24 @@
       "fixtureDate": "2026-08-22",
       "homeAliases": ["Arsenal"],
       "awayAliases": ["Coventry", "Coventry City"]
+    },
+    {
+      "matchId": "laliga-2026-08-21-betis-real-sociedad",
+      "fixtureDate": "2026-08-21",
+      "homeAliases": ["Real Betis", "Betis"],
+      "awayAliases": ["Real Sociedad"]
+    },
+    {
+      "matchId": "uecl-2026-08-20-rangers-jablonec",
+      "fixtureDate": "2026-08-20",
+      "homeAliases": ["Rangers", "Rangers FC"],
+      "awayAliases": ["FK Jablonec", "Jablonec"]
+    },
+    {
+      "matchId": "eredivisie-2026-08-15-excelsior-psv",
+      "fixtureDate": "2026-08-15",
+      "homeAliases": ["Excelsior", "Excelsior Rotterdam"],
+      "awayAliases": ["PSV", "PSV Eindhoven"]
     },
     {
       "matchId": "uecl-2026-08-20-motherwell-freiburg",
@@ -311,6 +348,8 @@
     "三戸舜介": ["Shunsuke Mito", "S. Mito"],
     "上田綺世": ["Ayase Ueda", "A. Ueda"],
     "伊東純也": ["Junya Ito", "J. Ito"],
+    "佐野航大": ["Kodai Sano", "K. Sano"],
+    "久保建英": ["Takefusa Kubo", "T. Kubo"],
     "坂本一彩": ["Issei Sakamoto", "I. Sakamoto"],
     "坂元達裕": ["Tatsuhiro Sakamoto", "T. Sakamoto"],
     "大橋祐紀": ["Yuki Ohashi", "Y. Ohashi"],
@@ -328,6 +367,7 @@
     "松澤海斗": ["Kaito Matsuzawa", "K. Matsuzawa"],
     "森下龍矢": ["Ryoya Morishita", "R. Morishita"],
     "横山歩夢": ["Ayumu Yokoyama", "A. Yokoyama"],
+    "横田大祐": ["Daisuke Yokota", "D. Yokota"],
     "毎熊晟矢": ["Seiya Maikuma", "S. Maikuma"],
     "渡辺剛": ["Tsuyoshi Watanabe", "T. Watanabe"],
     "畑大雅": ["Taiga Hata", "T. Hata"],
