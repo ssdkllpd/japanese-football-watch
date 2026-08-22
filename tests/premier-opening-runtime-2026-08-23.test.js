@@ -42,7 +42,7 @@ function buildHarness() {
     attLeague: 'すべて', page: 'home', activePlayer: null, activeClub: null,
     clubRoundFrom: null, clubRoundTo: null, clearDetailParams() {}, showPage() {}, lastPage: 'home',
     fetch: async url => {
-      const value = String(url);
+      const value = String(url).split('?')[0];
       if (value.endsWith('/index.json')) return { ok: true, json: async () => manifest };
       const name = value.split('/').at(-1);
       if (fragmentsByName.has(name)) return { ok: true, json: async () => fragmentsByName.get(name) };
@@ -76,7 +76,7 @@ test('runtime backfill exposes verified Premier League opening-round records wit
   const records = merged.playerMatchStats.filter(record => expectedMatches.has(record.matchId));
   assert.ok(records.some(record => record.player === '鎌田大地' && record.start === true));
   assert.ok(records.some(record => record.player === '冨安健洋' && record.substitution?.on === 72));
-  assert.ok(records.some(record => record.player === '前田大然' && record.values?.minutes === 80));
-  assert.ok(records.some(record => record.player === '田中碧' && record.values?.minutes === 0));
+  assert.ok(records.some(record => record.player === '前田大然' && record.minutes === 80));
+  assert.ok(records.some(record => record.player === '田中碧' && record.minutes === 0));
   for (const record of records) assert.equal(record.jfwRating, null);
 });
