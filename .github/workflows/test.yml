@@ -46,6 +46,27 @@ jobs:
         run: node --test tests/v2-backfill-data.test.js
       - name: Test v2 shell wiring
         run: node --test tests/app-v2-shell.test.js
+      - name: Parity - pure function
+        continue-on-error: true
+        run: node --test --test-name-pattern="pure function" tests/backfill-merge-parity.test.js
+      - name: Parity - current baseline
+        continue-on-error: true
+        run: node --test --test-name-pattern="current raw data expands" tests/backfill-merge-parity.test.js
+      - name: Parity - golden legacy output
+        continue-on-error: true
+        run: node --test --test-name-pattern="pinned 49c70c3" tests/backfill-merge-parity.test.js
+      - name: Parity - replay drift
+        continue-on-error: true
+        run: node --test --test-name-pattern="known replay drift" tests/backfill-merge-parity.test.js
+      - name: Parity - source overrides
+        continue-on-error: true
+        run: node --test --test-name-pattern="pinned source id overrides" tests/backfill-merge-parity.test.js
+      - name: Parity - CommonJS isolation
+        continue-on-error: true
+        run: node --test --test-name-pattern="CommonJS" tests/backfill-merge-parity.test.js
+      - name: Parity - legacy current season
+        continue-on-error: true
+        run: node --test --test-name-pattern="legacy loader" tests/backfill-merge-parity.test.js
       - name: Test backfill merge parity
         run: node --test tests/backfill-merge-parity.test.js
       - name: Run full test suite
