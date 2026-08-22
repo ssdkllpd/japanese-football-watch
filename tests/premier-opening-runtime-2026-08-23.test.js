@@ -7,6 +7,17 @@ const vm = require('node:vm');
 const ROOT = path.join(__dirname, '..');
 const readJson = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
+function makeElement() {
+  return {
+    textContent: '',
+    innerHTML: '',
+    dataset: {},
+    appendChild() {},
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  };
+}
+
 function loadMergeBackfillData() {
   const code = fs.readFileSync(path.join(ROOT, 'backfill-loader.js'), 'utf8');
   const context = {
@@ -15,8 +26,19 @@ function loadMergeBackfillData() {
     structuredClone: global.structuredClone,
     URLSearchParams,
     location: { search: '' },
-    document: { addEventListener() {} },
-    fetch: async () => { throw new Error('fetch must not be called in merge unit test'); }
+    selectedSeason: '',
+    loadSeason: async () => {},
+    renderAll() {},
+    renderPlayerDetail() {},
+    renderClubDetail() {},
+    page: 'home',
+    document: {
+      body: makeElement(),
+      querySelector() { return null; },
+      createElement() { return makeElement(); },
+      addEventListener() {}
+    },
+    fetch: async () => ({ ok: false, status: 404, json: async () => ({}) })
   };
   vm.createContext(context);
   vm.runInContext(`${code}\nthis.__merge = mergeBackfillData;`, context);
