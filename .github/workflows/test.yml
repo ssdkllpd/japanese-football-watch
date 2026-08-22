@@ -42,5 +42,11 @@ jobs:
           node --check scripts/v2/fetch-standings.js
           node --check scripts/v2/merge-date-index.js
           node --check worker/index.mjs
-      - name: Run tests
+      - name: Test v2 backfill adapter
+        run: node --test tests/v2-backfill-data.test.js
+      - name: Test v2 shell wiring
+        run: node --test tests/app-v2-shell.test.js
+      - name: Test backfill merge parity
+        run: node --test tests/backfill-merge-parity.test.js
+      - name: Run full test suite
         run: node --test tests/*.test.js
