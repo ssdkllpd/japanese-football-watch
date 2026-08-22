@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T23:05:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-22 updates, now including Hull City's Premier League opening win and Hidemasa Morita's verified squad absence.",
+  "updatedAt": "2026-08-23T01:54:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including additional Premier League opening-round Japanese player appearances and squad statuses.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "d425e9700c47046070120832e7bfa843d83b7e78",
+    "blobSha": "82b5ad6e3a9822a68e534e573e30509cda7ee02c",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -34,7 +34,8 @@
       "latest-2026-08-22-6.json",
       "latest-2026-08-22-7.json",
       "latest-2026-08-22-8.json",
-      "latest-2026-08-22-9.json"
+      "latest-2026-08-22-9.json",
+      "latest-2026-08-23.json"
     ]
   },
   "runtime": [
@@ -88,6 +89,9 @@
     "scotlandYokotaEuropeanAssistLoadsThroughPlayerMatchStats": true,
     "laligaSatoValenciaTransferLoadsThroughPlayerUpdates": true,
     "premierLeagueMoritaOpeningSquadAbsenceLoadsThroughPlayerMatchStats": true,
+    "premierLeaguePalaceOpeningJapaneseAppearancesLoadThroughPlayerMatchStats": true,
+    "premierLeagueMaedaOpeningStartLoadsThroughPlayerMatchStats": true,
+    "premierLeagueTanakaOpeningBenchStatusLoadsThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
@@ -107,9 +111,12 @@
     "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Ryunosuke Sato transferred permanently from FC Tokyo to Valencia CF on 2026-07-07 on a five-season contract through 2031; FC Tokyo/J1 is retained only as previous membership while Valencia/La Liga becomes the tracked current membership.",
     "Hull City beat Manchester United 2-0 in the 2026-08-22 Premier League opener; Hidemasa Morita was absent from both the confirmed starting XI and substitutes, so his match appearance state is stored as absent_not_in_squad with zero appearances and no JFW Rating.",
+    "Everton beat Crystal Palace 2-0 on 2026-08-22; Daichi Kamada started and Takehiro Tomiyasu entered at 72 minutes. Their advanced and required discipline inputs remain incomplete, so neither receives a JFW Rating yet.",
+    "Ipswich Town beat Sunderland 2-1 on 2026-08-22; Daizen Maeda started and was substituted at 80 minutes. Required Rating inputs beyond verified minutes remain incomplete, so no JFW Rating is computed.",
+    "Leeds United beat Nottingham Forest 1-0 on 2026-08-22; Ao Tanaka was an unused substitute and therefore remains unrated.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-9.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
@@ -119,6 +126,8 @@
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "St. Tonis-Frankfurt: Keita Kosugi's start and three assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Excelsior-PSV: Kodai Sano's 63rd-minute debut and zero goal/assist/discipline events are verified from PSV's exhaustive match center, but exact played minutes and advanced individual statistics remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
+    "Everton-Crystal Palace: Kamada's start and Tomiyasu's 72nd-minute entry are verified, but exact minutes, required discipline inputs and advanced individual statistics remain missing; both records stay priorityUpdate and JFW Rating is intentionally null.",
+    "Ipswich-Sunderland: Maeda's start, 80th-minute substitution and 80 minutes are verified, but goals/assists, required discipline inputs and advanced performance fields remain unverified at the JFW input level; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
