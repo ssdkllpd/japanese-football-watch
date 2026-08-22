@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-22T08:53:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20 European-match updates, competition-scoped aggregate UI fixes, Premier League Japanese-player roster corrections, Ko Itakura's confirmed return to Borussia Monchengladbach, API-Football manifest synchronization, Kaoru Mitoma's current injury availability and squad-number updates, Eintracht Frankfurt's verified DFB-Pokal opener with Keita Kosugi's corrected three assists and Ritsu Doan's muscular-complaint absence, Coventry's verified Premier League opener with Tatsuhiro Sakamoto an unused substitute, and Kodai Sano's confirmed PSV transfer and official debut at Excelsior.",
+  "updatedAt": "2026-08-22T12:11:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-21 updates, including STVV-Omonia event-field refinement, Takefusa Kubo's La Liga second-round appearance, Daisuke Yokota's Rangers transfer and European assist, and all prior current-season corrections.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "ed83461157b8ffa866df09adb43f449baca53890",
+    "blobSha": "a362f8682ec59c98d98b67979953bacde027dc00",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -30,7 +30,8 @@
       "latest-2026-08-22-2.json",
       "latest-2026-08-22-3.json",
       "latest-2026-08-22-4.json",
-      "latest-2026-08-22-5.json"
+      "latest-2026-08-22-5.json",
+      "latest-2026-08-22-6.json"
     ]
   },
   "runtime": [
@@ -75,11 +76,17 @@
     "premierLeagueSakamotoOpeningBenchStatusLoadsThroughPlayerMatchStats": true,
     "eredivisieSanoTransferLoadsThroughPlayerUpdates": true,
     "eredivisieSanoDebutLoadsThroughPlayerMatchStats": true,
+    "stvvOmoniaEventRefinementUsesExistingStableMatchId": true,
+    "laligaKuboSecondRoundLoadsThroughPlayerMatchStats": true,
+    "scotlandYokotaTransferLoadsThroughPlayerUpdates": true,
+    "scotlandYokotaEuropeanAssistLoadsThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
   "verifiedCorrections": [
-    "Sint-Truidense 1-0 Omonia on 2026-08-20 added as a UEFA Europa League play-off first leg; Shogo Taniguchi scored the 90+4 winner.",
-    "STVV Japanese participation recorded from the available match report: Leo Brian Kokubo, Shogo Taniguchi, Nelson Ishiwatari and Kaito Matsuzawa started; Ryotaro Araki entered at 61 minutes; Ishiwatari and Matsuzawa left at 61.",
+    "Sint-Truidense 1-0 Omonia on 2026-08-20 is retained under the existing stable matchId uel-2026-08-20-stvv-omonia; a second structured event source now explicitly resolves assists, cards and own-goal event fields without creating a duplicate fixture.",
+    "STVV Japanese participation remains: Leo Brian Kokubo, Shogo Taniguchi, Nelson Ishiwatari and Kaito Matsuzawa started; Ryotaro Araki entered at 61 minutes; Ishiwatari and Matsuzawa left at 61; Taniguchi scored the 90+4 winner assisted by Ryan Merlen.",
+    "Takefusa Kubo started Real Sociedad's 2026-08-21 La Liga match at Real Betis and was substituted at 58 minutes; Real Sociedad lost 1-0 after a 63rd-minute goal.",
+    "Daisuke Yokota joined Rangers from Hannover 96 on 2026-08-05 and started the 2026-08-20 UEFA Conference League play-off first leg against Jablonec, assisting the 50th-minute winner before being substituted at 69 minutes.",
     "Motherwell 1-3 Freiburg records refined: Keisuke Goto entered at 80 minutes and scored at 90+6; Yuito Suzuki started and left at 74 minutes.",
     "SC St. Tonis 0-11 Eintracht Frankfurt on 2026-08-21 added as a DFB-Pokal first-round result; Keita Kosugi started and is now credited with three assists, at 29, 34 and 45+5 minutes. The earlier two-assist record is retained as an explicit source conflict and superseded by the higher-priority structured event feed.",
     "Ritsu Doan was absent from Eintracht Frankfurt's 2026-08-21 DFB-Pokal squad because of muscular complaints; no appearance record or zero match statistics were created for him.",
@@ -91,11 +98,13 @@
     "Kodai Sano transferred from NEC to PSV on 2026-08-08, signed through mid-2031 with squad number 24, and made his official PSV debut from the bench at 63 minutes in the 2-1 win at Excelsior on 2026-08-15.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-5.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-22-6.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
-    "STVV-Omonia assists, exhaustive discipline fields and advanced individual statistics are not yet verified from an exhaustive source; affected records remain priorityUpdate and no JFW Rating is computed.",
+    "STVV-Omonia penaltiesConceded and advanced individual statistics remain unverified; assists/cards/own-goal event fields were resolved from the additional exhaustive event log, but affected records remain priorityUpdate and no JFW Rating is computed.",
+    "Real Betis-Real Sociedad: Kubo's start, 58-minute substitution and zero goal/assist/card/own-goal event counts are verified, but match rating position, penaltiesConceded and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
+    "Rangers-Jablonec: Yokota's transfer, start, 69-minute substitution and one assist are verified, but match rating position, penaltiesConceded and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Motherwell-Freiburg exhaustive discipline and advanced performance fields remain missing for Keisuke Goto and Yuito Suzuki; JFW Rating remains intentionally uncomputed until required inputs are explicit values.",
     "St. Tonis-Frankfurt: Keita Kosugi's start and three assists are verified, but minutes, exhaustive discipline fields, gaOnPitch and advanced performance inputs remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Excelsior-PSV: Kodai Sano's 63rd-minute debut and zero goal/assist/discipline events are verified from PSV's exhaustive match center, but exact played minutes and advanced individual statistics remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
