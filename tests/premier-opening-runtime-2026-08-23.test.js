@@ -73,11 +73,16 @@ test('runtime backfill exposes verified Premier League opening-round records and
     assert.equal(match.match, label);
   }
 
-  const records = merged.playerMatchStats.filter(record => expectedMatches.has(record.matchId));
-  const kamada = records.find(record => record.player === '鎌田大地');
-  const tomiyasu = records.find(record => record.player === '冨安健洋');
-  const maeda = records.find(record => record.player === '前田大然');
-  const tanaka = records.find(record => record.player === '田中碧');
+  const byRecordId = recordId => merged.playerMatchStats.find(record => record.recordId === recordId);
+  const kamada = byRecordId('r-kamada-everton-palace-20260822');
+  const tomiyasu = byRecordId('r-tomiyasu-everton-palace-20260822');
+  const maeda = byRecordId('r-maeda-ipswich-sunderland-20260822');
+  const tanaka = merged.playerMatchStats.find(record => record.matchId === 'premier-2026-08-22-forest-leeds' && record.player === '田中碧');
+
+  assert.ok(kamada);
+  assert.ok(tomiyasu);
+  assert.ok(maeda);
+  assert.ok(tanaka);
 
   assert.equal(kamada.start, true);
   assert.equal(kamada.jfwRating, 5.8);
