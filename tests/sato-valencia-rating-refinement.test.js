@@ -41,5 +41,5 @@ test('snapshot and manifest both include the Sato refinement fragment', () => {
   assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-5.json');
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.laligaSatoRatingRefinementLoadsThroughPlayerMatchStats, true);
-  assert.match(snapshot.verifiedCorrections.join('\n'), /JFW Rating v1\.0 = 6\.00/);
+  assert.match(snapshot.verifiedCorrections.join('\n'), /JFW Rating is 6\.00 at 0\.447 coverage/);
 });
