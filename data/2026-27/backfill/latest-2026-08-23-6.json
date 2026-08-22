@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 07:20 JST",
+  "sources": {
+    "uefa-celtic-lask-20260819": {
+      "id": "uefa-celtic-lask-20260819",
+      "name": "UEFA Champions League Celtic 3-0 LASK match record",
+      "type": "competition_official_match",
+      "url": "https://www.uefa.com/uefachampionsleague/news/02a8-21614aa98c59-7f9d3e928182-1000--champions-league-play-off-first-legs-round-up-lyon-viking-/",
+      "retrievedAt": "2026-08-23T07:20:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "goals"]
+    },
+    "fotmob-hatate-celtic-lask-20260819": {
+      "id": "fotmob-hatate-celtic-lask-20260819",
+      "name": "FotMob Reo Hatate match record vs LASK",
+      "type": "stats_aggregator",
+      "url": "https://www.fotmob.com/players/980792/reo-hatate",
+      "retrievedAt": "2026-08-23T07:20:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["minutes", "goals", "assists", "yellowCards", "straightRed", "providerRating"]
+    },
+    "thescore-celtic-lask-20260819": {
+      "id": "thescore-celtic-lask-20260819",
+      "name": "theScore Celtic-LASK substitution timeline",
+      "type": "stats_aggregator_events",
+      "url": "https://www.thescore.com/chlg/event/101206",
+      "retrievedAt": "2026-08-23T07:20:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["substitutions", "yellowCards", "straightRed"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "m-2026-08-19-celtic-lask",
+      "league": "UEFAチャンピオンズリーグ",
+      "round": "プレーオフ第1戦",
+      "ko": "2026-08-20 JST",
+      "match": "セルティック 3-0 LASK",
+      "players": "旗手怜央",
+      "appearance": "旗手怜央は65分から途中出場し25分プレー。セルティックが3-0で勝利。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["uefa-celtic-lask-20260819", "fotmob-hatate-celtic-lask-20260819", "thescore-celtic-lask-20260819"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "旗手怜央",
+      "club": "セルティック",
+      "league": "スコットランド",
+      "status": "CLプレーオフLASK戦で65分から途中出場・25分プレー",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-19 LASK戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted", "penaltiesConceded"],
+      "sourceIds": ["uefa-celtic-lask-20260819", "fotmob-hatate-celtic-lask-20260819", "thescore-celtic-lask-20260819"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-hatate-celtic-lask-20260819",
+      "matchId": "m-2026-08-19-celtic-lask",
+      "player": "旗手怜央",
+      "club": "セルティック",
+      "league": "UEFAチャンピオンズリーグ",
+      "match": "セルティック 3-0 LASK",
+      "ko": "2026-08-20 JST",
+      "round": "プレーオフ第1戦",
+      "appearance": "sub_65",
+      "start": false,
+      "bench": true,
+      "substitution": {"on": 65},
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["uefa-celtic-lask-20260819", "fotmob-hatate-celtic-lask-20260819", "thescore-celtic-lask-20260819"],
+      "values": {
+        "minutes": 25,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "ownGoals": 0
+      },
+      "providerRatings": {
+        "apiFootball": null,
+        "fotmob": 6.5
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 25, "sourceId": "fotmob-hatate-celtic-lask-20260819"},
+        "goals": {"state": "value", "value": 0, "sourceId": "uefa-celtic-lask-20260819"},
+        "assists": {"state": "value", "value": 0, "sourceId": "fotmob-hatate-celtic-lask-20260819"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "thescore-celtic-lask-20260819"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "thescore-celtic-lask-20260819"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "thescore-celtic-lask-20260819"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "uefa-celtic-lask-20260819"}
+      },
+      "ratingSources": [
+        {
+          "id": "uefa-celtic-lask-20260819",
+          "name": "UEFA Champions League Celtic 3-0 LASK match record",
+          "type": "competition_official_match",
+          "url": "https://www.uefa.com/uefachampionsleague/news/02a8-21614aa98c59-7f9d3e928182-1000--champions-league-play-off-first-legs-round-up-lyon-viking-/",
+          "retrievedAt": "2026-08-23T07:20:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["result", "goals"]
+        },
+        {
+          "id": "fotmob-hatate-celtic-lask-20260819",
+          "name": "FotMob Reo Hatate match record vs LASK",
+          "type": "stats_aggregator",
+          "url": "https://www.fotmob.com/players/980792/reo-hatate",
+          "retrievedAt": "2026-08-23T07:20:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["minutes", "goals", "assists", "yellowCards", "straightRed", "providerRating"]
+        },
+        {
+          "id": "thescore-celtic-lask-20260819",
+          "name": "theScore Celtic-LASK substitution timeline",
+          "type": "stats_aggregator_events",
+          "url": "https://www.thescore.com/chlg/event/101206",
+          "retrievedAt": "2026-08-23T07:20:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["substitutions", "yellowCards", "straightRed"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted", "penaltiesConceded"]
+    }
+  ]
+}
