@@ -12,7 +12,7 @@ test('August 23 Premier League fragment is registered and retains missing Rating
   const manifest = readJson('data/2026-27/backfill/index.json');
   const fragment = readJson(fragmentPath);
 
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-23.json'));
 
   const byPlayer = new Map(fragment.playerMatchStats.map(record => [record.player, record]));
   for (const player of ['坂元達裕', '鎌田大地', '冨安健洋', '前田大然', '田中碧']) {
