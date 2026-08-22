@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-23T03:10:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2 and AZ-Fortuna Japanese participation.",
+  "updatedAt": "2026-08-23T04:01:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-23 updates, including Championship round 2, AZ-Fortuna participation and the verified Koki Saito JFW Rating refinement.",
   "base": {
     "path": "data.json",
     "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
   },
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "61f8d26cedb6933ec0b807cc67ed4cd19e824455",
+    "blobSha": "48e29d30a94563aecaac922156ab99f538a68af6",
     "orderedFragments": [
       "core.json",
       "scotland-portugal.json",
@@ -36,7 +36,8 @@
       "latest-2026-08-22-8.json",
       "latest-2026-08-22-9.json",
       "latest-2026-08-23.json",
-      "latest-2026-08-23-2.json"
+      "latest-2026-08-23-2.json",
+      "latest-2026-08-23-3.json"
     ]
   },
   "runtime": [
@@ -94,6 +95,7 @@
     "premierLeagueMaedaOpeningStartLoadsThroughPlayerMatchStats": true,
     "premierLeagueTanakaOpeningBenchStatusLoadsThroughPlayerMatchStats": true,
     "championshipRound2JapaneseAppearancesLoadThroughPlayerMatchStats": true,
+    "championshipSaitoRatingRefinementLoadsThroughPlayerMatchStats": true,
     "eredivisieAzThirdRoundJapaneseAppearancesLoadThroughPlayerMatchStats": true,
     "noHistoricalSeasonDataOverwritten": true
   },
@@ -119,11 +121,12 @@
     "Leeds United beat Nottingham Forest 1-0 on 2026-08-22; Ao Tanaka was an unused substitute and therefore remains unrated.",
     "Birmingham City drew Bristol City 2-2 on 2026-08-22; Tomoki Iwata and Yu Hirakawa started, Kanya Fujimoto was an unused substitute, and Hirakawa left at 90+1 minutes.",
     "Blackburn beat Middlesbrough 2-1 on 2026-08-22; Ryoya Morishita started and left at 61 minutes, while Yuki Ohashi entered at 69 minutes after all three goals had been scored.",
-    "QPR drew Bolton 0-0 on 2026-08-22 with Koki Saito in the starting XI; Southampton beat Stoke 3-1 with Kuryu Matsuki starting.",
+    "QPR drew Bolton 0-0 on 2026-08-22; Koki Saito started and was substituted at 76 minutes. The exhaustive event log verifies zero goals, assists, shots, shots on target and discipline events plus one key pass, yielding JFW Rating v1.0 = 6.08 with 0.764 coverage (high confidence); dribbles, duels and big-chance-missed data remain missing and priorityUpdate stays true.",
+    "Southampton beat Stoke 3-1 on 2026-08-22 with Kuryu Matsuki starting.",
     "AZ beat Fortuna Sittard 2-0 on 2026-08-22; Seiya Maikuma entered at 86 minutes and Rion Ichihara was an unused substitute.",
     "Competition-specific aggregates remain linked to matchId/playerMatchStats so goals are traceable to the competition and match rather than existing only as a merged total.",
     "Runtime ranking scope reads competitionStats for league/competition filters and allCompetitionsStats only for the all-competitions view; player detail exposes a competition breakdown.",
-    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-2.json.",
+    "The retained snapshot mirrors the current backfill manifest including api-football-existing-results.json through latest-2026-08-23-3.json.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19."
   ],
   "declaredCoverageGaps": [
@@ -135,7 +138,8 @@
     "Excelsior-PSV: Kodai Sano's 63rd-minute debut and zero goal/assist/discipline events are verified from PSV's exhaustive match center, but exact played minutes and advanced individual statistics remain missing; priorityUpdate stays true and JFW Rating is intentionally null.",
     "Everton-Crystal Palace: Kamada's start and Tomiyasu's 72nd-minute entry are verified, but exact minutes, required discipline inputs and advanced individual statistics remain missing; both records stay priorityUpdate and JFW Rating is intentionally null.",
     "Ipswich-Sunderland: Maeda's start, 80th-minute substitution and 80 minutes are verified, but goals/assists, required discipline inputs and advanced performance fields remain unverified at the JFW input level; priorityUpdate stays true and JFW Rating is intentionally null.",
-    "Championship round 2: Iwata, Hirakawa, Morishita, Ohashi, Saito and Matsuki have verified participation states, but required discipline inputs and most advanced statistics remain incomplete; their records stay priorityUpdate and no JFW Rating is computed. Fujimoto is verified as an unused substitute.",
+    "Championship round 2: Iwata, Hirakawa, Morishita, Ohashi and Matsuki have verified participation states, but required discipline inputs and most advanced statistics remain incomplete; their records stay priorityUpdate and no JFW Rating is computed. Fujimoto is verified as an unused substitute.",
+    "QPR-Bolton: Saito's JFW Rating is now valid at 6.08 with high confidence, but dribbles, duelsWon, duelsTotal and bigChancesMissed remain missing; priorityUpdate therefore remains true for those fields.",
     "Fortuna-AZ: Maikuma's 86th-minute entry and Ichihara's unused-bench status are verified, but Maikuma's exact played minutes, required discipline inputs, gaOnPitch and advanced defensive statistics remain incomplete; his record stays priorityUpdate and no JFW Rating is computed.",
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
