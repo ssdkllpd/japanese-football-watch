@@ -57,7 +57,7 @@ function buildHarness() {
   return context;
 }
 
-test('runtime backfill exposes verified Premier League opening-round records without inventing ratings', async () => {
+test('runtime backfill exposes verified Premier League opening-round records and only computes ratings after explicit gates resolve', async () => {
   const context = buildHarness();
   await context.window.JFWBackfill.applyCurrentBackfill();
   const merged = context.D;
@@ -74,9 +74,28 @@ test('runtime backfill exposes verified Premier League opening-round records wit
   }
 
   const records = merged.playerMatchStats.filter(record => expectedMatches.has(record.matchId));
-  assert.ok(records.some(record => record.player === '鎌田大地' && record.start === true));
-  assert.ok(records.some(record => record.player === '冨安健洋' && record.substitution?.on === 72));
-  assert.ok(records.some(record => record.player === '前田大然' && record.minutes === 80));
-  assert.ok(records.some(record => record.player === '田中碧' && record.minutes === 0));
-  for (const record of records) assert.equal(record.jfwRating, null);
+  const kamada = records.find(record => record.player === '鎌田大地');
+  const tomiyasu = records.find(record => record.player === '冨安健洋');
+  const maeda = records.find(record => record.player === '前田大然');
+  const tanaka = records.find(record => record.player === '田中碧');
+
+  assert.equal(kamada.start, true);
+  assert.equal(kamada.jfwRating, 5.8);
+  assert.equal(kamada.ratingCoverage, 0.447);
+  assert.equal(kamada.ratingConfidence, 'medium');
+  assert.equal(kamada.ratingInputs.keyPasses.state, 'missing');
+
+  assert.equal(tomiyasu.substitution?.on, 72);
+  assert.equal(tomiyasu.jfwRating, 6.25);
+  assert.equal(tomiyasu.ratingCoverage, 0.481);
+  assert.equal(tomiyasu.ratingInputs.gaOnPitch.value, 0);
+  assert.equal(tomiyasu.ratingInputs.tackles.state, 'missing');
+
+  assert.equal(maeda.minutes, 80);
+  assert.equal(maeda.jfwRating, 6.0);
+  assert.equal(maeda.ratingCoverage, 0.513);
+  assert.equal(maeda.ratingInputs.shots.state, 'missing');
+
+  assert.equal(tanaka.minutes, 0);
+  assert.equal(tanaka.jfwRating, null);
 });
