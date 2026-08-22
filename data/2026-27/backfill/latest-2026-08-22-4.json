@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 06:01 JST",
+  "sources": {
+    "guardian-arsenal-coventry-20260821": {
+      "id": "guardian-arsenal-coventry-20260821",
+      "name": "The Guardian Arsenal v Coventry live match report",
+      "type": "reputable_secondary_match_events",
+      "url": "https://www.theguardian.com/football/live/2026/aug/21/arsenal-v-coventry-city-premier-league-live",
+      "retrievedAt": "2026-08-22T06:01:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions", "goals", "assists"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "premier-2026-08-21-arsenal-coventry",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-22 04:00 JST",
+      "match": "アーセナル 3-0 コヴェントリー",
+      "players": "坂元達裕",
+      "appearance": "坂元達裕はベンチ入りしたが出場なし。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["guardian-arsenal-coventry-20260821"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "坂元達裕",
+      "club": "コヴェントリー",
+      "league": "Premier League",
+      "status": "プレミアリーグ第1節ベンチ未出場",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["guardian-arsenal-coventry-20260821"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sakamoto-arsenal-coventry-20260821",
+      "matchId": "premier-2026-08-21-arsenal-coventry",
+      "player": "坂元達裕",
+      "club": "コヴェントリー",
+      "league": "Premier League",
+      "match": "アーセナル 3-0 コヴェントリー",
+      "ko": "2026-08-22 04:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "bench_unused",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["guardian-arsenal-coventry-20260821"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": true,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

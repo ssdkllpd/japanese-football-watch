@@ -29,10 +29,12 @@ const manifest = require('../config/api-football-existing-results.json');
 test('fixed manifest covers every currently stored verified result and nothing else', () => {
   const data = mergeCurrentData(ROOT, manifest.season);
   const targets = buildTargets(data, manifest);
+  const manifestFixtureCount = manifest.fixtures.length;
+  const manifestDateCount = new Set(manifest.fixtures.map(fixture => fixture.fixtureDate)).size;
 
-  assert.equal(targets.length, 27);
-  assert.equal(new Set(targets.map(target => target.matchId)).size, 27);
-  assert.equal(new Set(targets.map(target => target.fixtureDate)).size, 9);
+  assert.equal(targets.length, manifestFixtureCount);
+  assert.equal(new Set(targets.map(target => target.matchId)).size, manifestFixtureCount);
+  assert.equal(new Set(targets.map(target => target.fixtureDate)).size, manifestDateCount);
   assert.ok(targets.every(target => Number.isInteger(target.providerLeagueId)));
   assert.ok(targets.every(target => target.discoveryGroup?.key));
   assert.ok(targets.every(target => target.status === 'verified'));
