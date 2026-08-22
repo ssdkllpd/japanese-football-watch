@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 21:53 JST",
+  "sources": {
+    "valencia-sato-transfer-20260707": {
+      "id": "valencia-sato-transfer-20260707",
+      "name": "Valencia CF official Ryunosuke Sato signing announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.valenciacf.com/comunicado-oficial-ryunosuke-sato",
+      "retrievedAt": "2026-08-22T21:53:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "transferDate", "contract", "position", "nationality"]
+    },
+    "fctokyo-sato-transfer-20260707": {
+      "id": "fctokyo-sato-transfer-20260707",
+      "name": "FC Tokyo official Ryunosuke Sato transfer announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.fctokyo.co.jp/en/news/details/337421/",
+      "retrievedAt": "2026-08-22T21:53:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "transferDate", "position"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "pos": "MF",
+      "previousClub": "FC東京",
+      "previousLeague": "J1",
+      "membershipChangeType": "transfer",
+      "transferDate": "2026-07-07",
+      "status": "FC東京からバレンシアへ完全移籍・2031年までの5年契約",
+      "statsStatus": "preseason",
+      "statsAsOf": "2026-08-22 ラ・リーガ初戦前",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["valencia-sato-transfer-20260707", "fctokyo-sato-transfer-20260707"]
+    }
+  ]
+}
