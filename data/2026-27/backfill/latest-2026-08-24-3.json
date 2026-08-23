@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 02:58 JST",
+  "sources": {
+    "monaco-havre-squad-official-20260823": {
+      "id": "monaco-havre-squad-official-20260823",
+      "name": "AS Monaco official squad for Le Havre",
+      "type": "club_official_squad",
+      "url": "https://www.asmonaco.com/fr/news/le-groupe-de-l-as-monaco-pour-le-retour-de-la-ligue-1-au-havre",
+      "retrievedAt": "2026-08-24T02:58:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["matchSquad"]
+    },
+    "uol-havre-monaco-result-20260823": {
+      "id": "uol-havre-monaco-result-20260823",
+      "name": "UOL Le Havre 0-1 Monaco match report",
+      "type": "reputable_secondary_match_report",
+      "url": "https://www.uol.com.br/esporte/futebol/ultimas-noticias/2026/08/23/le-havre-monaco-filipe-luis.ghtm",
+      "retrievedAt": "2026-08-24T02:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "goals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "ligue1-2026-08-23-le-havre-monaco",
+      "league": "リーグ・アン",
+      "competition": "Ligue 1",
+      "round": "第1節",
+      "ko": "2026-08-23 17:15 CEST",
+      "match": "Le Havre 0-1 AS Monaco",
+      "players": "南野拓実",
+      "appearance": "南野拓実はAS Monaco公式招集メンバーに入らずメンバー外。",
+      "note": "AS MonacoがEric Dierの得点で1-0勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["monaco-havre-squad-official-20260823", "uol-havre-monaco-result-20260823"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "南野拓実",
+      "club": "AS Monaco",
+      "league": "リーグ・アン",
+      "status": "リーグ・アン第1節Le Havre戦メンバー外・Monaco 1-0勝利",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-23 Ligue 1 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["monaco-havre-squad-official-20260823", "uol-havre-monaco-result-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-minamino-havre-monaco-20260823",
+      "matchId": "ligue1-2026-08-23-le-havre-monaco",
+      "player": "南野拓実",
+      "club": "AS Monaco",
+      "league": "リーグ・アン",
+      "competition": "Ligue 1",
+      "match": "Le Havre 0-1 AS Monaco",
+      "ko": "2026-08-23 17:15 CEST",
+      "round": "第1節",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["monaco-havre-squad-official-20260823", "uol-havre-monaco-result-20260823"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

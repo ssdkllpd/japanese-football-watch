@@ -63,7 +63,7 @@ function buildHarness() {
 test('Monaco completed fixture and Minamino squad absence load through runtime without a fake rating', async () => {
   const manifest = readJson('data/2026-27/backfill/index.json');
   const apiManifest = readJson('config/api-football-existing-results.json');
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-12.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-23-12.json'));
   assert.ok(apiManifest.fixtures.some(fixture => fixture.matchId === 'uecl-2026-08-20-gornik-monaco'));
   assert.ok(apiManifest.fixtureDiscoveryGroups.some(group => group.key === 'monaco' && group.matchIds.includes('uecl-2026-08-20-gornik-monaco')));
   assert.deepEqual(apiManifest.playerAliases['南野拓実'], ['Takumi Minamino', 'T. Minamino']);

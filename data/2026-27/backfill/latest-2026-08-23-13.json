@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 22:04 JST",
+  "sources": {
+    "psv-team-sano-20260823": {
+      "id": "psv-team-sano-20260823",
+      "name": "PSV official Kodai Sano team statistics",
+      "type": "club_official_player_statistics",
+      "url": "https://www.psv.nl/teams/team",
+      "retrievedAt": "2026-08-23T22:04:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["seasonAppearances", "seasonMinutes", "seasonGoals", "seasonAssists", "seasonYellowCards", "seasonRedCards"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "status": "PSV加入後、2026-08-15エクセルシオール戦で公式戦デビュー。PSV公式のシーズン集計で当該完了試合分28分を確認。",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-15 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "sourceIds": ["psv-team-sano-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sano-excelsior-psv-20260815",
+      "matchId": "eredivisie-2026-08-15-excelsior-psv",
+      "player": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "match": "エクセルシオール 1-2 PSV",
+      "ko": "2026-08-15 20:00 CEST",
+      "round": "第2節 / 全34節",
+      "appearance": "substitute",
+      "start": false,
+      "bench": true,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["psv-excelsior-matchcenter-20260815", "psv-team-sano-20260823"],
+      "values": {
+        "minutes": 28,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 28, "sourceId": "psv-team-sano-20260823"},
+        "goals": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "assists": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "psv-excelsior-matchcenter-20260815"}
+      },
+      "ratingSources": [
+        {
+          "id": "psv-team-sano-20260823",
+          "name": "PSV official Kodai Sano team statistics",
+          "type": "club_official_player_statistics",
+          "url": "https://www.psv.nl/teams/team",
+          "retrievedAt": "2026-08-23T22:04:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["seasonAppearances", "seasonMinutes", "seasonGoals", "seasonAssists", "seasonYellowCards", "seasonRedCards"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.0,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.447,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.778, "minutes": 0.713},
+      "deltaPerformance": 0,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost", "passesCompleted", "passesAttempted"]
+    }
+  ]
+}
