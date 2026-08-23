@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 11:10 JST",
+  "sources": {
+    "sky-brentford-spurs-lineups-20260822": {
+      "id": "sky-brentford-spurs-lineups-20260822",
+      "name": "Sky Sports Brentford v Tottenham confirmed teams and result",
+      "type": "structured_secondary_lineup_and_result",
+      "url": "https://www.skysports.com/football/brentford-vs-tottenham-hotspur/teams/5610584958723786232",
+      "retrievedAt": "2026-08-23T11:10:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions"]
+    },
+    "sky-brentford-spurs-report-20260822": {
+      "id": "sky-brentford-spurs-report-20260822",
+      "name": "Sky Sports Brentford 3-0 Tottenham match report",
+      "type": "reputable_secondary_match_report",
+      "url": "https://www.skysports.com/football/brentford-vs-tottenham-hotspur/report/559445",
+      "retrievedAt": "2026-08-23T11:10:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "premier-2026-08-22-brentford-tottenham",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-23 01:30 JST",
+      "match": "ブレントフォード 3-0 トッテナム",
+      "players": "高井幸大",
+      "appearance": "高井幸大は確定先発・ベンチのいずれにも入らずメンバー外。",
+      "note": "トッテナムはプレミアリーグ開幕戦でブレントフォードに0-3で敗戦。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["sky-brentford-spurs-lineups-20260822", "sky-brentford-spurs-report-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "高井幸大",
+      "club": "トッテナム",
+      "league": "Premier League",
+      "status": "プレミアリーグ第1節メンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["sky-brentford-spurs-lineups-20260822", "sky-brentford-spurs-report-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-takai-brentford-tottenham-20260822",
+      "matchId": "premier-2026-08-22-brentford-tottenham",
+      "player": "高井幸大",
+      "club": "トッテナム",
+      "league": "Premier League",
+      "match": "ブレントフォード 3-0 トッテナム",
+      "ko": "2026-08-23 01:30 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sky-brentford-spurs-lineups-20260822", "sky-brentford-spurs-report-20260822"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}
