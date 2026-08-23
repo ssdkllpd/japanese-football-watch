@@ -30,7 +30,7 @@
       "ko": "2026-08-20 18:30 CEST",
       "match": "マザーウェル 1-3 フライブルク",
       "players": "鈴木唯人 / 後藤啓介",
-      "appearance": "鈴木唯人は先発し74分まで出場。後藤啓介は80分から途中出場し90+6分に得点。",
+      "appearance": "鈴木唯人は先発し74分出場。後藤啓介は80分から途中出場し90+6分に得点。",
       "status": "verified",
       "addIfMissing": false,
       "addToTopMatches": false,
@@ -46,7 +46,7 @@
       "statsStatus": "partial",
       "statsAsOf": "2026-08-20 UEFA Conference League play-off 1st leg",
       "priorityUpdate": true,
-      "priorityFields": ["keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "priorityFields": ["keyPasses", "tackles", "interceptions", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"],
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"]
     },
     {
@@ -57,7 +57,7 @@
       "statsStatus": "partial",
       "statsAsOf": "2026-08-20 UEFA Conference League play-off 1st leg",
       "priorityUpdate": true,
-      "priorityFields": ["shotsOnTarget", "shots", "keyPasses", "dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"],
+      "priorityFields": ["keyPasses", "duelsWon", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"],
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"]
     }
   ],
@@ -78,20 +78,17 @@
       "bench": false,
       "substitution": {"off": 74},
       "ratingPosition": "MF",
-      "ratingPositionSource": "match_official",
+      "ratingPositionSource": "api_football_fixture",
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"],
       "fieldSources": {
-        "minutes": "api-football-fixture-1623399",
-        "goals": "fotmob-motherwell-freiburg-events-20260820",
-        "assists": "fotmob-motherwell-freiburg-events-20260820",
-        "yellowCards": "scfreiburg-motherwell-report-20260820",
-        "secondYellowRed": "scfreiburg-motherwell-report-20260820",
-        "straightRed": "scfreiburg-motherwell-report-20260820",
-        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820",
-        "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
+        "minutes": "api-football-fixture-1623399", "goals": "api-football-fixture-1623399", "assists": "api-football-fixture-1623399",
+        "shots": "api-football-fixture-1623399", "shotsOnTarget": "api-football-fixture-1623399", "duelsWon": "api-football-fixture-1623399", "duelsTotal": "api-football-fixture-1623399",
+        "passesCompleted": "api-football-fixture-1623399", "passesAttempted": "api-football-fixture-1623399",
+        "yellowCards": "scfreiburg-motherwell-report-20260820", "secondYellowRed": "scfreiburg-motherwell-report-20260820", "straightRed": "scfreiburg-motherwell-report-20260820",
+        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820", "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
       },
-      "values": {"minutes":74,"goals":0,"assists":0,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
-      "missingFields": ["keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+      "values": {"minutes":74,"goals":0,"assists":0,"shots":2,"shotsOnTarget":1,"duelsWon":3,"duelsTotal":7,"passesCompleted":16,"passesAttempted":25,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "missingFields": ["keyPasses", "tackles", "interceptions", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"]
     },
     {
       "recordId": "uecl-2026-08-20-motherwell-freiburg-jp-fwd2e8",
@@ -109,29 +106,26 @@
       "bench": false,
       "substitution": {"off": 74},
       "ratingPosition": "MF",
-      "ratingPositionSource": "match_official",
+      "ratingPositionSource": "api_football_fixture",
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"],
       "fieldSources": {
-        "minutes": "api-football-fixture-1623399",
-        "goals": "fotmob-motherwell-freiburg-events-20260820",
-        "assists": "fotmob-motherwell-freiburg-events-20260820",
-        "yellowCards": "scfreiburg-motherwell-report-20260820",
-        "secondYellowRed": "scfreiburg-motherwell-report-20260820",
-        "straightRed": "scfreiburg-motherwell-report-20260820",
-        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820",
-        "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
+        "minutes": "api-football-fixture-1623399", "goals": "api-football-fixture-1623399", "assists": "api-football-fixture-1623399",
+        "shots": "api-football-fixture-1623399", "shotsOnTarget": "api-football-fixture-1623399", "duelsWon": "api-football-fixture-1623399", "duelsTotal": "api-football-fixture-1623399",
+        "passesCompleted": "api-football-fixture-1623399", "passesAttempted": "api-football-fixture-1623399",
+        "yellowCards": "scfreiburg-motherwell-report-20260820", "secondYellowRed": "scfreiburg-motherwell-report-20260820", "straightRed": "scfreiburg-motherwell-report-20260820",
+        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820", "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
       },
-      "values": {"minutes":74,"goals":0,"assists":0,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
-      "missingFields": ["keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
-      "jfwRating": 6.00,
+      "values": {"minutes":74,"goals":0,"assists":0,"shots":2,"shotsOnTarget":1,"duelsWon":3,"duelsTotal":7,"passesCompleted":16,"passesAttempted":25,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "missingFields": ["keyPasses", "tackles", "interceptions", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"],
+      "jfwRating": 5.93,
       "ratingVersion": "1.0",
       "ratingOpsVersion": "ops-v1.0",
-      "ratingCoverage": 0.447,
+      "ratingCoverage": 0.571,
       "ratingConfidence": "medium",
-      "ratingFactors": {"coverage":0.778,"minutes":0.962},
-      "deltaPerformance": 0,
+      "ratingFactors": {"coverage":0.852,"minutes":0.962},
+      "deltaPerformance": -0.09,
       "deltaDiscipline": 0,
-      "ratingBreakdown": [{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0}]
+      "ratingBreakdown": [{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0},{"key":"duelWinRate","value":0.4285714286,"points":-0.09}]
     },
     {
       "recordId": "uecl-2026-08-20-motherwell-freiburg-jp-19l4emr",
@@ -149,20 +143,17 @@
       "bench": true,
       "substitution": {"on": 80},
       "ratingPosition": "FW",
-      "ratingPositionSource": "match_official",
+      "ratingPositionSource": "api_football_fixture",
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"],
       "fieldSources": {
-        "minutes": "api-football-fixture-1623399",
-        "goals": "scfreiburg-motherwell-report-20260820",
-        "assists": "fotmob-motherwell-freiburg-events-20260820",
-        "yellowCards": "scfreiburg-motherwell-report-20260820",
-        "secondYellowRed": "scfreiburg-motherwell-report-20260820",
-        "straightRed": "scfreiburg-motherwell-report-20260820",
-        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820",
-        "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
+        "minutes": "api-football-fixture-1623399", "goals": "api-football-fixture-1623399", "assists": "api-football-fixture-1623399",
+        "shots": "api-football-fixture-1623399", "shotsOnTarget": "api-football-fixture-1623399", "duelsTotal": "api-football-fixture-1623399",
+        "passesCompleted": "api-football-fixture-1623399", "passesAttempted": "api-football-fixture-1623399",
+        "yellowCards": "scfreiburg-motherwell-report-20260820", "secondYellowRed": "scfreiburg-motherwell-report-20260820", "straightRed": "scfreiburg-motherwell-report-20260820",
+        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820", "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
       },
-      "values": {"minutes":10,"goals":1,"assists":0,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
-      "missingFields": ["shotsOnTarget", "shots", "keyPasses", "dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"]
+      "values": {"minutes":10,"goals":1,"assists":0,"shots":1,"shotsOnTarget":1,"duelsTotal":1,"passesCompleted":1,"passesAttempted":1,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "missingFields": ["keyPasses", "duelsWon", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"]
     },
     {
       "recordId": "uecl-2026-08-20-motherwell-freiburg-jp-19l4emr",
@@ -180,29 +171,26 @@
       "bench": true,
       "substitution": {"on": 80},
       "ratingPosition": "FW",
-      "ratingPositionSource": "match_official",
+      "ratingPositionSource": "api_football_fixture",
       "sourceIds": ["api-football-fixture-1623399", "scfreiburg-motherwell-report-20260820", "fotmob-motherwell-freiburg-events-20260820"],
       "fieldSources": {
-        "minutes": "api-football-fixture-1623399",
-        "goals": "scfreiburg-motherwell-report-20260820",
-        "assists": "fotmob-motherwell-freiburg-events-20260820",
-        "yellowCards": "scfreiburg-motherwell-report-20260820",
-        "secondYellowRed": "scfreiburg-motherwell-report-20260820",
-        "straightRed": "scfreiburg-motherwell-report-20260820",
-        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820",
-        "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
+        "minutes": "api-football-fixture-1623399", "goals": "api-football-fixture-1623399", "assists": "api-football-fixture-1623399",
+        "shots": "api-football-fixture-1623399", "shotsOnTarget": "api-football-fixture-1623399", "duelsTotal": "api-football-fixture-1623399",
+        "passesCompleted": "api-football-fixture-1623399", "passesAttempted": "api-football-fixture-1623399",
+        "yellowCards": "scfreiburg-motherwell-report-20260820", "secondYellowRed": "scfreiburg-motherwell-report-20260820", "straightRed": "scfreiburg-motherwell-report-20260820",
+        "penaltiesConceded": "fotmob-motherwell-freiburg-events-20260820", "ownGoals": "fotmob-motherwell-freiburg-events-20260820"
       },
-      "values": {"minutes":10,"goals":1,"assists":0,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
-      "missingFields": ["shotsOnTarget", "shots", "keyPasses", "dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"],
-      "jfwRating": 6.35,
+      "values": {"minutes":10,"goals":1,"assists":0,"shots":1,"shotsOnTarget":1,"duelsTotal":1,"passesCompleted":1,"passesAttempted":1,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "missingFields": ["keyPasses", "duelsWon", "dribbles", "dribbledPast", "bigChancesMissed", "possessionsLost"],
+      "jfwRating": 6.45,
       "ratingVersion": "1.0",
       "ratingOpsVersion": "ops-v1.0",
-      "ratingCoverage": 0.513,
+      "ratingCoverage": 0.712,
       "ratingConfidence": "medium",
-      "ratingFactors": {"coverage":0.820,"minutes":0.407},
-      "deltaPerformance": 1.05,
+      "ratingFactors": {"coverage":0.914,"minutes":0.407},
+      "deltaPerformance": 1.21,
       "deltaDiscipline": 0,
-      "ratingBreakdown": [{"key":"goals","value":1,"points":1.05},{"key":"assists","value":0,"points":0}]
+      "ratingBreakdown": [{"key":"goals","value":1,"points":1.05},{"key":"assists","value":0,"points":0},{"key":"shotsOnTarget","value":1,"points":0.12},{"key":"shots","value":1,"points":0.04}]
     }
   ]
 }
