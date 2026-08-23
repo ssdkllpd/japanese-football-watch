@@ -86,7 +86,7 @@ test('runtime backfill exposes verified Premier League opening-round records and
   assert.deepEqual(Array.from(kamada.priorityFields || []), ['tackles', 'interceptions', 'duelsWon', 'duelsTotal']);
 
   assert.ok(tomiyasu?.substitution?.on === 72);
-  assert.equal(tomiyasu.jfwRating, 6.25);
+  assert.equal(tomiyasu.jfwRating, null);
   assert.ok(maeda?.minutes === 80);
   assert.equal(maeda.jfwRating, null);
   assert.ok(tanaka?.minutes === 0);
