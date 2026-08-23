@@ -26,11 +26,14 @@ const byId = Object.fromEntries(fragment.playerMatchStats.map(record => [record.
 const rating = loadRating();
 
 test('August 23 Palace rating refinements are reproducible', () => {
-  const kamada = rating.compute(inputsFromRecord(byId['r-kamada-everton-palace-20260822']), 'MF');
-  assert.equal(kamada.jfwRating, 5.8);
-  assert.equal(kamada.ratingCoverage, 0.447);
-  assert.equal(kamada.ratingConfidence, 'medium');
+  const kamadaRecord = byId['r-kamada-everton-palace-20260822'];
+  const kamada = rating.compute(inputsFromRecord(kamadaRecord), 'MF');
+  assert.equal(kamada.jfwRating, 6.3);
+  assert.equal(kamada.ratingCoverage, 0.755);
+  assert.equal(kamada.ratingConfidence, 'high');
   assert.equal(kamada.deltaDiscipline, -0.2);
+  assert.deepEqual(kamadaRecord.priorityFields, ['tackles', 'interceptions', 'duelsWon', 'duelsTotal']);
+  assert.equal(kamadaRecord.previousRating, 5.8);
 
   const tomiyasu = rating.compute(inputsFromRecord(byId['r-tomiyasu-everton-palace-20260822']), 'DF');
   assert.equal(tomiyasu.jfwRating, 6.25);
