@@ -439,7 +439,10 @@
               ...(r.providerRatings || {})
             }
           };
-          r = ratingInputsSignature(previous) !== ratingInputsSignature(merged)
+          const inputsChanged = ratingInputsSignature(previous) !== ratingInputsSignature(merged);
+          const incomingCarriesRating = Object.prototype.hasOwnProperty.call(r, 'jfwRating')
+            && ratingInputsSignature(merged) === ratingInputsSignature(r);
+          r = inputsChanged && !incomingCarriesRating
             ? clearCachedRating(merged)
             : merged;
           D.playerMatchStats[index] = r;
