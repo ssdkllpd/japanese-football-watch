@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-22 23:05 JST",
+  "sources": {
+    "bbc-hull-manunited-20260822": {
+      "id": "bbc-hull-manunited-20260822",
+      "name": "BBC player ratings / match report via Yahoo",
+      "type": "reputable_secondary_match_report",
+      "url": "https://nz.news.yahoo.com/hull-city-2-0-man-133758072.html",
+      "retrievedAt": "2026-08-22T23:05:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result"]
+    },
+    "oddschecker-hull-manunited-lineup-20260822": {
+      "id": "oddschecker-hull-manunited-lineup-20260822",
+      "name": "Oddschecker confirmed Hull City v Manchester United lineups",
+      "type": "structured_secondary_lineup",
+      "url": "https://www.oddschecker.com/insight/football/20260822-hull-vs-manchester-united-confirmed-lineups",
+      "retrievedAt": "2026-08-22T23:05:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["startingLineup", "bench"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "premier-2026-08-22-hull-manunited",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-22 20:30 JST",
+      "match": "ハル・シティ 2-0 マンチェスター・ユナイテッド",
+      "players": "守田英正",
+      "appearance": "守田英正は先発・ベンチのいずれにも入らずメンバー外。",
+      "note": "ハル・シティがプレミアリーグ開幕戦を2-0で勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["bbc-hull-manunited-20260822", "oddschecker-hull-manunited-lineup-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "守田英正",
+      "club": "ハル・シティ",
+      "league": "Premier League",
+      "status": "プレミアリーグ第1節メンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["bbc-hull-manunited-20260822", "oddschecker-hull-manunited-lineup-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-morita-hull-manunited-20260822",
+      "matchId": "premier-2026-08-22-hull-manunited",
+      "player": "守田英正",
+      "club": "ハル・シティ",
+      "league": "Premier League",
+      "match": "ハル・シティ 2-0 マンチェスター・ユナイテッド",
+      "ko": "2026-08-22 20:30 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["oddschecker-hull-manunited-lineup-20260822", "bbc-hull-manunited-20260822"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 06:10 JST",
+  "sources": {
+    "soccerking-valencia-celta-lineup-20260823": {
+      "id": "soccerking-valencia-celta-lineup-20260823",
+      "name": "Soccer King Valencia v Celta confirmed lineup report",
+      "type": "reputable_secondary_lineup",
+      "url": "https://news.livedoor.com/article/detail/32134075/",
+      "retrievedAt": "2026-08-23T06:10:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["startingXI"]
+    },
+    "cadena-ser-valencia-celta-result-20260822": {
+      "id": "cadena-ser-valencia-celta-result-20260822",
+      "name": "Cadena SER Valencia 0-0 Celta match report",
+      "type": "reputable_secondary_match_report",
+      "url": "https://cadenaser.com/nacional/2026/08/22/valencia-0-0-celta-de-vigo-resumen-resultado-y-goles-del-partido-de-la-jornada-2-de-laliga-ea-sports-cadena-ser/",
+      "retrievedAt": "2026-08-23T06:10:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "teamGoals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "laliga-2026-08-22-valencia-celta",
+      "league": "ラ・リーガ",
+      "round": "第2節",
+      "ko": "2026-08-23 02:30 JST",
+      "match": "バレンシア 0-0 セルタ",
+      "players": "佐藤龍之介",
+      "appearance": "佐藤龍之介は先発し、バレンシアでラ・リーガ公式戦デビュー。試合は0-0で終了。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["soccerking-valencia-celta-lineup-20260823", "cadena-ser-valencia-celta-result-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "status": "第2節セルタ戦でラ・リーガ公式戦初出場・先発",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "sourceIds": ["soccerking-valencia-celta-lineup-20260823", "cadena-ser-valencia-celta-result-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sato-valencia-celta-20260822",
+      "matchId": "laliga-2026-08-22-valencia-celta",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "match": "バレンシア 0-0 セルタ",
+      "ko": "2026-08-23 02:30 JST",
+      "round": "第2節",
+      "appearance": "starter",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["soccerking-valencia-celta-lineup-20260823", "cadena-ser-valencia-celta-result-20260822"],
+      "values": {
+        "goals": 0,
+        "assists": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "missing"},
+        "goals": {"state": "value", "value": 0, "sourceId": "cadena-ser-valencia-celta-result-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "cadena-ser-valencia-celta-result-20260822"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "missing"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"}
+      },
+      "ratingSources": [
+        {
+          "id": "soccerking-valencia-celta-lineup-20260823",
+          "name": "Soccer King Valencia v Celta confirmed lineup report",
+          "type": "reputable_secondary_lineup",
+          "url": "https://news.livedoor.com/article/detail/32134075/",
+          "retrievedAt": "2026-08-23T06:10:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["startingXI"]
+        },
+        {
+          "id": "cadena-ser-valencia-celta-result-20260822",
+          "name": "Cadena SER Valencia 0-0 Celta match report",
+          "type": "reputable_secondary_match_report",
+          "url": "https://cadenaser.com/nacional/2026/08/22/valencia-0-0-celta-de-vigo-resumen-resultado-y-goles-del-partido-de-la-jornada-2-de-laliga-ea-sports-cadena-ser/",
+          "retrievedAt": "2026-08-23T06:10:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "teamGoals"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"]
+    }
+  ]
+}

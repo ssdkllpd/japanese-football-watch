@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 03:10 JST",
+  "sources": {
+    "oddschecker-birmingham-bristol-20260822": {
+      "id": "oddschecker-birmingham-bristol-20260822",
+      "name": "Oddschecker Birmingham v Bristol City confirmed lineups",
+      "type": "structured_secondary_lineup",
+      "url": "https://www.oddschecker.com/insight/football/20260822-birmingham-vs-bristol-city-confirmed-lineups",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 3,
+      "exhaustiveFor": ["startingLineup", "bench"]
+    },
+    "reddit-birmingham-bristol-20260822": {
+      "id": "reddit-birmingham-bristol-20260822",
+      "name": "Structured Birmingham v Bristol City match event feed",
+      "type": "structured_secondary_lineup_and_events",
+      "url": "https://www.reddit.com/r/soccer/",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 4,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions", "goals"]
+    },
+    "oddschecker-blackburn-middlesbrough-20260822": {
+      "id": "oddschecker-blackburn-middlesbrough-20260822",
+      "name": "Oddschecker Blackburn v Middlesbrough confirmed lineups",
+      "type": "structured_secondary_lineup",
+      "url": "https://www.oddschecker.com/insight/football/20260822-blackburn-vs-middlesbrough-confirmed-lineups",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 3,
+      "exhaustiveFor": ["startingLineup", "bench"]
+    },
+    "reddit-blackburn-middlesbrough-20260822": {
+      "id": "reddit-blackburn-middlesbrough-20260822",
+      "name": "Structured Blackburn v Middlesbrough match event feed",
+      "type": "structured_secondary_events",
+      "url": "https://www.reddit.com/r/soccer/",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 4,
+      "exhaustiveFor": ["result", "substitutions", "goals"]
+    },
+    "sky-qpr-bolton-20260822": {
+      "id": "sky-qpr-bolton-20260822",
+      "name": "Sky Sports QPR v Bolton match report",
+      "type": "reputable_secondary_match_report",
+      "url": "https://www.skysports.com/football/qpr-vs-bolton/report",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result"]
+    },
+    "reddit-qpr-bolton-20260822": {
+      "id": "reddit-qpr-bolton-20260822",
+      "name": "Structured QPR v Bolton lineup feed",
+      "type": "structured_secondary_lineup",
+      "url": "https://www.reddit.com/r/soccer/",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 4,
+      "exhaustiveFor": ["startingLineup", "bench"]
+    },
+    "reddit-southampton-stoke-20260822": {
+      "id": "reddit-southampton-stoke-20260822",
+      "name": "Structured Southampton v Stoke match event feed",
+      "type": "structured_secondary_lineup_and_events",
+      "url": "https://www.reddit.com/r/soccer/",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 4,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "goals"]
+    },
+    "az-fortuna-20260822": {
+      "id": "az-fortuna-20260822",
+      "name": "AZ official Fortuna Sittard v AZ fixture page",
+      "type": "club_official_fixture",
+      "url": "https://az.nl/wedstrijden/wedstrijden/vriendenloterij-eredivisie/fortuna-sittard-az-22-08-2026",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["fixtureIdentity"]
+    },
+    "structured-fortuna-az-20260822": {
+      "id": "structured-fortuna-az-20260822",
+      "name": "Structured Fortuna Sittard v AZ lineup and event feed",
+      "type": "structured_secondary_lineup_and_events",
+      "url": "https://www.365scores.com/football/match/eredivisie-57/az-alkmaar-fortuna-sittard-699-722-57",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 3,
+      "exhaustiveFor": ["startingLineup", "bench"]
+    },
+    "apwin-fortuna-az-20260822": {
+      "id": "apwin-fortuna-az-20260822",
+      "name": "APWin Fortuna Sittard v AZ event log",
+      "type": "structured_secondary_events",
+      "url": "https://www.apwin.com/match/az-fortuna-sittard/ZwfuC/",
+      "retrievedAt": "2026-08-23T03:10:00+09:00",
+      "priority": 3,
+      "exhaustiveFor": ["result", "substitutions", "goals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "championship-2026-08-22-birmingham-bristol",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "バーミンガム 2-2 ブリストル・シティ",
+      "players": "岩田智輝 / 藤本寛也 / 平河悠",
+      "appearance": "岩田智輝と平河悠が先発。藤本寛也はベンチ入りしたが出場なし。平河悠は90+1分に交代。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["oddschecker-birmingham-bristol-20260822", "reddit-birmingham-bristol-20260822"]
+    },
+    {
+      "matchId": "championship-2026-08-22-blackburn-middlesbrough",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "ブラックバーン 2-1 ミドルズブラ",
+      "players": "森下龍矢 / 大橋祐紀",
+      "appearance": "森下龍矢は先発し61分に交代。大橋祐紀は69分から途中出場。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["oddschecker-blackburn-middlesbrough-20260822", "reddit-blackburn-middlesbrough-20260822"]
+    },
+    {
+      "matchId": "championship-2026-08-22-qpr-bolton",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "QPR 0-0 ボルトン",
+      "players": "斉藤光毅",
+      "appearance": "斉藤光毅は先発。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["sky-qpr-bolton-20260822", "reddit-qpr-bolton-20260822"]
+    },
+    {
+      "matchId": "championship-2026-08-22-southampton-stoke",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "サウサンプトン 3-1 ストーク",
+      "players": "松木玖生",
+      "appearance": "松木玖生は先発。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["reddit-southampton-stoke-20260822"]
+    },
+    {
+      "matchId": "eredivisie-2026-08-22-fortuna-az",
+      "league": "エールディヴィジ",
+      "round": "第3節 / 全34節",
+      "ko": "2026-08-22 23:30 JST",
+      "match": "フォルトゥナ・シッタート 0-2 AZ",
+      "players": "毎熊晟矢 / 市原吏音",
+      "appearance": "毎熊晟矢はベンチから86分に途中出場。市原吏音はベンチ入りしたが出場なし。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["az-fortuna-20260822", "structured-fortuna-az-20260822", "apwin-fortuna-az-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {"name":"岩田智輝","club":"バーミンガム","league":"チャンピオンシップ","status":"第2節先発","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"],"sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"]},
+    {"name":"藤本寛也","club":"バーミンガム","league":"チャンピオンシップ","status":"第2節ベンチ入り・出場なし","statsStatus":"verified","statsAsOf":"2026-08-22 第2節終了","sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"]},
+    {"name":"平河悠","club":"ブリストル・シティ","league":"チャンピオンシップ","status":"第2節先発・90+1分交代","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"],"sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"]},
+    {"name":"森下龍矢","club":"ブラックバーン","league":"チャンピオンシップ","status":"第2節先発・61分交代","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"],"sourceIds":["oddschecker-blackburn-middlesbrough-20260822","reddit-blackburn-middlesbrough-20260822"]},
+    {"name":"大橋祐紀","club":"ブラックバーン","league":"チャンピオンシップ","status":"第2節69分途中出場","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"],"sourceIds":["oddschecker-blackburn-middlesbrough-20260822","reddit-blackburn-middlesbrough-20260822"]},
+    {"name":"斉藤光毅","club":"QPR","league":"チャンピオンシップ","status":"第2節先発","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["minutes","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"],"sourceIds":["sky-qpr-bolton-20260822","reddit-qpr-bolton-20260822"]},
+    {"name":"松木玖生","club":"サウサンプトン","league":"チャンピオンシップ","status":"第2節先発","statsStatus":"partial","statsAsOf":"2026-08-22 第2節終了","priorityUpdate":true,"priorityFields":["minutes","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"],"sourceIds":["reddit-southampton-stoke-20260822"]},
+    {"name":"毎熊晟矢","club":"AZ","league":"エールディヴィジ","status":"第3節86分途中出場","statsStatus":"partial","statsAsOf":"2026-08-22 第3節終了","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","gaOnPitch","tackles","interceptions","clearances","blocks","duelsWon","duelsTotal","aerialDuelsWon","aerialDuelsTotal","dribbledPast"],"sourceIds":["structured-fortuna-az-20260822","apwin-fortuna-az-20260822"]},
+    {"name":"市原吏音","club":"AZ","league":"エールディヴィジ","status":"第3節ベンチ入り・出場なし","statsStatus":"verified","statsAsOf":"2026-08-22 第3節終了","sourceIds":["structured-fortuna-az-20260822"]}
+  ],
+  "playerMatchStats": [
+    {"recordId":"r-iwata-birmingham-bristol-20260822","matchId":"championship-2026-08-22-birmingham-bristol","player":"岩田智輝","club":"バーミンガム","league":"チャンピオンシップ","match":"バーミンガム 2-2 ブリストル・シティ","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"started","ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"],"values":{},"start":true,"bench":false,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]},
+    {"recordId":"r-fujimoto-birmingham-bristol-20260822","matchId":"championship-2026-08-22-birmingham-bristol","player":"藤本寛也","club":"バーミンガム","league":"チャンピオンシップ","match":"バーミンガム 2-2 ブリストル・シティ","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"bench_unused","ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"],"values":{"minutes":0,"goals":0,"assists":0},"start":false,"bench":true,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":false,"priorityFields":[]},
+    {"recordId":"r-hirakawa-birmingham-bristol-20260822","matchId":"championship-2026-08-22-birmingham-bristol","player":"平河悠","club":"ブリストル・シティ","league":"チャンピオンシップ","match":"バーミンガム 2-2 ブリストル・シティ","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"starter_sub_90+1","substitution":{"off":"90+1"},"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["oddschecker-birmingham-bristol-20260822","reddit-birmingham-bristol-20260822"],"values":{},"start":true,"bench":false,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"]},
+    {"recordId":"r-morishita-blackburn-middlesbrough-20260822","matchId":"championship-2026-08-22-blackburn-middlesbrough","player":"森下龍矢","club":"ブラックバーン","league":"チャンピオンシップ","match":"ブラックバーン 2-1 ミドルズブラ","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"starter_sub_61","substitution":{"off":61},"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["oddschecker-blackburn-middlesbrough-20260822","reddit-blackburn-middlesbrough-20260822"],"values":{"minutes":61,"goals":0},"start":true,"bench":false,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"]},
+    {"recordId":"r-ohashi-blackburn-middlesbrough-20260822","matchId":"championship-2026-08-22-blackburn-middlesbrough","player":"大橋祐紀","club":"ブラックバーン","league":"チャンピオンシップ","match":"ブラックバーン 2-1 ミドルズブラ","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"sub_69","substitution":{"on":69},"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["oddschecker-blackburn-middlesbrough-20260822","reddit-blackburn-middlesbrough-20260822"],"values":{"minutes":21,"goals":0,"assists":0},"start":false,"bench":true,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"]},
+    {"recordId":"r-saito-qpr-bolton-20260822","matchId":"championship-2026-08-22-qpr-bolton","player":"斉藤光毅","club":"QPR","league":"チャンピオンシップ","match":"QPR 0-0 ボルトン","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"started","ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["sky-qpr-bolton-20260822","reddit-qpr-bolton-20260822"],"values":{"goals":0,"assists":0},"start":true,"bench":false,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"]},
+    {"recordId":"r-matsuki-southampton-stoke-20260822","matchId":"championship-2026-08-22-southampton-stoke","player":"松木玖生","club":"サウサンプトン","league":"チャンピオンシップ","match":"サウサンプトン 3-1 ストーク","ko":"2026-08-22 23:00 JST","round":"第2節 / 全46節","appearance":"started","ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["reddit-southampton-stoke-20260822"],"values":{"goals":0},"start":true,"bench":false,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","duelsWon","duelsTotal","dribbles","bigChancesMissed"]},
+    {"recordId":"r-maikuma-fortuna-az-20260822","matchId":"eredivisie-2026-08-22-fortuna-az","player":"毎熊晟矢","club":"AZ","league":"エールディヴィジ","match":"フォルトゥナ・シッタート 0-2 AZ","ko":"2026-08-22 23:30 JST","round":"第3節 / 全34節","appearance":"sub_86","substitution":{"on":86},"ratingPosition":"DF","ratingPositionSource":"season_primary","sourceIds":["structured-fortuna-az-20260822","apwin-fortuna-az-20260822"],"values":{},"start":false,"bench":true,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","gaOnPitch","tackles","interceptions","clearances","blocks","duelsWon","duelsTotal","aerialDuelsWon","aerialDuelsTotal","dribbledPast"]},
+    {"recordId":"r-ichihara-fortuna-az-20260822","matchId":"eredivisie-2026-08-22-fortuna-az","player":"市原吏音","club":"AZ","league":"エールディヴィジ","match":"フォルトゥナ・シッタート 0-2 AZ","ko":"2026-08-22 23:30 JST","round":"第3節 / 全34節","appearance":"bench_unused","ratingPosition":"DF","ratingPositionSource":"season_primary","sourceIds":["structured-fortuna-az-20260822"],"values":{"minutes":0,"goals":0,"assists":0},"start":false,"bench":true,"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":false,"priorityFields":[]}
+  ]
+}

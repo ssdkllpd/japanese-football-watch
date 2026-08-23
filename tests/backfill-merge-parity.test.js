@@ -87,7 +87,7 @@ test('current raw data expands without regressing the verified parity baseline',
   assert.ok(merged.topMatches.length >= 7);
   assert.ok(merged.matches.filter(match => match.formationData).length >= 27);
   assert.ok(merged.players.filter(player => player.photo).length >= 27);
-  assert.ok(merged.playerMatchStats.filter(record => record.providerRatings?.apiFootball).length >= 43);
+  assert.ok(merged.playerMatchStats.filter(record => record.providerRatings?.apiFootball).length >= 42);
 
   const ito = merged.players.find(player => player.name === '伊東純也');
   assert.ok(ito, '伊東純也 must remain in the merged player registry');

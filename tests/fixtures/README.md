@@ -16,3 +16,9 @@ The fixture is compressed only to keep the repository diff small. Tests unzip
 and parse it before using `deepStrictEqual`; it is not a runtime data source.
 Regenerate it from the pinned legacy loader only when an intentional parity
 baseline change is reviewed.
+
+## Runtime harness rule
+
+New runtime backfill tests must use `tests/helpers/backfill-harness.js` when possible.
+If a dedicated VM harness is unavoidable, load `backfill-merge.js` before
+`backfill-loader.js`. Do not add a new custom `buildHarness()` that loads the loader alone.
