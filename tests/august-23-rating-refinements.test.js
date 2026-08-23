@@ -30,19 +30,28 @@ test('August 23 Palace rating refinements are reproducible', () => {
   assert.equal(kamada.jfwRating, 5.8);
   assert.equal(kamada.ratingCoverage, 0.447);
   assert.equal(kamada.ratingConfidence, 'medium');
+  assert.equal(kamada.deltaDiscipline, -0.2);
+
   const tomiyasu = rating.compute(inputsFromRecord(byId['r-tomiyasu-everton-palace-20260822']), 'DF');
   assert.equal(tomiyasu.jfwRating, 6.25);
   assert.equal(tomiyasu.ratingCoverage, 0.481);
   assert.equal(tomiyasu.ratingConfidence, 'medium');
+  assert.equal(tomiyasu.ratingBreakdown.find(item => item.key === 'gaOnPitch').value, 0);
 });
 
 test('August 23 Antwerp-Genk rating refinements are reproducible', () => {
   const yokoyama = rating.compute(inputsFromRecord(byId['r-yokoyama-genk-antwerp-20260822']), 'FW');
   assert.equal(yokoyama.jfwRating, 6.82);
+  assert.equal(yokoyama.ratingConfidence, 'medium');
+
   const ito = rating.compute(inputsFromRecord(byId['r-ito-genk-antwerp-20260822']), 'FW');
   assert.equal(ito.jfwRating, 6);
+  assert.equal(ito.ratingConfidence, 'medium');
+
   const tsunashima = rating.compute(inputsFromRecord(byId['r-tsunashima-antwerp-genk-20260822']), 'DF');
   assert.equal(tsunashima.jfwRating, 5.32);
+  assert.equal(tsunashima.ratingConfidence, 'medium');
+
   const nozawa = rating.compute(inputsFromRecord(byId['r-nozawa-antwerp-genk-20260822']), 'GK');
   assert.equal(nozawa.jfwRating, 5.42);
   assert.equal(nozawa.ratingConfidence, 'low');
@@ -54,4 +63,6 @@ test('retained snapshot matches the latest overlay manifest', () => {
   assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-8.json');
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.snapshotManifestMatchesCurrentManifest, true);
+  assert.equal(snapshot.validation.premierLeaguePalaceOpeningRatingsRefined, true);
+  assert.equal(snapshot.validation.belgiumAntwerpGenkRatingInputsRefined, true);
 });
