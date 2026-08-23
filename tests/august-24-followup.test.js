@@ -31,3 +31,16 @@ test('August 24 follow-up fragment is registered and preserves missing Rating in
   assert.equal(sano.jfwRating, null);
   assert.equal(sano.priorityUpdate, true);
 });
+
+test('August 24 completed matches are queued for API detail backfill and snapshot mirrors manifest', () => {
+  const api = readJson('config/api-football-existing-results.json');
+  const manifest = readJson('data/2026-27/backfill/index.json');
+  const snapshot = readJson('state/latest_snapshot.json');
+  const fixtureIds = new Set(api.fixtures.map(fixture => fixture.matchId));
+
+  assert.ok(fixtureIds.has('dfbpokal-2026-08-23-schott-mainz-gladbach'));
+  assert.ok(fixtureIds.has('eredivisie-2026-08-23-psv-groningen'));
+  assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
+  assert.equal(snapshot.validation.bundesligaHashiokaCupGoalLoadsThroughPlayerMatchStats, true);
+  assert.equal(snapshot.validation.eredivisieSanoFirstStartLoadsThroughPlayerMatchStats, true);
+});
