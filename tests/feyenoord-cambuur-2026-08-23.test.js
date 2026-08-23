@@ -19,13 +19,23 @@ async function load() {
   c.window=c; vm.createContext(c); vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'),c); await c.window.JFWBackfill.applyCurrentBackfill(); return c.D;
 }
 
-test('Cambuur-Feyenoord adds Ueda goal and Watanabe clean on-pitch spell without guessing unresolved Rating inputs', async () => {
+test('Cambuur-Feyenoord preserves unresolved Rating gates and loads verified values', async () => {
+  const fragment = json('data/2026-27/backfill/latest-2026-08-24-4.json');
+  const rawUeda = fragment.playerMatchStats.find(r => r.recordId === 'r-ueda-cambuur-feyenoord-20260823');
+  const rawWatanabe = fragment.playerMatchStats.find(r => r.recordId === 'r-watanabe-cambuur-feyenoord-20260823');
+  for (const raw of [rawUeda, rawWatanabe]) {
+    assert.equal(raw.ratingInputs.assists.state, 'missing');
+    for (const field of ['yellowCards','secondYellowRed','straightRed','penaltiesConceded','ownGoals']) assert.equal(raw.ratingInputs[field].state, 'missing');
+    assert.equal(raw.jfwRating, null);
+    assert.equal(raw.priorityUpdate, true);
+  }
+
   const d = await load();
   const match = d.matches.find(m => m.matchId === 'eredivisie-2026-08-23-cambuur-feyenoord');
   assert.ok(match); assert.match(match.match, /2-5/);
   const ueda = d.playerMatchStats.find(r => r.matchId === match.matchId && r.player === '上田綺世');
   const watanabe = d.playerMatchStats.find(r => r.matchId === match.matchId && r.player === '渡辺剛');
   assert.ok(ueda); assert.ok(watanabe);
-  assert.equal(ueda.minutes, 67); assert.equal(ueda.goals, 1); assert.ok(ueda.priorityFields.includes('assists')); assert.ok(ueda.priorityFields.includes('yellowCards')); assert.equal(ueda.jfwRating, null); assert.equal(ueda.priorityUpdate, true);
-  assert.equal(watanabe.minutes, 67); assert.equal(watanabe.goals, 0); assert.equal(watanabe.gaOnPitch, 0); assert.ok(watanabe.priorityFields.includes('assists')); assert.ok(watanabe.priorityFields.includes('yellowCards')); assert.equal(watanabe.jfwRating, null); assert.equal(watanabe.priorityUpdate, true);
+  assert.equal(ueda.minutes, 67); assert.equal(ueda.goals, 1); assert.equal(ueda.jfwRating, null);
+  assert.equal(watanabe.minutes, 67); assert.equal(watanabe.goals, 0); assert.equal(watanabe.gaOnPitch, 0); assert.equal(watanabe.jfwRating, null);
 });
