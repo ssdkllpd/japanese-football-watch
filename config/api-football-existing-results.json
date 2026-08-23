@@ -42,7 +42,8 @@
     {"key":"crystal-palace","search":"Crystal Palace","aliases":["Crystal Palace","Palace"],"matchIds":["premier-2026-08-22-everton-palace"]},
     {"key":"ipswich","search":"Ipswich Town","aliases":["Ipswich Town","Ipswich"],"matchIds":["premier-2026-08-22-ipswich-sunderland"]},
     {"key":"leeds","search":"Leeds United","aliases":["Leeds United","Leeds"],"matchIds":["premier-2026-08-22-forest-leeds"]},
-    {"key":"tottenham","search":"Tottenham","aliases":["Tottenham","Tottenham Hotspur","Spurs"],"matchIds":["premier-2026-08-22-brentford-tottenham"]}
+    {"key":"tottenham","search":"Tottenham","aliases":["Tottenham","Tottenham Hotspur","Spurs"],"matchIds":["premier-2026-08-22-brentford-tottenham"]},
+    {"key":"brighton","search":"Brighton","aliases":["Brighton","Brighton & Hove Albion"],"matchIds":["premier-2026-08-23-brighton-villa"]}
   ],
   "selection": {
     "status": "verified",
@@ -57,6 +58,7 @@
     "knownFixtureIdsRemainFetchable": true
   },
   "fixtures": [
+    {"matchId":"premier-2026-08-23-brighton-villa","fixtureDate":"2026-08-23","homeAliases":["Brighton","Brighton & Hove Albion"],"awayAliases":["Aston Villa","Villa"]},
     {"matchId":"belgium-2026-08-22-antwerp-genk","fixtureDate":"2026-08-22","homeAliases":["Royal Antwerp","Royal Antwerp FC","R. Antwerp F.C."],"awayAliases":["Genk","KRC Genk"]},
     {"matchId":"championship-2026-08-22-birmingham-bristol","fixtureDate":"2026-08-22","homeAliases":["Birmingham","Birmingham City"],"awayAliases":["Bristol City"]},
     {"matchId":"championship-2026-08-22-blackburn-middlesbrough","fixtureDate":"2026-08-22","homeAliases":["Blackburn","Blackburn Rovers"],"awayAliases":["Middlesbrough"]},
@@ -147,6 +149,8 @@
     "高井幸大":["Kota Takai","K. Takai"],
     "野澤大志ブランドン":["Taishi Brandon Nozawa","Taishi Nozawa","T. Nozawa"],
     "綱島悠斗":["Yuto Tsunashima","Y. Tsunashima"],
-    "南野拓実":["Takumi Minamino","T. Minamino"]
+    "南野拓実":["Takumi Minamino","T. Minamino"],
+    "三笘薫":["Kaoru Mitoma","K. Mitoma"],
+    "鈴木彩艶":["Zion Suzuki","Z. Suzuki"]
   }
 }

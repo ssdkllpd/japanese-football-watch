@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 00:02 JST",
+  "sources": {
+    "sky-brighton-villa-teams-20260823": {
+      "id": "sky-brighton-villa-teams-20260823",
+      "name": "Sky Sports Brighton v Aston Villa confirmed teams and full-time result",
+      "type": "structured_secondary_lineup_and_result",
+      "url": "https://www.skysports.com/football/brighton-and-hove-albion-vs-aston-villa/teams/559450",
+      "retrievedAt": "2026-08-24T00:02:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "premier-2026-08-23-brighton-villa",
+      "league": "Premier League",
+      "round": "第1節 / 全38節",
+      "ko": "2026-08-23 22:00 JST",
+      "match": "ブライトン 4-0 アストン・ヴィラ",
+      "players": "三笘薫 / 鈴木彩艶",
+      "appearance": "三笘薫は確定先発・ベンチのいずれにも入らずメンバー外。鈴木彩艶はベンチ入りしたが出場なし。",
+      "note": "ブライトンがプレミアリーグ開幕戦でアストン・ヴィラに4-0で勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["sky-brighton-villa-teams-20260823"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "三笘薫",
+      "club": "ブライトン",
+      "league": "Premier League",
+      "status": "プレミアリーグ第1節メンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-23 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["sky-brighton-villa-teams-20260823"]
+    },
+    {
+      "name": "鈴木彩艶",
+      "club": "アストン・ヴィラ",
+      "league": "Premier League",
+      "status": "プレミアリーグ第1節ベンチ入り・未出場",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-23 第1節終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["sky-brighton-villa-teams-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-mitoma-brighton-villa-20260823",
+      "matchId": "premier-2026-08-23-brighton-villa",
+      "player": "三笘薫",
+      "club": "ブライトン",
+      "league": "Premier League",
+      "match": "ブライトン 4-0 アストン・ヴィラ",
+      "ko": "2026-08-23 22:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sky-brighton-villa-teams-20260823"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    },
+    {
+      "recordId": "r-suzuki-brighton-villa-20260823",
+      "matchId": "premier-2026-08-23-brighton-villa",
+      "player": "鈴木彩艶",
+      "club": "アストン・ヴィラ",
+      "league": "Premier League",
+      "match": "ブライトン 4-0 アストン・ヴィラ",
+      "ko": "2026-08-23 22:00 JST",
+      "round": "第1節 / 全38節",
+      "appearance": "bench_unused",
+      "ratingPosition": "GK",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sky-brighton-villa-teams-20260823"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": true,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

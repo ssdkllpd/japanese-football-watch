@@ -24,5 +24,5 @@ test('Sano Excelsior minutes resolve priority gate and produce JFW Rating withou
 
 test('snapshot mirrors manifest after Sano refinement',()=>{
   const m=readJson('data/2026-27/backfill/index.json'); const s=readJson('state/latest_snapshot.json');
-  assert.equal(m.fragments.at(-1),'latest-2026-08-23-13.json'); assert.deepEqual(s.overlayManifest.orderedFragments,m.fragments); assert.equal(s.validation.eredivisieSanoDebutRatingRefined,true);
+  assert.ok(m.fragments.includes('latest-2026-08-23-13.json')); assert.deepEqual(s.overlayManifest.orderedFragments,m.fragments); assert.equal(s.validation.eredivisieSanoDebutRatingRefined,true);
 });
