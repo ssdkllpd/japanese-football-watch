@@ -54,6 +54,7 @@ function buildHarness() {
   };
   context.window = context;
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-merge.js'), 'utf8'), context, { filename: 'backfill-merge.js' });
   const source = fs.readFileSync(path.join(ROOT, 'backfill-loader.js'), 'utf8');
   vm.runInContext(source, context, { filename: 'backfill-loader.js' });
   return context;
