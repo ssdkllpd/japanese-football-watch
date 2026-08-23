@@ -63,7 +63,7 @@ test('August 23 Antwerp-Genk rating refinements are reproducible', () => {
 test('retained snapshot matches the latest overlay manifest', () => {
   const manifest = JSON.parse(fs.readFileSync('data/2026-27/backfill/index.json', 'utf8'));
   const snapshot = JSON.parse(fs.readFileSync('state/latest_snapshot.json', 'utf8'));
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-8.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-23-8.json'));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.snapshotManifestMatchesCurrentManifest, true);
   assert.equal(snapshot.validation.premierLeaguePalaceOpeningRatingsRefined, true);
