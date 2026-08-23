@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 12:04 JST",
+  "sources": {
+    "southampton-stoke-report-20260822": {
+      "id": "southampton-stoke-report-20260822",
+      "name": "Southampton FC official Stoke City match report",
+      "type": "club_official_match_report",
+      "url": "https://www.southamptonfc.com/en/news/article/report-mubama-and-manning-strike-late-to-sink-stoke-at-st-marys",
+      "retrievedAt": "2026-08-23T12:04:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "startingLineup", "substitutions", "goals", "yellowCards", "secondYellowRed", "straightRed"]
+    },
+    "sky-southampton-stoke-live-20260822": {
+      "id": "sky-southampton-stoke-live-20260822",
+      "name": "Sky Sports Southampton v Stoke full live commentary",
+      "type": "reputable_secondary_exhaustive_events",
+      "url": "https://www.skysports.com/football/southampton-vs-stoke-city/live/560517",
+      "retrievedAt": "2026-08-23T12:04:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "shotAssists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "championship-2026-08-22-southampton-stoke",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "サウサンプトン 3-1 ストーク",
+      "players": "松木玖生",
+      "appearance": "松木玖生は先発し90+5分に交代。規定90分を通して出場し、シュート1、枠内0、キーパス1、得点0、アシスト0、カード0。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["southampton-stoke-report-20260822", "sky-southampton-stoke-live-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "松木玖生",
+      "club": "サウサンプトン",
+      "league": "チャンピオンシップ",
+      "status": "第2節ストーク戦先発・90+5分交代",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["southampton-stoke-report-20260822", "sky-southampton-stoke-live-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-matsuki-southampton-stoke-20260822",
+      "matchId": "championship-2026-08-22-southampton-stoke",
+      "player": "松木玖生",
+      "club": "サウサンプトン",
+      "league": "チャンピオンシップ",
+      "match": "サウサンプトン 3-1 ストーク",
+      "ko": "2026-08-22 23:00 JST",
+      "round": "第2節 / 全46節",
+      "appearance": "starter_sub_90+5",
+      "start": true,
+      "bench": false,
+      "substitution": {"off": "90+5"},
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["southampton-stoke-report-20260822", "sky-southampton-stoke-live-20260822"],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "shots": 1,
+        "shotsOnTarget": 0,
+        "keyPasses": 1,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "disciplineClean": true,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "southampton-stoke-report-20260822"},
+        "goals": {"state": "value", "value": 0, "sourceId": "sky-southampton-stoke-live-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "sky-southampton-stoke-live-20260822"},
+        "keyPasses": {"state": "value", "value": 1, "sourceId": "sky-southampton-stoke-live-20260822"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "southampton-stoke-report-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "southampton-stoke-report-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "southampton-stoke-report-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "sky-southampton-stoke-live-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "sky-southampton-stoke-live-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "southampton-stoke-report-20260822",
+          "name": "Southampton FC official Stoke City match report",
+          "type": "club_official_match_report",
+          "url": "https://www.southamptonfc.com/en/news/article/report-mubama-and-manning-strike-late-to-sink-stoke-at-st-marys",
+          "retrievedAt": "2026-08-23T12:04:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["result", "startingLineup", "substitutions", "goals", "yellowCards", "secondYellowRed", "straightRed"]
+        },
+        {
+          "id": "sky-southampton-stoke-live-20260822",
+          "name": "Sky Sports Southampton v Stoke full live commentary",
+          "type": "reputable_secondary_exhaustive_events",
+          "url": "https://www.skysports.com/football/southampton-vs-stoke-city/live/560517",
+          "retrievedAt": "2026-08-23T12:04:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "shotAssists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals"]
+        }
+      ],
+      "ratingConflicts": [
+        {
+          "field": "minutes",
+          "kept": 90,
+          "discarded": 89,
+          "reason": "Southampton official timeline records Matsuki remaining on the pitch until 90+5; a lower-priority external statistics page reports 89 minutes. JFW uses the verified match timeline and its 90-minute rating clamp.",
+          "discardedSource": "FotMob player match summary, retrieved 2026-08-23"
+        }
+      ],
+      "jfwRating": 6.09,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.563,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.848, "minutes": 1.0},
+      "deltaPerformance": 0.11,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "keyPasses", "value": 1, "points": 0.11}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
