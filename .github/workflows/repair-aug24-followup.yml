@@ -1,0 +1,94 @@
+name: Repair August 24 follow-up consistency
+
+on:
+  push:
+    branches: [feat/aug24-hashioka-sano]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/aug24-hashioka-sano
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Patch API manifest and retained snapshot
+        shell: python
+        run: |
+          import json
+          import subprocess
+          from pathlib import Path
+
+          api_path = Path('config/api-football-existing-results.json')
+          api = json.loads(api_path.read_text(encoding='utf-8'))
+
+          sano_match = 'eredivisie-2026-08-23-psv-groningen'
+          hashioka_match = 'dfbpokal-2026-08-23-schott-mainz-gladbach'
+
+          psv = next(group for group in api['fixtureDiscoveryGroups'] if group['key'] == 'psv')
+          if sano_match not in psv['matchIds']:
+              psv['matchIds'].append(sano_match)
+
+          if not any(group['key'] == 'borussia-monchengladbach' for group in api['fixtureDiscoveryGroups']):
+              api['fixtureDiscoveryGroups'].append({
+                  'key': 'borussia-monchengladbach',
+                  'search': 'Borussia Monchengladbach',
+                  'aliases': ['Borussia Mönchengladbach', 'Borussia Monchengladbach', "M'gladbach", 'Gladbach'],
+                  'matchIds': [hashioka_match],
+              })
+
+          existing_ids = {fixture['matchId'] for fixture in api['fixtures']}
+          if hashioka_match not in existing_ids:
+              api['fixtures'].append({
+                  'matchId': hashioka_match,
+                  'fixtureDate': '2026-08-23',
+                  'homeAliases': ['TSV Schott Mainz', 'Schott Mainz'],
+                  'awayAliases': ['Borussia Mönchengladbach', 'Borussia Monchengladbach', "M'gladbach", 'Gladbach'],
+              })
+          if sano_match not in existing_ids:
+              api['fixtures'].append({
+                  'matchId': sano_match,
+                  'fixtureDate': '2026-08-23',
+                  'homeAliases': ['PSV', 'PSV Eindhoven'],
+                  'awayAliases': ['FC Groningen', 'Groningen'],
+              })
+
+          api.setdefault('playerAliases', {}).setdefault('橋岡大樹', ['Daiki Hashioka', 'D. Hashioka'])
+          api_path.write_text(json.dumps(api, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          manifest_path = Path('data/2026-27/backfill/index.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          manifest_blob = subprocess.check_output(['git', 'hash-object', str(manifest_path)], text=True).strip()
+
+          snapshot_path = Path('state/latest_snapshot.json')
+          snapshot = json.loads(snapshot_path.read_text(encoding='utf-8'))
+          snapshot['updatedAt'] = '2026-08-24T00:55:00+09:00'
+          snapshot['overlayManifest']['blobSha'] = manifest_blob
+          snapshot['overlayManifest']['orderedFragments'] = manifest['fragments']
+          purpose_suffix = ' Includes Daiki Hashioka’s DFB-Pokal goal and Kodai Sano’s first PSV start on 2026-08-23.'
+          if purpose_suffix.strip() not in snapshot.get('purpose', ''):
+              snapshot['purpose'] = snapshot.get('purpose', '') + purpose_suffix
+          snapshot.setdefault('validation', {})['bundesligaHashiokaCupGoalLoadsThroughPlayerMatchStats'] = True
+          snapshot.setdefault('validation', {})['eredivisieSanoFirstStartLoadsThroughPlayerMatchStats'] = True
+          corrections = snapshot.setdefault('verifiedCorrections', [])
+          h_text = 'TSV Schott Mainz lost 0-5 to Borussia Mönchengladbach in the 2026-08-23 DFB-Pokal first round; Daiki Hashioka started and scored at 25 minutes. Required Rating inputs remain incomplete, so JFW Rating stays null and unresolved fields remain priorityUpdate.'
+          s_text = 'PSV beat FC Groningen 5-1 on 2026-08-23; Kodai Sano made his first PSV start. Exact minutes and required Rating event inputs remain incomplete, so JFW Rating stays null and unresolved fields remain priorityUpdate.'
+          for text in (h_text, s_text):
+              if text not in corrections:
+                  corrections.append(text)
+          snapshot_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+      - name: Remove one-time repair workflow and commit generated consistency files
+        run: |
+          rm .github/workflows/repair-aug24-followup.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add config/api-football-existing-results.json state/latest_snapshot.json .github/workflows/repair-aug24-followup.yml
+          git commit -m "Sync API manifest and snapshot for August 24 updates"
+          git push origin HEAD:feat/aug24-hashioka-sano
