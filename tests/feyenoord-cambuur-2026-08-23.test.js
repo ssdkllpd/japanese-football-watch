@@ -29,6 +29,9 @@ test('Cambuur-Feyenoord preserves unresolved Rating gates and loads verified val
     assert.equal(raw.jfwRating, null);
     assert.equal(raw.priorityUpdate, true);
   }
+  assert.equal(rawWatanabe.values.gaOnPitch, 0);
+  assert.equal(rawWatanabe.ratingInputs.gaOnPitch.state, 'value');
+  assert.equal(rawWatanabe.ratingInputs.gaOnPitch.value, 0);
 
   const d = await load();
   const match = d.matches.find(m => m.matchId === 'eredivisie-2026-08-23-cambuur-feyenoord');
@@ -37,5 +40,5 @@ test('Cambuur-Feyenoord preserves unresolved Rating gates and loads verified val
   const watanabe = d.playerMatchStats.find(r => r.matchId === match.matchId && r.player === '渡辺剛');
   assert.ok(ueda); assert.ok(watanabe);
   assert.equal(ueda.minutes, 67); assert.equal(ueda.goals, 1); assert.equal(ueda.jfwRating, null);
-  assert.equal(watanabe.minutes, 67); assert.equal(watanabe.goals, 0); assert.equal(watanabe.gaOnPitch, 0); assert.equal(watanabe.jfwRating, null);
+  assert.equal(watanabe.minutes, 67); assert.equal(watanabe.goals, 0); assert.equal(watanabe.jfwRating, null);
 });
