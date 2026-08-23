@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const fragment = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill/latest-2026-08-24-5.json'), 'utf8'));
+const fragmentName = 'latest-2026-08-24-5.json';
+const fragment = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill', fragmentName), 'utf8'));
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill/index.json'), 'utf8'));
 const snapshot = JSON.parse(fs.readFileSync(path.join(ROOT, 'state/latest_snapshot.json'), 'utf8'));
 
@@ -38,8 +39,11 @@ test('Gladbach cup refinement preserves verified Japanese appearance facts witho
   assert.equal(uno.priorityUpdate, false);
 });
 
-test('manifest and retained snapshot include the refinement as the latest ordered overlay', () => {
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-24-5.json');
+test('manifest and retained snapshot preserve the Gladbach refinement in append-only order', () => {
+  const manifestIndex = manifest.fragments.indexOf(fragmentName);
+  const snapshotIndex = snapshot.overlayManifest.orderedFragments.indexOf(fragmentName);
+  assert.ok(manifestIndex >= 0);
+  assert.equal(snapshotIndex, manifestIndex);
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.snapshotManifestMatchesCurrentManifest, true);
   assert.equal(snapshot.validation.bundesligaGladbachCupJapaneseAppearancesRefined, true);
