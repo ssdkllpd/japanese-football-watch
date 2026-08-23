@@ -50,7 +50,7 @@ function buildHarness() {
   return context;
 }
 
-test('Motherwell-Freiburg required gates produce stored JFW ratings without zero-filling advanced inputs', async () => {
+test('Motherwell-Freiburg required gates produce stored JFW ratings using already-collected API stats without zero-filling gaps', async () => {
   const context = buildHarness();
   await context.window.JFWBackfill.applyCurrentBackfill();
   const rows = context.D.playerMatchStats.filter(r => r.matchId === 'uecl-2026-08-20-motherwell-freiburg');
@@ -59,8 +59,14 @@ test('Motherwell-Freiburg required gates produce stored JFW ratings without zero
 
   assert.ok(suzuki);
   assert.equal(suzuki.minutes, 74);
-  assert.equal(suzuki.jfwRating, 6.0);
-  assert.equal(suzuki.ratingCoverage, 0.447);
+  assert.equal(suzuki.ratingInputs.shots?.value, 2);
+  assert.equal(suzuki.ratingInputs.shotsOnTarget?.value, 1);
+  assert.equal(suzuki.ratingInputs.duelsWon?.value, 3);
+  assert.equal(suzuki.ratingInputs.duelsTotal?.value, 7);
+  assert.equal(suzuki.ratingInputs.passesCompleted?.value, 16);
+  assert.equal(suzuki.ratingInputs.passesAttempted?.value, 25);
+  assert.equal(suzuki.jfwRating, 5.93);
+  assert.equal(suzuki.ratingCoverage, 0.571);
   assert.equal(suzuki.ratingConfidence, 'medium');
   for (const field of ['yellowCards','secondYellowRed','straightRed','penaltiesConceded','ownGoals']) {
     assert.equal(suzuki.ratingInputs[field]?.state, 'value');
@@ -68,19 +74,29 @@ test('Motherwell-Freiburg required gates produce stored JFW ratings without zero
   }
   assert.equal(suzuki.ratingInputs.keyPasses?.state, 'missing');
   assert.equal(suzuki.priorityUpdate, true);
+  assert.ok(!suzuki.priorityFields.includes('duelsWon'));
+  assert.ok(!suzuki.priorityFields.includes('passesAttempted'));
 
   assert.ok(goto);
   assert.equal(goto.minutes, 10);
   assert.equal(goto.ratingInputs.goals?.value, 1);
-  assert.equal(goto.jfwRating, 6.35);
-  assert.equal(goto.ratingCoverage, 0.513);
+  assert.equal(goto.ratingInputs.shots?.value, 1);
+  assert.equal(goto.ratingInputs.shotsOnTarget?.value, 1);
+  assert.equal(goto.ratingInputs.duelsTotal?.value, 1);
+  assert.equal(goto.ratingInputs.passesCompleted?.value, 1);
+  assert.equal(goto.ratingInputs.passesAttempted?.value, 1);
+  assert.equal(goto.jfwRating, 6.45);
+  assert.equal(goto.ratingCoverage, 0.712);
   assert.equal(goto.ratingConfidence, 'medium');
   for (const field of ['yellowCards','secondYellowRed','straightRed','penaltiesConceded','ownGoals']) {
     assert.equal(goto.ratingInputs[field]?.state, 'value');
     assert.equal(goto.ratingInputs[field]?.value, 0);
   }
-  assert.equal(goto.ratingInputs.shots?.state, 'missing');
+  assert.equal(goto.ratingInputs.keyPasses?.state, 'missing');
+  assert.equal(goto.ratingInputs.duelsWon?.state, 'missing');
   assert.equal(goto.priorityUpdate, true);
+  assert.ok(!goto.priorityFields.includes('shots'));
+  assert.ok(!goto.priorityFields.includes('shotsOnTarget'));
 });
 
 test('snapshot mirrors the Motherwell refinement manifest', () => {
