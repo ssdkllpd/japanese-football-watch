@@ -43,8 +43,7 @@
     {"key":"ipswich","search":"Ipswich Town","aliases":["Ipswich Town","Ipswich"],"matchIds":["premier-2026-08-22-ipswich-sunderland"]},
     {"key":"leeds","search":"Leeds United","aliases":["Leeds United","Leeds"],"matchIds":["premier-2026-08-22-forest-leeds"]},
     {"key":"tottenham","search":"Tottenham","aliases":["Tottenham","Tottenham Hotspur","Spurs"],"matchIds":["premier-2026-08-22-brentford-tottenham"]},
-    {"key":"brighton","search":"Brighton","aliases":["Brighton","Brighton & Hove Albion"],"matchIds":["premier-2026-08-23-brighton-villa"]},
-    {"key":"aston-villa","search":"Aston Villa","aliases":["Aston Villa","Villa"],"matchIds":["premier-2026-08-23-brighton-villa"]}
+    {"key":"brighton","search":"Brighton","aliases":["Brighton","Brighton & Hove Albion"],"matchIds":["premier-2026-08-23-brighton-villa"]}
   ],
   "selection": {
     "status": "verified",
