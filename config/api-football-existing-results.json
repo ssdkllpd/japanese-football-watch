@@ -26,7 +26,7 @@
     {"key":"qpr","search":"Queens Park Rangers","aliases":["QPR","Queens Park Rangers"],"matchIds":["championship-2026-08-22-qpr-bolton","m-2026-08-15-portsmouth-qpr","m-2026-08-08-qpr-millwall-cup"]},
     {"key":"birmingham","search":"Birmingham","aliases":["Birmingham","Birmingham City"],"matchIds":["championship-2026-08-22-birmingham-bristol","m-2026-08-15-sheffield-birmingham","m-2026-08-08-swansea-birmingham-cup"]},
     {"key":"genk","search":"Genk","aliases":["Genk","KRC Genk"],"matchIds":["belgium-2026-08-22-antwerp-genk","m-2026-08-15-genk-westerlo","m-2026-08-09-zulte-genk"]},
-    {"key":"feyenoord","search":"Feyenoord","aliases":["Feyenoord"],"matchIds":["m-2026-08-16-feyenoord-go-ahead"]},
+    {"key":"feyenoord","search":"Feyenoord","aliases":["Feyenoord"],"matchIds":["eredivisie-2026-08-23-cambuur-feyenoord","m-2026-08-16-feyenoord-go-ahead"]},
     {"key":"southampton","search":"Southampton","aliases":["Southampton"],"matchIds":["championship-2026-08-22-southampton-stoke","m-2026-08-16-watford-southampton","m-2026-08-08-colchester-southampton-cup"]},
     {"key":"az","search":"AZ Alkmaar","aliases":["AZ Alkmaar","AZ"],"matchIds":["eredivisie-2026-08-22-fortuna-az","m-2026-08-08-az-ado","m-2026-08-15-utrecht-az"]},
     {"key":"bristol-city","search":"Bristol City","aliases":["Bristol City"],"matchIds":["m-2026-08-15-bristol-millwall","m-2026-08-06-bristol-walsall-cup"]},
@@ -50,6 +50,7 @@
   "selection":{"status":"verified","requiresScore":true,"allowUnlistedMatches":false,"description":"Only matches already stored by JFW with a verified final score may be requested."},
   "providerPlanConstraints":{"plan":"pro","historicalFixtureIdDiscoveryEnabled":true,"discoveryMode":"fixed_manifest_dates","knownFixtureIdsRemainFetchable":true},
   "fixtures": [
+    {"matchId":"eredivisie-2026-08-23-cambuur-feyenoord","fixtureDate":"2026-08-23","homeAliases":["SC Cambuur","Cambuur"],"awayAliases":["Feyenoord"]},
     {"matchId":"premier-2026-08-23-brighton-villa","fixtureDate":"2026-08-23","homeAliases":["Brighton","Brighton & Hove Albion"],"awayAliases":["Aston Villa","Villa"]},
     {"matchId":"ligue1-2026-08-23-le-havre-monaco","fixtureDate":"2026-08-23","homeAliases":["Le Havre","Le Havre AC"],"awayAliases":["Monaco","AS Monaco"]},
     {"matchId":"belgium-2026-08-22-antwerp-genk","fixtureDate":"2026-08-22","homeAliases":["Royal Antwerp","Royal Antwerp FC","R. Antwerp F.C."],"awayAliases":["Genk","KRC Genk"]},
