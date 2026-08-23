@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 10:02 JST",
+  "sources": {
+    "fantaclub-everton-palace-20260822": {
+      "id": "fantaclub-everton-palace-20260822",
+      "name": "Fantaclub Everton vs Crystal Palace detailed player statistics",
+      "type": "structured_secondary_player_stats",
+      "url": "https://www.fantaclub.it/servlet/Articolo/29594;jsessionid=559D039E25F98A308EE86ED1862AE3F6",
+      "retrievedAt": "2026-08-23T10:02:00+09:00",
+      "priority": 3,
+      "exhaustiveFor": ["shots", "shotsOnTarget", "keyPasses", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "鎌田大地",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "status": "第1節エヴァートン戦で先発フル出場・30分に警告。詳細統計を追加取得",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第1節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["tackles", "interceptions", "duelsWon", "duelsTotal"],
+      "sourceIds": ["fantaclub-everton-palace-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-kamada-everton-palace-20260822",
+      "matchId": "premier-2026-08-22-everton-palace",
+      "player": "鎌田大地",
+      "club": "クリスタル・パレス",
+      "league": "Premier League",
+      "match": "エヴァートン 2-0 クリスタル・パレス",
+      "ko": "2026-08-22 23:00 JST",
+      "appearance": "starter",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 1,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0,
+        "shots": 0,
+        "shotsOnTarget": 0,
+        "keyPasses": 2,
+        "dribbles": 1,
+        "possessionsLost": 1,
+        "passesCompleted": 65,
+        "passesAttempted": 70
+      },
+      "missingFields": ["tackles", "interceptions", "duelsWon", "duelsTotal"],
+      "sourceIds": ["fotmob-everton-palace-20260822", "fotmob-kamada-20260822", "fantaclub-everton-palace-20260822"],
+      "ratingInputs": {
+        "minutes": {"state":"value","value":90,"sourceId":"fotmob-kamada-20260822"},
+        "goals": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"},
+        "assists": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"},
+        "shots": {"state":"value","value":0,"sourceId":"fantaclub-everton-palace-20260822"},
+        "shotsOnTarget": {"state":"value","value":0,"sourceId":"fantaclub-everton-palace-20260822"},
+        "keyPasses": {"state":"value","value":2,"sourceId":"fantaclub-everton-palace-20260822"},
+        "passesCompleted": {"state":"value","value":65,"sourceId":"fantaclub-everton-palace-20260822"},
+        "passesAttempted": {"state":"value","value":70,"sourceId":"fantaclub-everton-palace-20260822"},
+        "tackles": {"state":"missing"},
+        "interceptions": {"state":"missing"},
+        "duelsWon": {"state":"missing"},
+        "duelsTotal": {"state":"missing"},
+        "dribbles": {"state":"value","value":1,"sourceId":"fantaclub-everton-palace-20260822"},
+        "possessionsLost": {"state":"value","value":1,"sourceId":"fantaclub-everton-palace-20260822"},
+        "yellowCards": {"state":"value","value":1,"sourceId":"fotmob-kamada-20260822"},
+        "secondYellowRed": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"},
+        "straightRed": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"},
+        "penaltiesConceded": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"},
+        "ownGoals": {"state":"value","value":0,"sourceId":"fotmob-everton-palace-20260822"}
+      },
+      "ratingSources": [
+        {"id":"fotmob-everton-palace-20260822","name":"FotMob Everton vs Crystal Palace match center","type":"structured_secondary_events","url":"https://www.fotmob.com/matches/crystal-palace-vs-everton/2tttz7","retrievedAt":"2026-08-23T08:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","assists","cards","substitutions","penalties","ownGoals"]},
+        {"id":"fotmob-kamada-20260822","name":"FotMob Daichi Kamada player log","type":"structured_secondary_player_log","url":"https://www.fotmob.com/es-419/players/621515","retrievedAt":"2026-08-23T08:56:00+09:00","priority":3,"exhaustiveFor":["minutes","goals","assists","yellowCards"]},
+        {"id":"fantaclub-everton-palace-20260822","name":"Fantaclub Everton vs Crystal Palace detailed player statistics","type":"structured_secondary_player_stats","url":"https://www.fantaclub.it/servlet/Articolo/29594;jsessionid=559D039E25F98A308EE86ED1862AE3F6","retrievedAt":"2026-08-23T10:02:00+09:00","priority":3,"exhaustiveFor":["shots","shotsOnTarget","keyPasses","dribbles","possessionsLost","passesCompleted","passesAttempted"]}
+      ],
+      "ratingConflicts": [],
+      "previousRating": 5.80,
+      "revisedAt": "2026-08-23T10:02:00+09:00",
+      "jfwRating": 6.30,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.755,
+      "ratingConfidence": "high",
+      "ratingFactors": {"coverage":0.930,"minutes":1.000},
+      "deltaPerformance": 0.54,
+      "deltaDiscipline": -0.20,
+      "ratingBreakdown": [
+        {"key":"goals","value":0,"points":0},
+        {"key":"assists","value":0,"points":0},
+        {"key":"keyPasses","value":2,"points":0.22},
+        {"key":"passCompletionRate","value":0.9285714286,"points":0.26},
+        {"key":"dribbles","value":1,"points":0.06},
+        {"key":"possessionsLost","value":1,"points":0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["tackles", "interceptions", "duelsWon", "duelsTotal"]
+    }
+  ]
+}
