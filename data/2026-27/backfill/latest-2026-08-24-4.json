@@ -5,9 +5,9 @@
   "sources": {
     "soccerking-cambuur-feyenoord-20260823": {
       "id": "soccerking-cambuur-feyenoord-20260823",
-      "name": "Soccer King Cambuur 2-5 Feyenoord match report",
+      "name": "Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)",
       "type": "reputable_secondary_match_report",
-      "url": "https://www.soccer-king.jp/news/world/ned/20260824/2196020.html",
+      "url": "https://news.mixi.jp/view_news.pl?id=8919267&media_id=138",
       "retrievedAt": "2026-08-24T03:56:00+09:00",
       "priority": 2,
       "exhaustiveFor": ["result", "goals", "substitutionMinutes"]
@@ -90,7 +90,7 @@
         "ownGoals": {"state": "missing"}
       },
       "ratingSources": [
-        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report","type":"reputable_secondary_match_report","url":"https://www.soccer-king.jp/news/world/ned/20260824/2196020.html","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
+        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)","type":"reputable_secondary_match_report","url":"https://news.mixi.jp/view_news.pl?id=8919267&media_id=138","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
         {"id":"feyenoordpings-cambuur-lineup-20260823","name":"FeyenoordPings confirmed Feyenoord lineup at Cambuur","type":"secondary_confirmed_lineup","url":"https://www.feyenoordpings.nl/opstelling-feyenoord-bekend-nieuwste-aanwinst-begint-op-de-bank/","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["startingXI"]}
       ],
       "start": true,
@@ -127,7 +127,7 @@
         "ownGoals": {"state": "missing"}
       },
       "ratingSources": [
-        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report","type":"reputable_secondary_match_report","url":"https://www.soccer-king.jp/news/world/ned/20260824/2196020.html","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
+        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)","type":"reputable_secondary_match_report","url":"https://news.mixi.jp/view_news.pl?id=8919267&media_id=138","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
         {"id":"feyenoordpings-cambuur-lineup-20260823","name":"FeyenoordPings confirmed Feyenoord lineup at Cambuur","type":"secondary_confirmed_lineup","url":"https://www.feyenoordpings.nl/opstelling-feyenoord-bekend-nieuwste-aanwinst-begint-op-de-bank/","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["startingXI"]}
       ],
       "start": true,
