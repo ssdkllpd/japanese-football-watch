@@ -99,10 +99,10 @@ test('Motherwell-Freiburg required gates produce stored JFW ratings using alread
   assert.ok(!goto.priorityFields.includes('shotsOnTarget'));
 });
 
-test('snapshot mirrors the Motherwell refinement manifest', () => {
+test('snapshot retains the Motherwell refinement while mirroring the current append-only manifest', () => {
   const manifest = readJson('data/2026-27/backfill/index.json');
   const snapshot = readJson('state/latest_snapshot.json');
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-23-11.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-23-11.json'));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.motherwellFreiburgRatingsRefined, true);
 });
