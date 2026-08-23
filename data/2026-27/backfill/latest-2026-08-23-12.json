@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 15:54 JST",
+  "sources": {
+    "monaco-gornik-official-20260820": {
+      "id": "monaco-gornik-official-20260820",
+      "name": "AS Monaco official Gornik Zabrze match report and full match sheet",
+      "type": "club_official_match_report",
+      "url": "https://www.asmonaco.com/fr/news/serieux-dans-ce-barrage-aller-las-monaco-prend-une-option-face-au-gornik-zabrze",
+      "retrievedAt": "2026-08-23T15:54:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "startingLineup", "bench"]
+    },
+    "monaco-squad-official-20260823": {
+      "id": "monaco-squad-official-20260823",
+      "name": "AS Monaco official 2026-27 squad",
+      "type": "club_official_squad",
+      "url": "https://www.asmonaco.com/en/pros/players",
+      "retrievedAt": "2026-08-23T15:54:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "squadNumber", "position"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "uecl-2026-08-20-gornik-monaco",
+      "league": "UEFA Conference League",
+      "round": "Play-off 1st leg",
+      "ko": "2026-08-20 20:00 CEST",
+      "match": "Gornik Zabrze 2-3 AS Monaco",
+      "players": "南野拓実",
+      "appearance": "南野拓実はAS Monaco公式の先発・ベンチのいずれにも入らずメンバー外。",
+      "note": "AS MonacoがUEFA Conference Leagueプレーオフ第1戦を3-2で勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["monaco-gornik-official-20260820"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "南野拓実",
+      "club": "AS Monaco",
+      "league": "リーグ・アン",
+      "pos": "MF",
+      "squadNumber": 18,
+      "status": "AS Monaco 2026-27現所属・UEFA Conference Leagueプレーオフ第1戦メンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-20 UEFA Conference League play-off 1st leg",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["monaco-squad-official-20260823", "monaco-gornik-official-20260820"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-minamino-gornik-monaco-20260820",
+      "matchId": "uecl-2026-08-20-gornik-monaco",
+      "player": "南野拓実",
+      "club": "AS Monaco",
+      "league": "UEFA Conference League",
+      "competition": "UEFA Conference League",
+      "match": "Gornik Zabrze 2-3 AS Monaco",
+      "ko": "2026-08-20 20:00 CEST",
+      "round": "Play-off 1st leg",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["monaco-gornik-official-20260820"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Reproducible content-addressed snapshot of the browser backfill runtime, kept separate from the continuously advancing data snapshot.",
+  "base": {
+    "path": "data.json",
+    "blobSha": "23ebab3b728b0be7982501e3cbd17ae86b872dce"
+  },
+  "runtime": [
+    "backfill-merge.js",
+    "jfw-rating.js",
+    "backfill-loader.js",
+    "match-detail.js"
+  ],
+  "runtimeBlobs": {
+    "backfill-merge.js": "7949794a0d05c2f667d8ca7ce15ca69a14870dbe",
+    "jfw-rating.js": "7e53ebeccd21aa38fd5bd97a586ef193c9ee4996",
+    "backfill-loader.js": "c380f0c47b14a7ac47c7da9e7947072d28e9be98",
+    "match-detail.js": "61c01b08a2de5f16bf77a5e9caa2afa0a6268b6f"
+  }
+}

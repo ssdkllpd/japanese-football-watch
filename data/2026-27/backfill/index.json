@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updated": "2026-08-22 14:55 JST",
+  "updated": "2026-08-23 15:54 JST",
   "fragments": [
     "core.json",
     "scotland-portugal.json",
@@ -24,6 +24,20 @@
     "latest-2026-08-22-4.json",
     "latest-2026-08-22-5.json",
     "latest-2026-08-22-6.json",
-    "latest-2026-08-22-7.json"
+    "latest-2026-08-22-7.json",
+    "latest-2026-08-22-8.json",
+    "latest-2026-08-22-9.json",
+    "latest-2026-08-23.json",
+    "latest-2026-08-23-2.json",
+    "latest-2026-08-23-3.json",
+    "latest-2026-08-23-4.json",
+    "latest-2026-08-23-5.json",
+    "latest-2026-08-23-6.json",
+    "latest-2026-08-23-7.json",
+    "latest-2026-08-23-8.json",
+    "latest-2026-08-23-9.json",
+    "latest-2026-08-23-10.json",
+    "latest-2026-08-23-11.json",
+    "latest-2026-08-23-12.json"
   ]
 }

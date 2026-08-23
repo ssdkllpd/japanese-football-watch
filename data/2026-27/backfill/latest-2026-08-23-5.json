@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 06:18 JST",
+  "sources": {
+    "marca-valencia-celta-live-20260822": {
+      "id": "marca-valencia-celta-live-20260822",
+      "name": "MARCA Valencia v Celta full live event log",
+      "type": "reputable_secondary_exhaustive_events",
+      "url": "https://us.marca.com/soccer/laliga-ea-sports/valencia-celta/2026/08/22/01_0101_20260822_191_176-directo.html",
+      "retrievedAt": "2026-08-23T06:18:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "laliga-2026-08-22-valencia-celta",
+      "league": "ラ・リーガ",
+      "round": "第2節",
+      "ko": "2026-08-23 02:30 JST",
+      "match": "バレンシア 0-0 セルタ",
+      "players": "佐藤龍之介",
+      "appearance": "佐藤龍之介は先発し56分に交代。試合は0-0で終了。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["marca-valencia-celta-live-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "status": "第2節セルタ戦で公式戦初先発・56分交代",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"],
+      "sourceIds": ["marca-valencia-celta-live-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sato-valencia-celta-20260822",
+      "matchId": "laliga-2026-08-22-valencia-celta",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "match": "バレンシア 0-0 セルタ",
+      "ko": "2026-08-23 02:30 JST",
+      "round": "第2節",
+      "appearance": "starter_sub_56",
+      "start": true,
+      "bench": false,
+      "substitution": {"off": 56},
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["marca-valencia-celta-live-20260822"],
+      "values": {
+        "minutes": 56,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "disciplineClean": true,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 56, "sourceId": "marca-valencia-celta-live-20260822"},
+        "goals": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "marca-valencia-celta-live-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "marca-valencia-celta-live-20260822",
+          "name": "MARCA Valencia v Celta full live event log",
+          "type": "reputable_secondary_exhaustive_events",
+          "url": "https://us.marca.com/soccer/laliga-ea-sports/valencia-celta/2026/08/22/01_0101_20260822_191_176-directo.html",
+          "retrievedAt": "2026-08-23T06:18:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.0,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.447,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.778, "minutes": 0.901},
+      "deltaPerformance": 0,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted"]
+    }
+  ]
+}

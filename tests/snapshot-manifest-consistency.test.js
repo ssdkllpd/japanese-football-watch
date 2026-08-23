@@ -13,7 +13,7 @@ function gitBlobSha(content) {
   return crypto.createHash('sha1').update(header).update(content).digest('hex');
 }
 
-test('retained snapshot mirrors current-season backfill manifest', () => {
+test('retained data snapshot mirrors current-season backfill manifest', () => {
   const seasons = readJson('seasons.json');
   const manifestPath = `data/${seasons.current}/backfill/index.json`;
   const manifest = readJson(manifestPath);
@@ -22,18 +22,18 @@ test('retained snapshot mirrors current-season backfill manifest', () => {
   assert.equal(snapshot.season, seasons.current);
   assert.equal(snapshot.overlayManifest.path, manifestPath);
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
-});
-
-test('retained snapshot pins the complete legacy runtime by content blob', () => {
-  const snapshot = readJson('state/latest_snapshot.json');
-  const mergeIndex = snapshot.runtime.indexOf('backfill-merge.js');
-  const loaderIndex = snapshot.runtime.indexOf('backfill-loader.js');
-  const runtimeFiles = snapshot.runtime.filter(file => file !== snapshot.base.path).sort();
-
-  assert.ok(mergeIndex >= 0 && mergeIndex < loaderIndex, 'merge core must be retained before its loader');
-  assert.deepEqual(Object.keys(snapshot.runtimeBlobs).sort(), runtimeFiles);
   assert.equal(gitBlobSha(readBuffer(snapshot.base.path)), snapshot.base.blobSha);
   assert.equal(gitBlobSha(readBuffer(snapshot.overlayManifest.path)), snapshot.overlayManifest.blobSha);
+});
+
+test('retained runtime snapshot pins the complete backfill runtime by content blob', () => {
+  const snapshot = readJson('state/runtime_snapshot.json');
+  const mergeIndex = snapshot.runtime.indexOf('backfill-merge.js');
+  const loaderIndex = snapshot.runtime.indexOf('backfill-loader.js');
+
+  assert.ok(mergeIndex >= 0 && mergeIndex < loaderIndex, 'merge core must be retained before its loader');
+  assert.deepEqual(Object.keys(snapshot.runtimeBlobs).sort(), [...snapshot.runtime].sort());
+  assert.equal(gitBlobSha(readBuffer(snapshot.base.path)), snapshot.base.blobSha);
 
   for (const [file, expectedSha] of Object.entries(snapshot.runtimeBlobs)) {
     assert.equal(gitBlobSha(readBuffer(file)), expectedSha, `${file} no longer matches the retained runtime`);

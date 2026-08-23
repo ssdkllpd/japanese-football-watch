@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-23 04:01 JST",
+  "sources": {
+    "sky-qpr-bolton-live-20260822": {
+      "id": "sky-qpr-bolton-live-20260822",
+      "name": "Sky Sports QPR v Bolton full match commentary",
+      "type": "reputable_secondary_exhaustive_events",
+      "url": "https://www.skysports.com/football/queens-park-rangers-vs-bolton-wanderers/live/560516",
+      "retrievedAt": "2026-08-23T04:01:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "minutes", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "championship-2026-08-22-qpr-bolton",
+      "league": "チャンピオンシップ",
+      "round": "第2節 / 全46節",
+      "ko": "2026-08-22 23:00 JST",
+      "match": "QPR 0-0 ボルトン",
+      "players": "斉藤光毅",
+      "appearance": "斉藤光毅は先発し76分に交代。24分に決定機につながるパスを記録したが試合は0-0。",
+      "status": "verified",
+      "addIfMissing": false,
+      "addToTopMatches": false,
+      "sourceIds": ["sky-qpr-bolton-live-20260822"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "斉藤光毅",
+      "club": "QPR",
+      "league": "チャンピオンシップ",
+      "status": "第2節先発・76分交代",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-22 第2節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"],
+      "sourceIds": ["sky-qpr-bolton-live-20260822"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-saito-qpr-bolton-20260822",
+      "matchId": "championship-2026-08-22-qpr-bolton",
+      "player": "斉藤光毅",
+      "club": "QPR",
+      "league": "チャンピオンシップ",
+      "match": "QPR 0-0 ボルトン",
+      "ko": "2026-08-22 23:00 JST",
+      "round": "第2節 / 全46節",
+      "appearance": "starter_sub_76",
+      "substitution": {"off": 76},
+      "ratingPosition": "FW",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sky-qpr-bolton-live-20260822"],
+      "values": {
+        "minutes": 76,
+        "goals": 0,
+        "assists": 0,
+        "shots": 0,
+        "shotsOnTarget": 0,
+        "keyPasses": 1,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "start": true,
+      "bench": false,
+      "disciplineClean": true,
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 76, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "goals": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "assists": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "shotsOnTarget": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "shots": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "keyPasses": {"state": "value", "value": 1, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "dribbles": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "bigChancesMissed": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "sky-qpr-bolton-live-20260822"}
+      },
+      "ratingSources": [
+        {
+          "id": "sky-qpr-bolton-live-20260822",
+          "name": "Sky Sports QPR v Bolton full match commentary",
+          "type": "reputable_secondary_exhaustive_events",
+          "url": "https://www.skysports.com/football/queens-park-rangers-vs-bolton-wanderers/live/560516",
+          "retrievedAt": "2026-08-23T04:01:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "minutes", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "substitutions"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.08,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.764,
+      "ratingConfidence": "high",
+      "ratingFactors": {"coverage": 0.933, "minutes": 0.968},
+      "deltaPerformance": 0.09,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "shotsOnTarget", "value": 0, "points": 0},
+        {"key": "shots", "value": 0, "points": 0},
+        {"key": "keyPasses", "value": 1, "points": 0.09}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"]
+    }
+  ]
+}
