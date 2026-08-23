@@ -26,6 +26,6 @@ test('Cambuur-Feyenoord adds Ueda goal and Watanabe clean on-pitch spell without
   const ueda = d.playerMatchStats.find(r => r.matchId === match.matchId && r.player === '上田綺世');
   const watanabe = d.playerMatchStats.find(r => r.matchId === match.matchId && r.player === '渡辺剛');
   assert.ok(ueda); assert.ok(watanabe);
-  assert.equal(ueda.values.minutes, 67); assert.equal(ueda.values.goals, 1); assert.equal(ueda.ratingInputs.assists.state, 'missing'); assert.equal(ueda.jfwRating, null); assert.equal(ueda.priorityUpdate, true);
-  assert.equal(watanabe.values.minutes, 67); assert.equal(watanabe.values.goals, 0); assert.equal(watanabe.values.gaOnPitch, 0); assert.equal(watanabe.ratingInputs.assists.state, 'missing'); assert.equal(watanabe.jfwRating, null); assert.equal(watanabe.priorityUpdate, true);
+  assert.equal(ueda.minutes, 67); assert.equal(ueda.goals, 1); assert.equal(ueda.ratingInputs.assists.state, 'missing'); assert.equal(ueda.jfwRating, null); assert.equal(ueda.priorityUpdate, true);
+  assert.equal(watanabe.minutes, 67); assert.equal(watanabe.goals, 0); assert.equal(watanabe.gaOnPitch, 0); assert.equal(watanabe.ratingInputs.assists.state, 'missing'); assert.equal(watanabe.jfwRating, null); assert.equal(watanabe.priorityUpdate, true);
 });
