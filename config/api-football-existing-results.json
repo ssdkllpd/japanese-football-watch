@@ -19,7 +19,7 @@
   },
   "fixtureDiscoveryGroups": [
     {"key":"celtic","search":"Celtic","aliases":["Celtic"],"providerTeamId":247,"matchIds":["m-2026-08-03-celtic-dundee","m-2026-08-09-kilmarnock-celtic","m-2026-08-19-celtic-lask"]},
-    {"key":"arouca","search":"Arouca","aliases":["Arouca","FC Arouca"],"matchIds":["m-2026-08-08-vitoria-arouca","m-2026-08-16-arouca-moreirense"]},
+    {"key":"arouca","search":"Arouca","aliases":["Arouca","FC Arouca"],"matchIds":["portugal-2026-08-23-porto-arouca","m-2026-08-08-vitoria-arouca","m-2026-08-16-arouca-moreirense"]},
     {"key":"stvv","search":"St Truiden","aliases":["St. Truiden","St Truiden","Sint-Truiden","St. Truidense VV"],"providerTeamId":735,"matchIds":["m-2026-08-08-stvv-lommel","m-2026-08-14-cercle-stvv","uel-2026-08-20-stvv-omonia"]},
     {"key":"sparta-rotterdam","search":"Sparta Rotterdam","aliases":["Sparta Rotterdam"],"matchIds":["m-2026-08-09-sparta-feyenoord","m-2026-08-14-telstar-sparta"]},
     {"key":"blackburn","search":"Blackburn","aliases":["Blackburn","Blackburn Rovers"],"matchIds":["championship-2026-08-22-blackburn-middlesbrough","m-2026-08-14-wolves-blackburn","m-2026-08-08-burton-blackburn-cup"]},
@@ -54,6 +54,7 @@
   "selection":{"status":"verified","requiresScore":true,"allowUnlistedMatches":false,"description":"Only matches already stored by JFW with a verified final score may be requested."},
   "providerPlanConstraints":{"plan":"pro","historicalFixtureIdDiscoveryEnabled":true,"discoveryMode":"fixed_manifest_dates","knownFixtureIdsRemainFetchable":true},
   "fixtures": [
+    {"matchId":"portugal-2026-08-23-porto-arouca","fixtureDate":"2026-08-23","homeAliases":["FC Porto","Porto"],"awayAliases":["Arouca","FC Arouca"]},
     {"matchId":"dfbpokal-2026-08-22-aue-hoffenheim","fixtureDate":"2026-08-22","homeAliases":["Erzgebirge Aue","FC Erzgebirge Aue","Aue"],"awayAliases":["TSG Hoffenheim","Hoffenheim"]},
     {"matchId":"premier-2026-08-23-newcastle-liverpool","fixtureDate":"2026-08-23","homeAliases":["Newcastle United","Newcastle"],"awayAliases":["Liverpool","Liverpool FC"]},
     {"matchId":"belgium-2026-08-23-lommel-westerlo","fixtureDate":"2026-08-23","homeAliases":["Lommel United","Lommel","Lommel SK"],"awayAliases":["KVC Westerlo","Westerlo"]},

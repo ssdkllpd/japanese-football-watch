@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 18:06 JST",
+  "sources": {
+    "liga-portugal-fukui-profile-20260824": {
+      "id": "liga-portugal-fukui-profile-20260824",
+      "name": "Liga Portugal official Taichi Fukui player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.ligaportugal.pt/player/82231/fukui/20252026/619",
+      "retrievedAt": "2026-08-24T18:06:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["nationality", "club", "position"]
+    },
+    "liga-portugal-porto-arouca-20260823": {
+      "id": "liga-portugal-porto-arouca-20260823",
+      "name": "Liga Portugal official FC Porto 2-0 FC Arouca match page/report",
+      "type": "league_official_match_report",
+      "url": "https://www.ligaportugal.pt/match/20262027/ligaportugalbetclic/3/6",
+      "retrievedAt": "2026-08-24T18:06:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result"]
+    },
+    "vsports-porto-arouca-20260823": {
+      "id": "vsports-porto-arouca-20260823",
+      "name": "VSports FC Porto 2-0 Arouca full match timeline",
+      "type": "secondary_full_match_timeline",
+      "url": "https://vsports.pt/vsports/jogo/i-liga/fc-porto-arouca/30371/minuto",
+      "retrievedAt": "2026-08-24T18:06:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["startingLineup", "bench", "substitutions", "goals", "assists", "yellowCards", "redCards"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "portugal-2026-08-23-porto-arouca",
+      "league": "ポルトガル",
+      "competition": "Primeira Liga",
+      "round": "第3節",
+      "ko": "2026-08-24 03:30 JST",
+      "match": "FCポルト 2-0 アロウカ",
+      "players": "福井太智",
+      "appearance": "福井太智は先発し、交代記録がなくフル出場。",
+      "note": "Liga Portugal公式で2-0の最終結果を確認。VSportsの完全タイムラインで福井の先発と交代記録なしを確認。アロウカは無得点のため福井の得点・アシストは0。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": true,
+      "sourceIds": ["liga-portugal-porto-arouca-20260823", "vsports-porto-arouca-20260823"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "福井太智",
+      "club": "アロウカ",
+      "league": "ポルトガル",
+      "pos": "MF",
+      "squadNumber": 8,
+      "status": "Liga Portugal公式で日本国籍MF・FC Arouca所属を確認。2026/27第3節FC Porto戦に先発フル出場。現行シーズンの追跡対象選手マスタへの登録漏れを補完",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-23 Primeira Liga第3節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["apiFootballPlayerId", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "current injury/availability status"],
+      "sourceIds": ["liga-portugal-fukui-profile-20260824", "liga-portugal-porto-arouca-20260823", "vsports-porto-arouca-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-fukui-porto-arouca-20260823",
+      "matchId": "portugal-2026-08-23-porto-arouca",
+      "player": "福井太智",
+      "club": "アロウカ",
+      "league": "ポルトガル",
+      "competition": "Primeira Liga",
+      "match": "FCポルト 2-0 アロウカ",
+      "ko": "2026-08-24 03:30 JST",
+      "round": "第3節",
+      "appearance": "starter_full",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["liga-portugal-porto-arouca-20260823", "vsports-porto-arouca-20260823"],
+      "values": {"minutes": 90, "goals": 0, "assists": 0, "yellowCards": 0, "secondYellowRed": 0, "straightRed": 0},
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "vsports-porto-arouca-20260823"},
+        "goals": {"state": "value", "value": 0, "sourceId": "vsports-porto-arouca-20260823"},
+        "assists": {"state": "value", "value": 0, "sourceId": "vsports-porto-arouca-20260823"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "vsports-porto-arouca-20260823"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "vsports-porto-arouca-20260823"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "vsports-porto-arouca-20260823"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"}
+      },
+      "ratingSources": [
+        {"id":"liga-portugal-porto-arouca-20260823","name":"Liga Portugal official FC Porto 2-0 FC Arouca match page/report","type":"league_official_match_report","url":"https://www.ligaportugal.pt/match/20262027/ligaportugalbetclic/3/6","retrievedAt":"2026-08-24T18:06:00+09:00","priority":1,"exhaustiveFor":["result"]},
+        {"id":"vsports-porto-arouca-20260823","name":"VSports FC Porto 2-0 Arouca full match timeline","type":"secondary_full_match_timeline","url":"https://vsports.pt/vsports/jogo/i-liga/fc-porto-arouca/30371/minuto","retrievedAt":"2026-08-24T18:06:00+09:00","priority":2,"exhaustiveFor":["startingLineup","bench","substitutions","goals","assists","yellowCards","redCards"]}
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
