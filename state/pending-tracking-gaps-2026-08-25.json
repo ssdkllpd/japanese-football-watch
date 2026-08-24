@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T01:12:00+09:00",
+  "updatedAt": "2026-08-25T05:57:00+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
@@ -67,6 +67,15 @@
       "squadNumber": 71,
       "verifiedBy": ["KV Kortrijk official transfer announcement", "KV Kortrijk official first-team roster"],
       "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "塩貝健人",
+      "club": "VfL Wolfsburg",
+      "league": "Bundesliga",
+      "position": "FW",
+      "squadNumber": 7,
+      "verifiedBy": ["VfL Wolfsburg official player signing/first-team match report", "DFB official 2026-27 DFB-Pokal squad"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 league match history", "2026-08-24 DFB-Pokal playerMatchStats", "current availability"]
     }
   ]
 }
