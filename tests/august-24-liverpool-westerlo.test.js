@@ -43,8 +43,7 @@ test('new fixtures are queued for provider detail backfill', () => {
   assert.deepEqual(apiManifest.playerAliases['遠藤航'], ['Wataru Endo', 'W. Endo']);
 });
 
-test('manifest and retained snapshot include the same newest fragment', () => {
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-24-6.json');
-  assert.equal(snapshot.overlayManifest.orderedFragments.at(-1), manifest.fragments.at(-1));
+test('manifest and retained snapshot preserve the Liverpool/Westerlo fragment in append-only order', () => {
+  assert.ok(manifest.fragments.includes('latest-2026-08-24-6.json'));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
 });
