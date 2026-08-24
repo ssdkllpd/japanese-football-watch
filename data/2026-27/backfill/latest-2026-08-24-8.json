@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 11:08 JST",
+  "sources": {
+    "mainz-kawasaki-permanent-20260327": {
+      "id": "mainz-kawasaki-permanent-20260327",
+      "name": "1. FSV Mainz 05 official Sota Kawasaki permanent signing announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.mainz05.de/en/news-en/kawasaki-joins-permanent-contract",
+      "retrievedAt": "2026-08-24T11:08:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "membershipChangeType", "previousClub"]
+    },
+    "freiburg-yamamoto-signing-20260527": {
+      "id": "freiburg-yamamoto-signing-20260527",
+      "name": "SC Freiburg official Rihito Yamamoto signing announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.scfreiburg.com/en/latest/news/first-team/2025-26/rihito-yamamoto-joins-sc-freiburg/",
+      "retrievedAt": "2026-08-24T11:08:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "position", "nationality"]
+    },
+    "bundesliga-yamamoto-profile-20260528": {
+      "id": "bundesliga-yamamoto-profile-20260528",
+      "name": "Bundesliga official Rihito Yamamoto player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.bundesliga.com/en/bundesliga/news/rihito-yamamoto-who-is-freiburg-japanese-midfield-talent-37598",
+      "retrievedAt": "2026-08-24T11:08:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "position", "nationality"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "川﨑颯太",
+      "club": "マインツ",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "previousClub": "京都サンガF.C.",
+      "previousLeague": "J1",
+      "membershipChangeType": "transfer",
+      "status": "マインツが2026年3月27日に買取オプションを行使し完全移籍。2026/27もマインツ所属を継続",
+      "statsStatus": "current_membership_verified",
+      "statsAsOf": "2026-08-24",
+      "priorityUpdate": true,
+      "priorityFields": ["2026-08-23 DFB-Pokal matchday status and playerMatchStats"],
+      "sourceIds": ["mainz-kawasaki-permanent-20260327"]
+    },
+    {
+      "name": "山本理仁",
+      "club": "フライブルク",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "previousClub": "シント＝トロイデン",
+      "previousLeague": "ベルギー・プロ・リーグ",
+      "membershipChangeType": "transfer",
+      "transferDate": "2026-05-27",
+      "status": "シント＝トロイデンからフライブルクへ完全移籍。2026/27ブンデスリーガ所属を公式確認",
+      "statsStatus": "current_membership_verified",
+      "statsAsOf": "2026-08-24",
+      "priorityUpdate": true,
+      "priorityFields": ["2026-08-23 DFB-Pokal matchday status and playerMatchStats"],
+      "sourceIds": ["freiburg-yamamoto-signing-20260527", "bundesliga-yamamoto-profile-20260528"]
+    }
+  ]
+}
