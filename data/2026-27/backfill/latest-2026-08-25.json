@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-25 06:00 JST",
+  "sources": {
+    "machida-ogawa-transfer-20260824": {
+      "id": "machida-ogawa-transfer-20260824",
+      "name": "FC Machida Zelvia official Koki Ogawa permanent transfer announcement",
+      "type": "club_official_transfer",
+      "url": "https://www.zelvia.co.jp/news/news-356897/",
+      "retrievedAt": "2026-08-25T06:00:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["playerIdentity", "destinationClub", "transferType", "previousClub"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "小川航基",
+      "club": "FC町田ゼルビア",
+      "league": "J1",
+      "pos": "FW",
+      "status": "2026-08-24にNECナイメヘンからFC町田ゼルビアへ完全移籍。J1は本アプリの追跡対象外のため、過去の海外公式戦・大会別・クラブ別成績を保持したまま以後の自動試合収集を停止する。",
+      "membershipChangeType": "transfer",
+      "transferDate": "2026-08-24",
+      "previousClub": "NECナイメヘン",
+      "previousLeague": "エールディヴィジ",
+      "trackingStatus": "out_of_scope",
+      "trackingBucket": "無所属・追跡対象外",
+      "statsTrackingState": "frozen_out_of_scope",
+      "rankingEligible": true,
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["machida-ogawa-transfer-20260824"]
+    }
+  ]
+}
