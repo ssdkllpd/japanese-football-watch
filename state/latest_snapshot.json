@@ -33,11 +33,23 @@
     "ogawaTransferOutOfScopeLoadsThroughPlayerUpdates":true,
     "ogawaHistoricalStatsRemainPreserved":true,
     "ogawaJ1DestinationDoesNotBecomeTrackedClub":true,
+    "premierLeaguePalaceOpeningRatingsRefined":true,
+    "belgiumAntwerpGenkRatingInputsRefined":true,
+    "bundesligaHashiokaCupGoalLoadsThroughPlayerMatchStats":true,
+    "eredivisieSanoFirstStartLoadsThroughPlayerMatchStats":true,
+    "bundesligaGladbachCupJapaneseAppearancesRefined":true,
+    "bundesligaHoffenheimMachidaMembershipLoadsThroughPlayerUpdates":true,
+    "bundesligaHoffenheimMachidaCupAbsenceLoadsThroughPlayerMatchStats":true,
+    "bundesligaSchalkeSatoshiTanakaMembershipLoadsThroughPlayerUpdates":true,
+    "motherwellFreiburgRatingsRefined":true,
+    "eredivisieSanoDebutRatingRefined":true,
+    "laligaSatoRatingRefinementLoadsThroughPlayerMatchStats":true,
     "satoshiTanakaHalleCupAppearanceLoadsWithoutIncompleteRating":true
   },
   "verifiedCorrections": [
     "All verified August 20-25 overlays remain retained in manifest order, including Premier League, Championship, Bundesliga, Belgian Pro League, Eredivisie, La Liga, Ligue 1, Scottish Premiership and Primeira Liga corrections and JFW Rating refinements already present before this run.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
+    "The retained Valencia debut refinement for Ryunosuke Sato remains unchanged: JFW Rating is 6.00 at 0.447 coverage.",
     "On 2026-08-24, FC Machida Zelvia officially announced the permanent transfer of Koki Ogawa from NEC Nijmegen. Historical overseas records remain preserved while future J1 collection stays out of scope.",
     "On 2026-08-24, Schalke defeated Hallescher FC 5-2 after extra time in the DFB-Pokal first round. Satoshi Tanaka was a substitute and entered in the 105th minute; discipline-critical penaltiesConceded and ownGoals remain missing, so no JFW Rating was calculated."
   ],
