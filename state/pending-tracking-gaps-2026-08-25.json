@@ -55,8 +55,18 @@
       "club": "KAA Gent",
       "league": "Belgian Pro League",
       "position": "MF",
-      "verifiedBy": ["repository search currently returns no record; official-club verification still required before runtime mutation"],
-      "priorityFields": ["official current-membership verification", "stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+      "squadNumber": 15,
+      "verifiedBy": ["KAA Gent official 2026-27 player profile"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "増井健人",
+      "club": "KV Kortrijk",
+      "league": "Belgian Pro League",
+      "position": "MF",
+      "squadNumber": 71,
+      "verifiedBy": ["KV Kortrijk official transfer announcement", "KV Kortrijk official first-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
     }
   ]
 }
