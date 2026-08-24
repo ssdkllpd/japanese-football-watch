@@ -22,7 +22,21 @@ async function loadCurrent() {
     console,
     window: {},
     document: { body: makeElement(), querySelector() { return null; }, createElement() { return makeElement(); } },
-    D: readJson(season.data), selectedSeason: seasons.current,
+    D: readJson(season.data),
+    selectedSeason: seasons.current,
+    loadSeason: async () => {},
+    renderAll() {}, renderPlayerDetail() {}, renderClubDetail() {}, renderAttention() {}, renderStats() {},
+    relevantClubMatches() { return []; }, clubPlayers() { return []; }, clubMatchCard() { return ''; },
+    pcard() { return ''; }, mcard() { return ''; }, bindEntities() {}, bindWatch() {}, btns() {},
+    eligible() { return true; }, playerRef(p) { return p.playerId || p.name; },
+    playerByRef(ref) { return context.D.players.find(p => p.playerId === ref || p.name === ref); },
+    roundNo() { return null; }, fmt(v) { return v == null ? '—' : String(v); }, E(v) { return String(v ?? ''); },
+    $() { return makeElement(); },
+    R: { updated: makeElement(), leagueBtns: makeElement(), players: makeElement(), scopeBtns: makeElement(), metricBtns: makeElement(), statRank: makeElement(), playerDetail: makeElement(), clubDetail: makeElement() },
+    order: ['すべて','プレミアリーグ','チャンピオンシップ','ブンデスリーガ','ラ・リーガ','リーグ・アン','セリエA','エールディヴィジ','ベルギー','ポルトガル','スコットランド'],
+    scope: 'すべて', metric: 'goals', metrics: { goals: '得点', assists: 'アシスト' }, attLeague: 'すべて', page: 'home',
+    activePlayer: null, activeClub: null, clubRoundFrom: null, clubRoundTo: null,
+    clearDetailParams() {}, showPage() {}, lastPage: 'home',
     fetch: async url => {
       const clean = String(url).replace(/[?&]v=\d+$/, '').replace(/^\.\//, '');
       const file = path.join(ROOT, clean);
