@@ -1,10 +1,30 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T20:08:41+09:00",
+  "updatedAt": "2026-08-25T21:14:05+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
+    {
+      "name": "Mio Backhaus",
+      "nameJa": "長田澪",
+      "club": "SC Freiburg",
+      "league": "Bundesliga",
+      "position": "GK",
+      "squadNumber": 1,
+      "nationality": ["DEU", "JPN"],
+      "eligibilityNote": "Bundesliga official profile lists both German and Japanese nationality; SC Freiburg official describes him as German-Japanese.",
+      "verifiedBy": ["Bundesliga official 2026-27 player profile", "SC Freiburg official signing announcement", "Bundesliga official DFB-Pokal live ticker"],
+      "verifiedMatchFacts": {
+        "date": "2026-08-23",
+        "competition": "DFB-Pokal",
+        "match": "Fortuna Düsseldorf 1-5 SC Freiburg",
+        "start": true,
+        "minutes": 90,
+        "gaOnPitch": 1
+      },
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 playerMatchStats", "ratingPositionSource", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "saves", "shotsOnTargetFaced", "highClaims", "passesCompleted", "passesAttempted", "errorsLeadingToGoal", "current availability"]
+    },
     {
       "name": "安藤晃希",
       "club": "Royal Antwerp FC",
