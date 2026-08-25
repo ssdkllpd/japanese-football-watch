@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 06:57 JST",
+  "sources": {
+    "leeds-official-team-news-forest-cup-20260825": {
+      "id": "leeds-official-team-news-forest-cup-20260825",
+      "name": "Leeds United official team news vs Nottingham Forest",
+      "type": "club_official_lineup",
+      "url": "https://www.leedsunited.com/en/news/team-news-daniel-farke-names-xi-for-carabao-cup-clash",
+      "retrievedAt": "2026-08-26T06:57:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["lineup"]
+    },
+    "yahoo-forest-leeds-cup-report-20260825": {
+      "id": "yahoo-forest-leeds-cup-report-20260825",
+      "name": "Nottingham Forest 0-2 Leeds United Carabao Cup report",
+      "type": "media_match_report",
+      "url": "https://sports.yahoo.com/articles/efl-cup-report-nottingham-forest-210900676.html",
+      "retrievedAt": "2026-08-26T06:57:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "goals"]
+    },
+    "soccerking-valencia-betis-20260825": {
+      "id": "soccerking-valencia-betis-20260825",
+      "name": "SOCCER KING Valencia 0-1 Real Betis report",
+      "type": "media_full_match_report",
+      "url": "https://news.livedoor.com/article/detail/32159025/",
+      "retrievedAt": "2026-08-26T06:57:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "minutes", "goals"]
+    },
+    "sky-valencia-betis-events-20260825": {
+      "id": "sky-valencia-betis-events-20260825",
+      "name": "Sky Sport Valencia-Real Betis minute-by-minute",
+      "type": "broadcaster_event_log",
+      "url": "https://sport.sky.it/calcio/liga/partite/2026/giornata-1/valencia-real-betis/risultato-gol",
+      "retrievedAt": "2026-08-26T06:57:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["yellowCards", "redCards", "goals", "penaltyEvents", "ownGoals"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "田中碧",
+      "club": "リーズ・ユナイテッド",
+      "league": "プレミアリーグ",
+      "pos": "MF",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 Carabao Cup 2回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    },
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "pos": "MF",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 La Liga Real Betis戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-tanaka-forest-leeds-cup-20260825",
+      "matchId": "eflcup-2026-08-25-forest-leeds",
+      "player": "田中碧",
+      "club": "リーズ・ユナイテッド",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "match": "ノッティンガム・フォレスト 0-2 リーズ・ユナイテッド",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "2回戦",
+      "appearance": "starter",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["leeds-official-team-news-forest-cup-20260825", "yahoo-forest-leeds-cup-report-20260825"],
+      "values": {"goals": 0},
+      "ratingInputs": {
+        "minutes": {"state": "missing"},
+        "goals": {"state": "value", "value": 0, "sourceId": "yahoo-forest-leeds-cup-report-20260825"},
+        "assists": {"state": "missing"},
+        "yellowCards": {"state": "missing"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"}
+      },
+      "ratingSources": [],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    },
+    {
+      "recordId": "r-sato-valencia-betis-20260825",
+      "matchId": "laliga-2026-08-25-valencia-betis",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "competition": "La Liga",
+      "match": "バレンシア 0-1 レアル・ベティス",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "第1節延期分",
+      "appearance": "starter_full",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["soccerking-valencia-betis-20260825", "sky-valencia-betis-events-20260825"],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 1,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "soccerking-valencia-betis-20260825"},
+        "goals": {"state": "value", "value": 0, "sourceId": "soccerking-valencia-betis-20260825"},
+        "assists": {"state": "value", "value": 0, "sourceId": "sky-valencia-betis-events-20260825"},
+        "yellowCards": {"state": "value", "value": 1, "sourceId": "sky-valencia-betis-events-20260825"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "sky-valencia-betis-events-20260825"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "sky-valencia-betis-events-20260825"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "sky-valencia-betis-events-20260825"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "sky-valencia-betis-events-20260825"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"}
+      },
+      "ratingSources": [
+        {
+          "id": "soccerking-valencia-betis-20260825",
+          "name": "SOCCER KING Valencia 0-1 Real Betis report",
+          "type": "media_full_match_report",
+          "url": "https://news.livedoor.com/article/detail/32159025/",
+          "retrievedAt": "2026-08-26T06:57:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["result", "minutes", "goals"]
+        },
+        {
+          "id": "sky-valencia-betis-events-20260825",
+          "name": "Sky Sport Valencia-Real Betis minute-by-minute",
+          "type": "broadcaster_event_log",
+          "url": "https://sport.sky.it/calcio/liga/partite/2026/giornata-1/valencia-real-betis/risultato-gol",
+          "retrievedAt": "2026-08-26T06:57:00+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["yellowCards", "redCards", "goals", "penaltyEvents", "ownGoals"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 5.8,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.447,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.778, "minutes": 1.0},
+      "deltaPerformance": 0,
+      "deltaDiscipline": -0.2,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "yellowCards", "value": 1, "points": -0.2}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
