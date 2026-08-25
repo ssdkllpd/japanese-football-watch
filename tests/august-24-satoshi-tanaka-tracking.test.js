@@ -47,6 +47,7 @@ async function loadCurrent() {
   };
   context.window = context;
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-merge.js'), 'utf8'), context, { filename: 'backfill-merge.js' });
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'backfill-loader.js'), 'utf8'), context, { filename: 'backfill-loader.js' });
   await context.window.JFWBackfill.applyCurrentBackfill();
   return context.D;
