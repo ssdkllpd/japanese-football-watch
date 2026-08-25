@@ -16,7 +16,12 @@ async function load() {
     loadSeason:async()=>{}, renderAll(){}, renderPlayerDetail(){}, renderClubDetail(){}, renderAttention(){}, renderStats(){}, relevantClubMatches(){return[];}, clubPlayers(){return[];}, clubMatchCard(){return'';}, pcard(){return'';}, mcard(){return'';}, bindEntities(){}, bindWatch(){}, btns(){}, eligible(){return true;}, playerRef(p){return p.playerId||p.name;}, playerByRef(ref){return c.D.players.find(p=>p.playerId===ref||p.name===ref);}, roundNo(){return null;}, fmt(v){return v==null?'—':String(v);}, E(v){return String(v??'');}, $(){return el();}, R:{updated:el(),leagueBtns:el(),players:el(),scopeBtns:el(),metricBtns:el(),statRank:el(),playerDetail:el(),clubDetail:el()}, order:[], scope:'すべて', metric:'goals', metrics:{goals:'得点'}, attLeague:'すべて', page:'home', activePlayer:null, activeClub:null, clubRoundFrom:null, clubRoundTo:null, clearDetailParams(){}, showPage(){}, lastPage:'home', setTimeout, clearTimeout,
     fetch:async url=>{ const rel=String(url).replace(/[?&]v=\d+$/,'').replace(/^\.\//,''); const f=path.join(ROOT,rel); return fs.existsSync(f)?{ok:true,json:async()=>JSON.parse(fs.readFileSync(f,'utf8'))}:{ok:false,status:404,json:async()=>({})}; }
   };
-  c.window=c; vm.createContext(c); vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'),c); await c.window.JFWBackfill.applyCurrentBackfill(); return c.D;
+  c.window=c;
+  vm.createContext(c);
+  vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-merge.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'),c);
+  await c.window.JFWBackfill.applyCurrentBackfill();
+  return c.D;
 }
 
 test('Cambuur-Feyenoord preserves unresolved Rating gates and loads verified values', async () => {
