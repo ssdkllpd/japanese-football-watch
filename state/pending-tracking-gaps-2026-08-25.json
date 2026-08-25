@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T14:04:00+09:00",
+  "updatedAt": "2026-08-25T17:53:00+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
@@ -67,30 +67,28 @@
       "squadNumber": 71,
       "verifiedBy": ["KV Kortrijk official transfer announcement", "KV Kortrijk official first-team roster"],
       "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
-    },
+    }
+  ],
+  "resolvedOutOfScope": [
     {
       "name": "塩貝健人",
       "club": "VfL Wolfsburg",
-      "league": "Bundesliga",
-      "position": "FW",
-      "squadNumber": 7,
-      "verifiedBy": ["VfL Wolfsburg official match report", "DFB official 2026-27 DFB-Pokal squad", "Sky Sports complete lineup/substitution record"],
-      "verifiedMatchFacts": {
+      "actualLeague": "Bundesliga 2",
+      "previouslyMisclassifiedAs": "Bundesliga",
+      "effectiveSeason": "2026-27",
+      "resolution": "Remove from automatic current-season tracking and priority backfill because Bundesliga 2 is outside workflow_policy v19 scope. Retain previously verified DFB-Pokal facts only as audit history; do not create 2026-27 tracked playerMatchStats or JFW Rating from this out-of-scope club.",
+      "verifiedBy": ["Bundesliga official Wolfsburg Bundesliga 2 club page", "Bundesliga official 2026/27 second-tier season overview"],
+      "verifiedMatchFactsRetainedForAudit": {
         "match": "VSG Altglienicke 3-3 VfL Wolfsburg (Wolfsburg won on penalties)",
         "competition": "DFB-Pokal",
         "date": "2026-08-24",
         "start": true,
         "minutes": 120,
-        "minutesBasis": "Started and no substitution-off event in the complete extra-time lineup/substitution record",
         "goals": 0,
         "assists": 0,
-        "assistsBasis": "VfL Wolfsburg official exhaustive six-goal descriptions attribute all assists/touches and none to Shiogai",
         "yellowCards": 0,
-        "yellowCardsBasis": "VfL Wolfsburg official match report lists all yellow cards: Rieder, Oduah / Souza, Fischer",
-        "shotOnTargetConfirmedMinimum": 1,
-        "shotOnTargetBasis": "VfL Wolfsburg official report explicitly records Shiogai being denied by Zwick in the 70th minute; exact total remains unverified"
-      },
-      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 league match history", "2026-08-24 DFB-Pokal secondYellowRed", "2026-08-24 DFB-Pokal straightRed", "2026-08-24 DFB-Pokal penaltiesConceded", "2026-08-24 DFB-Pokal ownGoals", "2026-08-24 DFB-Pokal exact shots/shotsOnTarget and remaining detailed playerMatchStats", "current availability"]
+        "shotOnTargetConfirmedMinimum": 1
+      }
     }
   ]
 }
