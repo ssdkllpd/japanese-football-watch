@@ -1,50 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-const ROOT = path.join(__dirname, '..');
-function json(rel) { return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8')); }
-function makeElement() { return { dataset:{}, querySelector(){return null;}, querySelectorAll(){return[];}, appendChild(){}, insertAdjacentElement(){} }; }
+const { buildBackfillHarness } = require('./helpers/backfill-harness');
 
 function contextForCurrentSeason() {
-  const seasons = json('seasons.json');
-  const season = seasons.seasons.find(s => s.id === seasons.current);
-  assert.ok(season, 'current season must resolve');
-  const context = {
-    console,
-    D: json(season.data),
-    selectedSeason: seasons.current,
-    window: {},
-    document: { body: makeElement(), querySelector(){return null;}, createElement(){return makeElement();} },
-    fetch: async url => {
-      const clean = String(url).replace(/[?&]v=\d+$/, '').replace(/^\.\//, '');
-      const file = path.join(ROOT, clean);
-      if (!fs.existsSync(file)) return { ok:false, status:404, json:async()=>({}) };
-      return { ok:true, json:async()=>JSON.parse(fs.readFileSync(file,'utf8')) };
-    },
-    setTimeout, clearTimeout,
-    addEventListener(){},
-    loadSeason: async()=>{}, renderAll(){}, renderPlayerDetail(){}, renderClubDetail(){}, renderAttention(){}, renderStats(){},
-    relevantClubMatches(){return[];}, clubPlayers(){return[];}, clubMatchCard(){return'';}, pcard(){return'';}, mcard(){return'';},
-    bindEntities(){}, bindWatch(){}, btns(){}, eligible(){return true;},
-    playerRef(p){return p.playerId||p.name;}, playerByRef(ref){return context.D.players.find(p=>p.playerId===ref||p.name===ref);},
-    roundNo(){return null;}, fmt(v){return v==null?'—':String(v);}, E(v){return String(v??'');}, $(){return makeElement();},
-    R:{updated:makeElement(),leagueBtns:makeElement(),players:makeElement(),scopeBtns:makeElement(),metricBtns:makeElement(),statRank:makeElement(),playerDetail:makeElement(),clubDetail:makeElement()},
-    order:['すべて'], scope:'すべて', metric:'goals', metrics:{goals:'得点'}, attLeague:'すべて', page:'home', activePlayer:null, activeClub:null,
-    clubRoundFrom:null, clubRoundTo:null, clearDetailParams(){}, showPage(){}, lastPage:'home'
-  };
-  context.window = context;
-  vm.createContext(context);
-  vm.runInContext(fs.readFileSync(path.join(ROOT,'jfw-rating.js'),'utf8'), context, {filename:'jfw-rating.js'});
-  vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'), context, {filename:'backfill-loader.js'});
-  return context;
+  return buildBackfillHarness({ loadRating: true, order: ['すべて'] });
 }
 
 async function loaded() {
   const c = contextForCurrentSeason();
-  await c.window.JFWBackfill.applyCurrentBackfill();
+  await c.window.JFWBackfill.initialLoad;
   return c;
 }
 

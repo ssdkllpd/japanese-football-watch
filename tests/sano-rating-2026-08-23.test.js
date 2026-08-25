@@ -11,7 +11,11 @@ function harness(){
   const manifest=readJson('data/2026-27/backfill/index.json');
   const frags=new Map(manifest.fragments.map(n=>[n,readJson(`data/2026-27/backfill/${n}`)]));
   const c={console,window:{},document:{body:el(),querySelector(){return null},createElement(){return el()}},D:structuredClone(readJson('data.json')),selectedSeason:'2026-27',loadSeason:async()=>{},renderAll(){},renderPlayerDetail(){},renderClubDetail(){},renderAttention(){},renderStats(){},relevantClubMatches(){return[]},clubPlayers(){return[]},clubMatchCard(){return''},pcard(){return''},mcard(){return''},bindEntities(){},bindWatch(){},btns(){},eligible(){return true},playerRef(p){return p.playerId||p.name},playerByRef(ref){return c.D.players.find(p=>p.playerId===ref||p.name===ref)},roundNo(){return null},fmt(v){return v==null?'—':String(v)},E(v){return String(v??'')},$(){return el()},R:{updated:el(),leagueBtns:el(),players:el(),scopeBtns:el(),metricBtns:el(),statRank:el(),playerDetail:el(),clubDetail:el()},order:['すべて','エールディヴィジ'],scope:'すべて',metric:'goals',metrics:{goals:'得点'},attLeague:'すべて',page:'home',activePlayer:null,activeClub:null,clubRoundFrom:null,clubRoundTo:null,clearDetailParams(){},showPage(){},lastPage:'home',fetch:async url=>{const v=String(url).split('?')[0];if(v.endsWith('/index.json'))return{ok:true,json:async()=>manifest};const n=v.split('/').at(-1);return frags.has(n)?{ok:true,json:async()=>frags.get(n)}:{ok:false,status:404,json:async()=>({})}},setTimeout,clearTimeout};
-  c.window=c; vm.createContext(c); vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'),c); return c;
+  c.window=c;
+  vm.createContext(c);
+  vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-merge.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(ROOT,'backfill-loader.js'),'utf8'),c);
+  return c;
 }
 
 test('Sano Excelsior minutes resolve priority gate and produce JFW Rating without zero-filling advanced fields', async()=>{

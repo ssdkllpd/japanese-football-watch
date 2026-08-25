@@ -1,31 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-function makeElement() {
-  return {
-    textContent: '',
-    innerHTML: '',
-    dataset: {},
-    querySelectorAll() { return []; },
-    querySelector() { return null; },
-    appendChild() {},
-    insertAdjacentElement() {}
-  };
-}
+const { buildBackfillHarness } = require('./helpers/backfill-harness');
 
 function buildHarness({ player, fragments }) {
-  const context = {
-    console,
-    window: {},
-    document: {
-      body: makeElement(),
-      querySelector() { return null; },
-      createElement() { return makeElement(); }
-    },
-    D: {
+  return buildBackfillHarness({
+    data: {
       updated: '2026-08-10 10:00 JST',
       players: [player],
       matches: [],
@@ -33,62 +12,15 @@ function buildHarness({ player, fragments }) {
       playerMatchStats: [],
       gaResults: []
     },
-    selectedSeason: '2026-27',
-    loadSeason: async () => {},
-    renderAll() {},
-    renderPlayerDetail() {},
-    renderClubDetail() {},
-    renderAttention() {},
-    renderStats() {},
-    relevantClubMatches() { return []; },
-    clubPlayers() { return []; },
-    clubMatchCard() { return ''; },
-    pcard() { return ''; },
-    mcard() { return ''; },
-    bindEntities() {},
-    bindWatch() {},
-    btns() {},
-    eligible() { return true; },
-    playerRef(p) { return p.playerId || p.name; },
-    playerByRef(ref) { return context.D.players.find(p => p.playerId === ref || p.name === ref); },
-    roundNo() { return null; },
-    fmt(v) { return v == null ? '—' : String(v); },
-    E(v) { return String(v ?? ''); },
-    $() { return makeElement(); },
-    R: { updated: makeElement(), leagueBtns: makeElement(), players: makeElement(), scopeBtns: makeElement(), metricBtns: makeElement(), statRank: makeElement(), playerDetail: makeElement(), clubDetail: makeElement() },
-    order: ['すべて', 'プレミアリーグ', 'ブンデスリーガ'],
-    scope: 'すべて',
-    metric: 'goals',
-    metrics: { goals: '得点' },
-    attLeague: 'すべて',
-    page: 'home',
-    activePlayer: null,
-    activeClub: null,
-    clubRoundFrom: null,
-    clubRoundTo: null,
-    clearDetailParams() {},
-    showPage() {},
-    lastPage: 'home',
-    fetch: async url => {
-      if (String(url).includes('index.json')) return { ok: true, json: async () => ({ fragments: fragments.map((_, i) => `${i}.json`) }) };
-      const match = String(url).match(/\/(\d+)\.json/);
-      const index = match ? Number(match[1]) : -1;
-      if (index >= 0) return { ok: true, json: async () => fragments[index] };
-      return { ok: false, status: 404, json: async () => ({}) };
-    },
-    setTimeout,
-    clearTimeout
-  };
-  context.window = context;
-  vm.createContext(context);
-  const source = fs.readFileSync(path.join(__dirname, '..', 'backfill-loader.js'), 'utf8');
-  vm.runInContext(source, context, { filename: 'backfill-loader.js' });
-  return context;
+    season: '2026-27',
+    fragments,
+    order: ['すべて', 'プレミアリーグ', 'ブンデスリーガ']
+  });
 }
 
 async function apply(context) {
-  await context.window.JFWBackfill.applyCurrentBackfill();
-  return context.D.players[0];
+  await context.window.JFWBackfill.initialLoad;
+  return context.getData().players[0];
 }
 
 test('tracked-to-tracked transfer keeps one player and splits club stats while preserving season total', async () => {
@@ -118,7 +50,7 @@ test('tracked-to-tracked transfer keeps one player and splits club stats while p
   const context = buildHarness({ player, fragments });
   const p = await apply(context);
 
-  assert.equal(context.D.players.length, 1);
+  assert.equal(context.getData().players.length, 1);
   assert.match(p.playerId, /^jp-/);
   assert.equal(p.membershipHistory.length, 2);
   assert.equal(p.membershipHistory[0].club, 'Club A');
@@ -152,7 +84,7 @@ test('tracked-to-out-of-scope transfer retains player and ranking with frozen tr
   const context = buildHarness({ player, fragments });
   const p = await apply(context);
 
-  assert.equal(context.D.players.length, 1);
+  assert.equal(context.getData().players.length, 1);
   assert.equal(p.club, 'Jクラブ');
   assert.equal(p.previousClub, 'Club A');
   assert.equal(p.trackingStatus, 'out_of_scope');
@@ -264,10 +196,10 @@ test('formation data and provider rating survive the runtime backfill merge', as
   const context = buildHarness({ player, fragments });
   await apply(context);
 
-  assert.deepEqual(JSON.parse(JSON.stringify(context.D.matches[0].formationData)), formationData);
-  assert.equal(context.D.players[0].photo, 'https://media.api-sports.io/football/players/55.png');
-  const record = context.D.playerMatchStats[0];
-  assert.equal(record.photo, context.D.players[0].photo);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getData().matches[0].formationData)), formationData);
+  assert.equal(context.getData().players[0].photo, 'https://media.api-sports.io/football/players/55.png');
+  const record = context.getData().playerMatchStats[0];
+  assert.equal(record.photo, context.getData().players[0].photo);
   assert.equal(record.providerRatings.apiFootball.value, 7.2);
   assert.equal(record.lineup.grid, '3:2');
   assert.equal(record.substitution.direction, 'out');
@@ -312,7 +244,7 @@ test('a later provider fragment enriches rating inputs without erasing earlier k
   const context = buildHarness({ player, fragments });
   await apply(context);
 
-  const record = context.D.playerMatchStats[0];
+  const record = context.getData().playerMatchStats[0];
   assert.equal(record.ratingInputs.shotsOnTarget.value, 0);
   assert.equal(record.ratingInputs.shotsOnTarget.state, 'value');
   assert.equal(record.ratingInputs.penaltiesConceded.value, 0);
