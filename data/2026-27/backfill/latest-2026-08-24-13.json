@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 18:55 JST",
+  "sources": {
+    "scfreiburg-duesseldorf-matchfacts-20260823": {
+      "id": "scfreiburg-duesseldorf-matchfacts-20260823",
+      "name": "SC Freiburg official Fortuna Düsseldorf v SC Freiburg match facts",
+      "type": "club_official_match_report",
+      "url": "https://www.scfreiburg.com/en/latest/first-team/match-reports/2026-27/dominant-win-in-duesseldorf/",
+      "retrievedAt": "2026-08-24T18:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "山本理仁",
+      "club": "フライブルク",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "status": "2026-08-23 DFBポカール1回戦はSC Freiburg公式Match factsの先発・ベンチ双方に記載がなくメンバー外",
+      "statsStatus": "verified_matchday_absence",
+      "statsAsOf": "2026-08-23 DFB-Pokal 1. Runde終了",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["scfreiburg-duesseldorf-matchfacts-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "dfbpokal-2026-08-23-duesseldorf-freiburg-rihito-yamamoto",
+      "matchId": "dfbpokal-2026-08-23-duesseldorf-freiburg",
+      "playerName": "山本理仁",
+      "player": "山本理仁",
+      "club": "フライブルク",
+      "competition": "DFB-Pokal",
+      "league": "DFB-Pokal",
+      "match": "フォルトゥナ・デュッセルドルフ 1-5 フライブルク",
+      "ko": "2026-08-23 18:00 CEST",
+      "appearance": "absent_not_in_squad",
+      "start": false,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["scfreiburg-duesseldorf-matchfacts-20260823"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}

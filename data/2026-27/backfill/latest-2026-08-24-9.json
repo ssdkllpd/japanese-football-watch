@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 14:10 JST",
+  "sources": {
+    "bundesliga-machida-profile-20260824": {
+      "id": "bundesliga-machida-profile-20260824",
+      "name": "Bundesliga official Koki Machida player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.bundesliga.com/en/player/koki-machida",
+      "retrievedAt": "2026-08-24T14:10:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "position", "nationality", "squadNumber"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "町田浩樹",
+      "club": "ホッフェンハイム",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "squadNumber": 28,
+      "status": "Bundesliga公式2026/27プロフィールでTSGホッフェンハイム所属、日本国籍DF、背番号28を確認。現行シーズンの追跡対象選手マスタへの登録漏れを補完",
+      "statsStatus": "current_membership_verified",
+      "statsAsOf": "2026-08-24",
+      "priorityUpdate": true,
+      "priorityFields": [
+        "apiFootballPlayerId",
+        "2026-08-22 DFB-Pokal matchday status and playerMatchStats",
+        "current injury/availability status"
+      ],
+      "sourceIds": ["bundesliga-machida-profile-20260824"]
+    }
+  ]
+}

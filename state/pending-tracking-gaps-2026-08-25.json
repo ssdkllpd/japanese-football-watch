@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-25T21:14:05+09:00",
+  "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
+  "priority": "highest",
+  "players": [
+    {
+      "name": "Mio Backhaus",
+      "nameJa": "長田澪",
+      "club": "SC Freiburg",
+      "league": "Bundesliga",
+      "position": "GK",
+      "squadNumber": 1,
+      "nationality": ["DEU", "JPN"],
+      "eligibilityNote": "Bundesliga official profile lists both German and Japanese nationality; SC Freiburg official describes him as German-Japanese.",
+      "verifiedBy": ["Bundesliga official 2026-27 player profile", "SC Freiburg official signing announcement", "Bundesliga official DFB-Pokal live ticker"],
+      "verifiedMatchFacts": {
+        "date": "2026-08-23",
+        "competition": "DFB-Pokal",
+        "match": "Fortuna Düsseldorf 1-5 SC Freiburg",
+        "start": true,
+        "minutes": 90,
+        "gaOnPitch": 1
+      },
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 playerMatchStats", "ratingPositionSource", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "saves", "shotsOnTargetFaced", "highClaims", "passesCompleted", "passesAttempted", "errorsLeadingToGoal", "current availability"]
+    },
+    {
+      "name": "安藤晃希",
+      "club": "Royal Antwerp FC",
+      "league": "Belgian Pro League",
+      "position": "LW",
+      "squadNumber": 23,
+      "verifiedBy": ["Royal Antwerp official player profile", "Royal Antwerp official first-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday status for rounds 1-3", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "山田新",
+      "club": "OH Leuven",
+      "league": "Belgian Pro League",
+      "position": "FW",
+      "squadNumber": 20,
+      "verifiedBy": ["OH Leuven official transfer announcement", "OH Leuven official A-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "荻原拓也",
+      "club": "OH Leuven",
+      "league": "Belgian Pro League",
+      "position": "DF",
+      "squadNumber": 26,
+      "verifiedBy": ["OH Leuven official transfer announcement", "OH Leuven official A-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "ハーフナー・ニッキ",
+      "club": "Royale Union Saint-Gilloise",
+      "league": "Belgian Pro League",
+      "position": "DF",
+      "squadNumber": 55,
+      "verifiedBy": ["Union SG official transfer announcement", "Union SG official first-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "荒木遼太郎",
+      "club": "Sint-Truidense VV",
+      "league": "Belgian Pro League",
+      "position": "MF",
+      "squadNumber": 71,
+      "verifiedBy": ["STVV official transfer announcement", "STVV official first-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "伊藤敦樹",
+      "club": "KAA Gent",
+      "league": "Belgian Pro League",
+      "position": "MF",
+      "squadNumber": 15,
+      "verifiedBy": ["KAA Gent official 2026-27 player profile"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "増井健人",
+      "club": "KV Kortrijk",
+      "league": "Belgian Pro League",
+      "position": "MF",
+      "squadNumber": 71,
+      "verifiedBy": ["KV Kortrijk official transfer announcement", "KV Kortrijk official first-team roster"],
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    }
+  ],
+  "resolvedOutOfScope": [
+    {
+      "name": "塩貝健人",
+      "club": "VfL Wolfsburg",
+      "actualLeague": "Bundesliga 2",
+      "previouslyMisclassifiedAs": "Bundesliga",
+      "effectiveSeason": "2026-27",
+      "resolution": "Remove from automatic current-season tracking and priority backfill because Bundesliga 2 is outside workflow_policy v19 scope. Retain previously verified DFB-Pokal facts only as audit history; do not create 2026-27 tracked playerMatchStats or JFW Rating from this out-of-scope club.",
+      "verifiedBy": ["Bundesliga official Wolfsburg Bundesliga 2 club page", "Bundesliga official 2026/27 second-tier season overview"],
+      "verifiedMatchFactsRetainedForAudit": {
+        "match": "VSG Altglienicke 3-3 VfL Wolfsburg (Wolfsburg won on penalties)",
+        "competition": "DFB-Pokal",
+        "date": "2026-08-24",
+        "start": true,
+        "minutes": 120,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "shotOnTargetConfirmedMinimum": 1
+      }
+    },
+    {
+      "name": "小川航基",
+      "previousClub": "NEC Nijmegen",
+      "previousLeague": "Eredivisie",
+      "destinationClub": "FC町田ゼルビア",
+      "destinationLeague": "J1",
+      "effectiveDate": "2026-08-24",
+      "effectiveSeason": "2026-27",
+      "repositorySearchState": "stable player record not found",
+      "resolution": "Treat as a verified tracked-to-out-of-scope transition under workflow_policy v19. Do not create a name-only runtime player record. Before any historical tracked-period statistics are added, resolve a stable playerId and backfill the NEC 2026-27 match history so prior tracked-period facts remain attributable after the J1 move.",
+      "priorityFields": ["stablePlayerId", "2026-27 NEC match history before transfer", "apiFootballPlayerId", "historical playerMatchStats during tracked period"],
+      "verifiedBy": ["FC Machida Zelvia official transfer announcement dated 2026-08-24"]
+    }
+  ]
+}

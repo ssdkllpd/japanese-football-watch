@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 22:02 JST",
+  "sources": {
+    "psv-sano-player-20260824": {
+      "id": "psv-sano-player-20260824",
+      "name": "PSV official Kodai Sano player statistics",
+      "type": "club_official_player_statistics",
+      "url": "https://www.psv.nl/en/teams/speler/kodai-sano",
+      "retrievedAt": "2026-08-24T22:02:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["seasonAppearances", "seasonMinutes", "seasonGoals", "seasonAssists", "seasonYellowCards", "seasonRedCards", "seasonShots", "seasonShotsOnTarget"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "status": "PSV公式の2026/27集計が2試合118分・途中出場1回・途中交代0回・G/A 0・黄/赤0へ更新。既存の第2節28分と照合し、第3節FCフローニンゲン戦は先発フル90分と確定。",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-23 第3節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["psv-sano-player-20260824"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-sano-psv-groningen-20260823",
+      "matchId": "eredivisie-2026-08-23-psv-groningen",
+      "player": "佐野航大",
+      "club": "PSV",
+      "league": "エールディヴィジ",
+      "match": "PSV 5-1 FCフローニンゲン",
+      "ko": "2026-08-23 21:30 JST",
+      "round": "第3節 / 全34節",
+      "appearance": "starter",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_secondary",
+      "sourceIds": ["psv-sano-player-20260824"],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "psv-sano-player-20260824"},
+        "goals": {"state": "value", "value": 0, "sourceId": "psv-sano-player-20260824"},
+        "assists": {"state": "value", "value": 0, "sourceId": "psv-sano-player-20260824"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "psv-sano-player-20260824"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "psv-sano-player-20260824"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "psv-sano-player-20260824"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"},
+        "shots": {"state": "missing"},
+        "shotsOnTarget": {"state": "missing"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"}
+      },
+      "ratingSources": [
+        {
+          "id": "psv-sano-player-20260824",
+          "name": "PSV official Kodai Sano player statistics",
+          "type": "club_official_player_statistics",
+          "url": "https://www.psv.nl/en/teams/speler/kodai-sano",
+          "retrievedAt": "2026-08-24T22:02:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["seasonAppearances", "seasonMinutes", "seasonGoals", "seasonAssists", "seasonYellowCards", "seasonRedCards", "seasonShots", "seasonShotsOnTarget"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
