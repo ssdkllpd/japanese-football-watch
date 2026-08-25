@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T07:00:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-25 updates, including the confirmed Satoshi Tanaka DFB-Pokal appearance for Schalke and retained historical corrections.",
+  "updatedAt": "2026-08-25T13:03:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-25 updates, including the official-source Satoshi Tanaka DFB-Pokal JFW Rating refinement and retained historical corrections.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "4f99462c96a6787c5256b0a02fd310bfa88e8c7b",
-    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json"]
+    "blobSha": "d7fc6bb73770903b4928fcc4b0638939e4cc724f",
+    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json"]
   },
   "runtime": ["data.json","jfw-rating.js","backfill-loader.js","match-detail.js"],
   "runtimeBlobs": {"backfill-loader.js":"f1c842e4f7080d8a666b67ecbdc3e16e1148c63b"},
@@ -44,19 +44,19 @@
     "motherwellFreiburgRatingsRefined":true,
     "eredivisieSanoDebutRatingRefined":true,
     "laligaSatoRatingRefinementLoadsThroughPlayerMatchStats":true,
-    "satoshiTanakaHalleCupAppearanceLoadsWithoutIncompleteRating":true
+    "satoshiTanakaHalleCupRatingRefinedFromOfficialSource":true
   },
   "verifiedCorrections": [
     "All verified August 20-25 overlays remain retained in manifest order, including Premier League, Championship, Bundesliga, Belgian Pro League, Eredivisie, La Liga, Ligue 1, Scottish Premiership and Primeira Liga corrections and JFW Rating refinements already present before this run.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
     "The retained Valencia debut refinement for Ryunosuke Sato remains unchanged: JFW Rating is 6.00 at 0.447 coverage.",
     "On 2026-08-24, FC Machida Zelvia officially announced the permanent transfer of Koki Ogawa from NEC Nijmegen. Historical overseas records remain preserved while future J1 collection stays out of scope.",
-    "On 2026-08-24, Schalke defeated Hallescher FC 5-2 after extra time in the DFB-Pokal first round. Satoshi Tanaka was a substitute and entered in the 105th minute; discipline-critical penaltiesConceded and ownGoals remain missing, so no JFW Rating was calculated."
+    "On 2026-08-24, Schalke defeated Hallescher FC 5-2 after extra time in the DFB-Pokal first round. Satoshi Tanaka entered in the 105th minute. Schalke's official full match report covers the complete 15-minute appearance and confirms no Tanaka goal, assist, card, penalty-conceding event or own goal, allowing JFW Rating v1.0 = 6.00 at 0.447 coverage / medium confidence."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
     "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
-    "Satoshi Tanaka's DFB-Pokal penaltiesConceded, ownGoals and advanced player statistics remain priority-update fields; JFW Rating remains null until all required discipline inputs are explicit values.",
+    "Satoshi Tanaka's DFB-Pokal advanced player statistics remain priority-update fields even though the required JFW Rating discipline inputs are now explicit values from the official club report.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
