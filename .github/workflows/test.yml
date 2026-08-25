@@ -23,6 +23,7 @@ jobs:
           node --check app-v2.js
           node --check backfill-merge.js
           node --check backfill-loader.js
+          node --check v2-backfill-data.js
           node --check clubs.js
           node --check favorites.js
           node --check formation-view.js

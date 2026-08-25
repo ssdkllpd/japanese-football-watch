@@ -123,13 +123,29 @@
   async function loadLegacy() {
     if (state.legacy) return state.legacy;
     try {
-      const response = await fetch('data.json', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      state.legacy = await response.json();
-    } catch {
-      state.legacy = { players: [], topMatches: [], dataCoverage: [] };
+      const loader = window.JFWV2BackfillData;
+      const mergeBackfillData = window.JFWBackfillMerge?.mergeBackfillData;
+      if (!loader?.loadCurrentMergedData) throw new Error('v2 backfill data adapter が読み込まれていません');
+      state.legacy = await loader.loadCurrentMergedData({ mergeBackfillData });
+    } catch (error) {
+      state.legacy = {
+        players: [], matches: [], topMatches: [], dataCoverage: [],
+        _dataIntegrity: {
+          degraded: true,
+          season: null,
+          errors: [String(error?.message || error || 'v2 backfill load failed')],
+        },
+      };
     }
     return state.legacy;
+  }
+
+  function dataIntegrityNotice() {
+    const integrity = state.legacy?._dataIntegrity;
+    if (!integrity?.degraded) return '';
+    const errors = Array.isArray(integrity.errors) ? integrity.errors.filter(Boolean) : [];
+    const detail = errors.length ? `<br><span class="entity-sub">${esc(errors.join(' / '))}</span>` : '';
+    return `<div class="notice"><strong>追跡データの整合性警告</strong><br>backfillを完全適用できていないため、表示中の移行データは不完全な可能性があります。未取得を0として補完していません。${detail}</div>`;
   }
 
   function parseLegacyMatch(item, index) {
@@ -272,10 +288,12 @@
     setPageHeader('matches');
     const rows = state.liveOnly ? state.fixtures.filter(isLive) : state.fixtures;
     const sourceNote = state.source === 'core' ? '' : `<div class="notice">Core feedの接続前/取得失敗時は、既存の確認済みデータだけを移行表示しています。未取得を0にはしていません。</div>`;
+    const integrityNote = state.source === 'core' ? '' : dataIntegrityNotice();
     main.innerHTML = `
       <div class="control-row"><button id="liveFilter" class="chip live${state.liveOnly ? ' is-active' : ''}" type="button">● LIVE</button><button id="todayButton" class="chip${state.date === todayJst() ? ' is-active' : ''}" type="button">今日</button></div>
       ${renderDateStrip()}
       ${sourceNote}
+      ${integrityNote}
       ${state.loading ? '<div class="notice">試合データを読み込み中…</div>' : ''}
       <div id="fixtureGroups">${renderFixtureGroups(rows)}</div>`;
     $('liveFilter').addEventListener('click', () => { state.liveOnly = !state.liveOnly; renderMatches(); });
@@ -653,7 +671,7 @@
     const players = (state.legacy?.players || []).slice().sort((a,b) => (Number(b.rating)||0)-(Number(a.rating)||0) || (Number(b?.stats?.goals)||0)+(Number(b?.stats?.assists)||0) - ((Number(a?.stats?.goals)||0)+(Number(a?.stats?.assists)||0)));
     const q = state.legacySearch.trim().toLowerCase();
     const filtered = players.filter(player => !q || `${player.name} ${player.club} ${player.league}`.toLowerCase().includes(q));
-    main.innerHTML = `<div class="notice">日本人追跡は総合データアプリのオプション機能です。既存の追跡データ/JFW Ratingは削除せず、Core factsへ順次接続します。</div><input id="japaneseSearch" class="search-box" placeholder="日本人選手を検索" value="${esc(state.legacySearch)}" autocomplete="off"><section class="section"><div class="section-title"><h2>追跡選手</h2><span class="meta">${filtered.length}</span></div><div id="japaneseList" class="list-card">${japaneseRows(filtered)}</div></section>`;
+    main.innerHTML = `${dataIntegrityNotice()}<div class="notice">日本人追跡は総合データアプリのオプション機能です。既存の追跡データ/JFW Ratingは削除せず、Core factsへ順次接続します。</div><input id="japaneseSearch" class="search-box" placeholder="日本人選手を検索" value="${esc(state.legacySearch)}" autocomplete="off"><section class="section"><div class="section-title"><h2>追跡選手</h2><span class="meta">${filtered.length}</span></div><div id="japaneseList" class="list-card">${japaneseRows(filtered)}</div></section>`;
     $('japaneseSearch').addEventListener('input', event => { state.legacySearch = event.target.value; const next = players.filter(player => !state.legacySearch.trim() || `${player.name} ${player.club} ${player.league}`.toLowerCase().includes(state.legacySearch.trim().toLowerCase())); $('japaneseList').innerHTML = japaneseRows(next); bindFollowButtons(); });
     bindFollowButtons();
   }
@@ -661,17 +679,18 @@
   function japaneseRows(players) {
     if (!players.length) return '<div class="empty-state"><strong>該当選手なし</strong>検索条件を変えてください。</div>';
     return players.slice(0,80).map(player => {
-      const stats = player.stats || {};
+      const stats = player.seasonStats || player.stats || {};
       const id = `jfw:${player.name}`;
       const on = isFollowing('players',id);
-      return `<div class="entity-row"><span class="entity-logo"></span><div class="entity-main"><div class="entity-name">${esc(player.name)}</div><div class="entity-sub">${esc(player.club || 'クラブ未取得')} · ${esc(player.league || 'リーグ未取得')} · ${esc(player.pos || '')}</div><div class="stat-inline"><span>出場 <b>${stats.apps ?? '—'}</b></span><span>G <b>${stats.goals ?? '—'}</b></span><span>A <b>${stats.assists ?? '—'}</b></span><span>${esc(player.status || '')}</span></div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="players" data-follow-id="${esc(id)}" data-follow-name="${esc(player.name)}" data-follow-logo="" type="button">${on ? '★' : '☆'}</button></div>`;
+      const photo = player.photo ? `<img class="entity-logo" src="${esc(player.photo)}" alt="" loading="lazy">` : '<span class="entity-logo"></span>';
+      return `<div class="entity-row">${photo}<div class="entity-main"><div class="entity-name">${esc(player.name)}</div><div class="entity-sub">${esc(player.club || 'クラブ未取得')} · ${esc(player.league || 'リーグ未取得')} · ${esc(player.pos || '')}</div><div class="stat-inline"><span>出場 <b>${stats.apps ?? '—'}</b></span><span>G <b>${stats.goals ?? '—'}</b></span><span>A <b>${stats.assists ?? '—'}</b></span><span>${esc(player.status || '')}</span></div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="players" data-follow-id="${esc(id)}" data-follow-name="${esc(player.name)}" data-follow-logo="${esc(player.photo || '')}" type="button">${on ? '★' : '☆'}</button></div>`;
     }).join('');
   }
 
   function renderMore() {
     setPageHeader('more');
     const coverage = state.legacy?.dataCoverage || [];
-    main.innerHTML = `<div class="settings-grid"><section class="settings-block"><h3>Football Data Worker</h3><p>API-Footballキーはブラウザに置かず、Cloudflare Worker経由でCoreデータを読み込みます。</p><input id="workerInput" class="settings-input" value="${esc(state.workerBase)}" placeholder="https://example.workers.dev"><button id="saveWorker" class="plain-button" type="button">保存して試合を再読込</button></section><section class="settings-block"><h3>表示テーマ</h3><p>通常 / ダークは端末内に保存します。</p><button id="moreTheme" class="plain-button" type="button">テーマを切り替える</button></section><section class="settings-block"><h3>既存機能</h3><p>移行中も日本人追跡の旧画面は削除していません。</p><button id="legacyOpen" class="plain-button" type="button">旧画面を開く</button></section>${coverage.length ? `<section class="settings-block"><h3>既存データ取得状況</h3>${coverage.map(item => `<p><b>${esc(item.label)}</b> · ${esc(item.level)}<br>${esc(item.note)}</p>`).join('')}</section>` : ''}</div>`;
+    main.innerHTML = `${dataIntegrityNotice()}<div class="settings-grid"><section class="settings-block"><h3>Football Data Worker</h3><p>API-Footballキーはブラウザに置かず、Cloudflare Worker経由でCoreデータを読み込みます。</p><input id="workerInput" class="settings-input" value="${esc(state.workerBase)}" placeholder="https://example.workers.dev"><button id="saveWorker" class="plain-button" type="button">保存して試合を再読込</button></section><section class="settings-block"><h3>表示テーマ</h3><p>通常 / ダークは端末内に保存します。</p><button id="moreTheme" class="plain-button" type="button">テーマを切り替える</button></section><section class="settings-block"><h3>既存機能</h3><p>移行中も日本人追跡の旧画面は削除していません。</p><button id="legacyOpen" class="plain-button" type="button">旧画面を開く</button></section>${coverage.length ? `<section class="settings-block"><h3>既存データ取得状況</h3>${coverage.map(item => `<p><b>${esc(item.label)}</b> · ${esc(item.level)}<br>${esc(item.note)}</p>`).join('')}</section>` : ''}</div>`;
     $('saveWorker').addEventListener('click', () => { state.workerBase = String($('workerInput').value || '').trim().replace(/\/+$/,''); if(state.workerBase){localStorage.setItem('football-v2-api-base',state.workerBase);}else{localStorage.removeItem('football-v2-api-base');} state.page='matches'; syncNav(); loadMatches(); });
     $('moreTheme').addEventListener('click', toggleTheme);
     $('legacyOpen').addEventListener('click', () => { location.href = 'legacy.html'; });
@@ -706,7 +725,8 @@
   }
 
   function updateDataMode() {
-    if (state.source === 'core') dataMode.textContent = 'Core v2';
+    if (state.legacy?._dataIntegrity?.degraded && state.source !== 'core') dataMode.textContent = '移行データ ⚠';
+    else if (state.source === 'core') dataMode.textContent = 'Core v2';
     else if (state.source === 'loading') dataMode.textContent = '準備中';
     else dataMode.textContent = '移行データ';
   }

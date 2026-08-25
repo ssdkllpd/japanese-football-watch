@@ -28,6 +28,13 @@ test('v2 shell is the default entry and exposes the approved five primary destin
   assert.equal(html, previewHtml, 'index.html and app-v2.html must expose the same v2 shell');
 });
 
+test('v2 shell loads the pure backfill merge before its v2 data adapter and app', () => {
+  const mergeAt = html.indexOf('<script src="backfill-merge.js"></script>');
+  const adapterAt = html.indexOf('<script src="v2-backfill-data.js"></script>');
+  const appAt = html.indexOf('<script src="app-v2.js"></script>');
+  assert.ok(mergeAt >= 0 && mergeAt < adapterAt && adapterAt < appAt);
+});
+
 test('legacy Japanese tracker remains available outside the default entry', () => {
   assert.match(legacyHtml, /<title>海外日本人ウォッチ（旧画面）<\/title>/);
   assert.match(js, /location\.href = 'legacy\.html'/);
@@ -39,6 +46,21 @@ test('v2 match home is wired to Core date, live and fixture endpoints', () => {
   assert.match(js, /\/api\/v2\/live/);
   assert.match(js, /\/api\/v2\/fixtures\//);
   assert.match(js, /Core feed/);
+});
+
+test('v2 legacy data path uses the current-season backfill adapter instead of direct data.json fetch', () => {
+  assert.match(js, /window\.JFWV2BackfillData/);
+  assert.match(js, /window\.JFWBackfillMerge\?\.mergeBackfillData/);
+  assert.match(js, /loadCurrentMergedData\(\{ mergeBackfillData \}\)/);
+  assert.doesNotMatch(js, /fetch\(['"]data\.json['"]/);
+  assert.match(js, /_dataIntegrity/);
+  assert.match(js, /追跡データの整合性警告/);
+});
+
+test('v2 Japanese rows consume merged season stats and player photos', () => {
+  assert.match(js, /player\.seasonStats \|\| player\.stats/);
+  assert.match(js, /player\.photo \? `<img class="entity-logo"/);
+  assert.match(js, /stats\.assists \?\? '—'/);
 });
 
 test('v2 shell keeps mobile bottom navigation and a desktop equivalent', () => {
