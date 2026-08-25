@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 07:35 JST",
+  "sources": {
+    "leeds-official-forest-cup-20260825": {
+      "id": "leeds-official-forest-cup-20260825",
+      "name": "Leeds United official EFL Cup report: Nottingham Forest 0-2 Leeds United",
+      "type": "club_official_match_report",
+      "url": "https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united",
+      "retrievedAt": "2026-08-26T07:35:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions", "goals"]
+    },
+    "sportinglife-valencia-betis-20260825": {
+      "id": "sportinglife-valencia-betis-20260825",
+      "name": "Sporting Life Valencia v Real Betis full commentary",
+      "type": "reputable_secondary_exhaustive_events",
+      "url": "https://www.sportinglife.com/football/live/236119/valencia-vs-real-betis/commentary",
+      "retrievedAt": "2026-08-26T07:35:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "substitutions", "goals", "assists", "yellowCards"]
+    },
+    "eldesmarque-valencia-betis-20260825": {
+      "id": "eldesmarque-valencia-betis-20260825",
+      "name": "ElDesmarque Valencia 0-1 Real Betis match report and technical sheet",
+      "type": "secondary_match_report",
+      "url": "https://www.eldesmarque.com/futbol/liga-1a-division/20260825/cronica-resultado-betis-valencia-goles-jugadas_18_020017939.html",
+      "retrievedAt": "2026-08-26T07:35:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "substitutions", "goals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "eflcup-2026-08-25-forest-leeds",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "round": "2回戦",
+      "ko": "2026-08-26 04:00 JST",
+      "match": "ノッティンガム・フォレスト 0-2 リーズ",
+      "players": "田中碧",
+      "appearance": "田中碧は先発し68分に交代。リーズが2-0で勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": true,
+      "sourceIds": ["leeds-official-forest-cup-20260825"]
+    },
+    {
+      "matchId": "laliga-2026-08-25-valencia-betis",
+      "league": "ラ・リーガ",
+      "competition": "La Liga",
+      "round": "第1節延期分",
+      "ko": "2026-08-26 04:00 JST",
+      "match": "バレンシア 0-1 レアル・ベティス",
+      "players": "佐藤龍之介",
+      "appearance": "佐藤龍之介は先発フル出場。26分に警告。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": true,
+      "sourceIds": ["sportinglife-valencia-betis-20260825", "eldesmarque-valencia-betis-20260825"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "田中碧",
+      "club": "リーズ",
+      "league": "プレミアリーグ",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 Carabao Cup 2回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    },
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 Real Betis戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-aotanaka-forest-leeds-20260825",
+      "matchId": "eflcup-2026-08-25-forest-leeds",
+      "player": "田中碧",
+      "club": "リーズ",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "match": "ノッティンガム・フォレスト 0-2 リーズ",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "2回戦",
+      "appearance": "starter_sub_68",
+      "start": true,
+      "bench": false,
+      "substitution": {"off": 68},
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["leeds-official-forest-cup-20260825"],
+      "values": {"minutes": 68, "goals": 0, "assists": 0},
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 68, "sourceId": "leeds-official-forest-cup-20260825"},
+        "goals": {"state": "value", "value": 0, "sourceId": "leeds-official-forest-cup-20260825"},
+        "assists": {"state": "value", "value": 0, "sourceId": "leeds-official-forest-cup-20260825"},
+        "yellowCards": {"state": "missing"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"}
+      },
+      "ratingSources": [
+        {"id":"leeds-official-forest-cup-20260825","name":"Leeds United official EFL Cup report: Nottingham Forest 0-2 Leeds United","type":"club_official_match_report","url":"https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united","retrievedAt":"2026-08-26T07:35:00+09:00","priority":1,"exhaustiveFor":["result","startingLineup","bench","substitutions","goals"]}
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]
+    },
+    {
+      "recordId": "r-sato-valencia-betis-20260825",
+      "matchId": "laliga-2026-08-25-valencia-betis",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "competition": "La Liga",
+      "match": "バレンシア 0-1 レアル・ベティス",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "第1節延期分",
+      "appearance": "starter_full",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sportinglife-valencia-betis-20260825", "eldesmarque-valencia-betis-20260825"],
+      "values": {"minutes": 90, "goals": 0, "assists": 0, "yellowCards": 1},
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "eldesmarque-valencia-betis-20260825"},
+        "goals": {"state": "value", "value": 0, "sourceId": "sportinglife-valencia-betis-20260825"},
+        "assists": {"state": "value", "value": 0, "sourceId": "sportinglife-valencia-betis-20260825"},
+        "yellowCards": {"state": "value", "value": 1, "sourceId": "sportinglife-valencia-betis-20260825"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"}
+      },
+      "ratingSources": [
+        {"id":"sportinglife-valencia-betis-20260825","name":"Sporting Life Valencia v Real Betis full commentary","type":"reputable_secondary_exhaustive_events","url":"https://www.sportinglife.com/football/live/236119/valencia-vs-real-betis/commentary","retrievedAt":"2026-08-26T07:35:00+09:00","priority":2,"exhaustiveFor":["result","startingLineup","substitutions","goals","assists","yellowCards"]},
+        {"id":"eldesmarque-valencia-betis-20260825","name":"ElDesmarque Valencia 0-1 Real Betis match report and technical sheet","type":"secondary_match_report","url":"https://www.eldesmarque.com/futbol/liga-1a-division/20260825/cronica-resultado-betis-valencia-goles-jugadas_18_020017939.html","retrievedAt":"2026-08-26T07:35:00+09:00","priority":2,"exhaustiveFor":["result","startingLineup","substitutions","goals"]}
+      ],
+      "ratingConflicts": [],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]
+    }
+  ]
+}
