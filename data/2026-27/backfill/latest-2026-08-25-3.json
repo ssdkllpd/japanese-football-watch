@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-25 13:03 JST",
+  "sources": {
+    "schalke-official-halle-report-20260824": {
+      "id": "schalke-official-halle-report-20260824",
+      "name": "FC Schalke 04 official Hallescher FC 2-5 match report",
+      "type": "club_official_full_match_report",
+      "url": "https://schalke04.de/en/dfb-cup/halle-report-2627/",
+      "retrievedAt": "2026-08-25T13:03:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "substitutions", "goals", "assists", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "田中聡",
+      "club": "シャルケ04",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-24 DFB-Pokal 1回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["apiFootballPlayerId", "shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "current injury/availability status"],
+      "sourceIds": ["schalke-official-halle-report-20260824"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-tanaka-halle-schalke-20260824",
+      "matchId": "dfbpokal-2026-08-24-halle-schalke",
+      "player": "田中聡",
+      "club": "シャルケ04",
+      "league": "DFB-Pokal",
+      "competition": "DFB-Pokal",
+      "match": "ハレシャーFC 2-5 シャルケ04（延長）",
+      "ko": "2026-08-25 03:45 JST",
+      "round": "1回戦",
+      "appearance": "substitute",
+      "start": false,
+      "bench": true,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["schalke-official-halle-report-20260824"],
+      "values": {
+        "minutes": 15,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 15, "sourceId": "schalke-official-halle-report-20260824"},
+        "goals": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "assists": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "yellowCards": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "schalke-official-halle-report-20260824"},
+        "shots": {"state": "missing"},
+        "shotsOnTarget": {"state": "missing"},
+        "keyPasses": {"state": "missing"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"}
+      },
+      "ratingSources": [
+        {
+          "id": "schalke-official-halle-report-20260824",
+          "name": "FC Schalke 04 official Hallescher FC 2-5 match report",
+          "type": "club_official_full_match_report",
+          "url": "https://schalke04.de/en/dfb-cup/halle-report-2627/",
+          "retrievedAt": "2026-08-25T13:03:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["result", "substitutions", "goals", "assists", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.0,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.447,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.778, "minutes": 0.524},
+      "deltaPerformance": 0,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0}
+      ],
+      "revisedAt": "2026-08-25T13:03:00+09:00",
+      "previousRating": null,
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
