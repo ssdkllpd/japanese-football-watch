@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T11:12:00+09:00",
+  "updatedAt": "2026-08-25T14:04:00+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
@@ -82,9 +82,15 @@
         "start": true,
         "minutes": 120,
         "minutesBasis": "Started and no substitution-off event in the complete extra-time lineup/substitution record",
-        "goals": 0
+        "goals": 0,
+        "assists": 0,
+        "assistsBasis": "VfL Wolfsburg official exhaustive six-goal descriptions attribute all assists/touches and none to Shiogai",
+        "yellowCards": 0,
+        "yellowCardsBasis": "VfL Wolfsburg official match report lists all yellow cards: Rieder, Oduah / Souza, Fischer",
+        "shotOnTargetConfirmedMinimum": 1,
+        "shotOnTargetBasis": "VfL Wolfsburg official report explicitly records Shiogai being denied by Zwick in the 70th minute; exact total remains unverified"
       },
-      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 league match history", "2026-08-24 DFB-Pokal assists", "2026-08-24 DFB-Pokal discipline inputs", "2026-08-24 DFB-Pokal detailed playerMatchStats", "current availability"]
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 league match history", "2026-08-24 DFB-Pokal secondYellowRed", "2026-08-24 DFB-Pokal straightRed", "2026-08-24 DFB-Pokal penaltiesConceded", "2026-08-24 DFB-Pokal ownGoals", "2026-08-24 DFB-Pokal exact shots/shotsOnTarget and remaining detailed playerMatchStats", "current availability"]
     }
   ]
 }
