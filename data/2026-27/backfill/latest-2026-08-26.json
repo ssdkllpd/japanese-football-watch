@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 05:58 JST",
+  "sources": {
+    "tm-blackburn-sheffield-20260825": {
+      "id": "tm-blackburn-sheffield-20260825",
+      "name": "Transfermarkt Blackburn Rovers 1-2 Sheffield United match sheet",
+      "type": "stats_aggregator_match_sheet",
+      "url": "https://www.transfermarkt.com/spielbericht/index/spielbericht/5016472",
+      "retrievedAt": "2026-08-26T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["lineup","substitutions","goals","assists","cards"]
+    },
+    "espn-stoke-hull-20260825": {
+      "id": "espn-stoke-hull-20260825",
+      "name": "ESPN Stoke City 1-1 Hull City player stats",
+      "type": "stats_aggregator_player_stats",
+      "url": "https://www.espn.com/soccer/player-stats/_/gameId/401908126",
+      "retrievedAt": "2026-08-26T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["lineup","substitutions","goals","assists","shots","shotsOnTarget","duelsWon"]
+    },
+    "espn-birmingham-brentford-20260825": {
+      "id": "espn-birmingham-brentford-20260825",
+      "name": "ESPN Birmingham City 1-6 Brentford player stats",
+      "type": "stats_aggregator_player_stats",
+      "url": "https://www.espn.co.uk/football/player-stats/_/gameId/401907951",
+      "retrievedAt": "2026-08-26T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["lineup","substitutions","goals","assists","shots","shotsOnTarget","duelsWon"]
+    },
+    "sky-ipswich-leicester-20260825": {
+      "id": "sky-ipswich-leicester-20260825",
+      "name": "Sky Sports Ipswich Town vs Leicester City teams",
+      "type": "broadcaster_match_sheet",
+      "url": "https://www.skysports.com/football/ipswich-town-vs-leicester-city/teams/577431",
+      "retrievedAt": "2026-08-26T05:58:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["lineup","bench"]
+    }
+  },
+  "playerUpdates": [
+    {"name":"森下龍矢","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["shots","shotsOnTarget","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]},
+    {"name":"大橋祐紀","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["minutes","shots","shotsOnTarget","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]},
+    {"name":"守田英正","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]},
+    {"name":"岩田智輝","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]},
+    {"name":"前田大然","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["minutes","goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]}
+  ],
+  "playerMatchStats": [
+    {
+      "recordId":"r-morishita-blackburn-sheffield-20260825","matchId":"eflcup-2026-08-25-blackburn-sheffield","player":"森下龍矢","club":"ブラックバーン","league":"EFL Cup","competition":"Carabao Cup","match":"ブラックバーン 1-2 シェフィールド・ユナイテッド","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"starter_full","start":true,"bench":false,"ratingPosition":"FW","ratingPositionSource":"match_secondary","sourceIds":["tm-blackburn-sheffield-20260825"],"values":{"minutes":90,"goals":0,"assists":1,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},"ratingInputs":{"minutes":{"state":"value","value":90,"sourceId":"tm-blackburn-sheffield-20260825"},"goals":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"assists":{"state":"value","value":1,"sourceId":"tm-blackburn-sheffield-20260825"},"yellowCards":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"secondYellowRed":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"straightRed":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"penaltiesConceded":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"ownGoals":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"shots":{"state":"missing"},"shotsOnTarget":{"state":"missing"},"keyPasses":{"state":"missing"},"dribbles":{"state":"missing"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"bigChancesMissed":{"state":"missing"}},"ratingSources":[],"ratingConflicts":[],"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["shots","shotsOnTarget","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+    },
+    {
+      "recordId":"r-ohashi-blackburn-sheffield-20260825","matchId":"eflcup-2026-08-25-blackburn-sheffield","player":"大橋祐紀","club":"ブラックバーン","league":"EFL Cup","competition":"Carabao Cup","match":"ブラックバーン 1-2 シェフィールド・ユナイテッド","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"starter_sub_injury","start":true,"bench":false,"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["tm-blackburn-sheffield-20260825"],"values":{"goals":0,"assists":0},"ratingInputs":{"minutes":{"state":"missing"},"goals":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"},"assists":{"state":"value","value":0,"sourceId":"tm-blackburn-sheffield-20260825"}},"ratingSources":[],"ratingConflicts":[],"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["minutes","shots","shotsOnTarget","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+    },
+    {
+      "recordId":"r-morita-stoke-hull-20260825","matchId":"eflcup-2026-08-25-stoke-hull","player":"守田英正","club":"ハル・シティ","league":"EFL Cup","competition":"Carabao Cup","match":"ストーク 1-1 ハル（PK 4-5）","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"starter_sub_59","start":true,"bench":false,"ratingPosition":"MF","ratingPositionSource":"match_official","sourceIds":["espn-stoke-hull-20260825"],"values":{"minutes":59,"goals":0,"assists":0,"shots":0,"shotsOnTarget":0,"duelsWon":0},"ratingInputs":{"minutes":{"state":"value","value":59,"sourceId":"espn-stoke-hull-20260825"},"goals":{"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},"assists":{"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},"shots":{"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},"shotsOnTarget":{"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},"duelsWon":{"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},"yellowCards":{"state":"missing"},"secondYellowRed":{"state":"missing"},"straightRed":{"state":"missing"},"penaltiesConceded":{"state":"missing"},"ownGoals":{"state":"missing"}},"ratingSources":[],"ratingConflicts":[],"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]
+    },
+    {
+      "recordId":"r-iwata-birmingham-brentford-20260825","matchId":"eflcup-2026-08-25-birmingham-brentford","player":"岩田智輝","club":"バーミンガム","league":"EFL Cup","competition":"Carabao Cup","match":"バーミンガム 1-6 ブレントフォード","ko":"2026-08-26 04:00 JST","round":"2回戦","appearance":"sub_83","start":false,"bench":true,"ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["espn-birmingham-brentford-20260825"],"values":{"minutes":7,"goals":0,"assists":0,"shots":0,"shotsOnTarget":0,"duelsWon":0},"ratingInputs":{"minutes":{"state":"value","value":7,"sourceId":"espn-birmingham-brentford-20260825"},"goals":{"state":"value","value":0,"sourceId":"espn-birmingham-brentford-20260825"},"assists":{"state":"value","value":0,"sourceId":"espn-birmingham-brentford-20260825"},"shots":{"state":"value","value":0,"sourceId":"espn-birmingham-brentford-20260825"},"shotsOnTarget":{"state":"value","value":0,"sourceId":"espn-birmingham-brentford-20260825"},"duelsWon":{"state":"value","value":0,"sourceId":"espn-birmingham-brentford-20260825"},"yellowCards":{"state":"missing"},"secondYellowRed":{"state":"missing"},"straightRed":{"state":"missing"},"penaltiesConceded":{"state":"missing"},"ownGoals":{"state":"missing"}},"ratingSources":[],"ratingConflicts":[],"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsTotal","dribbles","possessionsLost","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals"]
+    },
+    {
+      "recordId":"r-maeda-ipswich-leicester-20260825","matchId":"eflcup-2026-08-25-ipswich-leicester","player":"前田大然","club":"イプスウィッチ","league":"EFL Cup","competition":"Carabao Cup","match":"イプスウィッチ 3-1 レスター","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"sub_80","start":false,"bench":true,"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["sky-ipswich-leicester-20260825"],"values":{"minutes":10},"ratingInputs":{"minutes":{"state":"value","value":10,"sourceId":"sky-ipswich-leicester-20260825"},"goals":{"state":"missing"},"assists":{"state":"missing"},"yellowCards":{"state":"missing"},"secondYellowRed":{"state":"missing"},"straightRed":{"state":"missing"},"penaltiesConceded":{"state":"missing"},"ownGoals":{"state":"missing"}},"ratingSources":[],"ratingConflicts":[],"jfwRating":null,"ratingVersion":"1.0","priorityUpdate":true,"priorityFields":["goals","assists","yellowCards","secondYellowRed","straightRed","penaltiesConceded","ownGoals","shots","shotsOnTarget","keyPasses","dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+    }
+  ],
+  "gaResultsAdd": [
+    {"player":"森下龍矢","club":"ブラックバーン","league":"Carabao Cup","contribution":"1A","result":"L","resultLabel":"敗戦","match":"ブラックバーン 1-2 シェフィールド・ユナイテッド","round":"2回戦","ko":"2026-08-26 03:45 JST","matchId":"eflcup-2026-08-25-blackburn-sheffield"}
+  ]
+}
