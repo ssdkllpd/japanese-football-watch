@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T17:53:00+09:00",
+  "updatedAt": "2026-08-25T20:08:41+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
@@ -89,6 +89,19 @@
         "yellowCards": 0,
         "shotOnTargetConfirmedMinimum": 1
       }
+    },
+    {
+      "name": "小川航基",
+      "previousClub": "NEC Nijmegen",
+      "previousLeague": "Eredivisie",
+      "destinationClub": "FC町田ゼルビア",
+      "destinationLeague": "J1",
+      "effectiveDate": "2026-08-24",
+      "effectiveSeason": "2026-27",
+      "repositorySearchState": "stable player record not found",
+      "resolution": "Treat as a verified tracked-to-out-of-scope transition under workflow_policy v19. Do not create a name-only runtime player record. Before any historical tracked-period statistics are added, resolve a stable playerId and backfill the NEC 2026-27 match history so prior tracked-period facts remain attributable after the J1 move.",
+      "priorityFields": ["stablePlayerId", "2026-27 NEC match history before transfer", "apiFootballPlayerId", "historical playerMatchStats during tracked period"],
+      "verifiedBy": ["FC Machida Zelvia official transfer announcement dated 2026-08-24"]
     }
   ]
 }
