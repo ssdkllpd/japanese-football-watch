@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-26T07:11:00+09:00",
+  "updatedAt": "2026-08-26T07:48:00+09:00",
   "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including the August 25 Carabao Cup and Valencia-Betis records. J1 remains outside scope.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "2144fa96d8af5dad96c58c15d43960d0ef2d22f6",
-    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json","latest-2026-08-26-2.json"]
+    "blobSha": "b386e96f601478a51fb103722ff55166a431b2a3",
+    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json","latest-2026-08-26-2.json","latest-2026-08-26-3.json"]
   },
   "trackingScope": {"type":"overseas_japanese_players","j1Included":false,"j1Owner":"separate analysis app","j1MayBlockUpdate":false},
   "validation": {
@@ -29,6 +29,7 @@
     "siteMatchDetailConsumesPlayerMatchStats":true,
     "noHistoricalSeasonDataOverwritten":true,
     "aug26CarabaoOverlayPresent":true,
+    "carabaoLeagueKeyNormalizedForApiBackfill":true,
     "morishitaCarabaoAssistPreserved":true,
     "moritaCarabaoStartAnd59MinuteSubstitutionPreserved":true,
     "iwataCarabao83MinuteSubstitutionPreserved":true,
