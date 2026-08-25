@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-25T03:04:00+09:00",
+  "status": "partial_verified_backfill",
+  "note": "Verified match-history facts for players already recorded in state/pending-tracking-gaps-2026-08-25.json. This state file does not mutate runtime season data until stable IDs, full playerMatchStats backfill and consistency gates are completed.",
+  "players": [
+    {
+      "name": "山田新",
+      "club": "OH Leuven",
+      "verifiedSeasonFacts": {"leagueAppearances": 2, "leagueMinutes": 29, "goals": 0, "assists": 0},
+      "matches": [
+        {"date": "2026-08-09", "opponent": "Sporting Charleroi", "minutes": 14},
+        {"date": "2026-08-15", "opponent": "Club Brugge", "minutes": 15}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "detailed playerMatchStats", "discipline inputs", "current availability"]
+    },
+    {
+      "name": "荻原拓也",
+      "club": "OH Leuven",
+      "verifiedSeasonFacts": {"leagueAppearances": 2, "leagueMinutes": 41, "goals": 0, "assists": 0},
+      "matches": [
+        {"date": "2026-08-09", "opponent": "Sporting Charleroi", "minutes": 26},
+        {"date": "2026-08-15", "opponent": "Club Brugge", "minutes": 15}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "detailed playerMatchStats", "discipline inputs", "current availability"]
+    },
+    {
+      "name": "ハーフナー・ニッキ",
+      "club": "Royale Union Saint-Gilloise",
+      "verifiedSeasonFacts": {"leagueAppearances": 1, "leagueStarts": 1, "leagueMinutes": 90, "goals": 0, "assists": 0, "yellowCards": 0, "redCards": 0},
+      "matches": [
+        {"date": "2026-08-08", "opponent": "Westerlo", "appearance": "unused_substitute", "minutes": 0},
+        {"date": "2026-08-15", "opponent": "Zulte Waregem", "appearance": "starter", "minutes": 90}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "detailed playerMatchStats", "required penaltiesConceded/ownGoals", "current availability"]
+    },
+    {
+      "name": "荒木遼太郎",
+      "club": "Sint-Truidense VV",
+      "verifiedSeasonFacts": {"belgianLeagueAppearances": 0, "europaLeagueAppearances": 1, "europaLeagueMinutes": 29, "goals": 0, "assists": 0},
+      "matches": [
+        {"date": "2026-08-14", "opponent": "Cercle Brugge", "competition": "Belgian Pro League", "appearance": "unused_substitute", "minutes": 0},
+        {"date": "2026-08-20", "opponent": "Omonia Nicosia", "competition": "UEFA Europa League", "appearance": "substitute", "minutes": 29}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "detailed playerMatchStats", "discipline inputs", "current availability"]
+    },
+    {
+      "name": "伊藤敦樹",
+      "club": "KAA Gent",
+      "verifiedSeasonFacts": {"clubOfficialLeagueAppearances": 0, "clubOfficialMinutes": 0},
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "matchday status for league and Conference League fixtures", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "安藤晃希",
+      "club": "Royal Antwerp FC",
+      "verifiedSeasonFacts": {"matchdayStatus": "not_in_squad confirmed for Aug 10 and Aug 15 reports; Aug 22 reported did not play"},
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "official matchday status rounds 1-3", "playerMatchStats", "current availability"]
+    },
+    {
+      "name": "増井健人",
+      "club": "KV Kortrijk",
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+    }
+  ]
+}

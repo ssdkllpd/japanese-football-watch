@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 17:00 JST",
+  "sources": {
+    "schalke-satoshi-transfer-20260610": {
+      "id": "schalke-satoshi-transfer-20260610",
+      "name": "FC Schalke 04 official Satoshi Tanaka signing announcement",
+      "type": "club_official_transfer",
+      "url": "https://medien.schalke04.de/pressreleases/schalke-04-nimmt-satoshi-tanaka-unter-vertrag-3453365",
+      "retrievedAt": "2026-08-24T17:00:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "contractEnd", "position"]
+    },
+    "bundesliga-satoshi-profile-20260824": {
+      "id": "bundesliga-satoshi-profile-20260824",
+      "name": "Bundesliga official Satoshi Tanaka player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.bundesliga.com/en/player/satoshi-tanaka",
+      "retrievedAt": "2026-08-24T17:00:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "position", "nationality", "squadNumber"]
+    },
+    "dfb-schalke-cup-squad-20260824": {
+      "id": "dfb-schalke-cup-squad-20260824",
+      "name": "DFB official Schalke 2026/27 cup squad",
+      "type": "competition_official_squad",
+      "url": "https://datencenter.dfb.de/competitions/dfb-pokal/seasons/2026-27/teams/fc-schalke-04",
+      "retrievedAt": "2026-08-24T17:00:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["competitionRegistration", "squadNumber"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "田中聡",
+      "club": "シャルケ04",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "squadNumber": 13,
+      "previousClub": "フォルトゥナ・デュッセルドルフ",
+      "previousLeague": "2. Bundesliga",
+      "effectiveDate": "2026-07-01",
+      "membershipChangeType": "transfer",
+      "contractUntil": "2030-06-30",
+      "status": "シャルケ公式でフォルトゥナ・デュッセルドルフからの加入と2030年までの契約を確認。Bundesliga公式2026/27プロフィールおよびDFBポカール登録でシャルケ所属、日本国籍MF、背番号13を確認。現行シーズンの追跡対象選手マスタへの登録漏れを補完",
+      "statsStatus": "current_membership_verified",
+      "statsAsOf": "2026-08-24",
+      "priorityUpdate": true,
+      "priorityFields": [
+        "apiFootballPlayerId",
+        "2026-08-24 DFB-Pokal Hallescher FC matchday status and playerMatchStats",
+        "current injury/availability status"
+      ],
+      "sourceIds": [
+        "schalke-satoshi-transfer-20260610",
+        "bundesliga-satoshi-profile-20260824",
+        "dfb-schalke-cup-squad-20260824"
+      ]
+    }
+  ]
+}

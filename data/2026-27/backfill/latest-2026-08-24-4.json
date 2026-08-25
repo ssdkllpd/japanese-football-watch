@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 03:56 JST",
+  "sources": {
+    "soccerking-cambuur-feyenoord-20260823": {
+      "id": "soccerking-cambuur-feyenoord-20260823",
+      "name": "Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)",
+      "type": "reputable_secondary_match_report",
+      "url": "https://news.mixi.jp/view_news.pl?id=8919267&media_id=138",
+      "retrievedAt": "2026-08-24T03:56:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "goals", "substitutionMinutes"]
+    },
+    "feyenoordpings-cambuur-lineup-20260823": {
+      "id": "feyenoordpings-cambuur-lineup-20260823",
+      "name": "FeyenoordPings confirmed Feyenoord lineup at Cambuur",
+      "type": "secondary_confirmed_lineup",
+      "url": "https://www.feyenoordpings.nl/opstelling-feyenoord-bekend-nieuwste-aanwinst-begint-op-de-bank/",
+      "retrievedAt": "2026-08-24T03:56:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["startingXI"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "eredivisie-2026-08-23-cambuur-feyenoord",
+      "league": "エールディヴィジ",
+      "competition": "Eredivisie",
+      "round": "第3節 / 全34節",
+      "ko": "2026-08-23 16:45 CEST",
+      "match": "SC Cambuur 2-5 Feyenoord",
+      "players": "上田綺世、渡辺剛",
+      "appearance": "上田綺世と渡辺剛が先発し、ともに67分に交代。上田は45+1分にPKで得点。",
+      "note": "Feyenoordが5-2で勝利。渡辺の交代後、Cambuurは70分と80分に得点。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["soccerking-cambuur-feyenoord-20260823", "feyenoordpings-cambuur-lineup-20260823"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "上田綺世",
+      "club": "フェイエノールト",
+      "league": "エールディヴィジ",
+      "status": "第3節Cambuur戦先発・67分交代・PKで1得点、Feyenoord 5-2勝利",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-23 Eredivisie 第3節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shotsOnTarget", "shots", "keyPasses", "dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"],
+      "sourceIds": ["soccerking-cambuur-feyenoord-20260823", "feyenoordpings-cambuur-lineup-20260823"]
+    },
+    {
+      "name": "渡辺剛",
+      "club": "フェイエノールト",
+      "league": "エールディヴィジ",
+      "status": "第3節Cambuur戦先発・67分交代、在場中失点0、Feyenoord 5-2勝利",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-23 Eredivisie 第3節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast"],
+      "sourceIds": ["soccerking-cambuur-feyenoord-20260823", "feyenoordpings-cambuur-lineup-20260823"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-ueda-cambuur-feyenoord-20260823",
+      "matchId": "eredivisie-2026-08-23-cambuur-feyenoord",
+      "player": "上田綺世",
+      "club": "フェイエノールト",
+      "league": "エールディヴィジ",
+      "competition": "Eredivisie",
+      "match": "SC Cambuur 2-5 Feyenoord",
+      "ko": "2026-08-23 16:45 CEST",
+      "round": "第3節 / 全34節",
+      "appearance": "starter_sub_67",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "match_official",
+      "sourceIds": ["soccerking-cambuur-feyenoord-20260823", "feyenoordpings-cambuur-lineup-20260823"],
+      "values": {"minutes": 67, "goals": 1},
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 67, "sourceId": "soccerking-cambuur-feyenoord-20260823"},
+        "goals": {"state": "value", "value": 1, "sourceId": "soccerking-cambuur-feyenoord-20260823"},
+        "assists": {"state": "missing"},
+        "yellowCards": {"state": "missing"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"}
+      },
+      "ratingSources": [
+        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)","type":"reputable_secondary_match_report","url":"https://news.mixi.jp/view_news.pl?id=8919267&media_id=138","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
+        {"id":"feyenoordpings-cambuur-lineup-20260823","name":"FeyenoordPings confirmed Feyenoord lineup at Cambuur","type":"secondary_confirmed_lineup","url":"https://www.feyenoordpings.nl/opstelling-feyenoord-bekend-nieuwste-aanwinst-begint-op-de-bank/","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["startingXI"]}
+      ],
+      "start": true,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shotsOnTarget", "shots", "keyPasses", "dribbles", "duelsWon", "duelsTotal", "bigChancesMissed"]
+    },
+    {
+      "recordId": "r-watanabe-cambuur-feyenoord-20260823",
+      "matchId": "eredivisie-2026-08-23-cambuur-feyenoord",
+      "player": "渡辺剛",
+      "club": "フェイエノールト",
+      "league": "エールディヴィジ",
+      "competition": "Eredivisie",
+      "match": "SC Cambuur 2-5 Feyenoord",
+      "ko": "2026-08-23 16:45 CEST",
+      "round": "第3節 / 全34節",
+      "appearance": "starter_sub_67",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "match_official",
+      "sourceIds": ["soccerking-cambuur-feyenoord-20260823", "feyenoordpings-cambuur-lineup-20260823"],
+      "values": {"minutes": 67, "goals": 0, "gaOnPitch": 0},
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 67, "sourceId": "soccerking-cambuur-feyenoord-20260823"},
+        "goals": {"state": "value", "value": 0, "sourceId": "soccerking-cambuur-feyenoord-20260823"},
+        "assists": {"state": "missing"},
+        "gaOnPitch": {"state": "value", "value": 0, "sourceId": "soccerking-cambuur-feyenoord-20260823"},
+        "yellowCards": {"state": "missing"},
+        "secondYellowRed": {"state": "missing"},
+        "straightRed": {"state": "missing"},
+        "penaltiesConceded": {"state": "missing"},
+        "ownGoals": {"state": "missing"}
+      },
+      "ratingSources": [
+        {"id":"soccerking-cambuur-feyenoord-20260823","name":"Soccer King Cambuur 2-5 Feyenoord match report (Mixi syndication)","type":"reputable_secondary_match_report","url":"https://news.mixi.jp/view_news.pl?id=8919267&media_id=138","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["result","goals","substitutionMinutes"]},
+        {"id":"feyenoordpings-cambuur-lineup-20260823","name":"FeyenoordPings confirmed Feyenoord lineup at Cambuur","type":"secondary_confirmed_lineup","url":"https://www.feyenoordpings.nl/opstelling-feyenoord-bekend-nieuwste-aanwinst-begint-op-de-bank/","retrievedAt":"2026-08-24T03:56:00+09:00","priority":2,"exhaustiveFor":["startingXI"]}
+      ],
+      "start": true,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": true,
+      "priorityFields": ["assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "tackles", "interceptions", "clearances", "blocks", "aerialDuelsWon", "aerialDuelsTotal", "duelsWon", "duelsTotal", "dribbledPast"]
+    }
+  ]
+}

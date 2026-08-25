@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-24 16:19 JST",
+  "sources": {
+    "dfb-hoffenheim-cup-squad-20260824": {
+      "id": "dfb-hoffenheim-cup-squad-20260824",
+      "name": "DFB Datencenter Hoffenheim DFB-Pokal 2026/27 squad",
+      "type": "competition_official_squad",
+      "url": "https://datencenter.dfb.de/competitions/dfb-pokal/seasons/2026-27/teams/tsg-hoffenheim",
+      "retrievedAt": "2026-08-24T16:19:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["registeredSquad"]
+    },
+    "sky-aue-hoffenheim-lineups-20260824": {
+      "id": "sky-aue-hoffenheim-lineups-20260824",
+      "name": "Sky Sports Erzgebirge Aue v Hoffenheim confirmed teams and result",
+      "type": "structured_secondary_lineup_and_result",
+      "url": "https://www.skysports.com/football/erzgebirge-aue-vs-tsg-hoffenheim/teams/556633",
+      "retrievedAt": "2026-08-24T16:19:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "startingLineup", "bench", "substitutions"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "dfbpokal-2026-08-22-aue-hoffenheim",
+      "league": "DFB-Pokal",
+      "round": "1回戦",
+      "ko": "2026-08-22 22:30 JST",
+      "match": "エルツゲビルゲ・アウエ 0-4 ホッフェンハイム",
+      "players": "町田浩樹",
+      "appearance": "町田浩樹はDFB登録スカッドには存在するが、確定先発・ベンチのいずれにも入らずメンバー外。",
+      "note": "ホッフェンハイムはDFBポカール1回戦でアウエに4-0で勝利。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["dfb-hoffenheim-cup-squad-20260824", "sky-aue-hoffenheim-lineups-20260824"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "町田浩樹",
+      "club": "ホッフェンハイム",
+      "league": "ブンデスリーガ",
+      "pos": "DF",
+      "squadNumber": 28,
+      "status": "2026-08-22 DFBポカール1回戦は確定先発・ベンチ双方に入らずメンバー外",
+      "statsStatus": "verified_matchday_absence",
+      "statsAsOf": "2026-08-22 DFB-Pokal 1回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["apiFootballPlayerId", "current injury/availability status"],
+      "sourceIds": ["dfb-hoffenheim-cup-squad-20260824", "sky-aue-hoffenheim-lineups-20260824"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-machida-aue-hoffenheim-20260822",
+      "matchId": "dfbpokal-2026-08-22-aue-hoffenheim",
+      "player": "町田浩樹",
+      "club": "ホッフェンハイム",
+      "league": "DFB-Pokal",
+      "match": "エルツゲビルゲ・アウエ 0-4 ホッフェンハイム",
+      "ko": "2026-08-22 22:30 JST",
+      "round": "1回戦",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "DF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["dfb-hoffenheim-cup-squad-20260824", "sky-aue-hoffenheim-lineups-20260824"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}
