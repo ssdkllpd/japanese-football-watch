@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T03:04:00+09:00",
+  "updatedAt": "2026-08-25T19:02:00+09:00",
   "status": "partial_verified_backfill",
   "note": "Verified match-history facts for players already recorded in state/pending-tracking-gaps-2026-08-25.json. This state file does not mutate runtime season data until stable IDs, full playerMatchStats backfill and consistency gates are completed.",
   "players": [
@@ -66,8 +66,49 @@
     {
       "name": "増井健人",
       "club": "KV Kortrijk",
+      "verifiedSeasonFacts": {
+        "leagueAppearances": 2,
+        "leagueStarts": 2,
+        "goals": 0,
+        "assists": 0,
+        "yellowCards": 0,
+        "redCards": 0,
+        "minuteValueStatus": "conflict_pending"
+      },
+      "matches": [
+        {
+          "round": 1,
+          "opponent": "Club Brugge",
+          "appearance": "starter",
+          "substitution": "out",
+          "substitutionMinuteEventLog": 73,
+          "substitutionMinuteSummary": 72,
+          "goals": 0,
+          "assists": 0,
+          "yellowCards": 0,
+          "source": "Belgian Pro League official match centre"
+        },
+        {
+          "round": 2,
+          "opponent": "Royal Antwerp FC",
+          "appearance": "starter",
+          "substitution": "out",
+          "substitutionMinuteEventLog": 78,
+          "substitutionMinuteSummary": 77,
+          "goals": 0,
+          "assists": 0,
+          "yellowCards": 0,
+          "source": "Belgian Pro League official match centre"
+        }
+      ],
+      "conflicts": [
+        {
+          "field": "minutes",
+          "reason": "The Pro League match-centre substitution event detail and its compact lineup summary differ by one minute in both verified league matches. Preserve both values until the canonical JFW minute convention/source is resolved; do not select the value that is more convenient for Rating."
+        }
+      ],
       "priorityUpdate": true,
-      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "canonical minutes for rounds 1-2", "penaltiesConceded", "ownGoals", "detailed playerMatchStats", "current availability"]
     }
   ]
 }
