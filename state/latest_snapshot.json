@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-26T05:58:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including the August 25 Carabao Cup second-round Japanese-player records. J1 remains outside scope.",
+  "updatedAt": "2026-08-26T09:54:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including Ryunosuke Sato vs Real Betis and Ao Tanaka vs Nottingham Forest. J1 remains outside scope.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "8e47ad9f8a6eef28bce8fe8f429e12a4440155ed",
-    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json"]
+    "blobSha": "01611c619a8125da24634476e0ad74e4c9af55c3",
+    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json","latest-2026-08-26-2.json"]
   },
   "trackingScope": {"type":"overseas_japanese_players","j1Included":false,"j1Owner":"separate analysis app","j1MayBlockUpdate":false},
   "validation": {
@@ -29,25 +29,21 @@
     "siteMatchDetailConsumesPlayerMatchStats":true,
     "noHistoricalSeasonDataOverwritten":true,
     "aug26CarabaoOverlayPresent":true,
-    "morishitaCarabaoAssistPreserved":true,
-    "moritaCarabaoStartAnd59MinuteSubstitutionPreserved":true,
-    "iwataCarabao83MinuteSubstitutionPreserved":true,
-    "maedaCarabaoBenchAndSubstitutionPreserved":true,
+    "aug26SecondOverlayPresent":true,
+    "satoBetisRatingIs607HighConfidence":true,
+    "tanakaCupRequiredDisciplineRemainsMissing":true,
     "incompleteRequiredRatingInputsRemainMissing":true
   },
   "verifiedCorrections": [
-    "All verified August 20-25 overlays remain retained in manifest order.",
+    "All verified August 20-26 overlays remain retained in manifest order.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
-    "On 2026-08-25, Blackburn lost 1-2 to Sheffield United in the Carabao Cup second round. Ryoya Morishita started and was credited with the assist for Blackburn's goal; Yuki Ohashi also started and later left injured, with the exact substitution minute still unresolved in the retained record.",
-    "On 2026-08-25, Hull drew 1-1 at Stoke and advanced 5-4 on penalties. Hidemasa Morita started and was substituted in the 59th minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
-    "On 2026-08-25, Birmingham lost 1-6 to Brentford. Tomoki Iwata entered in the 83rd minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
-    "On 2026-08-25, Ipswich beat Leicester 3-1. Daizen Maeda was on the bench and entered late; required goal/assist/discipline fields are intentionally left missing pending a stronger exhaustive post-match source."
+    "On 2026-08-25, Valencia lost 0-1 to Real Betis. Ryunosuke Sato started and played the full match, received a yellow card in the 26th minute, completed 18 of 20 passes, recorded one successful tackle, zero interceptions, four shots and one shot on target. JFW Rating v1.0 is 6.07 with coverage 0.808 and high confidence; unresolved duel, dribble and possession-loss inputs remain missing.",
+    "On 2026-08-25, Leeds beat Nottingham Forest 2-0 in the Carabao Cup second round. Ao Tanaka started and was substituted in the 68th minute. Required discipline fields remain missing, so no JFW Rating is calculated."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
-    "Required discipline inputs remain missing for Morita, Iwata and Maeda, so no JFW Rating is calculated for those new appearances.",
-    "Ohashi's exact injury substitution minute was not verified from a sufficiently strong source in this run and remains missing.",
-    "Morishita's advanced performance fields remain priority targets even though his assist and required discipline event zeros were verified from a complete match sheet.",
+    "Ao Tanaka's required discipline inputs and advanced match statistics remain priority targets, so his August 25 cup appearance remains unrated.",
+    "Ryunosuke Sato's duel, dribble and possession-loss inputs remain missing despite enough verified inputs for a high-confidence JFW Rating.",
     "API-Football scheduled synchronization remains disabled until workflow_policy v19 provider gates pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
