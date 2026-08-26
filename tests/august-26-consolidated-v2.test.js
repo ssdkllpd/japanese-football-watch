@@ -67,10 +67,10 @@ test('stored ratings exactly match JFW Rating v1.0 engine output', () => {
   }
 });
 
-test('manifest and snapshot append v2 overlay without losing prior validation', () => {
+test('manifest and snapshot retain v2 overlay while allowing later append-only corrections', () => {
   const manifest = readJson('data/2026-27/backfill/index.json');
   const snapshot = readJson('state/latest_snapshot.json');
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-26-3.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-26-3.json'));
   assert.deepEqual(snapshot.overlayManifest.orderedFragments, manifest.fragments);
   assert.equal(snapshot.validation.morishitaCarabaoAssistPreserved, true);
   assert.equal(snapshot.validation.aug26CarabaoMatchProvenancePresent, true);
