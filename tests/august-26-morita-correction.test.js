@@ -14,22 +14,6 @@ function loadRatingEngine() {
   return context.window.JFWRating;
 }
 
-function normalizedInputs(record) {
-  const defaultSource = record.sourceIds?.[0];
-  const inputs = {};
-  for (const [field, value] of Object.entries(record.values || {})) {
-    inputs[field] = {
-      state: 'value',
-      value,
-      sourceId: record.fieldSources?.[field] || defaultSource
-    };
-  }
-  for (const field of record.missingFields || []) {
-    if (!inputs[field]) inputs[field] = { state: 'missing' };
-  }
-  return inputs;
-}
-
 test('Morita Stoke-Hull record is corrected to a 59th-minute substitute appearance', () => {
   const fragment = readJson('data/2026-27/backfill/latest-2026-08-26-4.json');
   const record = fragment.playerMatchStats.find((r) => r.player === '守田英正');
@@ -49,15 +33,19 @@ test('Morita Stoke-Hull record is corrected to a 59th-minute substitute appearan
   assert.equal(record.values.straightRed, 0);
   assert.equal(record.values.penaltiesConceded, 0);
   assert.equal(record.values.ownGoals, 0);
+  assert.equal(record.ratingInputs.minutes.value, 31);
+  assert.equal(record.ratingInputs.keyPasses.value, 1);
+  assert.equal(record.ratingInputs.passesAttempted.state, 'missing');
+  assert.equal(record.ratingInputs.duelsTotal.state, 'missing');
   assert.equal(record.ratingConflicts.some((c) => c.field === 'appearance'), true);
   assert.equal(record.ratingConflicts.some((c) => c.field === 'minutes'), true);
 });
 
-test('Morita corrected inputs reproduce stored JFW Rating v1.0', () => {
+test('Morita persisted ratingInputs reproduce stored JFW Rating v1.0', () => {
   const fragment = readJson('data/2026-27/backfill/latest-2026-08-26-4.json');
   const record = fragment.playerMatchStats.find((r) => r.player === '守田英正');
   const engine = loadRatingEngine();
-  const computed = JSON.parse(JSON.stringify(engine.compute(normalizedInputs(record), record.ratingPosition)));
+  const computed = JSON.parse(JSON.stringify(engine.compute(record.ratingInputs, record.ratingPosition)));
 
   assert.equal(computed.jfwRating, 6.07);
   assert.equal(computed.ratingCoverage, 0.563);
