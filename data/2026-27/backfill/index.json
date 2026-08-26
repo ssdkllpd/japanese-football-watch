@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updated": "2026-08-26 23:47 JST",
+  "updated": "2026-08-27 04:02 JST",
   "fragments": [
     "core.json",
     "scotland-portugal.json",
@@ -60,6 +60,7 @@
     "latest-2026-08-26.json",
     "latest-2026-08-26-2.json",
     "latest-2026-08-26-3.json",
-    "latest-2026-08-26-4.json"
+    "latest-2026-08-26-4.json",
+    "latest-2026-08-27.json"
   ]
 }
