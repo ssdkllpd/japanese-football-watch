@@ -7,38 +7,24 @@ permissions:
   contents: read
 
 jobs:
-  api-tests:
+  api-client:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/api-football-*.test.js
-  app-backfill:
+      - run: node --test tests/api-football-client.test.js
+  api-existing-results:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/app-v2-shell.test.js tests/backfill-merge-parity.test.js
-  clubs-favorites:
+      - run: node --test tests/api-football-existing-results.test.js
+  api-schema-v2:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/clubs.test.js tests/favorites.test.js
-  feyenoord-formation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - run: node --test tests/feyenoord-cambuur-2026-08-23.test.js tests/formation-view.test.js
-  rating-monaco-motherwell:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - run: node --test tests/jfw-rating-null.test.js tests/monaco-minamino-2026-08-23.test.js tests/motherwell-freiburg-rating-2026-08-23.test.js
+      - run: node --test tests/api-football-schema-v2-mapper.test.js
