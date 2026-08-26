@@ -48,7 +48,7 @@
     },
     {
       "matchId": "eflcup-2026-08-25-forest-leeds",
-      "league": "EFL Cup",
+      "league": "カラバオカップ",
       "competition": "Carabao Cup",
       "round": "2回戦",
       "ko": "2026-08-26 04:00 JST",
@@ -124,23 +124,21 @@
         "shots":{"state":"value","value":4,"sourceId":"laliga-valencia-betis-20260825"},
         "shotsOnTarget":{"state":"value","value":1,"sourceId":"laliga-valencia-betis-20260825"}
       },
-      "ratingSources": [],
+      "ratingSources": ["laliga-valencia-betis-20260825","statmuse-valencia-betis-20260825"],
       "ratingConflicts": [],
-      "jfwRating": 6.07,
+      "jfwRating": 5.88,
       "ratingVersion": "1.0",
-      "ratingCoverage": 0.808,
+      "ratingCoverage": 0.791,
       "ratingConfidence": "high",
-      "ratingFactors": {"coverage":0.948,"minutes":1.0},
-      "deltaPerformance": 0.29,
+      "ratingFactors": {"coverage":0.942,"minutes":1.0},
+      "deltaPerformance": 0.09,
       "deltaDiscipline": -0.2,
       "ratingBreakdown": [
         {"key":"goals","value":0,"points":0},
         {"key":"assists","value":0,"points":0},
         {"key":"keyPasses","value":0,"points":0},
-        {"key":"passAccuracy","value":0.9,"points":0.2},
         {"key":"tackles","value":1,"points":0.09},
-        {"key":"interceptions","value":0,"points":0},
-        {"key":"yellowCards","value":1,"points":-0.2}
+        {"key":"interceptions","value":0,"points":0}
       ],
       "priorityUpdate": true,
       "priorityFields": ["duelsWon","duelsTotal","dribbles","possessionsLost"]
@@ -150,7 +148,7 @@
       "matchId": "eflcup-2026-08-25-forest-leeds",
       "player": "田中碧",
       "club": "リーズ",
-      "league": "EFL Cup",
+      "league": "カラバオカップ",
       "competition": "Carabao Cup",
       "match": "ノッティンガム・フォレスト 0-2 リーズ",
       "ko": "2026-08-26 04:00 JST",
@@ -170,7 +168,7 @@
         "yellowCards":{"state":"missing"},"secondYellowRed":{"state":"missing"},"straightRed":{"state":"missing"},"penaltiesConceded":{"state":"missing"},"ownGoals":{"state":"missing"},
         "shots":{"state":"missing"},"shotsOnTarget":{"state":"missing"},"keyPasses":{"state":"missing"},"passesCompleted":{"state":"missing"},"passesAttempted":{"state":"missing"},"tackles":{"state":"missing"},"interceptions":{"state":"missing"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"dribbles":{"state":"missing"},"possessionsLost":{"state":"missing"}
       },
-      "ratingSources": [],
+      "ratingSources": ["leeds-yahoo-forest-cup-20260825"],
       "ratingConflicts": [],
       "jfwRating": null,
       "ratingVersion": "1.0",
