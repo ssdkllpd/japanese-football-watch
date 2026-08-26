@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 11:28 JST",
+  "matchUpdates": [
+    {
+      "matchId": "eflcup-2026-08-25-blackburn-sheffield",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "round": "2回戦",
+      "ko": "2026-08-26 03:45 JST",
+      "match": "ブラックバーン 1-2 シェフィールド・ユナイテッド",
+      "players": "森下龍矢 / 大橋祐紀",
+      "appearance": "森下龍矢・大橋祐紀が先発。森下は1アシスト。",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
+      "addIfMissing": true,
+      "sourceIds": ["tm-blackburn-sheffield-20260825"]
+    },
+    {
+      "matchId": "eflcup-2026-08-25-stoke-hull",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "round": "2回戦",
+      "ko": "2026-08-26 03:45 JST",
+      "match": "ストーク 1-1 ハル（PK 4-5）",
+      "players": "守田英正",
+      "appearance": "守田英正が先発し59分に交代。",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
+      "addIfMissing": true,
+      "sourceIds": ["espn-stoke-hull-20260825"]
+    },
+    {
+      "matchId": "eflcup-2026-08-25-birmingham-brentford",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "round": "2回戦",
+      "ko": "2026-08-26 04:00 JST",
+      "match": "バーミンガム 1-6 ブレントフォード",
+      "players": "岩田智輝",
+      "appearance": "岩田智輝が83分から途中出場。",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
+      "addIfMissing": true,
+      "sourceIds": ["espn-birmingham-brentford-20260825"]
+    },
+    {
+      "matchId": "eflcup-2026-08-25-ipswich-leicester",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "round": "2回戦",
+      "ko": "2026-08-26 03:45 JST",
+      "match": "イプスウィッチ 3-1 レスター",
+      "players": "前田大然",
+      "appearance": "前田大然はベンチ入り後、80分から途中出場。",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
+      "addIfMissing": true,
+      "sourceIds": ["sky-ipswich-leicester-20260825"]
+    }
+  ]
+}
