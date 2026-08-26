@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-26T05:58:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including the August 25 Carabao Cup second-round Japanese-player records. J1 remains outside scope.",
+  "updatedAt": "2026-08-26T11:28:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates. Historical validation evidence is retained cumulatively; August 25 Carabao Cup second-round records are appended without replacing prior audit state. J1 remains outside scope.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
@@ -28,6 +28,21 @@
     "noNewRatingComputedFromIncompleteDisciplineInputs":true,
     "siteMatchDetailConsumesPlayerMatchStats":true,
     "noHistoricalSeasonDataOverwritten":true,
+    "ogawaTransferOutOfScopeLoadsThroughPlayerUpdates":true,
+    "ogawaHistoricalStatsRemainPreserved":true,
+    "ogawaJ1DestinationDoesNotBecomeTrackedClub":true,
+    "premierLeaguePalaceOpeningRatingsRefined":true,
+    "belgiumAntwerpGenkRatingInputsRefined":true,
+    "bundesligaHashiokaCupGoalLoadsThroughPlayerMatchStats":true,
+    "eredivisieSanoFirstStartLoadsThroughPlayerMatchStats":true,
+    "bundesligaGladbachCupJapaneseAppearancesRefined":true,
+    "bundesligaHoffenheimMachidaMembershipLoadsThroughPlayerUpdates":true,
+    "bundesligaHoffenheimMachidaCupAbsenceLoadsThroughPlayerMatchStats":true,
+    "bundesligaSchalkeSatoshiTanakaMembershipLoadsThroughPlayerUpdates":true,
+    "motherwellFreiburgRatingsRefined":true,
+    "eredivisieSanoDebutRatingRefined":true,
+    "laligaSatoRatingRefinementLoadsThroughPlayerMatchStats":true,
+    "satoshiTanakaHalleCupRatingRefinedFromOfficialSource":true,
     "aug26CarabaoOverlayPresent":true,
     "morishitaCarabaoAssistPreserved":true,
     "moritaCarabaoStartAnd59MinuteSubstitutionPreserved":true,
@@ -36,11 +51,14 @@
     "incompleteRequiredRatingInputsRemainMissing":true
   },
   "verifiedCorrections": [
-    "All verified August 20-25 overlays remain retained in manifest order.",
+    "All verified August 20-26 overlays remain retained in manifest order, including Premier League, Championship, Bundesliga, Belgian Pro League, Eredivisie, La Liga, Ligue 1, Scottish Premiership and Primeira Liga corrections and JFW Rating refinements already present before this run.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
+    "The retained Valencia debut refinement for Ryunosuke Sato remains unchanged: JFW Rating is 6.00 at 0.447 coverage.",
+    "On 2026-08-24, FC Machida Zelvia officially announced the permanent transfer of Koki Ogawa from NEC Nijmegen. Historical overseas records remain preserved while future J1 collection stays out of scope.",
+    "On 2026-08-24, Schalke defeated Hallescher FC 5-2 after extra time in the DFB-Pokal first round. Satoshi Tanaka entered in the 105th minute. Schalke's official full match report covers the complete 15-minute appearance and confirms no Tanaka goal, assist, card, penalty-conceding event or own goal, allowing JFW Rating v1.0 = 6.00 at 0.447 coverage / medium confidence.",
     "On 2026-08-25, Blackburn lost 1-2 to Sheffield United in the Carabao Cup second round. Ryoya Morishita started and was credited with the assist for Blackburn's goal; Yuki Ohashi also started and later left injured, with the exact substitution minute still unresolved in the retained record.",
-    "On 2026-08-25, Hull drew 1-1 at Stoke and advanced 5-4 on penalties. Hidemasa Morita started and was substituted in the 59th minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
-    "On 2026-08-25, Birmingham lost 1-6 to Brentford. Tomoki Iwata entered in the 83rd minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
+    "On 2026-08-25, Hull drew 1-1 at Stoke and advanced 5-4 on penalties. Hidemasa Morita started and was substituted in the 59th minute; the retained player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
+    "On 2026-08-25, Birmingham lost 1-6 to Brentford. Tomoki Iwata entered in the 83rd minute; the retained player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
     "On 2026-08-25, Ipswich beat Leicester 3-1. Daizen Maeda was on the bench and entered late; required goal/assist/discipline fields are intentionally left missing pending a stronger exhaustive post-match source."
   ],
   "declaredCoverageGaps": [
@@ -48,7 +66,8 @@
     "Required discipline inputs remain missing for Morita, Iwata and Maeda, so no JFW Rating is calculated for those new appearances.",
     "Ohashi's exact injury substitution minute was not verified from a sufficiently strong source in this run and remains missing.",
     "Morishita's advanced performance fields remain priority targets even though his assist and required discipline event zeros were verified from a complete match sheet.",
-    "API-Football scheduled synchronization remains disabled until workflow_policy v19 provider gates pass.",
+    "Satoshi Tanaka's DFB-Pokal advanced player statistics remain priority-update fields even though the required JFW Rating discipline inputs are explicit values from the official club report.",
+    "API-Football scheduled synchronization remains disabled until provider-ID registration, per-league completed-fixture field inventory, reconciliation, quota retry and consistency gates in workflow_policy v19 pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
