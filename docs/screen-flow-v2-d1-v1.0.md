@@ -1,4 +1,4 @@
-# Data App v2 画面遷移 v1.0（レビュー案）
+# Data App v2 画面遷移 v1.1（再レビュー案）
 
 状態: **Proposed — Claude レビュー完了まで実装禁止**
 対象: D1/R2 移行後の Data App v2
@@ -15,20 +15,24 @@
 
 現行 `app-v2.js` はメモリ上の state だけで画面を切り替える。移行後は GitHub Pages でも直接開けて、ブラウザの戻る/進むが機能する hash route を画面 ID の正本とする。
 
-| 画面 | Route | 状態 |
-|---|---|---|
-| 試合一覧 | `#/matches?date=YYYY-MM-DD&live=0` | 実装済み、route 化予定 |
-| 試合詳細 | `#/fixtures/{fixtureId}?tab=overview` | 実装済み、route 化予定 |
-| リーグ一覧 | `#/competitions` | 実装済み、route 化予定 |
-| リーグ詳細 | `#/competitions/{competitionId}?season={seasonId}&tab=matches` | 一部実装済み |
-| クラブ詳細 | `#/teams/{teamId}?season={seasonId}` | 未実装、Phase 2 |
-| 選手詳細 | `#/players/{playerId}?season={seasonId}` | 未実装、Phase 2 |
-| 共通検索 | `#/search?q={query}` | 未実装、Phase 2 |
-| フォロー中 | `#/following` | shell 実装済み |
-| 日本人 | `#/japanese?season={seasonId}` | legacy adapter で実装済み |
-| その他 | `#/more` | 実装済み |
+| 画面 | Route | season namespace | 状態 |
+|---|---|---|---|
+| 試合一覧 | `#/matches?date=YYYY-MM-DD&live=0` | なし | 実装済み、route 化予定 |
+| 試合詳細 | `#/fixtures/{fixtureId}?tab=overview` | なし | 実装済み、route 化予定 |
+| リーグ一覧 | `#/competitions` | なし | 実装済み、route 化予定 |
+| リーグ詳細 | `#/competitions/{competitionId}?competitionSeason={competitionSeasonId}&tab=matches` | `af:season:*` | 一部実装済み |
+| クラブ詳細 | `#/teams/{teamId}?productSeason={productSeasonId}` | `jfw:season:*` | 未実装、Phase 2 |
+| 選手詳細 | `#/players/{playerId}?productSeason={productSeasonId}` | `jfw:season:*` | 未実装、Phase 2 |
+| 共通検索 | `#/search?q={query}` | なし | 未実装、Phase 2 |
+| フォロー中 | `#/following` | なし | shell 実装済み |
+| 日本人 | `#/japanese?productSeason={productSeasonId}` | `jfw:season:*` | legacy adapter で実装済み |
+| その他 | `#/more` | なし | 実装済み |
 
 query parameter は選択状態を表し、データそのものを保持しない。path segment の canonical ID は `encodeURIComponent` 相当で符号化し、受信時に一度だけ decode する。不正または存在しない ID は空画面へ黙って落とさず、404 状態と戻り先を表示する。
+
+`competitionSeason` と `productSeason` は交換可能な別名ではない。route parser は prefix で namespace を検証し、逆の ID が渡された場合は既定値へ黙って変換せず `400 invalid_season_namespace` 状態を表示する。
+
+既存共有 URL は移行時に次の規則で一度だけ `replaceState` する。`#home` は `#/matches`、`#players` / `#player` は解決できる場合 `#/japanese` / `#/players/{id}`、`#leagues` は `#/competitions`、`#following` は `#/following`、`#more` は `#/more` へ移す。legacy `?season=2026-27` は product season `jfw:season:2026-27` として解釈する。認識できない裸 hash は今日画面へ黙って落とさず 404 route を表示する。
 
 ## 3. 主ナビゲーション
 
@@ -108,7 +112,7 @@ flowchart TD
 
 ### リーグ詳細
 
-- シーズン selector は route の `season` を変更し、tab は維持する。
+- シーズン selector は route の `competitionSeason` を変更し、tab は維持する。
 - `試合` と `順位表` は現行実装の延長で Phase 1 に含む。
 - `概要`、`選手成績`、`チーム成績` は Phase 2 とし、DB 切替の blocker にしない。
 - 順位表の順位、勝点、試合数などで未取得の値を 0 と表示しない。
@@ -160,7 +164,7 @@ flowchart TD
 ### その他
 
 - theme、データ更新時刻、取得状態、legacy link を表示する。
-- 本番 Worker URL を利用者が通常操作で編集する UI は廃止し、build/config で固定する。開発用 override は query parameter または debug mode に限定する。
+- 本番 Worker URL を利用者が通常操作で編集する UI は廃止し、build/config で固定する。API base override は `localhost`、`127.0.0.1`、明示した preview host でだけ有効にし、override 先も allowlist へ限定する。本番オリジンでは query parameter と `localStorage` の override をどちらも読まない。
 - API key、D1 ID、R2 bucket 名などの秘密/内部識別子を表示しない。
 
 ## 7. 画面と API の対応
@@ -173,12 +177,12 @@ flowchart TD
 | リーグ一覧 | `GET /api/v2/competitions` | Phase 1 で追加 |
 | リーグ試合 | `GET /api/v2/competitions/{competitionId}/dates/{date}` | Phase 1、既存互換 |
 | 順位表 | `GET /api/v2/competitions/{competitionId}/seasons/{seasonId}/standings` | Phase 1、既存互換 |
-| リーグ概要 | `GET /api/v2/competitions/{competitionId}/seasons/{seasonId}` | Phase 2 |
-| クラブ詳細 | `GET /api/v2/teams/{teamId}?season={seasonId}` | Phase 2 |
-| クラブ試合 | `GET /api/v2/teams/{teamId}/fixtures?season={seasonId}&cursor=...` | Phase 2 |
-| 選手詳細 | `GET /api/v2/players/{playerId}?season={seasonId}` | Phase 2 |
-| 選手試合 | `GET /api/v2/players/{playerId}/fixtures?season={seasonId}&cursor=...` | Phase 2 |
-| 日本人一覧 | `GET /api/v2/tracking/japanese?season={seasonId}` | Phase 1 後半 |
+| リーグ概要 | `GET /api/v2/competitions/{competitionId}/seasons/{competitionSeasonId}` | Phase 2 |
+| クラブ詳細 | `GET /api/v2/teams/{teamId}?productSeason={productSeasonId}` | Phase 2 |
+| クラブ試合 | `GET /api/v2/teams/{teamId}/fixtures?productSeason={productSeasonId}&cursor=...` | Phase 2 |
+| 選手詳細 | `GET /api/v2/players/{playerId}?productSeason={productSeasonId}` | Phase 2 |
+| 選手試合 | `GET /api/v2/players/{playerId}/fixtures?productSeason={productSeasonId}&cursor=...` | Phase 2 |
+| 日本人一覧 | `GET /api/v2/tracking/japanese?productSeason={productSeasonId}` | Phase 1 後半 |
 | 共通検索 | `GET /api/v2/search?q={query}&types=competition,team,player&limit=...` | Phase 2 |
 
 一覧 endpoint は上限と cursor pagination を持つ。fixture detail 以外で大きい archive object をまとめて返さない。検索は最小文字数と最大件数を固定し、正規化名の exact/prefix index を使う。先頭 wildcard や任意 SQL 相当の検索条件は許可しない。
@@ -188,10 +192,11 @@ flowchart TD
 | API 状態 | 画面表示 | 禁止事項 |
 |---|---|---|
 | 初回 loading | 対象領域の loading 表示 | 前画面の値を新しい ID の値として残さない |
-| 空配列 + `present_empty` | 「該当なし」 | 「未取得」と表示しない |
+| 空配列 + 公開 `presence: present` | 「該当なし」 | 「未取得」と表示しない |
 | `not_fetched` | 「未取得」 | 0件、0、欠場へ変換しない |
-| `provider_unavailable` | provider 側で利用不可 | 一般エラーと混同しない |
+| `provider_missing` | provider 側で利用不可 | 一般エラーと混同しない |
 | archive loading | 通常の詳細 loading | archive 専用画面へ飛ばさない |
+| compact + `detailAvailability: unavailable` | スコア・状態を残して「詳細は取得できません」 | 試合自体が存在しないと表示しない／一覧へ自動で戻さない |
 | 404 entity | 対象なし + 一覧へ戻る | 空の正常画面に見せない |
 | 409/review required | データ確認中の注記 | 補正値で黙って上書きしない |
 | 429 | 待機案内 + retry | API-Football quota の説明を利用者へ露出しない |
@@ -206,6 +211,7 @@ flowchart TD
 - ブラウザ再読込は hash route から同じ entity と tab を復元する。
 - 存在しない season は現在 season へ黙って置換せず、利用可能な season とともに明示する。
 - legacy 由来の `legacy:*` ID は移行期間だけ read-only で扱い、共有可能な恒久 ID として新規生成しない。
+- 旧 hash/query URL は上記互換規則で新 route へ `replaceState` し、同じ履歴に旧 URL と新 URL を二重追加しない。
 
 ## 10. 実装順序
 
@@ -225,11 +231,15 @@ flowchart TD
 - 承認済み5 destination が desktop/mobile で一致する。
 - 今日以外の日付から fixture を開いて戻っても、日付と filter が変わらない。
 - fixture、competition、team、player の deep link が再読込できる。
+- product season と competition season を取り違えた route は `400 invalid_season_namespace` になり、別 namespace へ暗黙変換されない。
 - 検索から entity detail を開いて戻ると、query と結果位置が復元される。
 - hot と archive の fixture detail が同じ表示 contract を満たす。
 - 一般選手詳細は日本人 registry に依存せず表示できる。
 - 追跡選手詳細は Core facts を複製せず overlay を追加する。
 - `0`、未取得、非該当、空集合がそれぞれ正しく表示される。
+- fixture が存在して detail だけ取得不能な場合、スコアを残して「詳細は取得できません」と表示する。
 - request race により別日/別 entity の結果が表示されない。
 - legacy fallback は選択日以外の fixture を表示しない。
+- `#home` と既存 `?season=...` を含む共有 URL が対応する新 route/product season へ `replaceState` される。
+- 本番オリジンで `?api=` または保存済み override を与えても API base が変化しない。
 - DB 移行の Phase 1 は未実装の Phase 2 画面を理由に延期しない。

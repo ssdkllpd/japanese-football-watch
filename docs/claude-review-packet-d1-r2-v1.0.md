@@ -1,6 +1,6 @@
-# Claude レビューパケット: D1 / R2・ER・画面遷移 v1.0
+# Claude レビューパケット: D1 / R2・ER・画面遷移 v1.1
 
-状態: **Awaiting external review**
+状態: **Initial review received — changes prepared for re-review**
 レビュー対象日: 2026-08-26
 実装 gate: **BLOCKER / MAJOR が 0 になるまで実装しない**
 
@@ -38,7 +38,7 @@
 - 構造化 facts の正本は D1。
 - R2 は raw、監査 snapshot、古い詳細 archive。
 - D1 に保持する詳細は現行 + 直前2シーズン。
-- 4シーズン前以降の詳細は、シーズン確定 + 90日後に archive。
+- hot に含まれない3シーズン前以前（N-3 以前）の詳細は、シーズン確定 + 90日後に archive。
 - D1 350 MB を安全閾値として、必要なら古い確定シーズンを前倒し archive。
 - compact fixture、最終スコア、entity、追跡 ID/所属、補正状態は D1 に恒久保持。
 - 公開アクセスから API-Football を直接呼ばない。
@@ -52,7 +52,7 @@
 - Core facts と Japanese tracking overlay の境界に重複や循環依存がないか。
 - `INTEGER` 内部キーと公開 `canonical_id` の対応が移行・参照整合性に十分か。
 - fixture、lineup、appearance、player stats の粒度が API-Football と既存 contract を損なわないか。
-- `staging -> published -> archived` revision と公開 pointer で、chunk 書込み中の部分状態を確実に隠せるか。
+- `staging -> published -> superseded` lifecycle、`d1 / r2` detail location、公開 pointer で、chunk 書込み中の部分状態を確実に隠せるか。
 - transfer、loan、out-of-scope、correction の履歴を失わないか。
 
 ### 2. missing / provenance / correction
