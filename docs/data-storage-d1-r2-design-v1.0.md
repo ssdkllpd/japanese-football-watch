@@ -3,7 +3,7 @@
 状態: **Proposed — Claude レビュー完了まで実装禁止**
 対象: Data App v2
 作成日: 2026-08-26
-関連文書: `data-app-v2-direction.md`、`data-contract-v2.md`、`player-tracking-data-model-v1.0.md`
+関連文書: `data-app-v2-direction.md`、`data-contract-v2.md`、`player-tracking-data-model-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
 
 ## 1. 結論
 
@@ -50,9 +50,9 @@ ID、DTO、time zone、missing、補正、tracking overlay の規則は置き換
 | 日本人追跡 ID、所属履歴 | 正本・恒久 | 監査コピー任意 | 登録・運用方針 |
 | 人手補正 | 適用/照合状態 | 根拠 snapshot | 補正定義の正本 |
 | JFW Rating | 派生結果 | 入力監査 snapshot 任意 | アルゴリズム/版 |
-| 個人のフォロー、テーマ | 認証導入後に検討 | なし | なし |
+| 個人のフォロー、テーマ、視聴済み fixture ID | 認証導入後に検討 | なし | なし |
 
-個人設定は認証がない段階ではブラウザの `localStorage` に残す。全利用者で共有すべきサッカーの事実だけを先に D1 へ一元化する。匿名端末 ID で個人設定を D1 に保存する設計は、乗っ取り・同期競合・削除要求を扱えないため採用しない。
+個人設定は認証がない段階ではブラウザの `localStorage` に残す。視聴済み状態は fixture の `canonical_id` だけを保存し、Core facts や archive へ混ぜない。全利用者で共有すべきサッカーの事実だけを先に D1 へ一元化する。匿名端末 ID で個人設定を D1 に保存する設計は、乗っ取り・同期競合・削除要求を扱えないため採用しない。
 
 ## 4. 全体構成
 

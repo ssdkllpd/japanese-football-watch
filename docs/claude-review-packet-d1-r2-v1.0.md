@@ -6,10 +6,11 @@
 
 ## Claude への依頼
 
-以下の2文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
+以下の3文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
 
 1. `docs/data-storage-d1-r2-design-v1.0.md`
 2. `docs/screen-flow-v2-d1-v1.0.md`
+3. `docs/ui-wireframe-baseline-v1.0.md`
 
 照合対象の既存仕様は次のとおりです。
 
@@ -44,6 +45,8 @@
 - 公開アクセスから API-Football を直接呼ばない。
 - 公開 DTO の `af:*` ID、UTC/JST 規則、missing semantics は維持。
 - 個人 follow のサーバー同期は認証設計まで延期。
+- 視聴済み管理は端末 `localStorage` で legacy parity を維持する。
+- 外部AI生成・貼付け分析は今回の基本機能に含めない。
 
 ## 必須レビュー観点
 
@@ -92,6 +95,9 @@
 - 共通検索を6番目の主 destination にせず扱う設計が自然か。
 - hot/archive、loading/empty/missing/error の違いが画面へ正しく反映されるか。
 - Phase 1 parity と Phase 2 新機能の境界が現実的か。
+- wireframe の generic `JP` と海外 Japanese tracking/JFW が混同されず、J1除外規則を守れているか。
+- 視聴済み管理と JFW Rating 要因分解が既存機能の parity として不足なく配置されているか。
+- 320 px、文字サイズ、tap target、5 tab の操作性が実装可能か。
 
 ### 7. 移行と rollback
 

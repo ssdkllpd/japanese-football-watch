@@ -3,7 +3,7 @@
 状態: **Proposed — Claude レビュー完了まで実装禁止**
 対象: D1/R2 移行後の Data App v2
 作成日: 2026-08-26
-関連文書: `data-app-v2-direction.md`、`data-storage-d1-r2-design-v1.0.md`
+関連文書: `data-app-v2-direction.md`、`data-storage-d1-r2-design-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
 
 ## 1. 目的
 
@@ -18,7 +18,7 @@
 | 画面 | Route | season namespace | 状態 |
 |---|---|---|---|
 | 試合一覧 | `#/matches?date=YYYY-MM-DD&live=0` | なし | 実装済み、route 化予定 |
-| 試合詳細 | `#/fixtures/{fixtureId}?tab=overview` | なし | 実装済み、route 化予定 |
+| 試合詳細 | `#/fixtures/{fixtureId}?tab={tabId}` | なし（`tabId`: overview/lineup/events/stats/ratings） | 実装済み、route 化予定 |
 | リーグ一覧 | `#/competitions` | なし | 実装済み、route 化予定 |
 | リーグ詳細 | `#/competitions/{competitionId}?competitionSeason={competitionSeasonId}&tab=matches` | `af:season:*` | 一部実装済み |
 | クラブ詳細 | `#/teams/{teamId}?productSeason={productSeasonId}` | `jfw:season:*` | 未実装、Phase 2 |
@@ -88,6 +88,7 @@ flowchart TD
 - 試合一覧は JST 日付を route に保存する。詳細から戻ると同じ日付、LIVE filter、scroll position を復元する。
 - 詳細の tab は URL に保存し、再読込しても同じ tab を開く。
 - `概要` はスコア、状態、イベントを表示する。イベント未取得とイベント0件を別表示にする。
+- `選手評価` は API/JFW を切り替えられる。JFW 選択時に選手行を開くと `#/fixtures/{fixtureId}?tab=ratings&player={playerId}&ratingMode=jfw` となり、要因分解を表示する。閉じる/戻るで同じ評価一覧位置へ戻す。
 - lineup の選手行は選手詳細、チーム名/ロゴはクラブ詳細へ遷移する。Phase 2 までは無効なリンクを置かない。
 - archive 済み試合も同じ `#/fixtures/{fixtureId}` を開く。R2 読込中だけ通常の loading state を表示し、別画面には分岐しない。
 
@@ -160,12 +161,15 @@ flowchart TD
 - ランキングは scope（season / competition）を明示する。
 - 対象外移籍後も過去の tracked period と aggregate は残す。新しい対象外試合を自動追跡しない。
 - 一般画面の試合詳細へ遷移し、同じ match facts を表示する。
+- `watch=unwatched|watched|all` を route filter として持ち、視聴済み fixture ID 集合は端末の `localStorage` に保持する。既存 `jfw-watched-v1` は canonical fixture ID へ解決できる項目だけ移行し、不明な試合へ推測で付け替えない。
+- generic Core 画面の `JP` は国籍表示であり、tracking badge ではない。J1 は Core に表示できるが Japanese tracking workflow と JFW Rating の対象にはしない。
 
 ### その他
 
 - theme、データ更新時刻、取得状態、legacy link を表示する。
 - 本番 Worker URL を利用者が通常操作で編集する UI は廃止し、build/config で固定する。API base override は `localhost`、`127.0.0.1`、明示した preview host でだけ有効にし、override 先も allowlist へ限定する。本番オリジンでは query parameter と `localStorage` の override をどちらも読まない。
 - API key、D1 ID、R2 bucket 名などの秘密/内部識別子を表示しない。
+- ワイヤーフレームに含まれる外部AI生成・貼付け分析は今回の基本機能に含めない。承認済みの別要件ができるまで route、API、DB、保存 UI を追加しない。
 
 ## 7. 画面と API の対応
 
@@ -204,6 +208,8 @@ flowchart TD
 
 古い request が遅れて返っても、現在の route ID と request sequence が一致しなければ state へ commit しない。これは現行の stale-request guard を全詳細画面へ一般化する。
 
+ワイヤーフレームは正常系の情報構造を示す。そこに描かれていない状態でも本表を省略せず、実装の表示契約は `ui-wireframe-baseline-v1.0.md` と本節の厳しい方を採用する。
+
 ## 9. 戻る・再読込・共有
 
 - 一覧から詳細を開く直前に、route、filters、scroll position を session state に保存する。
@@ -217,7 +223,7 @@ flowchart TD
 
 1. router と route-state の contract test
 2. D1 backed の試合一覧、fixture detail、リーグ一覧/試合/順位表
-3. 現行 Japanese view を Core player ID へ接続
+3. 現行 Japanese view、視聴済み管理、JFW要因分解を Core canonical ID へ接続
 4. follow ID の canonical 化と壊れた参照表示
 5. club detail / player detail
 6. 共通検索
@@ -236,10 +242,14 @@ flowchart TD
 - hot と archive の fixture detail が同じ表示 contract を満たす。
 - 一般選手詳細は日本人 registry に依存せず表示できる。
 - 追跡選手詳細は Core facts を複製せず overlay を追加する。
+- generic `JP` badge と追跡/JFW表示が区別され、J1を Japanese tracking workflow に含めない。
+- 視聴済み fixture が再読込後も同じ端末で維持され、未視聴/視聴済み/すべて filter が route から復元される。
+- JFW要因分解から戻ると同じ試合の選手評価 tab、mode、scroll position が復元される。
 - `0`、未取得、非該当、空集合がそれぞれ正しく表示される。
 - fixture が存在して detail だけ取得不能な場合、スコアを残して「詳細は取得できません」と表示する。
 - request race により別日/別 entity の結果が表示されない。
 - legacy fallback は選択日以外の fixture を表示しない。
 - `#home` と既存 `?season=...` を含む共有 URL が対応する新 route/product season へ `replaceState` される。
 - 本番オリジンで `?api=` または保存済み override を与えても API base が変化しない。
+- AI分析用の route、API、DB table、保存 UI が追加されていない。
 - DB 移行の Phase 1 は未実装の Phase 2 画面を理由に延期しない。
