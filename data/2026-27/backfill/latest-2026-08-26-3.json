@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 13:01 JST",
+  "sources": {
+    "leeds-official-forest-cup-report-20260825": {
+      "id": "leeds-official-forest-cup-report-20260825",
+      "name": "Leeds United official Nottingham Forest 0-2 match report",
+      "type": "club_official_full_match_report",
+      "url": "https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "cards"]
+    },
+    "sportinglife-forest-leeds-commentary-20260825": {
+      "id": "sportinglife-forest-leeds-commentary-20260825",
+      "name": "Sporting Life Nottingham Forest 0-2 Leeds United full commentary",
+      "type": "stats_aggregator_full_event_log",
+      "url": "https://www.sportinglife.com/football/live/242920/nottingham-forest-vs-leeds-united/commentary",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["shots", "shotsOnTarget", "keyPasses", "goals", "assists", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    },
+    "sky-plymouth-coventry-20260825": {
+      "id": "sky-plymouth-coventry-20260825",
+      "name": "Sky Sports Plymouth Argyle 2-4 Coventry City teams and full commentary",
+      "type": "broadcaster_complete_match_sheet",
+      "url": "https://www.skysports.com/football/plymouth-argyle-vs-coventry-city/live/577439",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "lineup", "bench", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    },
+    "orf-lask-celtic-20260825": {
+      "id": "orf-lask-celtic-20260825",
+      "name": "ORF Sport LASK 5-1 Celtic match report and teams",
+      "type": "public_broadcaster_full_match_report",
+      "url": "https://sport.orf.at/stories/3161680",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "assists", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    },
+    "laliga-official-valencia-betis-20260825": {
+      "id": "laliga-official-valencia-betis-20260825",
+      "name": "LaLiga official Valencia CF 0-1 Real Betis match centre",
+      "type": "league_official_full_event_log",
+      "url": "https://www.laliga.com/en-GB/match/temporada-2026-2027-laliga-ea-sports-valencia-cf-real-betis-1",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "round", "lineup", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    },
+    "statmuse-valencia-betis-20260825": {
+      "id": "statmuse-valencia-betis-20260825",
+      "name": "StatMuse Valencia 0-1 Real Betis player statistics",
+      "type": "stats_aggregator_player_stats",
+      "url": "https://www.statmuse.com/fc/match/8-25-2026-val-vs-bet-113451",
+      "retrievedAt": "2026-08-26T13:01:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["passesCompleted", "passesAttempted", "keyPasses", "tackles", "interceptions", "penaltiesConceded", "ownGoals"]
+    }
+  },
+  "matchUpdates": [
+    {"matchId":"eflcup-2026-08-25-forest-leeds","league":"EFL Cup","competition":"Carabao Cup","round":"2回戦","ko":"2026-08-26 03:45 JST","match":"ノッティンガム・フォレスト 0-2 リーズ","players":"田中碧","appearance":"田中碧は先発し68分に交代、警告1。","status":"verified","addIfMissing":true,"addToTopMatches":false,"sourceIds":["leeds-official-forest-cup-report-20260825","sportinglife-forest-leeds-commentary-20260825"]},
+    {"matchId":"eflcup-2026-08-25-plymouth-coventry","league":"EFL Cup","competition":"Carabao Cup","round":"2回戦","ko":"2026-08-26 03:45 JST","match":"プリマス 2-4 コヴェントリー","players":"坂元達裕","appearance":"坂元達裕は先発フル出場。シュート1、枠内0、キーパス1。","status":"verified","addIfMissing":true,"addToTopMatches":false,"sourceIds":["sky-plymouth-coventry-20260825"]},
+    {"matchId":"ucl-2026-08-25-lask-celtic","league":"UEFA Champions League","competition":"UEFA Champions League","round":"プレーオフ第2戦","ko":"2026-08-26 04:00 JST","match":"LASK 5-1 セルティック（延長）","players":"旗手怜央","appearance":"旗手怜央は63分から途中出場。セルティックは延長の末5-1で敗れ、2戦合計4-5で敗退。","status":"verified","addIfMissing":true,"addToTopMatches":false,"sourceIds":["orf-lask-celtic-20260825"]},
+    {"matchId":"laliga-2026-08-25-valencia-betis","league":"ラ・リーガ","competition":"La Liga","round":"第1節","ko":"2026-08-26 04:00 JST","match":"バレンシア 0-1 レアル・ベティス","players":"佐藤龍之介","appearance":"佐藤龍之介は先発フル出場、26分に警告。","status":"verified","addIfMissing":true,"addToTopMatches":false,"sourceIds":["laliga-official-valencia-betis-20260825","statmuse-valencia-betis-20260825"]}
+  ],
+  "playerUpdates": [
+    {"name":"田中碧","club":"リーズ","league":"プレミアリーグ","status":"Carabao Cup 2回戦先発・68分交代・警告1","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"],"sourceIds":["leeds-official-forest-cup-report-20260825","sportinglife-forest-leeds-commentary-20260825"]},
+    {"name":"坂元達裕","club":"コヴェントリー","league":"プレミアリーグ","status":"Carabao Cup 2回戦先発フル出場","statsStatus":"partial","statsAsOf":"2026-08-25 Carabao Cup 2回戦終了","priorityUpdate":true,"priorityFields":["dribbles","duelsWon","duelsTotal","bigChancesMissed"],"sourceIds":["sky-plymouth-coventry-20260825"]},
+    {"name":"旗手怜央","club":"セルティック","league":"スコットランド","status":"UCLプレーオフ第2戦63分途中出場・延長戦出場","statsStatus":"partial","statsAsOf":"2026-08-25 UCLプレーオフ終了","priorityUpdate":true,"priorityFields":["shots","shotsOnTarget","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"],"sourceIds":["orf-lask-celtic-20260825"]},
+    {"name":"佐藤龍之介","club":"バレンシア","league":"ラ・リーガ","status":"第1節ベティス戦先発フル出場・26分警告","statsStatus":"partial","statsAsOf":"2026-08-25 第1節終了","priorityUpdate":true,"priorityFields":["duelsWon","duelsTotal","dribbles","possessionsLost"],"sourceIds":["laliga-official-valencia-betis-20260825","statmuse-valencia-betis-20260825"]}
+  ],
+  "playerMatchStats": [
+    {
+      "recordId":"r-aotanaka-forest-leeds-20260825","matchId":"eflcup-2026-08-25-forest-leeds","player":"田中碧","club":"リーズ","league":"EFL Cup","competition":"Carabao Cup","match":"ノッティンガム・フォレスト 0-2 リーズ","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"starter_sub_68","start":true,"bench":false,"ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["leeds-official-forest-cup-report-20260825","sportinglife-forest-leeds-commentary-20260825"],
+      "values":{"minutes":68,"goals":0,"assists":0,"shots":1,"shotsOnTarget":0,"keyPasses":1,"yellowCards":1,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "ratingInputs":{"minutes":{"state":"value","value":68,"sourceId":"leeds-official-forest-cup-report-20260825"},"goals":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"assists":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"shots":{"state":"value","value":1,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"shotsOnTarget":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"keyPasses":{"state":"value","value":1,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"passesCompleted":{"state":"missing"},"passesAttempted":{"state":"missing"},"tackles":{"state":"missing"},"interceptions":{"state":"missing"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"dribbles":{"state":"missing"},"possessionsLost":{"state":"missing"},"yellowCards":{"state":"value","value":1,"sourceId":"leeds-official-forest-cup-report-20260825"},"secondYellowRed":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"straightRed":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"penaltiesConceded":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"},"ownGoals":{"state":"value","value":0,"sourceId":"sportinglife-forest-leeds-commentary-20260825"}},
+      "ratingSources":[{"id":"leeds-official-forest-cup-report-20260825","name":"Leeds United official Nottingham Forest 0-2 match report","type":"club_official_full_match_report","url":"https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united","retrievedAt":"2026-08-26T13:01:00+09:00","priority":1,"exhaustiveFor":["result","lineup","substitutions","goals","cards"]},{"id":"sportinglife-forest-leeds-commentary-20260825","name":"Sporting Life Nottingham Forest 0-2 Leeds United full commentary","type":"stats_aggregator_full_event_log","url":"https://www.sportinglife.com/football/live/242920/nottingham-forest-vs-leeds-united/commentary","retrievedAt":"2026-08-26T13:01:00+09:00","priority":2,"exhaustiveFor":["shots","shotsOnTarget","keyPasses","goals","assists","yellowCards","redCards","penaltyEvents","ownGoals"]}],"ratingConflicts":[],"jfwRating":5.89,"ratingVersion":"1.0","ratingCoverage":0.563,"ratingConfidence":"medium","ratingFactors":{"coverage":0.848,"minutes":0.944},"deltaPerformance":0.11,"deltaDiscipline":-0.2,"ratingBreakdown":[{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0},{"key":"keyPasses","value":1,"points":0.11}],"priorityUpdate":true,"priorityFields":["passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]
+    },
+    {
+      "recordId":"r-sakamoto-plymouth-coventry-20260825","matchId":"eflcup-2026-08-25-plymouth-coventry","player":"坂元達裕","club":"コヴェントリー","league":"EFL Cup","competition":"Carabao Cup","match":"プリマス 2-4 コヴェントリー","ko":"2026-08-26 03:45 JST","round":"2回戦","appearance":"starter_full","start":true,"bench":false,"ratingPosition":"FW","ratingPositionSource":"season_primary","sourceIds":["sky-plymouth-coventry-20260825"],
+      "values":{"minutes":90,"goals":0,"assists":0,"shots":1,"shotsOnTarget":0,"keyPasses":1,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "ratingInputs":{"minutes":{"state":"value","value":90,"sourceId":"sky-plymouth-coventry-20260825"},"goals":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"assists":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"shots":{"state":"value","value":1,"sourceId":"sky-plymouth-coventry-20260825"},"shotsOnTarget":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"keyPasses":{"state":"value","value":1,"sourceId":"sky-plymouth-coventry-20260825"},"dribbles":{"state":"missing"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"bigChancesMissed":{"state":"missing"},"yellowCards":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"secondYellowRed":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"straightRed":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"penaltiesConceded":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"},"ownGoals":{"state":"value","value":0,"sourceId":"sky-plymouth-coventry-20260825"}},
+      "ratingSources":[{"id":"sky-plymouth-coventry-20260825","name":"Sky Sports Plymouth Argyle 2-4 Coventry City teams and full commentary","type":"broadcaster_complete_match_sheet","url":"https://www.skysports.com/football/plymouth-argyle-vs-coventry-city/live/577439","retrievedAt":"2026-08-26T13:01:00+09:00","priority":2,"exhaustiveFor":["result","lineup","bench","substitutions","goals","assists","shots","shotsOnTarget","keyPasses","yellowCards","redCards","penaltyEvents","ownGoals"]}],"ratingConflicts":[],"jfwRating":6.12,"ratingVersion":"1.0","ratingCoverage":0.764,"ratingConfidence":"high","ratingFactors":{"coverage":0.933,"minutes":1.0},"deltaPerformance":0.13,"deltaDiscipline":0,"ratingBreakdown":[{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0},{"key":"shotsOnTarget","value":0,"points":0},{"key":"shots","value":1,"points":0.04},{"key":"keyPasses","value":1,"points":0.09}],"priorityUpdate":true,"priorityFields":["dribbles","duelsWon","duelsTotal","bigChancesMissed"]
+    },
+    {
+      "recordId":"r-hatate-lask-celtic-20260825","matchId":"ucl-2026-08-25-lask-celtic","player":"旗手怜央","club":"セルティック","league":"UEFA Champions League","competition":"UEFA Champions League","match":"LASK 5-1 セルティック（延長）","ko":"2026-08-26 04:00 JST","round":"プレーオフ第2戦","appearance":"sub_63_extra_time","start":false,"bench":true,"ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["orf-lask-celtic-20260825"],
+      "values":{"minutes":57,"goals":0,"assists":0,"yellowCards":0,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "ratingInputs":{"minutes":{"state":"value","value":57,"sourceId":"orf-lask-celtic-20260825"},"goals":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"assists":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"yellowCards":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"secondYellowRed":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"straightRed":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"penaltiesConceded":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"ownGoals":{"state":"value","value":0,"sourceId":"orf-lask-celtic-20260825"},"shots":{"state":"missing"},"shotsOnTarget":{"state":"missing"},"keyPasses":{"state":"missing"},"passesCompleted":{"state":"missing"},"passesAttempted":{"state":"missing"},"tackles":{"state":"missing"},"interceptions":{"state":"missing"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"dribbles":{"state":"missing"},"possessionsLost":{"state":"missing"}},
+      "ratingSources":[{"id":"orf-lask-celtic-20260825","name":"ORF Sport LASK 5-1 Celtic match report and teams","type":"public_broadcaster_full_match_report","url":"https://sport.orf.at/stories/3161680","retrievedAt":"2026-08-26T13:01:00+09:00","priority":2,"exhaustiveFor":["result","lineup","substitutions","goals","assists","yellowCards","redCards","penaltyEvents","ownGoals"]}],"ratingConflicts":[],"jfwRating":6.0,"ratingVersion":"1.0","ratingCoverage":0.447,"ratingConfidence":"medium","ratingFactors":{"coverage":0.778,"minutes":0.905},"deltaPerformance":0,"deltaDiscipline":0,"ratingBreakdown":[{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0}],"priorityUpdate":true,"priorityFields":["shots","shotsOnTarget","keyPasses","passesCompleted","passesAttempted","tackles","interceptions","duelsWon","duelsTotal","dribbles","possessionsLost"]
+    },
+    {
+      "recordId":"r-sato-valencia-betis-20260825","matchId":"laliga-2026-08-25-valencia-betis","player":"佐藤龍之介","club":"バレンシア","league":"ラ・リーガ","competition":"La Liga","match":"バレンシア 0-1 レアル・ベティス","ko":"2026-08-26 04:00 JST","round":"第1節","appearance":"starter_full","start":true,"bench":false,"ratingPosition":"MF","ratingPositionSource":"season_primary","sourceIds":["laliga-official-valencia-betis-20260825","statmuse-valencia-betis-20260825"],
+      "values":{"minutes":90,"goals":0,"assists":0,"shots":4,"shotsOnTarget":1,"keyPasses":1,"passesCompleted":18,"passesAttempted":20,"tackles":1,"interceptions":0,"yellowCards":1,"secondYellowRed":0,"straightRed":0,"penaltiesConceded":0,"ownGoals":0},
+      "ratingInputs":{"minutes":{"state":"value","value":90,"sourceId":"laliga-official-valencia-betis-20260825"},"goals":{"state":"value","value":0,"sourceId":"laliga-official-valencia-betis-20260825"},"assists":{"state":"value","value":0,"sourceId":"laliga-official-valencia-betis-20260825"},"shots":{"state":"value","value":4,"sourceId":"laliga-official-valencia-betis-20260825"},"shotsOnTarget":{"state":"value","value":1,"sourceId":"laliga-official-valencia-betis-20260825"},"keyPasses":{"state":"value","value":1,"sourceId":"laliga-official-valencia-betis-20260825"},"passesCompleted":{"state":"value","value":18,"sourceId":"statmuse-valencia-betis-20260825"},"passesAttempted":{"state":"value","value":20,"sourceId":"statmuse-valencia-betis-20260825"},"tackles":{"state":"value","value":1,"sourceId":"statmuse-valencia-betis-20260825"},"interceptions":{"state":"value","value":0,"sourceId":"statmuse-valencia-betis-20260825"},"duelsWon":{"state":"missing"},"duelsTotal":{"state":"missing"},"dribbles":{"state":"missing"},"possessionsLost":{"state":"missing"},"yellowCards":{"state":"value","value":1,"sourceId":"laliga-official-valencia-betis-20260825"},"secondYellowRed":{"state":"value","value":0,"sourceId":"laliga-official-valencia-betis-20260825"},"straightRed":{"state":"value","value":0,"sourceId":"laliga-official-valencia-betis-20260825"},"penaltiesConceded":{"state":"value","value":0,"sourceId":"statmuse-valencia-betis-20260825"},"ownGoals":{"state":"value","value":0,"sourceId":"statmuse-valencia-betis-20260825"}},
+      "ratingSources":[{"id":"laliga-official-valencia-betis-20260825","name":"LaLiga official Valencia CF 0-1 Real Betis match centre","type":"league_official_full_event_log","url":"https://www.laliga.com/en-GB/match/temporada-2026-2027-laliga-ea-sports-valencia-cf-real-betis-1","retrievedAt":"2026-08-26T13:01:00+09:00","priority":1,"exhaustiveFor":["result","round","lineup","substitutions","goals","assists","shots","shotsOnTarget","keyPasses","yellowCards","redCards","penaltyEvents","ownGoals"]},{"id":"statmuse-valencia-betis-20260825","name":"StatMuse Valencia 0-1 Real Betis player statistics","type":"stats_aggregator_player_stats","url":"https://www.statmuse.com/fc/match/8-25-2026-val-vs-bet-113451","retrievedAt":"2026-08-26T13:01:00+09:00","priority":2,"exhaustiveFor":["passesCompleted","passesAttempted","keyPasses","tackles","interceptions","penaltiesConceded","ownGoals"]}],
+      "ratingConflicts":[{"field":"keyPasses","selected":{"value":1,"sourceId":"laliga-official-valencia-betis-20260825"},"rejected":{"value":0,"sourceId":"statmuse-valencia-betis-20260825"},"reason":"LaLiga official event log records Ryunosuke Sato as the assist provider for Ugrinic's 90th-minute shot; primary-source event evidence overrides the secondary aggregate."}],
+      "jfwRating":5.99,"ratingVersion":"1.0","ratingCoverage":0.791,"ratingConfidence":"high","ratingFactors":{"coverage":0.942,"minutes":1.0},"deltaPerformance":0.2,"deltaDiscipline":-0.2,"ratingBreakdown":[{"key":"goals","value":0,"points":0},{"key":"assists","value":0,"points":0},{"key":"keyPasses","value":1,"points":0.11},{"key":"tackles","value":1,"points":0.09},{"key":"interceptions","value":0,"points":0}],"priorityUpdate":true,"priorityFields":["duelsWon","duelsTotal","dribbles","possessionsLost"]
+    }
+  ]
+}
