@@ -12,8 +12,9 @@
       "match": "ブラックバーン 1-2 シェフィールド・ユナイテッド",
       "players": "森下龍矢 / 大橋祐紀",
       "appearance": "森下龍矢・大橋祐紀が先発。森下は1アシスト。",
-      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。",
-      "status": "verified",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
       "addIfMissing": true,
       "sourceIds": ["tm-blackburn-sheffield-20260825"]
     },
@@ -26,8 +27,9 @@
       "match": "ストーク 1-1 ハル（PK 4-5）",
       "players": "守田英正",
       "appearance": "守田英正が先発し59分に交代。",
-      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。",
-      "status": "verified",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
       "addIfMissing": true,
       "sourceIds": ["espn-stoke-hull-20260825"]
     },
@@ -40,8 +42,9 @@
       "match": "バーミンガム 1-6 ブレントフォード",
       "players": "岩田智輝",
       "appearance": "岩田智輝が83分から途中出場。",
-      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。",
-      "status": "verified",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
       "addIfMissing": true,
       "sourceIds": ["espn-birmingham-brentford-20260825"]
     },
@@ -54,8 +57,9 @@
       "match": "イプスウィッチ 3-1 レスター",
       "players": "前田大然",
       "appearance": "前田大然はベンチ入り後、80分から途中出場。",
-      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。",
-      "status": "verified",
+      "note": "Aug 26 playerMatchStats の参照先となる試合マスタを補完。API-Football固定取得manifestへの登録待ち。",
+      "status": "verified_pending_api",
+      "apiBackfillPending": true,
       "addIfMissing": true,
       "sourceIds": ["sky-ipswich-leicester-20260825"]
     }
