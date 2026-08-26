@@ -55,3 +55,5 @@ test('Aug 26 correction overlay is last and fixes Morita and Hatate', () => {
   assert.equal(api.compute(morita.ratingInputs, morita.ratingPosition).jfwRating, 6.07);
   assert.equal(api.compute(hatate.ratingInputs, hatate.ratingPosition).jfwRating, 5.5);
 });
+
+// Keep this file changing when CI must be retriggered after append-only overlay test updates.
