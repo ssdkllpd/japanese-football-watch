@@ -7,56 +7,59 @@ permissions:
   contents: read
 
 jobs:
-  current-data-integrity:
+  identities:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node --test tests/current-data-integrity.test.js
-
-  current-rating-integrity:
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='current season player identities' tests/current-data-integrity.test.js
+  provenance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node --test tests/current-rating-integrity.test.js
-
-  snapshot-integrity:
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='current playerMatchStats preserve' tests/current-data-integrity.test.js
+  aggregates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node --test tests/snapshot-manifest-consistency.test.js
-
-  recent-august-tests:
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='verified match G/A' tests/current-data-integrity.test.js
+  goto-goal:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node --test tests/august-*.test.js
-
-  remaining-tests:
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='後藤啓介' tests/current-data-integrity.test.js
+  j1-scope:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Run remaining tests individually
-        shell: bash
-        run: |
-          set -e
-          for f in tests/*.test.js; do
-            case "$f" in
-              tests/current-data-integrity.test.js|tests/current-rating-integrity.test.js|tests/snapshot-manifest-consistency.test.js|tests/august-*.test.js) continue ;;
-            esac
-            node --test "$f"
-          done
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='J1 is not' tests/current-data-integrity.test.js
+  aug23:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-23-rating-refinements.test.js
+  aug24:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-*.test.js
+  aug25:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-25-*.test.js
