@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-27 04:02 JST",
+  "sources": {
+    "eintracht-kumashiro-20251219": {
+      "id": "eintracht-kumashiro-20251219",
+      "name": "Eintracht Frankfurt official Keito Kumashiro signing announcement",
+      "type": "club_official_transfer",
+      "url": "https://en.eintracht.de/news/keito-kumashiro-wechselt-zur-eintracht-174336/",
+      "retrievedAt": "2026-08-27T04:02:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "previousClub", "effectiveDate", "position", "nationality"]
+    },
+    "bundesliga-kumashiro-profile-20260827": {
+      "id": "bundesliga-kumashiro-profile-20260827",
+      "name": "Bundesliga official Keito Kumashiro 2026/27 player profile",
+      "type": "league_official_player_profile",
+      "url": "https://www.bundesliga.com/en/player/keito-kumashiro",
+      "retrievedAt": "2026-08-27T04:02:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["currentClub", "competitionRegistration", "position", "nationality", "squadNumber", "leagueAppearances"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "神代慶人",
+      "club": "アイントラハト・フランクフルト",
+      "league": "ブンデスリーガ",
+      "pos": "FW",
+      "squadNumber": 36,
+      "previousClub": "ロアッソ熊本",
+      "previousLeague": "J2",
+      "effectiveDate": "2026-01-01",
+      "membershipChangeType": "transfer",
+      "status": "Eintracht Frankfurt公式で2026年1月1日の加入を確認。Bundesliga公式2026/27選手プロフィールでFrankfurt所属、日本国籍FW、背番号36として登録され、リーグ出場0を確認。現行シーズン追跡選手マスタへの登録漏れを補完。",
+      "statsStatus": "current_membership_verified",
+      "statsAsOf": "2026-08-27",
+      "priorityUpdate": true,
+      "priorityFields": [
+        "apiFootballPlayerId",
+        "2026-27 first-team matchday squad history",
+        "current injury/availability status",
+        "playerMatchStats for any verified first-team appearance"
+      ],
+      "sourceIds": [
+        "eintracht-kumashiro-20251219",
+        "bundesliga-kumashiro-profile-20260827"
+      ]
+    }
+  ]
+}
