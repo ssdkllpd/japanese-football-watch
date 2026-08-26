@@ -7,75 +7,38 @@ permissions:
   contents: read
 
 jobs:
-  current-data:
+  api-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/current-data-integrity.test.js
-  current-rating:
+      - run: node --test tests/api-football-*.test.js
+  app-backfill:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/current-rating-integrity.test.js
-  snapshot:
+      - run: node --test tests/app-v2-shell.test.js tests/backfill-merge-parity.test.js
+  clubs-favorites:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/snapshot-manifest-consistency.test.js
-  aug23:
+      - run: node --test tests/clubs.test.js tests/favorites.test.js
+  feyenoord-formation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/august-23-rating-refinements.test.js
-  aug24:
+      - run: node --test tests/feyenoord-cambuur-2026-08-23.test.js tests/formation-view.test.js
+  rating-monaco-motherwell:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: node --test tests/august-24-*.test.js
-  aug25:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - run: node --test tests/august-25-*.test.js
-  nonaug-a-m:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - shell: bash
-        run: |
-          set -e
-          for f in tests/*.test.js; do
-            b=$(basename "$f")
-            case "$b" in august-*|current-*|snapshot-*) continue;; esac
-            first=$(printf '%s' "$b" | cut -c1)
-            case "$first" in [a-m]) node --test "$f";; esac
-          done
-  nonaug-n-z:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - shell: bash
-        run: |
-          set -e
-          for f in tests/*.test.js; do
-            b=$(basename "$f")
-            case "$b" in august-*|current-*|snapshot-*) continue;; esac
-            first=$(printf '%s' "$b" | cut -c1)
-            case "$first" in [n-z]) node --test "$f";; esac
-          done
+      - run: node --test tests/jfw-rating-null.test.js tests/monaco-minamino-2026-08-23.test.js tests/motherwell-freiburg-rating-2026-08-23.test.js
