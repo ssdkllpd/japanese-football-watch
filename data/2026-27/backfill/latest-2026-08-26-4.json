@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 23:19 JST",
+  "sources": {
+    "sky-stoke-hull-20260825": {
+      "id": "sky-stoke-hull-20260825",
+      "name": "Sky Sports Stoke City 1-1 Hull City teams and full commentary",
+      "type": "broadcaster_complete_match_sheet",
+      "url": "https://www.skysports.com/football/stoke-city-vs-hull-city/live/577438",
+      "retrievedAt": "2026-08-26T23:19:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "lineup", "bench", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "eflcup-2026-08-25-stoke-hull",
+      "appearance": "守田英正はベンチスタートし59分から途中出場。87分にCody Dramehのシュートを演出。",
+      "status": "verified",
+      "sourceIds": ["sky-stoke-hull-20260825"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "守田英正",
+      "status": "Carabao Cup 2回戦59分途中出場",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 Carabao Cup 2回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["sky-stoke-hull-20260825"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-morita-stoke-hull-20260825",
+      "matchId": "eflcup-2026-08-25-stoke-hull",
+      "player": "守田英正",
+      "club": "ハル・シティ",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "match": "ストーク 1-1 ハル（PK 4-5）",
+      "ko": "2026-08-26 03:45 JST",
+      "round": "2回戦",
+      "appearance": "sub_59",
+      "start": false,
+      "bench": true,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["sky-stoke-hull-20260825", "espn-stoke-hull-20260825"],
+      "fieldSources": {
+        "minutes": "sky-stoke-hull-20260825",
+        "goals": "sky-stoke-hull-20260825",
+        "assists": "sky-stoke-hull-20260825",
+        "shots": "sky-stoke-hull-20260825",
+        "shotsOnTarget": "sky-stoke-hull-20260825",
+        "keyPasses": "sky-stoke-hull-20260825",
+        "yellowCards": "sky-stoke-hull-20260825",
+        "secondYellowRed": "sky-stoke-hull-20260825",
+        "straightRed": "sky-stoke-hull-20260825",
+        "penaltiesConceded": "sky-stoke-hull-20260825",
+        "ownGoals": "sky-stoke-hull-20260825"
+      },
+      "values": {
+        "minutes": 31,
+        "goals": 0,
+        "assists": 0,
+        "shots": 0,
+        "shotsOnTarget": 0,
+        "keyPasses": 1,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "missingFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"],
+      "ratingConflicts": [
+        {
+          "field": "appearance",
+          "selected": "sub_59",
+          "discarded": "starter_sub_59",
+          "selectedSourceId": "sky-stoke-hull-20260825",
+          "discardedSourceId": "espn-stoke-hull-20260825",
+          "reason": "Sky complete teams list places Morita among substitutes and records him replacing Jens Hjerto-Dahl at 59'."
+        },
+        {
+          "field": "minutes",
+          "selected": 31,
+          "discarded": 59,
+          "selectedSourceId": "sky-stoke-hull-20260825",
+          "discardedSourceId": "espn-stoke-hull-20260825",
+          "reason": "The prior record treated the substitution minute as minutes played."
+        }
+      ],
+      "revisedAt": "2026-08-26T23:19:00+09:00",
+      "jfwRating": 6.07,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.563,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.848, "minutes": 0.743},
+      "deltaPerformance": 0.11,
+      "deltaDiscipline": 0,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "keyPasses", "value": 1, "points": 0.11}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
