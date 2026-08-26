@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-26T08:22:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including August 25 Carabao Cup, La Liga and Champions League Japanese-player records. J1 remains outside scope.",
+  "updatedAt": "2026-08-26T11:12:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-26 updates, including the August 25 Carabao Cup, Champions League and La Liga Japanese-player records. J1 remains outside scope.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
@@ -33,31 +33,35 @@
     "moritaCarabaoStartAnd59MinuteSubstitutionPreserved":true,
     "iwataCarabao83MinuteSubstitutionPreserved":true,
     "maedaCarabaoBenchAndSubstitutionPreserved":true,
-    "incompleteRequiredRatingInputsRemainMissing":true,
-    "aug26MorningOverlayPresent":true,
-    "aoTanakaForestCupRatingInputsExplicit":true,
-    "sakamotoPlymouthCupFullAppearancePreserved":true,
-    "hatateLaskExtraTimeAppearancePreserved":true,
-    "satoBetisFullAppearanceAndCardPreserved":true
+    "aug26SecondOverlayPresent":true,
+    "tanakaForestCupRatingIs589Medium":true,
+    "sakamotoPlymouthCupRatingIs600Medium":true,
+    "hatateLaskRatingIs600Medium":true,
+    "satoBetisRoundIsLaLigaJornada1":true,
+    "satoBetisKeyPassConflictPreserved":true,
+    "satoBetisRatingIs599HighConfidence":true,
+    "incompleteRequiredRatingInputsRemainMissing":true
   },
   "verifiedCorrections": [
-    "All verified August 20-25 overlays remain retained in manifest order.",
+    "All verified August 20-26 overlays remain retained in manifest order.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
     "On 2026-08-25, Blackburn lost 1-2 to Sheffield United in the Carabao Cup second round. Ryoya Morishita started and was credited with the assist for Blackburn's goal; Yuki Ohashi also started and later left injured, with the exact substitution minute still unresolved in the retained record.",
     "On 2026-08-25, Hull drew 1-1 at Stoke and advanced 5-4 on penalties. Hidemasa Morita started and was substituted in the 59th minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
     "On 2026-08-25, Birmingham lost 1-6 to Brentford. Tomoki Iwata entered in the 83rd minute; the retained ESPN player-stat fields confirm zero goals, assists, shots and shots on target for his appearance.",
     "On 2026-08-25, Ipswich beat Leicester 3-1. Daizen Maeda was on the bench and entered late; required goal/assist/discipline fields are intentionally left missing pending a stronger exhaustive post-match source.",
-    "On 2026-08-25, Leeds beat Nottingham Forest 2-0 in the Carabao Cup. Ao Tanaka started, was substituted in the 68th minute and was booked; required JFW Rating inputs were verified from the Leeds official complete match report.",
-    "On 2026-08-25, Coventry beat Plymouth 4-2 in the Carabao Cup. Tatsuhiro Sakamoto started and was not substituted in the complete Sky teams/events record, so a full 90-minute appearance is retained.",
-    "On 2026-08-25, Celtic lost 5-1 after extra time at LASK and exited the Champions League play-off 4-5 on aggregate. Reo Hatate entered in the 63rd minute and played through extra time.",
-    "On 2026-08-25, Valencia lost 0-1 to Real Betis. Ryunosuke Sato started, played the full match and received a yellow card in the 26th minute."
+    "On 2026-08-25, Leeds beat Nottingham Forest 2-0 in the Carabao Cup. Ao Tanaka started, was booked, created one recorded shot chance and one key pass, and was substituted in the 68th minute; JFW Rating v1.0 is 5.89 with coverage 0.563 and medium confidence.",
+    "On 2026-08-25, Coventry beat Plymouth 4-2 in the Carabao Cup. Tatsuhiro Sakamoto started and completed the match; JFW Rating v1.0 is 6.00 with coverage 0.513 and medium confidence.",
+    "On 2026-08-25, Celtic lost 5-1 after extra time at LASK and exited the Champions League play-off 4-5 on aggregate. Reo Hatate entered in the 63rd minute and played 57 minutes through extra time; JFW Rating v1.0 is 6.00 with coverage 0.447 and medium confidence.",
+    "On 2026-08-25, Valencia lost 0-1 to Real Betis in La Liga Jornada 1. Ryunosuke Sato started and completed the match, was booked in the 26th minute, recorded four shots including one on target, completed 18 of 20 passes, made one tackle and zero interceptions. La Liga's official event log credits Sato with the pass leading to Ugrinic's 90th-minute shot, so keyPasses=1 is selected over the conflicting secondary aggregate value of 0. JFW Rating v1.0 is 5.99 with coverage 0.791 and high confidence."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
-    "Required discipline inputs remain missing for Morita, Iwata and Maeda, so no JFW Rating is calculated for those new appearances.",
-    "Ohashi's exact injury substitution minute was not verified from a sufficiently strong source in this run and remains missing.",
+    "Required discipline inputs remain missing for Morita, Iwata and Maeda, so no JFW Rating is calculated for those appearances.",
+    "Ohashi's exact injury substitution minute was not verified from a sufficiently strong source and remains missing.",
     "Morishita's advanced performance fields remain priority targets even though his assist and required discipline event zeros were verified from a complete match sheet.",
-    "Advanced performance inputs for Tanaka, Sakamoto, Hatate and Sato remain priority-update targets; only explicitly verified match facts and exhaustive event zeros were used for their new Ratings.",
+    "Tanaka still lacks complete passing, defensive, duel, dribble and possession-loss fields; these remain priority-update targets and were not zero-filled.",
+    "Sakamoto and Hatate still lack advanced performance fields; these remain priority-update targets and were not zero-filled.",
+    "Sato still lacks duel, dribble and possession-loss inputs; the provider disagreement on key passes is retained as an explicit conflict.",
     "API-Football scheduled synchronization remains disabled until workflow_policy v19 provider gates pass.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
