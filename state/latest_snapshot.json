@@ -30,14 +30,14 @@
     "noHistoricalSeasonDataOverwritten":true,
     "aug26CarabaoOverlayPresent":true,
     "aug26SecondOverlayPresent":true,
-    "satoBetisRatingIs607HighConfidence":true,
+    "satoBetisRatingIs588HighConfidence":true,
     "tanakaCupRequiredDisciplineRemainsMissing":true,
     "incompleteRequiredRatingInputsRemainMissing":true
   },
   "verifiedCorrections": [
     "All verified August 20-26 overlays remain retained in manifest order.",
     "J1 remains excluded from this repository in accordance with workflow_policy v19 and is not used as a collection, consistency or update-blocking condition.",
-    "On 2026-08-25, Valencia lost 0-1 to Real Betis. Ryunosuke Sato started and played the full match, received a yellow card in the 26th minute, completed 18 of 20 passes, recorded one successful tackle, zero interceptions, four shots and one shot on target. JFW Rating v1.0 is 6.07 with coverage 0.808 and high confidence; unresolved duel, dribble and possession-loss inputs remain missing.",
+    "On 2026-08-25, Valencia lost 0-1 to Real Betis. Ryunosuke Sato started and played the full match, received a yellow card in the 26th minute, completed 18 of 20 passes, recorded one successful tackle, zero interceptions, four shots and one shot on target. Under JFW Rating v1.0, 20 pass attempts make the MF pass-completion field notApplicable; the engine-computed rating is 5.88 with coverage 0.791 and high confidence. Duel, dribble and possession-loss inputs remain missing.",
     "On 2026-08-25, Leeds beat Nottingham Forest 2-0 in the Carabao Cup second round. Ao Tanaka started and was substituted in the 68th minute. Required discipline fields remain missing, so no JFW Rating is calculated."
   ],
   "declaredCoverageGaps": [
