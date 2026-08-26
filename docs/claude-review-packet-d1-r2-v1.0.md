@@ -1,6 +1,6 @@
 # Claude レビューパケット: D1 / R2・ER・画面遷移 v1.1
 
-状態: **Initial review received — changes prepared for re-review**
+状態: **Ready for Claude re-review**
 レビュー対象日: 2026-08-26
 実装 gate: **BLOCKER / MAJOR が 0 になるまで実装しない**
 
@@ -129,6 +129,27 @@ Verdict: PASS | CHANGES_REQUIRED
 
 | Finding | Severity | 対応 | 反映 commit | 再レビュー |
 |---|---|---|---|---|
-| 未レビュー | — | — | — | Pending |
+| D1-001 | BLOCKER | `FIELD_STATES` を revision scope 化し、entity 用状態表と archive 削除規則を追加 | `3cfbd72` | Pending |
+| D1-002 | BLOCKER | 公開 enum を `provider_missing` に統一し、内部 `present_empty` の DTO 写像を定義 | `3cfbd72` | Pending |
+| D1-003 | BLOCKER | nullable crosswalk、解決状態・根拠、legacy tracking membership を追加 | `3cfbd72` | Pending |
+| D1-004 | BLOCKER | 追跡選手の公開 record・Rating・aggregate を D1 恒久保持へ変更 | `3cfbd72` | Pending |
+| D1-005 | MAJOR | `fixture_score_parts` を compact 恒久行として archive 削除対象外に変更 | `3cfbd72` | Pending |
+| D1-006 | MAJOR | Hot=N/N-1/N-2、Archive=N-3以前へ統一し集合非交差 assert を追加 | `3cfbd72` | Pending |
+| D1-007 | MAJOR | LIVE staging/publish/cleanup lifecycle と70%未満の row-write 予算を定義 | `3cfbd72` | Pending |
+| D1-008 | MAJOR | `jfw:season:*` と `af:season:*`、route/API parameter を分離 | `3cfbd72` | Pending |
+| D1-009 | MAJOR | player record に履歴用非正規化列と実在列だけの index を追加 | `3cfbd72` | Pending |
+| D1-010 | MAJOR | 複合 PK の `NOT NULL` / `WITHOUT ROWID` と空 group sentinel を定義 | `3cfbd72` | Pending |
+| D1-011 | MAJOR | schema-version upcaster、対応集合、再export/CI規則を追加 | `3cfbd72` | Pending |
+| D1-012 | MAJOR | publish を admin Worker の D1 `batch()` 経路に固定し secret scope を定義 | `3cfbd72` | Pending |
+| D1-013 | MAJOR | 70%/85%保護動作と R2 degraded snapshot fallback を定義 | `3cfbd72` | Pending |
+| D1-014 | MAJOR | detail欠落時を200 compact応答へ一本化し画面状態を追加 | `3cfbd72` | Pending |
+| D1-015 | MAJOR | API base override を local/preview allowlist 限定、本番で無効化 | `3cfbd72` | Pending |
+| D1-016 | MAJOR | Core 28 stat を正本化し legacy 36語彙との対応表を追加 | `3cfbd72` | Pending |
+| D1-017 | MAJOR | first-pass固定snapshot/hash、todo解消または重複排除 gate を追加 | `3cfbd72` | Pending |
+| D1-018 | MINOR | D1/Workersの列・サイズ・SQL・接続・Cron・Time Travel上限を追記 | `3cfbd72` | Pending |
+| D1-019 | MINOR | 50 queryを保守値とし Phase 1で`meta`実測する規則を追加 | `3cfbd72` | Pending |
+| D1-020 | MINOR | revisionを lifecycle と detail location の2列へ分離 | `3cfbd72` | Pending |
+| D1-021 | MINOR | legacy hash/query の `replaceState` 互換規則を追加 | `3cfbd72` | Pending |
+| D1-022 | MINOR | membership/tracking の無期限を `9999-12-31` sentinel に統一 | `3cfbd72` | Pending |
 
-Claude の初回レビュー後、この表へ全 finding を登録する。BLOCKER/MAJOR を修正し、同じ review packet で再レビューを依頼する。`Verdict: PASS` かつ unresolved BLOCKER/MAJOR が 0 になった時点だけ、実装 Phase 1 へ進む。
+初回結果は `CHANGES_REQUIRED`、BLOCKER 4件、MAJOR 13件、MINOR 5件。上表の全22件を設計 v1.1 へ反映した。Claude の再レビューで各行を `Resolved` または再指摘へ更新し、`Verdict: PASS` かつ unresolved BLOCKER/MAJOR が 0 になった時点だけ、実装 Phase 1 へ進む。
