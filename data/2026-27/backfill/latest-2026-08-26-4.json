@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "season": "2026-27",
-  "updated": "2026-08-26 23:47 JST",
+  "updated": "2026-08-27 02:10 JST",
   "sources": {
     "sky-stoke-hull-20260825": {
       "id": "sky-stoke-hull-20260825",
@@ -101,26 +101,38 @@
         "penaltiesConceded": 0,
         "ownGoals": 0
       },
-      "missingFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"],
-      "ratingConflicts": [
-        {
-          "field": "appearance",
-          "selected": "sub_59",
-          "discarded": "starter_sub_59",
-          "selectedSourceId": "sky-stoke-hull-20260825",
-          "discardedSourceId": "espn-stoke-hull-20260825",
-          "reason": "Sky complete teams list places Morita among substitutes and records him entering at 59'."
-        },
-        {
-          "field": "minutes",
-          "selected": 31,
-          "discarded": 59,
-          "selectedSourceId": "sky-stoke-hull-20260825",
-          "discardedSourceId": "espn-stoke-hull-20260825",
-          "reason": "The earlier record treated the substitution minute as minutes played."
-        }
+      "ratingInputs": {
+        "minutes": {"state":"value","value":31,"sourceId":"sky-stoke-hull-20260825"},
+        "goals": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "assists": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "shots": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "shotsOnTarget": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "keyPasses": {"state":"value","value":1,"sourceId":"sky-stoke-hull-20260825"},
+        "passesCompleted": {"state":"missing"},
+        "passesAttempted": {"state":"missing"},
+        "tackles": {"state":"missing"},
+        "interceptions": {"state":"missing"},
+        "duelsWon": {"state":"value","value":0,"sourceId":"espn-stoke-hull-20260825"},
+        "duelsTotal": {"state":"missing"},
+        "dribbles": {"state":"missing"},
+        "possessionsLost": {"state":"missing"},
+        "yellowCards": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "secondYellowRed": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "straightRed": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "penaltiesConceded": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"},
+        "ownGoals": {"state":"value","value":0,"sourceId":"sky-stoke-hull-20260825"}
+      },
+      "ratingSources": [
+        {"id":"sky-stoke-hull-20260825","name":"Sky Sports Stoke City 1-1 Hull City teams and full commentary","type":"broadcaster_complete_match_sheet","url":"https://www.skysports.com/football/stoke-city-vs-hull-city/live/577438","retrievedAt":"2026-08-26T23:47:00+09:00","priority":1,"exhaustiveFor":["result","lineup","bench","substitutions","goals","assists","shots","shotsOnTarget","keyPasses","yellowCards","redCards","penaltyEvents","ownGoals"]}
       ],
-      "revisedAt": "2026-08-26T23:47:00+09:00",
+      "missingFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsTotal", "dribbles", "possessionsLost"],
+      "ratingConflicts": [
+        {"field":"appearance","selected":"sub_59","discarded":"starter_sub_59","selectedSourceId":"sky-stoke-hull-20260825","discardedSourceId":"espn-stoke-hull-20260825","reason":"Sky complete teams list places Morita among substitutes and records him entering at 59'."},
+        {"field":"minutes","selected":31,"discarded":59,"selectedSourceId":"sky-stoke-hull-20260825","discardedSourceId":"espn-stoke-hull-20260825","reason":"The earlier record treated the substitution minute as minutes played."}
+      ],
+      "revisedAt": "2026-08-27T02:10:00+09:00",
       "jfwRating": 6.07,
       "ratingVersion": "1.0",
       "ratingCoverage": 0.563,
@@ -129,9 +141,9 @@
       "deltaPerformance": 0.11,
       "deltaDiscipline": 0,
       "ratingBreakdown": [
-        {"key": "goals", "value": 0, "points": 0},
-        {"key": "assists", "value": 0, "points": 0},
-        {"key": "keyPasses", "value": 1, "points": 0.11}
+        {"key":"goals","value":0,"points":0},
+        {"key":"assists","value":0,"points":0},
+        {"key":"keyPasses","value":1,"points":0.11}
       ]
     },
     {
@@ -160,18 +172,37 @@
         "penaltiesConceded": 1,
         "ownGoals": 0
       },
-      "missingFields": ["shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
-      "ratingConflicts": [
-        {
-          "field": "penaltiesConceded",
-          "selected": 1,
-          "discarded": 0,
-          "selectedSourceId": "caracol-lask-celtic-20260825",
-          "discardedSourceId": "orf-lask-celtic-20260825",
-          "reason": "The complete event log records Hatate conceding the penalty at 113'; the earlier record incorrectly stored zero."
-        }
+      "ratingInputs": {
+        "minutes": {"state":"value","value":57,"sourceId":"caracol-lask-celtic-20260825"},
+        "goals": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"},
+        "assists": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"},
+        "shots": {"state":"missing"},
+        "shotsOnTarget": {"state":"missing"},
+        "keyPasses": {"state":"missing"},
+        "passesCompleted": {"state":"missing"},
+        "passesAttempted": {"state":"missing"},
+        "tackles": {"state":"missing"},
+        "interceptions": {"state":"missing"},
+        "duelsWon": {"state":"missing"},
+        "duelsTotal": {"state":"missing"},
+        "dribbles": {"state":"missing"},
+        "possessionsLost": {"state":"missing"},
+        "yellowCards": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"},
+        "secondYellowRed": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"},
+        "straightRed": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"},
+        "penaltiesConceded": {"state":"value","value":1,"sourceId":"caracol-lask-celtic-20260825"},
+        "ownGoals": {"state":"value","value":0,"sourceId":"caracol-lask-celtic-20260825"}
+      },
+      "ratingSources": [
+        {"id":"caracol-lask-celtic-20260825","name":"Caracol LASK 5-1 Celtic full event commentary","type":"broadcaster_full_event_log","url":"https://caracol.com.co/resultados/futbol/previa_champions/2026_2027/directo/playoffs_a_2_6a707defb156058/","retrievedAt":"2026-08-26T23:47:00+09:00","priority":2,"exhaustiveFor":["result","lineup","substitutions","goals","assists","yellowCards","redCards","penaltyEvents","ownGoals"]}
       ],
-      "revisedAt": "2026-08-26T23:47:00+09:00",
+      "missingFields": ["shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "priorityUpdate": true,
+      "priorityFields": ["shots", "shotsOnTarget", "keyPasses", "passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "ratingConflicts": [
+        {"field":"penaltiesConceded","selected":1,"discarded":0,"selectedSourceId":"caracol-lask-celtic-20260825","discardedSourceId":"orf-lask-celtic-20260825","reason":"The complete event log records Hatate conceding the penalty at 113'; the earlier record incorrectly stored zero."}
+      ],
+      "revisedAt": "2026-08-27T02:10:00+09:00",
       "jfwRating": 5.5,
       "ratingVersion": "1.0",
       "ratingCoverage": 0.447,
@@ -180,8 +211,8 @@
       "deltaPerformance": 0,
       "deltaDiscipline": -0.5,
       "ratingBreakdown": [
-        {"key": "goals", "value": 0, "points": 0},
-        {"key": "assists", "value": 0, "points": 0}
+        {"key":"goals","value":0,"points":0},
+        {"key":"assists","value":0,"points":0}
       ]
     }
   ]
