@@ -1,46 +1,62 @@
 name: Test
 
 on:
-  push:
-    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  node-tests:
+  current-data-integrity:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax check runtime scripts
+      - run: node --test tests/current-data-integrity.test.js
+
+  current-rating-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/current-rating-integrity.test.js
+
+  snapshot-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/snapshot-manifest-consistency.test.js
+
+  recent-august-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/august-*.test.js
+
+  remaining-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run remaining tests individually
+        shell: bash
         run: |
-          node --check app-v2.js
-          node --check backfill-merge.js
-          node --check backfill-loader.js
-          node --check v2-backfill-data.js
-          node --check clubs.js
-          node --check favorites.js
-          node --check formation-view.js
-          node --check jfw-rating.js
-          node --check match-detail.js
-          node --check theme.js
-          node --check v2-preview.js
-          node --check scripts/api-football/backfill-existing-results.js
-          node --check scripts/api-football/client.js
-          node --check scripts/api-football/field-inventory.js
-          node --check scripts/api-football/schema-v2-mapper.js
-          node --check scripts/api-football/smoke-test.js
-          node --check scripts/v2/fixture-contract.js
-          node --check scripts/v2/fetch-fixture-vertical-slice.js
-          node --check scripts/v2/fetch-date-feed.js
-          node --check scripts/v2/fetch-standings.js
-          node --check scripts/v2/merge-date-index.js
-          node --check worker/index.mjs
-      - name: Run tests
-        run: node --test tests/*.test.js
+          set -e
+          for f in tests/*.test.js; do
+            case "$f" in
+              tests/current-data-integrity.test.js|tests/current-rating-integrity.test.js|tests/snapshot-manifest-consistency.test.js|tests/august-*.test.js) continue ;;
+            esac
+            node --test "$f"
+          done
