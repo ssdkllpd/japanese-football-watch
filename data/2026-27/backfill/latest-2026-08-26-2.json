@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-26 10:16 JST",
+  "sources": {
+    "leeds-official-forest-cup-report-20260825": {
+      "id": "leeds-official-forest-cup-report-20260825",
+      "name": "Leeds United official Nottingham Forest 0-2 match report",
+      "type": "club_official_full_match_report",
+      "url": "https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united",
+      "retrievedAt": "2026-08-26T10:16:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "cards"]
+    },
+    "sportinglife-forest-leeds-commentary-20260825": {
+      "id": "sportinglife-forest-leeds-commentary-20260825",
+      "name": "Sporting Life Nottingham Forest 0-2 Leeds United full commentary",
+      "type": "stats_aggregator_full_event_log",
+      "url": "https://www.sportinglife.com/football/live/242920/nottingham-forest-vs-leeds-united/commentary",
+      "retrievedAt": "2026-08-26T10:16:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["shots", "shotsOnTarget", "keyPasses", "goals", "assists", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    },
+    "laliga-official-valencia-betis-20260825": {
+      "id": "laliga-official-valencia-betis-20260825",
+      "name": "LaLiga official Valencia CF 0-1 Real Betis match centre",
+      "type": "league_official_full_event_log",
+      "url": "https://www.laliga.com/partido/temporada-2026-2027-laliga-ea-sports-valencia-cf-real-betis-1",
+      "retrievedAt": "2026-08-26T10:16:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "assists", "shots", "shotsOnTarget", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "田中碧",
+      "club": "リーズ",
+      "league": "プレミアリーグ",
+      "pos": "MF",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 Carabao Cup 2回戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["leeds-official-forest-cup-report-20260825", "sportinglife-forest-leeds-commentary-20260825"]
+    },
+    {
+      "name": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "pos": "MF",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-25 ラ・リーガ ベティス戦終了",
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["laliga-official-valencia-betis-20260825"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-tanaka-forest-leeds-cup-20260825",
+      "matchId": "eflcup-2026-08-25-forest-leeds",
+      "player": "田中碧",
+      "club": "リーズ",
+      "league": "EFL Cup",
+      "competition": "Carabao Cup",
+      "match": "ノッティンガム・フォレスト 0-2 リーズ",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "2回戦",
+      "appearance": "starter_sub_68",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_official",
+      "sourceIds": ["leeds-official-forest-cup-report-20260825", "sportinglife-forest-leeds-commentary-20260825"],
+      "values": {
+        "minutes": 68,
+        "goals": 0,
+        "assists": 0,
+        "shots": 1,
+        "shotsOnTarget": 0,
+        "keyPasses": 1,
+        "yellowCards": 1,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 68, "sourceId": "leeds-official-forest-cup-report-20260825"},
+        "goals": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "assists": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "shots": {"state": "value", "value": 1, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "shotsOnTarget": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "keyPasses": {"state": "value", "value": 1, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 1, "sourceId": "leeds-official-forest-cup-report-20260825"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "sportinglife-forest-leeds-commentary-20260825"}
+      },
+      "ratingSources": [
+        {"id":"leeds-official-forest-cup-report-20260825","name":"Leeds United official Nottingham Forest 0-2 match report","type":"club_official_full_match_report","url":"https://www.leedsunited.com/en/news/efl-cup-report-nottingham-forest-0-2-leeds-united","retrievedAt":"2026-08-26T10:16:00+09:00","priority":1,"exhaustiveFor":["result","lineup","substitutions","goals","cards"]},
+        {"id":"sportinglife-forest-leeds-commentary-20260825","name":"Sporting Life Nottingham Forest 0-2 Leeds United full commentary","type":"stats_aggregator_full_event_log","url":"https://www.sportinglife.com/football/live/242920/nottingham-forest-vs-leeds-united/commentary","retrievedAt":"2026-08-26T10:16:00+09:00","priority":2,"exhaustiveFor":["shots","shotsOnTarget","keyPasses","goals","assists","yellowCards","redCards","penaltyEvents","ownGoals"]}
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 5.89,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.563,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.848, "minutes": 0.944},
+      "deltaPerformance": 0.11,
+      "deltaDiscipline": -0.2,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "keyPasses", "value": 1, "points": 0.11},
+        {"key": "yellowCards", "value": 1, "points": -0.2}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    },
+    {
+      "recordId": "r-sato-valencia-betis-20260825",
+      "matchId": "laliga-2026-08-25-valencia-betis",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "competition": "ラ・リーガ",
+      "match": "バレンシア 0-1 レアル・ベティス",
+      "ko": "2026-08-26 04:00 JST",
+      "round": "第1節",
+      "appearance": "starter_full",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "match_official",
+      "sourceIds": ["laliga-official-valencia-betis-20260825"],
+      "values": {
+        "minutes": 90,
+        "goals": 0,
+        "assists": 0,
+        "shots": 4,
+        "shotsOnTarget": 1,
+        "keyPasses": 1,
+        "yellowCards": 1,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state": "value", "value": 90, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "goals": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "assists": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "shots": {"state": "value", "value": 4, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "shotsOnTarget": {"state": "value", "value": 1, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "keyPasses": {"state": "value", "value": 1, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "passesCompleted": {"state": "missing"},
+        "passesAttempted": {"state": "missing"},
+        "tackles": {"state": "missing"},
+        "interceptions": {"state": "missing"},
+        "duelsWon": {"state": "missing"},
+        "duelsTotal": {"state": "missing"},
+        "dribbles": {"state": "missing"},
+        "possessionsLost": {"state": "missing"},
+        "yellowCards": {"state": "value", "value": 1, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "secondYellowRed": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "straightRed": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "penaltiesConceded": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"},
+        "ownGoals": {"state": "value", "value": 0, "sourceId": "laliga-official-valencia-betis-20260825"}
+      },
+      "ratingSources": [
+        {"id":"laliga-official-valencia-betis-20260825","name":"LaLiga official Valencia CF 0-1 Real Betis match centre","type":"league_official_full_event_log","url":"https://www.laliga.com/partido/temporada-2026-2027-laliga-ea-sports-valencia-cf-real-betis-1","retrievedAt":"2026-08-26T10:16:00+09:00","priority":1,"exhaustiveFor":["result","lineup","substitutions","goals","assists","shots","shotsOnTarget","keyPasses","yellowCards","redCards","penaltyEvents","ownGoals"]}
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 5.89,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.563,
+      "ratingConfidence": "medium",
+      "ratingFactors": {"coverage": 0.848, "minutes": 1.0},
+      "deltaPerformance": 0.11,
+      "deltaDiscipline": -0.2,
+      "ratingBreakdown": [
+        {"key": "goals", "value": 0, "points": 0},
+        {"key": "assists", "value": 0, "points": 0},
+        {"key": "keyPasses", "value": 1, "points": 0.11},
+        {"key": "yellowCards", "value": 1, "points": -0.2}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
