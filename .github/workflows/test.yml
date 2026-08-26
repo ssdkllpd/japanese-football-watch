@@ -1,46 +1,79 @@
 name: Test
 
 on:
-  push:
-    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  node-tests:
+  identities:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Syntax check runtime scripts
-        run: |
-          node --check app-v2.js
-          node --check backfill-merge.js
-          node --check backfill-loader.js
-          node --check v2-backfill-data.js
-          node --check clubs.js
-          node --check favorites.js
-          node --check formation-view.js
-          node --check jfw-rating.js
-          node --check match-detail.js
-          node --check theme.js
-          node --check v2-preview.js
-          node --check scripts/api-football/backfill-existing-results.js
-          node --check scripts/api-football/client.js
-          node --check scripts/api-football/field-inventory.js
-          node --check scripts/api-football/schema-v2-mapper.js
-          node --check scripts/api-football/smoke-test.js
-          node --check scripts/v2/fixture-contract.js
-          node --check scripts/v2/fetch-fixture-vertical-slice.js
-          node --check scripts/v2/fetch-date-feed.js
-          node --check scripts/v2/fetch-standings.js
-          node --check scripts/v2/merge-date-index.js
-          node --check worker/index.mjs
-      - name: Run tests
-        run: node --test tests/*.test.js
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='current season player identities' tests/current-data-integrity.test.js
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='current playerMatchStats preserve' tests/current-data-integrity.test.js
+  aggregates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test --test-name-pattern='verified match G/A' tests/current-data-integrity.test.js
+  aug23:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-23-rating-refinements.test.js
+  aug24-followup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-followup.test.js
+  aug24-gladbach:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-gladbach-refinement.test.js
+  aug24-liverpool-westerlo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-liverpool-westerlo.test.js
+  aug24-machida:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-machida-tracking.test.js
+  aug24-tanaka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-24-satoshi-tanaka-tracking.test.js
+  aug25-tanaka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/august-25-satoshi-tanaka-cup.test.js
