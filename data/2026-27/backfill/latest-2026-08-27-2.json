@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-27 10:55 JST",
+  "sources": {
+    "laliga-official-real-madrid-real-sociedad-20260826": {
+      "id": "laliga-official-real-madrid-real-sociedad-20260826",
+      "name": "LaLiga official Real Madrid 4-1 Real Sociedad match centre",
+      "type": "league_official_full_event_log",
+      "url": "https://www.laliga.com/en-GB/match/temporada-2026-2027-laliga-ea-sports-real-madrid-real-sociedad-1",
+      "retrievedAt": "2026-08-27T10:55:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "assists", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "laliga-2026-08-26-real-madrid-real-sociedad",
+      "league": "ラ・リーガ",
+      "competition": "La Liga",
+      "round": "第1節",
+      "ko": "2026-08-27 JST",
+      "match": "レアル・マドリー 4-1 レアル・ソシエダ",
+      "players": "久保建英",
+      "appearance": "久保建英は先発し74分に交代。11分にオヤルサバルの枠内シュートにつながるキーパス1。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["laliga-official-real-madrid-real-sociedad-20260826"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "久保建英",
+      "club": "レアル・ソシエダ",
+      "league": "ラ・リーガ",
+      "status": "第1節レアル・マドリー戦先発・74分交代",
+      "statsStatus": "partial",
+      "statsAsOf": "2026-08-26 第1節終了",
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"],
+      "sourceIds": ["laliga-official-real-madrid-real-sociedad-20260826"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-kubo-real-madrid-real-sociedad-20260826",
+      "matchId": "laliga-2026-08-26-real-madrid-real-sociedad",
+      "player": "久保建英",
+      "club": "レアル・ソシエダ",
+      "league": "ラ・リーガ",
+      "competition": "La Liga",
+      "match": "レアル・マドリー 4-1 レアル・ソシエダ",
+      "round": "第1節",
+      "appearance": "starter_sub_74",
+      "start": true,
+      "bench": false,
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["laliga-official-real-madrid-real-sociedad-20260826"],
+      "values": {
+        "minutes": 74,
+        "goals": 0,
+        "assists": 0,
+        "keyPasses": 1,
+        "yellowCards": 0,
+        "secondYellowRed": 0,
+        "straightRed": 0,
+        "penaltiesConceded": 0,
+        "ownGoals": 0
+      },
+      "ratingInputs": {
+        "minutes": {"state":"value","value":74,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "goals": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "assists": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "keyPasses": {"state":"value","value":1,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "passesCompleted": {"state":"missing"},
+        "passesAttempted": {"state":"missing"},
+        "tackles": {"state":"missing"},
+        "interceptions": {"state":"missing"},
+        "duelsWon": {"state":"missing"},
+        "duelsTotal": {"state":"missing"},
+        "dribbles": {"state":"missing"},
+        "possessionsLost": {"state":"missing"},
+        "yellowCards": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "secondYellowRed": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "straightRed": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "penaltiesConceded": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"},
+        "ownGoals": {"state":"value","value":0,"sourceId":"laliga-official-real-madrid-real-sociedad-20260826"}
+      },
+      "ratingSources": [
+        {
+          "id": "laliga-official-real-madrid-real-sociedad-20260826",
+          "name": "LaLiga official Real Madrid 4-1 Real Sociedad match centre",
+          "type": "league_official_full_event_log",
+          "url": "https://www.laliga.com/en-GB/match/temporada-2026-2027-laliga-ea-sports-real-madrid-real-sociedad-1",
+          "retrievedAt": "2026-08-27T10:55:00+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["result", "lineup", "substitutions", "goals", "assists", "keyPasses", "yellowCards", "redCards", "penaltyEvents", "ownGoals"]
+        }
+      ],
+      "ratingConflicts": [],
+      "jfwRating": 6.09,
+      "ratingVersion": "1.0",
+      "ratingCoverage": 0.563,
+      "ratingConfidence": "medium",
+      "ratingBreakdown": [
+        {"key":"goals","value":0,"points":0},
+        {"key":"assists","value":0,"points":0},
+        {"key":"keyPasses","value":1,"points":0.11}
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost"]
+    }
+  ]
+}
