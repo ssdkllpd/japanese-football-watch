@@ -12,7 +12,7 @@ jobs:
   node-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout CP1 fix branch
+      - name: Checkout latest CP1 fix branch
         uses: actions/checkout@v4
         with:
           ref: fix/current-main-ci-20260827
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Capture CP1 full-suite result
+      - name: Capture latest CP1 full-suite result
         shell: bash
         run: |
           set +e
@@ -28,10 +28,10 @@ jobs:
           status=$?
           printf '%s\n' "$status" > cp1-test-status.txt
           exit 0
-      - name: Upload CP1 diagnostic output
+      - name: Upload latest CP1 diagnostic output
         uses: actions/upload-artifact@v4
         with:
-          name: cp1-fix-test-output
+          name: cp1-fix-test-output-latest
           path: |
             cp1-test-output.txt
             cp1-test-status.txt
