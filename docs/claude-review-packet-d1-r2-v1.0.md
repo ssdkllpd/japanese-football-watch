@@ -1,21 +1,22 @@
-# Claude レビューパケット: D1 / R2・ER・画面遷移 v1.1
+# Claude レビューパケット: D1 / R2・ER・画面遷移・Attention v1.2
 
 状態: **Ready for Claude re-review**
-レビュー対象日: 2026-08-26
+レビュー対象日: 2026-08-27
 実装 gate: **BLOCKER / MAJOR が 0 になるまで実装しない**
 
 ## Claude への依頼
 
-以下の3文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
+以下の6文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
 
 1. `docs/data-storage-d1-r2-design-v1.0.md`
 2. `docs/screen-flow-v2-d1-v1.0.md`
 3. `docs/ui-wireframe-baseline-v1.0.md`
+4. `docs/attention-score-v1.0.md`
+5. `docs/data-contract-v2.md`（§4 Contract 2.1 detail availability）
+6. `docs/data-app-v2-direction.md`
 
 照合対象の既存仕様は次のとおりです。
 
-- `docs/data-app-v2-direction.md`
-- `docs/data-contract-v2.md`
 - `docs/player-tracking-data-model-v1.0.md`
 - `docs/api-football-schema-v2-mapping-v1.0.md`
 - `state/product_scope_v2.json`
@@ -45,8 +46,10 @@
 - 公開アクセスから API-Football を直接呼ばない。
 - 公開 DTO の `af:*` ID、UTC/JST 規則、missing semantics は維持。
 - 個人 follow のサーバー同期は認証設計まで延期。
-- 視聴済み管理は端末 `localStorage` で legacy parity を維持する。
-- 外部AI生成・貼付け分析は今回の基本機能に含めない。
+- legacy の視聴済み状態と `jfw-watched-v1` はv2へ移行せず、決定的な視聴価値ランキングへ置き換える。個人の視聴状態は認証・同期設計後に再検討する。
+- `attention_scores` と `tracking_insights` は `state/product_scope_v2.json` で承認済み。数値順位は決定的な式、`reason` / `insights` / `analysis` は `confidence` と出典を持つ別の注釈として分離する。
+- 利用者が貼り付ける外部AI分析の保存・表示だけを今回の範囲外とし、route/API/DB/UIを作らない。
+- Attention用のD1 3テーブル追加は今回のgate通過後の設計追補で行い、現在のERへ先回りして追加しない。
 
 ## 必須レビュー観点
 
@@ -96,10 +99,19 @@
 - hot/archive、loading/empty/missing/error の違いが画面へ正しく反映されるか。
 - Phase 1 parity と Phase 2 新機能の境界が現実的か。
 - wireframe の generic `JP` と海外 Japanese tracking/JFW が混同されず、J1除外規則を守れているか。
-- 視聴済み管理と JFW Rating 要因分解が既存機能の parity として不足なく配置されているか。
+- 視聴価値ランキングと JFW Rating 要因分解が不足なく配置され、未算出を0へ変換していないか。
+- `reason` / `insights` / `analysis` が数値順位の入力へ混入せず、利用者貼付け分析だけが対象外として切り分けられているか。
 - 320 px、文字サイズ、tap target、5 tab の操作性が実装可能か。
 
-### 7. 移行と rollback
+### 7. Attention Score
+
+- base scoreが既存のCore/JFW factsだけから決定的に再現できるか。
+- Rating、G/A、appearance、events、score partsの欠測・競合を0としていないか。
+- 7日半減期、閾値、follow係数、同点規則が実装可能な純関数として一意か。
+- 半減期の根拠が現行 `watch` の弱いラベルから配信可否を断定せず、将来の期限入力へ安全に移行できるか。
+- annotationの`confidence`と弱い引用をfact provenanceへ混入させていないか。
+
+### 8. 移行と rollback
 
 - JSON -> D1 import、shadow read、endpoint 単位切替でデータ欠落を検出できるか。
 - 現行 143 tests / 141 pass / 0 fail / 2 todo の契約を守れるか。
@@ -135,27 +147,22 @@ Verdict: PASS | CHANGES_REQUIRED
 
 | Finding | Severity | 対応 | 反映 commit | 再レビュー |
 |---|---|---|---|---|
-| D1-001 | BLOCKER | `FIELD_STATES` を revision scope 化し、entity 用状態表と archive 削除規則を追加 | `3cfbd72` | Pending |
-| D1-002 | BLOCKER | 公開 enum を `provider_missing` に統一し、内部 `present_empty` の DTO 写像を定義 | `3cfbd72` | Pending |
-| D1-003 | BLOCKER | nullable crosswalk、解決状態・根拠、legacy tracking membership を追加 | `3cfbd72` | Pending |
-| D1-004 | BLOCKER | 追跡選手の公開 record・Rating・aggregate を D1 恒久保持へ変更 | `3cfbd72` | Pending |
-| D1-005 | MAJOR | `fixture_score_parts` を compact 恒久行として archive 削除対象外に変更 | `3cfbd72` | Pending |
-| D1-006 | MAJOR | Hot=N/N-1/N-2、Archive=N-3以前へ統一し集合非交差 assert を追加 | `3cfbd72` | Pending |
-| D1-007 | MAJOR | LIVE staging/publish/cleanup lifecycle と70%未満の row-write 予算を定義 | `3cfbd72` | Pending |
-| D1-008 | MAJOR | `jfw:season:*` と `af:season:*`、route/API parameter を分離 | `3cfbd72` | Pending |
-| D1-009 | MAJOR | player record に履歴用非正規化列と実在列だけの index を追加 | `3cfbd72` | Pending |
-| D1-010 | MAJOR | 複合 PK の `NOT NULL` / `WITHOUT ROWID` と空 group sentinel を定義 | `3cfbd72` | Pending |
-| D1-011 | MAJOR | schema-version upcaster、対応集合、再export/CI規則を追加 | `3cfbd72` | Pending |
-| D1-012 | MAJOR | publish を admin Worker の D1 `batch()` 経路に固定し secret scope を定義 | `3cfbd72` | Pending |
-| D1-013 | MAJOR | 70%/85%保護動作と R2 degraded snapshot fallback を定義 | `3cfbd72` | Pending |
-| D1-014 | MAJOR | detail欠落時を200 compact応答へ一本化し画面状態を追加 | `3cfbd72` | Pending |
-| D1-015 | MAJOR | API base override を local/preview allowlist 限定、本番で無効化 | `3cfbd72` | Pending |
-| D1-016 | MAJOR | Core 28 stat を正本化し legacy 36語彙との対応表を追加 | `3cfbd72` | Pending |
-| D1-017 | MAJOR | first-pass固定snapshot/hash、todo解消または重複排除 gate を追加 | `3cfbd72` | Pending |
-| D1-018 | MINOR | D1/Workersの列・サイズ・SQL・接続・Cron・Time Travel上限を追記 | `3cfbd72` | Pending |
-| D1-019 | MINOR | 50 queryを保守値とし Phase 1で`meta`実測する規則を追加 | `3cfbd72` | Pending |
-| D1-020 | MINOR | revisionを lifecycle と detail location の2列へ分離 | `3cfbd72` | Pending |
-| D1-021 | MINOR | legacy hash/query の `replaceState` 互換規則を追加 | `3cfbd72` | Pending |
-| D1-022 | MINOR | membership/tracking の無期限を `9999-12-31` sentinel に統一 | `3cfbd72` | Pending |
+| D1-001〜D1-004 | BLOCKER | 初回指摘を設計 v1.1へ反映 | `3cfbd72` | Resolved 4/4 |
+| D1-005 | MAJOR | compact score保持を追加。残るrevision scope問題はD1-024へ | `3cfbd72` | Partially resolved → D1-024 |
+| D1-006 | MAJOR | Hot=N/N-1/N-2、Archive=N-3以前へ統一 | `3cfbd72` | Resolved |
+| D1-007 | MAJOR | lifecycleを追加。残るrow-write問題はD1-023へ | `3cfbd72` | Partially resolved → D1-023 |
+| D1-008〜D1-017 | MAJOR | 初回指摘を設計 v1.1へ反映 | `3cfbd72` | Resolved 10/10 |
+| D1-018〜D1-020 | MINOR | 初回指摘を設計 v1.1へ反映 | `3cfbd72` | Resolved 3/3（D1-020付随はD1-026） |
+| D1-021 | MINOR | URL互換規則を追加。実在集合の誤りはD1-028へ | `3cfbd72` | Partially resolved → D1-028 |
+| D1-022 | MINOR | membership/trackingの無期限sentinelを統一 | `3cfbd72` | Resolved |
+| D1-023 | MAJOR | player recordをfixture scope化し、LIVE cap・内訳別60,000 writesモデル・runtime保護を定義 | `8c38816` | Pending |
+| D1-024 | MAJOR | score partsをfixture scope化し、superseded cleanup対象をテーブル名で限定 | `8c38816` | Pending |
+| D1-025 | MINOR | tracking periodのCore/legacy membership XOR制約と解決transactionを追加 | `8c38816` | Pending |
+| D1-026 | MINOR | archive status、複数schema pointer、active切替とrollbackを追加 | `8c38816` | Pending |
+| D1-027 | MINOR | contract 2.1.0、`detailAvailability` enum、2.0 upcaster、Phase 1更新境界を定義 | `8c38816` | Pending |
+| D1-028 | MINOR | legacy hash 8種とplayer/club/season queryの実在写像へ差替え | `8c38816` | Pending |
+| D1-029 | MINOR | `entity_field_states`を恒久表/index表へ追加しPK NOT NULLを明示 | `8c38816` | Pending |
+| UI-001 | scope | 利用者貼付けAIだけを対象外とし、監視生成tracking insightsを承認済み機能として復帰 | `8c38816` | Pending |
+| UI-002 | scope | 視聴済み移行を廃止し、決定的な視聴価値ランキングと完全なv1.0算式を追加 | `8c38816` | Pending |
 
-初回結果は `CHANGES_REQUIRED`、BLOCKER 4件、MAJOR 13件、MINOR 5件。上表の全22件を設計 v1.1 へ反映した。Claude の再レビューで各行を `Resolved` または再指摘へ更新し、`Verdict: PASS` かつ unresolved BLOCKER/MAJOR が 0 になった時点だけ、実装 Phase 1 へ進む。
+第2回結果は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 2件（D1-023 / D1-024）、MINOR 5件（D1-025〜D1-029）。今回の正式レビューはこの7件とUI/Attentionの2件に絞る。`Verdict: PASS` かつ unresolved BLOCKER/MAJOR が0になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
