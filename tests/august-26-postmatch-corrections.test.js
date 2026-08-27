@@ -28,9 +28,9 @@ function loadRuntime() {
   return { D: out, manifest };
 }
 
-test('Aug 26 correction overlay is last and fixes Morita and Hatate', () => {
+test('Aug 26 correction overlay survives later fragments and fixes Morita and Hatate', () => {
   const { D, manifest } = loadRuntime();
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-26-4.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-26-4.json'));
 
   const morita = D.playerMatchStats.find(r => r.recordId === 'r-morita-stoke-hull-20260825');
   assert.ok(morita);
