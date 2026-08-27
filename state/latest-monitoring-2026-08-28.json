@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-28T07:05:00+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed.",
+  "facts": [
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "Brighton & Hove Albion 4-0 Tromso",
+      "club": "Brighton & Hove Albion",
+      "player": "三笘薫",
+      "appearance": "absent_not_in_squad",
+      "minutes": 0,
+      "jfwRating": null,
+      "verification": "Complete published Brighton starting XI and substitutes omit Kaoru Mitoma.",
+      "runtimeAction": "pending completed-match/API-backfill integration"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "Hibernian 2-3 KAA Gent",
+      "club": "KAA Gent",
+      "player": "伊藤敦樹",
+      "appearance": "absent_not_in_squad",
+      "minutes": 0,
+      "jfwRating": null,
+      "verification": "Complete Gent starting XI and substitutes omit Atsuki Ito.",
+      "runtimeAction": "keep in highest-priority identity/backfill queue because stable playerId remains unresolved"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "SC Freiburg 4-1 Motherwell",
+      "club": "SC Freiburg",
+      "players": ["長田澪", "鈴木唯人", "後藤啓介"],
+      "verifiedFacts": {
+        "長田澪": {"start": true, "minutes": 90, "gaOnPitch": 1},
+        "鈴木唯人": {"start": true, "substitutionOff": 65, "minutes": 65, "goals": 0},
+        "後藤啓介": {"start": false, "substitutionOn": 68, "minutes": 22, "goals": 1, "goalMinute": 85}
+      },
+      "ratingAction": "No new JFW Rating calculated: required discipline inputs and advanced individual fields are not yet exhaustive; Mio Backhaus also remains without a resolved stable playerId.",
+      "runtimeAction": "pending identity/detail-backfill and full consistency gate"
+    }
+  ]
+}
