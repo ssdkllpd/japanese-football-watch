@@ -338,7 +338,17 @@
     }
 
     function ratingInputsSignature(record) {
-      try { return JSON.stringify(record?.ratingInputs || {}); } catch { return ''; }
+      try {
+        const entries = Object.entries(record?.ratingInputs || {})
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([field, input]) => [
+            field,
+            Object.entries(input || {}).sort(([left], [right]) => left.localeCompare(right))
+          ]);
+        return JSON.stringify(entries);
+      } catch {
+        return '';
+      }
     }
 
     function mergeRatingInputs(current, incoming) {
