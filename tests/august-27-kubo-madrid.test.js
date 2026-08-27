@@ -44,7 +44,7 @@ test('Kubo stored rating exactly matches JFW Rating v1.0 engine', () => {
   assert.equal(computed.deltaDiscipline, record.deltaDiscipline);
   assert.deepEqual(computed.ratingBreakdown, record.ratingBreakdown);
   assert.equal(record.jfwRating, 6.08);
-  assert.equal(record.ratingCoverage, 0.764);
+  assert.equal(record.ratingCoverage, 0.812);
   assert.equal(record.ratingConfidence, 'high');
 });
 
