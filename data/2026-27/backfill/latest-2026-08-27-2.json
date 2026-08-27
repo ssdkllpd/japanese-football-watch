@@ -104,17 +104,17 @@
       "ratingConflicts": [],
       "jfwRating": 6.08,
       "ratingVersion": "1.0",
-      "ratingCoverage": 0.764,
+      "ratingCoverage": 0.812,
       "ratingConfidence": "high",
-      "ratingFactors": {"coverage":0.933,"minutes":0.962},
-      "deltaPerformance": 0.09,
+      "ratingFactors": {"coverage":0.947,"minutes":0.991},
+      "deltaPerformance": 0.075,
       "deltaDiscipline": 0,
       "ratingBreakdown": [
         {"key":"goals","value":0,"points":0},
         {"key":"assists","value":0,"points":0},
         {"key":"shotsOnTarget","value":0,"points":0},
         {"key":"shots","value":0,"points":0},
-        {"key":"keyPasses","value":1,"points":0.09}
+        {"key":"keyPasses","value":1,"points":0.08}
       ],
       "priorityUpdate": true,
       "priorityFields": ["passesCompleted", "passesAttempted", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "bigChancesMissed", "possessionsLost"]
