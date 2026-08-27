@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-28T07:05:00+09:00",
+  "updatedAt": "2026-08-28T08:10:50+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
-  "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed.",
+  "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed. Conflicting substitution-minute feeds are retained rather than resolved by score convenience.",
   "facts": [
     {
       "date": "2026-08-27",
@@ -37,11 +37,43 @@
       "players": ["長田澪", "鈴木唯人", "後藤啓介"],
       "verifiedFacts": {
         "長田澪": {"start": true, "minutes": 90, "gaOnPitch": 1},
-        "鈴木唯人": {"start": true, "substitutionOff": 65, "minutes": 65, "goals": 0},
-        "後藤啓介": {"start": false, "substitutionOn": 68, "minutes": 22, "goals": 1, "goalMinute": 85}
+        "鈴木唯人": {"start": true, "goals": 0, "substitutionOff": null, "minutes": null},
+        "後藤啓介": {"start": false, "goals": 1, "goalMinute": 85, "substitutionOn": null, "minutes": null}
       },
-      "ratingAction": "No new JFW Rating calculated: required discipline inputs and advanced individual fields are not yet exhaustive; Mio Backhaus also remains without a resolved stable playerId.",
-      "runtimeAction": "pending identity/detail-backfill and full consistency gate"
+      "timelineConflicts": [
+        {
+          "field": "鈴木唯人.substitutionOff",
+          "previousMonitoringValue": 65,
+          "competingValues": [64, 65],
+          "evidence": [
+            "FotMob structured timeline: Lucas Höler on / Yuito Suzuki off at 64'",
+            "multiple structured secondary reports: Suzuki off at 64'",
+            "prior monitoring record: 65'"
+          ],
+          "resolution": "unresolved_pending_primary_or_api_football_detail"
+        },
+        {
+          "field": "後藤啓介.substitutionOn",
+          "previousMonitoringValue": 68,
+          "competingValues": [67, 68],
+          "evidence": [
+            "multiple structured secondary reports: Keisuke Goto on at 67'",
+            "FotMob timeline presentation places substitution around 67-68'",
+            "prior monitoring record: 68'"
+          ],
+          "resolution": "unresolved_pending_primary_or_api_football_detail"
+        }
+      ],
+      "additionalVerifiedFacts": {
+        "鈴木唯人": {"shotsObservedMinimum": 2},
+        "後藤啓介": {"goalAssist": null}
+      },
+      "sourceNotes": [
+        "SC Freiburg official report confirms Goto scored at 85' but does not resolve the exact substitution minute in the retrieved text.",
+        "Sky Sports full commentary records Suzuki shot attempts at 33' and other match events; secondary structured feeds disagree by one minute on substitutions."
+      ],
+      "ratingAction": "No new JFW Rating calculated: required discipline inputs and advanced individual fields are not yet exhaustive; Mio Backhaus also remains without a resolved stable playerId. Suzuki/Goto minutes are temporarily unset in monitoring because the substitution minute is conflicted.",
+      "runtimeAction": "pending identity/detail-backfill, substitution-minute conflict resolution and full consistency gate"
     }
   ]
 }
