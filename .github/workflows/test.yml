@@ -18,41 +18,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Diagnostic ABC
-        continue-on-error: true
-        run: >-
-          node --test --test-concurrency=1
-          tests/api-*.test.js tests/app-*.test.js tests/august-*.test.js
-          tests/backfill-*.test.js tests/clubs.test.js tests/current-*.test.js
-          tests/favorites.test.js tests/feyenoord-*.test.js tests/formation-*.test.js
-          tests/jfw-*.test.js tests/monaco-*.test.js tests/motherwell-*.test.js
-          tests/premier-*.test.js tests/provider-*.test.js tests/saito-*.test.js
-          tests/sano-*.test.js tests/sato-*.test.js tests/snapshot-*.test.js
-          tests/takai-*.test.js tests/transfer-*.test.js
-      - name: Diagnostic ABD
-        continue-on-error: true
-        run: >-
-          node --test --test-concurrency=1
-          tests/api-*.test.js tests/app-*.test.js tests/august-*.test.js
-          tests/backfill-*.test.js tests/clubs.test.js tests/current-*.test.js
-          tests/favorites.test.js tests/feyenoord-*.test.js tests/formation-*.test.js
-          tests/v2-*.test.js
-      - name: Diagnostic ACD
-        continue-on-error: true
-        run: >-
-          node --test --test-concurrency=1
-          tests/api-*.test.js tests/app-*.test.js tests/august-*.test.js
-          tests/jfw-*.test.js tests/monaco-*.test.js tests/motherwell-*.test.js
-          tests/premier-*.test.js tests/provider-*.test.js tests/saito-*.test.js
-          tests/sano-*.test.js tests/sato-*.test.js tests/snapshot-*.test.js
-          tests/takai-*.test.js tests/transfer-*.test.js tests/v2-*.test.js
-      - name: Diagnostic BCD
-        continue-on-error: true
-        run: >-
-          node --test --test-concurrency=1
-          tests/backfill-*.test.js tests/clubs.test.js tests/current-*.test.js
-          tests/favorites.test.js tests/feyenoord-*.test.js tests/formation-*.test.js
-          tests/jfw-*.test.js tests/monaco-*.test.js tests/motherwell-*.test.js
-          tests/premier-*.test.js tests/provider-*.test.js tests/saito-*.test.js
-          tests/sano-*.test.js tests/sato-*.test.js tests/snapshot-*.test.js
-          tests/takai-*.test.js tests/transfer-*.test.js tests/v2-*.test.js
+      - name: Capture full-suite result
+        shell: bash
+        run: |
+          set +e
+          node --test --test-concurrency=1 tests/*.test.js > ci-test-output.txt 2>&1
+          status=$?
+          printf '%s\n' "$status" > ci-test-status.txt
+          exit 0
+      - name: Upload diagnostic output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-suite-output
+          path: |
+            ci-test-output.txt
+            ci-test-status.txt
+      - name: Preserve full-suite conclusion
+        shell: bash
+        run: test "$(cat ci-test-status.txt)" -eq 0
