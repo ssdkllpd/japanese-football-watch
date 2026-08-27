@@ -1,6 +1,6 @@
 # Data App v2 UI ワイヤーフレーム基準 v1.0（レビュー案）
 
-状態: **Proposed — Claude正式レビューPASSまで実装禁止**
+状態: **Proposed — 正式レビューPASSまで実装禁止**
 対象: Data App v2 の基本画面
 作成日: 2026-08-26
 入力: `デザイン情報確認フォーム (3)(1).zip`
@@ -56,7 +56,7 @@ J1 は Core の大会・クラブ・選手として表示できるが、海外�
 - 順位は決定的に算出する数値であり、算式と版は Git の `docs/attention-score-v1.0.md` に置く。LLM の判断を順位の出どころにしない。
 - 現在のD1 gate通過後の設計追補で、D1には時刻非依存のbase scoreだけを保持する。経過時間による減衰は公開Workerの純関数としてread時に適用し、減衰のためにD1へ書き戻さない。
 - 一覧は base score ではなく減衰後の値で並べ、閾値未満は表示しない。時間経過で自然に一覧から消えることを「消化」の代替とする。
-- Workerは最大follow係数から逆算した中立score 16.00以上を、固定`asOfUtc`のcursor pageとして欠落なく返す。ブラウザは全page取得後にフォロー中のクラブ/選手による重み付けを適用し、個人score 20.00以上へ絞って並べ直す。取得途中は最終順位ではなくloading/更新中を表示し、サーバへ個人状態を送らない。
+- Workerは最大follow係数から逆算した中立score 16.00以上を、固定`asOfUtc`かつ固定`candidateRevision`のcursor pageとして欠落なく返す。ブラウザは全page取得後にフォロー中のクラブ/選手による重み付けを適用し、個人score 20.00以上へ絞って並べ直す。取得途中は最終順位ではなくloading/更新中を表示し、サーバへ個人状態を送らない。cursorが`409 attention_cursor_expired`になった場合は取得済みpageを破棄し、異なるsnapshotを混ぜず先頭から再取得する。
 - 説明文（`reason` / `insights` / `analysis`）は監視パイプライン生成のまま維持し、注釈として表示する。数値の根拠としては扱わず、`confidence` と出典を併記する。
 - 視聴手段（`watch`）は個人状態ではない試合付随情報として試合行に表示する。配信期限が確認できないラベルを「現在視聴可能」と断定しない。
 - 視聴済み状態そのものは、認証と端末間同期の設計後に follow sync と同じ Phase で再検討する。
@@ -106,7 +106,7 @@ J1 は Core の大会・クラブ・選手として表示できるが、海外�
 - generic `JP` と tracked/JFW 表示が混同されず、J1を tracking workflow に含めない。
 - 視聴価値ランキングが同一時刻・同一入力で再現でき、`attention_version` を明示できる。
 - 中立16.00〜19.99の候補がfollow係数後に20.00以上なら表示され、先にサーバで欠落しない。
-- candidate page sizeやneutral順の境界によって個人順位が欠落せず、全pageで同じ`asOfUtc`が使われる。
+- candidate page sizeやneutral順の境界によって個人順位が欠落せず、全pageで同じ`asOfUtc`と`candidateRevision`が使われる。page間更新またはcursor失効時に異なるsnapshotを結合しない。
 - 減衰の適用が read 時であり、順位表示のために D1 への書込みが発生しない。
 - JFW Rating が未取得の試合の attention が `0` ではなく「未算出」として扱われ、ランキングから除外されるが価値0とは表示されない。
 - 説明文に `confidence` と出典が併記され、数値の根拠として提示されない。

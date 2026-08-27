@@ -1,6 +1,6 @@
 # Attention Score v1.0 — 視聴価値ランキング仕様
 
-状態: **Proposed — Claude正式レビューPASSまで実装禁止**
+状態: **Proposed — 正式レビューPASSまで実装禁止**
 対象: configured overseas leagues の追跡対象選手が関与した完了試合
 作成日: 2026-08-27
 関連文書: `jfw-rating-v1.0.md`、`ui-wireframe-baseline-v1.0.md`、`screen-flow-v2-d1-v1.0.md`、`state/workflow_policy.json`、`config/competition-scope-v1.json`
@@ -239,7 +239,9 @@ personal_displayed_score = round2(displayed_score × follow_multiplier)
 
 `followed player involved` は、ローカルfollow中のplayer IDが公開revisionで `started` または `substitute_used` の場合だけ真とする。`followed club involved` は、ローカルfollow中のteam IDがfixtureのhome/away team IDと一致する場合だけ真とする。
 
-Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displayedScore`、`attentionVersion`、`scopeVersion`、関与したplayer ID配列、home/away team IDを返す。候補endpointは最初のresponseで固定した`asOfUtc`を全cursor pageで共有し、中立16.00以上の候補を欠落なく返す。各pageは`nextCursor`を持ち、ブラウザは`nextCursor = null`まで取得してからローカルfollow係数を適用する。途中pageだけで最終順位・件数を確定表示せず、全候補取得中であることを示す。同一`asOfUtc`を維持できないcursorは失効エラーにして最初から再取得する。
+Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displayedScore`、`attentionVersion`、`scopeVersion`、`candidateRevision`、関与したplayer ID配列、home/away team IDを返す。候補endpointは最初のresponseで固定した`asOfUtc`と`candidateRevision`を全cursor pageで共有し、中立16.00以上の候補を欠落なく返す。`candidateRevision`は`productSeason`、`attentionVersion`、`scopeVersion`ごとの不変な候補集合を識別し、取得開始後の新規final・訂正・再計算はその集合へ混入させず、次回の先頭page取得からだけ見せる。D1設計追補では同じgenerationの行をcursor TTL中保持するか、同等のimmutable R2 candidate snapshotを使い、更新中の可変集合へkeyset cursorを直接当ててはならない。
+
+最初のresponseは`asOfUtc`、`candidateRevision`、`nextCursor`を返す。cursorはopaqueかつ改ざん検知可能とし、少なくとも`productSeason`、`attentionVersion`、`scopeVersion`、`asOfUtc`、`candidateRevision`、page size、直前sort tupleを束縛する。各pageは`nextCursor`を持ち、ブラウザは`nextCursor = null`まで取得してからローカルfollow係数を適用する。途中pageだけで最終順位・件数を確定表示せず、全候補取得中であることを示す。同じ時刻または同じcandidate generationを維持できないcursor、binding不一致、TTL切れは`409 attention_cursor_expired`にして先頭pageから再取得させる。
 
 ブラウザは完全な候補集合へローカルfollowだけから係数を計算し、`personal_displayed_score >= 20.00`を残して同じ4段階規則で並べ直す。個人係数は表示順と表示閾値だけに使い、`base_score`、`source_hash`、サーバの中立順位を変更しない。`base_score <= 100`かつ半減期168時間なので、16.00以上の候補期間は理論上kickoff後約18.51日以内に有界であり、endpointはこの時刻下限とindexを使って全履歴走査を避ける。
 
@@ -268,8 +270,9 @@ Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displaye
 9. 中立16.00が最大follow係数で20.00となり候補から復帰し、15.99は候補外になる。
 10. own goal、missed penalty、VAR取消、延長後PK、直接PKのevent replayがtruth tableどおりになる。
 11. `1.005`境界、JSON key順、UTF-8文字列から同じround/hashを生成する。
-12. cursorをまたいでも`asOfUtc`が固定され、全page取得後の個人順位がpage sizeやneutral順の境界で変化しない。
+12. cursorをまたいでも`asOfUtc`と`candidateRevision`が固定され、page間で新規final・訂正を発生させても重複・欠落がなく、全page取得後の個人順位がpage sizeやneutral順の境界で変化しない。
 13. comeback成立後の再敗戦、両team成立、VAR取消後の再計算、score partsのNULL/不整合を規則どおり処理する。
+14. cursorのbinding改ざん、candidate generation消失、TTL切れが`409 attention_cursor_expired`となり、異なるsnapshotのpageを結合しない。
 
 ## 9. 受入条件
 
@@ -280,3 +283,4 @@ Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displaye
 - 数値component breakdownから `reason` / `insights` / `analysis` を参照しない。
 - annotationには `confidence` と出典を併記し、数値の根拠として提示しない。
 - legacy `jfw-watched-v1` がランキング入力や移行条件に含まれない。
+- Attention用D1設計追補が、cursor TTL中に同じ`candidateRevision`を再読できるimmutable generationまたは同等のR2 snapshotを定義する。

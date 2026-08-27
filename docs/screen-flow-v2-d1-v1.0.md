@@ -1,6 +1,6 @@
 # Data App v2 画面遷移 v1.1（再レビュー案）
 
-状態: **Proposed — Claude正式レビューPASSまで実装禁止**
+状態: **Proposed — 正式レビューPASSまで実装禁止**
 対象: D1/R2 移行後の Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-storage-d1-r2-design-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
@@ -175,7 +175,7 @@ flowchart TD
 - 対象外移籍後も過去の tracked period と aggregate は残す。新しい対象外試合を自動追跡しない。
 - 一般画面の試合詳細へ遷移し、同じ match facts を表示する。
 - `docs/attention-score-v1.0.md` の減衰後 score で視聴価値ランキングを表示する。未算出は0とせずランキングから除外し、一覧外の試合を開いた場合は「視聴価値は未算出」と表示する。
-- Workerは固定`asOfUtc`における中立score 16.00以上をAttention候補としてcursorで全件返し、ブラウザは全page取得後にローカルfollow係数を適用して個人score 20.00以上へ絞り直す。途中pageだけで最終順位を確定表示しない。候補DTO、cursor、involved判定はAttention仕様§6を正本とする。
+- Workerは固定`asOfUtc`かつ固定`candidateRevision`における中立score 16.00以上をAttention候補としてcursorで全件返し、ブラウザは全page取得後にローカルfollow係数を適用して個人score 20.00以上へ絞り直す。途中pageだけで最終順位を確定表示しない。page間の更新は同じcandidate generationへ混入させず、generation消失・TTL切れ・cursor binding不一致は`409 attention_cursor_expired`として先頭から再取得する。候補DTO、cursor、involved判定はAttention仕様§6を正本とする。
 - legacy の視聴済みボタン、`watch=unwatched|watched|all` filter、`jfw-watched-v1` の移行は行わない。個人の視聴状態は認証と端末間同期の設計後に再検討する。
 - generic Core 画面の `JP` は国籍表示であり、tracking badge ではない。J1 は Core に表示できるが Japanese tracking workflow と JFW Rating の対象にはしない。
 
@@ -202,7 +202,7 @@ flowchart TD
 | 選手詳細 | `GET /api/v2/players/{playerId}?productSeason={productSeasonId}` | Phase 2 |
 | 選手試合 | `GET /api/v2/players/{playerId}/fixtures?productSeason={productSeasonId}&cursor=...` | Phase 2 |
 | 日本人一覧 | `GET /api/v2/tracking/japanese?productSeason={productSeasonId}` | Phase 1 後半 |
-| 視聴価値候補 | `GET /api/v2/tracking/attention?productSeason={productSeasonId}&cursor=...` | Phase 1 後半、サーバ固定候補下限16.00、cursor間で`asOfUtc`固定 |
+| 視聴価値候補 | `GET /api/v2/tracking/attention?productSeason={productSeasonId}&cursor=...` | Phase 1 後半、サーバ固定候補下限16.00、cursor間で`asOfUtc`と`candidateRevision`固定 |
 | 共通検索 | `GET /api/v2/search?q={query}&types=competition,team,player&limit=...` | Phase 2 |
 
 一覧 endpoint は上限と cursor pagination を持つ。fixture detail 以外で大きい archive object をまとめて返さない。検索は最小文字数と最大件数を固定し、正規化名の exact/prefix index を使う。先頭 wildcard や任意 SQL 相当の検索条件は許可しない。
@@ -261,7 +261,8 @@ flowchart TD
 - generic `JP` badge と追跡/JFW表示が区別され、J1を Japanese tracking workflow に含めない。
 - 視聴価値ランキングが同一入力・同一基準時刻で再現され、未算出を0として並べない。
 - 中立16.00以上の候補からブラウザがfollow係数を適用し、個人20.00以上を欠落なく復元できる。
-- Attention候補の全cursor pageが同じ`asOfUtc`を使い、全page取得前の部分集合を最終順位として表示しない。
+- Attention候補の全cursor pageが同じ`asOfUtc`と`candidateRevision`を使い、page間に新規final・訂正があっても重複・欠落せず、全page取得前の部分集合を最終順位として表示しない。
+- Attention cursorのgeneration消失・TTL切れ・binding不一致を`409 attention_cursor_expired`として破棄し、異なるcandidate snapshotのpageを結合しない。
 - JFW要因分解から戻ると同じ試合の選手評価 tab、mode、scroll position が復元される。
 - `0`、未取得、非該当、空集合がそれぞれ正しく表示される。
 - fixture が存在して detail だけ取得不能な場合、スコアを残して「詳細は取得できません」と表示する。
