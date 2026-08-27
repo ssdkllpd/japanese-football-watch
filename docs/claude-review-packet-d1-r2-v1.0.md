@@ -1,4 +1,4 @@
-# 独立レビューパケット: D1 / R2・ER・画面遷移・Attention v1.3
+# 独立レビューパケット: D1 / R2・ER・画面遷移・Attention v1.4
 
 状態: **Ready for independent review**
 レビュー対象日: 2026-08-27
@@ -21,6 +21,7 @@
 - `docs/api-football-schema-v2-mapping-v1.0.md`
 - `state/product_scope_v2.json`
 - `state/workflow_policy.json`
+- `config/competition-scope-v1.json`
 
 現行実装の境界確認には次も参照してください。
 
@@ -38,7 +39,7 @@
 次は好みの提案ではなく、今回のレビューで維持する決定です。重大な安全性・整合性問題がある場合だけ変更を提案してください。
 
 - 構造化 facts の正本は D1。
-- R2 は raw、監査 snapshot、古い詳細 archive。
+- R2 は raw、監査 snapshot、古い詳細 archive、およびD1確定前の短期LIVE projection。恒久的な構造化factsの正本はD1のまま。
 - D1 に保持する詳細は現行 + 直前2シーズン。
 - hot に含まれない3シーズン前以前（N-3 以前）の詳細は、シーズン確定 + 90日後に archive。
 - D1 350 MB を安全閾値として、必要なら古い確定シーズンを前倒し archive。
@@ -155,14 +156,22 @@ Verdict: PASS | CHANGES_REQUIRED
 | D1-018〜D1-020 | MINOR | 初回指摘を設計 v1.1へ反映 | `3cfbd72` | Resolved 3/3（D1-020付随はD1-026） |
 | D1-021 | MINOR | URL互換規則を追加。実在集合の誤りはD1-028へ | `3cfbd72` | Partially resolved → D1-028 |
 | D1-022 | MINOR | membership/trackingの無期限sentinelを統一 | `3cfbd72` | Resolved |
-| D1-023 | MAJOR | player recordをfixture scope化し、LIVE cap・内訳別60,000 writesモデル・runtime保護を定義 | `8c38816` | Pending |
-| D1-024 | MAJOR | score partsをfixture scope化し、superseded cleanup対象をテーブル名で限定 | `8c38816` | Pending |
-| D1-025 | MINOR | tracking periodのCore/legacy membership XOR制約と解決transactionを追加 | `8c38816` | Pending |
-| D1-026 | MINOR | archive status、複数schema pointer、active切替とrollbackを追加 | `8c38816` | Pending |
-| D1-027 | MINOR | contract 2.1.0、`detailAvailability` enum、2.0 upcaster、Phase 1更新境界を定義 | `8c38816` | Pending |
-| D1-028 | MINOR | legacy hash 8種とplayer/club/season queryの実在写像へ差替え | `8c38816` | Pending |
-| D1-029 | MINOR | `entity_field_states`を恒久表/index表へ追加しPK NOT NULLを明示 | `8c38816` | Pending |
-| UI-001 | scope | 利用者貼付けAIだけを対象外とし、監視生成tracking insightsを承認済み機能として復帰 | `8c38816` | Pending |
-| UI-002 | scope | 視聴済み移行を廃止し、決定的な視聴価値ランキングと完全なv1.0算式を追加 | `8c38816` | Pending |
+| D1-023 | MAJOR | 完全snapshotとrow-write予算を再設計 | `ad1d4ca` | Pending re-review |
+| D1-024 | MAJOR | score partsをfixture scope化し、superseded cleanup対象を限定 | `8c38816` | Independent review: Resolved |
+| D1-025 | MINOR | tracking periodのCore/legacy membership XOR制約と解決transactionを追加 | `8c38816` | Independent review: Resolved |
+| D1-026 | MINOR | archive status、複数schema pointer、active切替とrollbackを追加 | `8c38816` | Independent review: Resolved |
+| D1-027 | MINOR | contract 2.1.0、`detailAvailability` enum、2.0 upcaster、Phase 1更新境界を定義 | `8c38816` | Independent review: Resolved |
+| D1-028 | MINOR | legacy hash 8種とplayer/club/season queryの実在写像へ差替え | `8c38816` | Independent review: Resolved |
+| D1-029 | MINOR | `entity_field_states`を恒久表/index表へ追加しPK NOT NULLを明示 | `8c38816` | Independent review: Resolved |
+| D1-030 | MAJOR | revision scopeのappearanceを追加し、staging FKと公開境界を分離 | `ad1d4ca` | Pending re-review |
+| D1-031 | MINOR | player recordを`UNIQUE(fixture_id, player_id)`へ変更 | `ad1d4ca` | Pending re-review |
+| UI-001 | scope | 利用者貼付けAIだけを対象外とし、監視生成tracking insightsを承認済み機能として復帰 | `8c38816` | Independent review: Resolved |
+| UI-002 | scope | 視聴済み移行を廃止し、決定的な視聴価値ランキングと完全なv1.0算式を追加 | `8c38816` | Independent review: Resolved |
+| UI-003 | MAJOR | Worker候補下限16.00、候補DTO、follow involvementを固定 | `ad1d4ca` | Pending re-review |
+| UI-004 | MAJOR | goal/VAR/own-goal再生規則とFT/AET/PEN truth tableを追加 | `ad1d4ca` | Pending re-review |
+| UI-005 | MAJOR | canonical competition allowlistとscopeVersionをGit管理 | `ad1d4ca` | Pending re-review |
+| UI-006 | MINOR | decimal ROUND_HALF_UPとRFC 8785/JCS hashを固定 | `ad1d4ca` | Pending re-review |
+| UI-007 | MINOR | routeなし/有効/不正の3分岐へ遷移図を修正 | `ad1d4ca` | Pending re-review |
+| UI-008 | MINOR | legacy annotationの人手確認済みmetadata移行を縮退条件化 | `ad1d4ca` | Pending re-review |
 
-Claude第2回レビュー結果は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 2件（D1-023 / D1-024）、MINOR 5件（D1-025〜D1-029）。今回の独立レビューはこの7件とUI/Attentionの2件に絞る。DB・ER・D1/R2担当とUI・Attention担当を分離し、統合判定が `Verdict: PASS` かつ unresolved BLOCKER/MAJOR 0件になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
+独立レビュー第1回は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 5件、MINOR 4件。今回の再レビューはD1-023、D1-030〜031、UI-003〜008の9件と、その修正による回帰に絞る。DB・ER・D1/R2担当とUI・Attention担当を分離し、統合判定が `Verdict: PASS` かつ unresolved BLOCKER/MAJOR 0件になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
