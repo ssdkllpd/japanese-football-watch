@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T19:02:00+09:00",
+  "updatedAt": "2026-08-28T07:05:00+09:00",
   "status": "partial_verified_backfill",
   "note": "Verified match-history facts for players already recorded in state/pending-tracking-gaps-2026-08-25.json. This state file does not mutate runtime season data until stable IDs, full playerMatchStats backfill and consistency gates are completed.",
   "players": [
@@ -52,9 +52,18 @@
     {
       "name": "伊藤敦樹",
       "club": "KAA Gent",
-      "verifiedSeasonFacts": {"clubOfficialLeagueAppearances": 0, "clubOfficialMinutes": 0},
+      "verifiedSeasonFacts": {
+        "clubOfficialLeagueAppearances": 0,
+        "clubOfficialMinutes": 0,
+        "conferenceLeagueMatchdayAbsences": 2,
+        "conferenceLeagueLatestResult": "2026-08-27 Hibernian 2-3 KAA Gent"
+      },
+      "matches": [
+        {"date": "2026-08-20", "opponent": "Hibernian", "competition": "UEFA Conference League", "appearance": "absent_not_in_squad", "minutes": 0, "source": "complete match teams"},
+        {"date": "2026-08-27", "opponent": "Hibernian", "competition": "UEFA Conference League", "appearance": "absent_not_in_squad", "minutes": 0, "result": "Hibernian 2-3 KAA Gent", "source": "complete match teams"}
+      ],
       "priorityUpdate": true,
-      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "matchday status for league and Conference League fixtures", "playerMatchStats", "current availability"]
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "league matchday status/backfill", "playerMatchStats", "current availability"]
     },
     {
       "name": "安藤晃希",
