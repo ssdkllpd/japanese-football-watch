@@ -42,5 +42,12 @@ jobs:
           node --check scripts/v2/fetch-standings.js
           node --check scripts/v2/merge-date-index.js
           node --check worker/index.mjs
-      - name: Run tests
-        run: node --test tests/*.test.js
+      - name: Run tests with file isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in tests/*.test.js; do
+            echo "::group::${test_file}"
+            node --test "${test_file}"
+            echo "::endgroup::"
+          done
