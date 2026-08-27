@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "updatedAt": "2026-08-21T22:34:00+09:00",
+  "version": 3,
+  "updatedAt": "2026-08-27T00:00:00Z",
   "product": {
     "primaryMode": "general_football_data_app",
     "uiReference": "fotmob_inspired_information_architecture",
@@ -56,10 +56,20 @@
   "runtime": {
     "staticUi": "github_pages",
     "productionDataGateway": "cloudflare_worker",
-    "machineFactsCanonicalStore": "cloudflare_r2",
-    "hotCacheAndIndexes": "cloudflare_kv",
+    "machineFactsCanonicalStore": "cloudflare_d1",
+    "r2Roles": [
+      "provider_raw_and_audit_snapshots",
+      "validated_short_lived_live_projection",
+      "old_fixture_detail_archive",
+      "reconstructable_degraded_response_snapshot"
+    ],
+    "hotCacheAndIndexes": "cloudflare_d1_queries_with_optional_edge_cache",
     "liveCache": "cloudflare_cache_api",
-    "liveMode": "demand_driven_60_second_ttl",
+    "liveMode": "scheduled_ingest_d1_compact_r2_projection",
+    "publicProviderFetchForbidden": true,
+    "migrationState": "approved_target_pending_implementation",
+    "rollbackRuntime": "existing_r2_json_until_endpoint_cutover",
+    "migrationDesign": "docs/data-storage-d1-r2-design-v1.0.md",
     "normalizationLocation": "github_actions_node",
     "workerFullNormalizationForbidden": true,
     "r2DirectBrowserAccess": false
