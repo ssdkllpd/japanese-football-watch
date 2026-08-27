@@ -55,4 +55,4 @@ test('Aug 26 correction overlay survives later fragments and fixes Morita and Ha
   assert.equal(api.compute(hatate.ratingInputs, hatate.ratingPosition).jfwRating, 5.5);
 });
 
-// Final correction test intentionally exercises the fully merged runtime, not the historical overlay alone.
+// Exercises the fully merged runtime and guards against equivalent rating inputs being invalidated by key order.
