@@ -42,15 +42,15 @@ function seedCore(db) {
   insert(db, `INSERT INTO players(id, canonical_id, source_id, provider_id, display_name)
     VALUES (?, ?, ?, ?, ?)`, 2, 'af:player:1943', 1, 1943, 'Other Player');
   insert(db, `INSERT INTO fixtures(
-      id, canonical_id, competition_season_id, home_team_id, away_team_id,
+      id, canonical_id, source_id, provider_id, competition_season_id, home_team_id, away_team_id,
       kickoff_utc, date_jst, status_short, home_goals, away_goals, ingestion_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    1, 'af:fixture:123456', 1, 1, 2, '2026-08-21T20:00:00.000Z', '2026-08-22', 'FT', 2, 1, 'finalized');
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    1, 'af:fixture:123456', 1, 123456, 1, 1, 2, '2026-08-21T20:00:00.000Z', '2026-08-22', 'FT', 2, 1, 'finalized');
   insert(db, `INSERT INTO fixtures(
-      id, canonical_id, competition_season_id, home_team_id, away_team_id,
+      id, canonical_id, source_id, provider_id, competition_season_id, home_team_id, away_team_id,
       kickoff_utc, date_jst, status_short, ingestion_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    2, 'af:fixture:123457', 1, 2, 3, '2026-08-22T20:00:00.000Z', '2026-08-23', 'NS', 'scheduled');
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    2, 'af:fixture:123457', 1, 123457, 1, 2, 3, '2026-08-22T20:00:00.000Z', '2026-08-23', 'NS', 'scheduled');
 }
 
 function addRevision(db, { id, fixtureId, revisionNo, lifecycle = 'staging', hash = SHA_A }) {
@@ -241,6 +241,24 @@ test('fixture player stats expose every normalized v2 values field as a typed co
     'penalties_conceded', 'penalties_scored', 'penalties_missed', 'penalties_saved',
   ];
   for (const name of expected) assert.ok(columns.has(name), `missing typed stat column: ${name}`);
+});
+
+test('D1 columns preserve every existing fixture-bundle field required for DTO parity', () => {
+  const db = openDatabase();
+  const columns = table => new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(row => row.name));
+  const expected = {
+    competitions: ['country_name', 'logo_url', 'flag_url'],
+    fixtures: [
+      'source_id', 'provider_id', 'round', 'referee', 'status_long',
+      'home_winner', 'away_winner',
+    ],
+    fixture_events: ['comments'],
+    fixture_player_appearances: ['captain'],
+  };
+  for (const [table, names] of Object.entries(expected)) {
+    const actual = columns(table);
+    for (const name of names) assert.ok(actual.has(name), `${table}.${name} is required for DTO parity`);
+  }
 });
 
 test('representative public queries use the reviewed indexes', () => {

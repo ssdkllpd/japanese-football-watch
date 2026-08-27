@@ -22,7 +22,10 @@ CREATE TABLE competitions (
   provider_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   country_code TEXT,
+  country_name TEXT,
   type TEXT NOT NULL CHECK (type IN ('League', 'Cup')),
+  logo_url TEXT,
+  flag_url TEXT,
   UNIQUE (source_id, provider_id)
 );
 
@@ -93,18 +96,26 @@ CREATE TABLE competition_season_teams (
 CREATE TABLE fixtures (
   id INTEGER PRIMARY KEY,
   canonical_id TEXT NOT NULL UNIQUE CHECK (canonical_id LIKE 'af:fixture:%'),
+  source_id INTEGER NOT NULL REFERENCES provider_sources(id),
+  provider_id INTEGER NOT NULL,
   competition_season_id INTEGER NOT NULL REFERENCES competition_seasons(id),
   venue_id INTEGER REFERENCES venues(id),
   home_team_id INTEGER NOT NULL REFERENCES teams(id),
   away_team_id INTEGER NOT NULL REFERENCES teams(id),
   kickoff_utc TEXT NOT NULL CHECK (kickoff_utc GLOB '????-??-??T??:??:??*Z'),
   date_jst TEXT NOT NULL CHECK (date_jst GLOB '????-??-??'),
+  round TEXT,
+  referee TEXT,
   status_short TEXT NOT NULL,
+  status_long TEXT,
   status_elapsed INTEGER CHECK (status_elapsed IS NULL OR status_elapsed >= 0),
   home_goals INTEGER CHECK (home_goals IS NULL OR home_goals >= 0),
   away_goals INTEGER CHECK (away_goals IS NULL OR away_goals >= 0),
+  home_winner INTEGER CHECK (home_winner IS NULL OR home_winner IN (0, 1)),
+  away_winner INTEGER CHECK (away_winner IS NULL OR away_winner IN (0, 1)),
   ingestion_state TEXT NOT NULL CHECK (ingestion_state IN ('scheduled', 'live', 'provisional_final', 'finalized', 'needs_review')),
   published_revision INTEGER REFERENCES fixture_revisions(id) ON DELETE SET NULL,
+  UNIQUE (source_id, provider_id),
   CHECK (home_team_id <> away_team_id)
 );
 
@@ -141,6 +152,7 @@ CREATE TABLE fixture_events (
   event_order INTEGER NOT NULL CHECK (event_order >= 0),
   type TEXT NOT NULL CHECK (type IN ('goal', 'card', 'substitution', 'var', 'other')),
   detail TEXT,
+  comments TEXT,
   UNIQUE (fixture_revision_id, event_key)
 );
 
@@ -171,6 +183,7 @@ CREATE TABLE fixture_player_appearances (
   appearance_state TEXT NOT NULL CHECK (appearance_state IN ('started', 'substitute_used', 'bench_unused', 'absent_confirmed', 'unknown')),
   position TEXT,
   minutes INTEGER CHECK (minutes IS NULL OR minutes >= 0),
+  captain INTEGER CHECK (captain IS NULL OR captain IN (0, 1)),
   UNIQUE (fixture_revision_id, player_record_id),
   UNIQUE (id, fixture_revision_id, player_record_id)
 );

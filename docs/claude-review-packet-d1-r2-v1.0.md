@@ -39,6 +39,13 @@ Reviewed at: 2026-08-27
 - Required change: 個人一覧では第1キーだけを`personal_displayed_score`へ置換し、残る3キーを維持する。
 - Resolution: 規則を明文化した。
 
+#### CR-004 — MAJOR — Resolved during implementation preflight
+
+- Location: `data-storage-d1-r2-design-v1.0.md` §5、`migrations/0001_d1_core.sql`
+- Problem: 初回ERだけでは既存fixture bundleの`round`、`referee`、`status.long`、team winner、competition country/logo/flag、event comments、captainをD1から再構築できず、DTO parityを失う。
+- Required change: 欠落値を型付き列としてCore ER/DDLへ追加し、fixtureにも`source_id/provider_id`一意性を持たせる。JSONやR2だけへ退避しない。
+- Resolution: ERとmigrationへ反映し、DTO必須列のschema回帰テストを追加した。
+
 ### Confirmed strengths
 
 - fixture detailの`staging -> published -> superseded`と公開pointerが分離され、staging appearance/player recordが公開queryへ漏れない。
@@ -228,5 +235,6 @@ Verdict: PASS | CHANGES_REQUIRED
 | CR-001 | MAJOR | Attention cursorへimmutable `candidateRevision`と失効契約を追加 | `03412a8` | Codex re-review: Resolved |
 | CR-002 | MAJOR | D1/R2所有権とscheduled LIVE経路を旧文書まで統一 | `bbb3411` | Codex re-review: Resolved |
 | CR-003 | MINOR | 個人順位の第1sort keyを`personal_displayed_score`へ固定 | `9a3c46b` | Codex re-review: Resolved |
+| CR-004 | MAJOR | 既存fixture DTO parityに必要な型付き列をER/DDLへ追加 | implementation preflight | Codex re-review: Resolved |
 
-独立レビュー第1回は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 5件、MINOR 4件だった。事前再レビューでD1-023、D1-030〜031、UI-003〜008の9件とPFR-001〜004を解消した。ユーザー委任によるCodex正式レビューでは全履歴と修正回帰を再確認し、追加CR-001〜003も同じreview cycleで解消した。統合判定は`PASS`、unresolved BLOCKER/MAJOR/MINORはいずれも0件。Attention用D1 3テーブルはgate通過後の設計追補と別レビューを必要とする。
+独立レビュー第1回は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 5件、MINOR 4件だった。事前再レビューでD1-023、D1-030〜031、UI-003〜008の9件とPFR-001〜004を解消した。ユーザー委任によるCodex正式レビューでは全履歴と修正回帰を再確認し、追加CR-001〜003も同じreview cycleで解消した。実装preflightで見つけたCR-004もDDL確定前に解消したため、統合判定は`PASS`、unresolved BLOCKER/MAJOR/MINORはいずれも0件。Attention用D1 3テーブルはgate通過後の設計追補と別レビューを必要とする。

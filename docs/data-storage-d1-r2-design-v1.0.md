@@ -138,7 +138,10 @@ erDiagram
         INTEGER provider_id
         TEXT name
         TEXT country_code
+        TEXT country_name
         TEXT type
+        TEXT logo_url
+        TEXT flag_url
     }
     PRODUCT_SEASONS {
         INTEGER id PK
@@ -201,16 +204,23 @@ erDiagram
     FIXTURES {
         INTEGER id PK
         TEXT canonical_id UK
+        INTEGER source_id FK
+        INTEGER provider_id
         INTEGER competition_season_id FK
         INTEGER venue_id FK
         INTEGER home_team_id FK
         INTEGER away_team_id FK
         DATETIME kickoff_utc
         DATE date_jst
+        TEXT round
+        TEXT referee
         TEXT status_short
+        TEXT status_long
         INTEGER status_elapsed
         INTEGER home_goals
         INTEGER away_goals
+        INTEGER home_winner
+        INTEGER away_winner
         TEXT ingestion_state
         INTEGER published_revision
     }
@@ -242,6 +252,7 @@ erDiagram
         INTEGER event_order
         TEXT type
         TEXT detail
+        TEXT comments
     }
     FIXTURE_LINEUPS {
         INTEGER id PK
@@ -264,6 +275,7 @@ erDiagram
         TEXT appearance_state
         TEXT position
         INTEGER minutes
+        INTEGER captain
     }
     FIXTURE_LINEUP_ENTRIES {
         INTEGER lineup_id PK, FK
@@ -323,7 +335,7 @@ erDiagram
 
 ### Core テーブルの補足
 
-- `canonical_id` と `(source_id, provider_id)` はそれぞれ一意制約を持つ。
+- `canonical_id` と `(source_id, provider_id)` はそれぞれ一意制約を持つ。fixtureも公開ID文字列からprovider IDを再解析せず、`source_id` / `provider_id`を保持する。
 - `FIXTURES` と `FIXTURE_SCORE_PARTS` はスコアと検索に必要な fixture scope の compact データとして恒久保持する。`FIXTURE_SCORE_PARTS` の PK は `(fixture_id, score_kind)` とし、公開 pointer 切替時に最新の halftime/fulltime/extratime/penalty を同じ transaction で upsert する。revision 行へ結び付けず、superseded/archive cleanup の対象にも含めない。
 - detail 子行と `SECTION_STATES` / `FIELD_STATES` は `FIXTURE_REVISIONS` に属する。公開 query は `FIXTURES.published_revision` と一致し、`lifecycle_state != 'staging'` の revision だけを読み、section/field state を含む分割 ingest の途中状態を表示しない。
 - revision は lifecycle と保存場所を分離する。`lifecycle_state` は `staging`、`published`、`superseded`、`detail_location` は `d1`、`r2`。`UNIQUE(fixture_id, revision_no)` と公開前 integrity check で、fixture の pointer が同じ fixture の実在 revision だけを指すことを保証する。
@@ -333,6 +345,7 @@ erDiagram
 - `FIXTURE_PLAYER_STATS` は `player_appearance_id` を1対0..1で参照し、`FIXTURE_LINEUP_ENTRIES` も同じappearanceを参照する。appearance、lineup、fixture recordが同じfixture/revision/teamに属することをstaging完成時とpublish直前のintegrity validatorで検証し、不一致を含むbatchをrollbackする。親appearanceを先にchunk保存できるため、複数invocationをまたぐ未解決FKは作らない。
 - `FIXTURE_PLAYER_APPEARANCES.appearance_state` は `started`、`substitute_used`、`bench_unused`、`absent_confirmed`、`unknown` のいずれかとする。lineup が未取得でも確認済み欠場を表現でき、単に stats 行がないことを欠場と解釈しない。
 - `FIXTURE_LINEUP_ENTRIES` は formation 上の位置だけを所有する。player stats だけ取得できた場合も recordとappearanceを作成できる。
+- 既存Contract 2.0/2.1のDTO parityに必要な`competitions.country_name/logo_url/flag_url`、`fixtures.round/referee/status_long/home_winner/away_winner`、`fixture_events.comments`、`fixture_player_appearances.captain`は型付き列で保持する。これらを`extra_stats_json`やR2だけへ逃がさず、hot/archiveのどちらからも同じbundleを再構築できるようにする。
 - ER 図の stat 列は代表例である。選手 stat の物理 DDL は `data-contract-v2.md` §6 の `values.*` を正本とし、`scripts/v2/fixture-contract.js` の `normalizePlayerStats` が生成する28項目を型付き列として網羅する。provider 由来でない legacy 追跡語彙は Core 列へ追加せず、下表の規則で tracking 側の派生値または状態として扱う。
 - `extra_stats_json` は provider 固有で表示・検索に使わない追加フィールドだけに限定する。v2 の必須項目をそこへ逃がさない。
 - `PLAYER_TEAM_MEMBERSHIPS` は全選手に使える Core の所属事実であり、追跡可否とは独立する。
