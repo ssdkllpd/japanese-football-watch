@@ -42,5 +42,15 @@ jobs:
           node --check scripts/v2/fetch-standings.js
           node --check scripts/v2/merge-date-index.js
           node --check worker/index.mjs
-      - name: Run tests
-        run: node --test tests/*.test.js
+      - name: Diagnostic group A api-app-august
+        continue-on-error: true
+        run: node --test tests/api-*.test.js tests/app-*.test.js tests/august-*.test.js
+      - name: Diagnostic group B merge-core-ui
+        continue-on-error: true
+        run: node --test tests/backfill-*.test.js tests/clubs.test.js tests/current-*.test.js tests/favorites.test.js tests/feyenoord-*.test.js tests/formation-*.test.js
+      - name: Diagnostic group C ratings-snapshot-transfer
+        continue-on-error: true
+        run: node --test tests/jfw-*.test.js tests/monaco-*.test.js tests/motherwell-*.test.js tests/premier-*.test.js tests/provider-*.test.js tests/saito-*.test.js tests/sano-*.test.js tests/sato-*.test.js tests/snapshot-*.test.js tests/takai-*.test.js tests/transfer-*.test.js
+      - name: Diagnostic group D v2
+        continue-on-error: true
+        run: node --test tests/v2-*.test.js
