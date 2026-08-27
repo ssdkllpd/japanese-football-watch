@@ -21,17 +21,16 @@ function ratingApi() {
 function loadRuntime() {
   const D = JSON.parse(fs.readFileSync(path.join(ROOT, 'data.json'), 'utf8'));
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill/index.json'), 'utf8'));
-  let out = D;
-  for (const name of manifest.fragments) {
-    const fragment = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill', name), 'utf8'));
-    out = mergeCore.mergeBackfillData(out, fragment, { season: '2026-27' });
-  }
+  const fragments = manifest.fragments.map((name) =>
+    JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill', name), 'utf8'))
+  );
+  const out = mergeCore.mergeBackfillData(D, fragments, { season: '2026-27' });
   return { D: out, manifest };
 }
 
-test('Aug 26 correction overlay is last and fixes Morita and Hatate', () => {
+test('Aug 26 correction overlay survives later fragments and fixes Morita and Hatate', () => {
   const { D, manifest } = loadRuntime();
-  assert.equal(manifest.fragments.at(-1), 'latest-2026-08-26-4.json');
+  assert.ok(manifest.fragments.includes('latest-2026-08-26-4.json'));
 
   const morita = D.playerMatchStats.find(r => r.recordId === 'r-morita-stoke-hull-20260825');
   assert.ok(morita);
@@ -56,4 +55,4 @@ test('Aug 26 correction overlay is last and fixes Morita and Hatate', () => {
   assert.equal(api.compute(hatate.ratingInputs, hatate.ratingPosition).jfwRating, 5.5);
 });
 
-// Final correction test intentionally exercises the fully merged runtime, not the historical overlay alone.
+// Exercises the fully merged runtime and guards against equivalent rating inputs being invalidated by key order.
