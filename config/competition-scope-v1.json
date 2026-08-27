@@ -1,0 +1,41 @@
+{
+  "scopeVersion": "1.0",
+  "identityNamespace": "af:competition",
+  "effectiveFrom": "2026-08-27",
+  "allowlistOnly": true,
+  "trackingLeagues": [
+    {"id": "af:competition:39", "label": "Premier League"},
+    {"id": "af:competition:40", "label": "EFL Championship"},
+    {"id": "af:competition:78", "label": "Bundesliga"},
+    {"id": "af:competition:144", "label": "Belgian Pro League"},
+    {"id": "af:competition:88", "label": "Eredivisie"},
+    {"id": "af:competition:140", "label": "La Liga"},
+    {"id": "af:competition:61", "label": "Ligue 1"},
+    {"id": "af:competition:135", "label": "Serie A"},
+    {"id": "af:competition:179", "label": "Scottish Premiership"},
+    {"id": "af:competition:94", "label": "Primeira Liga"}
+  ],
+  "attentionEligibleCompetitions": [
+    "af:competition:39",
+    "af:competition:40",
+    "af:competition:78",
+    "af:competition:144",
+    "af:competition:88",
+    "af:competition:140",
+    "af:competition:61",
+    "af:competition:135",
+    "af:competition:179",
+    "af:competition:94",
+    "af:competition:48",
+    "af:competition:81",
+    "af:competition:2",
+    "af:competition:3",
+    "af:competition:848"
+  ],
+  "rules": {
+    "j1Included": false,
+    "friendlyIncluded": false,
+    "preseasonIncluded": false,
+    "unknownCompetitionIncluded": false
+  }
+}

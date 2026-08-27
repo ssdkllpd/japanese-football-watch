@@ -49,11 +49,13 @@ query parameter は選択状態を表し、データそのものを保持しな�
 
 ```mermaid
 flowchart TD
-    A["起動 / deep link"] --> B{"route は有効?"}
-    B -->|Yes| C["指定画面を復元"]
-    B -->|No| D["試合・今日"]
+    A["起動 / deep link"] --> B{"route指定"}
+    B -->|なし| D["試合・今日"]
+    B -->|有効| C["指定画面を復元"]
+    B -->|不正・不存在| X["404 + 戻り先"]
     C --> E["共通 shell"]
     D --> E
+    X --> E
     E --> M["試合"]
     E --> L["リーグ"]
     E --> F["フォロー中"]
@@ -173,6 +175,7 @@ flowchart TD
 - 対象外移籍後も過去の tracked period と aggregate は残す。新しい対象外試合を自動追跡しない。
 - 一般画面の試合詳細へ遷移し、同じ match facts を表示する。
 - `docs/attention-score-v1.0.md` の減衰後 score で視聴価値ランキングを表示する。未算出は0とせずランキングから除外し、一覧外の試合を開いた場合は「視聴価値は未算出」と表示する。
+- Workerは中立score 16.00以上をAttention候補として返し、ブラウザがローカルfollow係数を適用して個人score 20.00以上へ絞り直す。候補DTOとinvolved判定はAttention仕様§6を正本とする。
 - legacy の視聴済みボタン、`watch=unwatched|watched|all` filter、`jfw-watched-v1` の移行は行わない。個人の視聴状態は認証と端末間同期の設計後に再検討する。
 - generic Core 画面の `JP` は国籍表示であり、tracking badge ではない。J1 は Core に表示できるが Japanese tracking workflow と JFW Rating の対象にはしない。
 
@@ -199,6 +202,7 @@ flowchart TD
 | 選手詳細 | `GET /api/v2/players/{playerId}?productSeason={productSeasonId}` | Phase 2 |
 | 選手試合 | `GET /api/v2/players/{playerId}/fixtures?productSeason={productSeasonId}&cursor=...` | Phase 2 |
 | 日本人一覧 | `GET /api/v2/tracking/japanese?productSeason={productSeasonId}` | Phase 1 後半 |
+| 視聴価値候補 | `GET /api/v2/tracking/attention?productSeason={productSeasonId}` | Phase 1 後半、サーバ固定候補下限16.00 |
 | 共通検索 | `GET /api/v2/search?q={query}&types=competition,team,player&limit=...` | Phase 2 |
 
 一覧 endpoint は上限と cursor pagination を持つ。fixture detail 以外で大きい archive object をまとめて返さない。検索は最小文字数と最大件数を固定し、正規化名の exact/prefix index を使う。先頭 wildcard や任意 SQL 相当の検索条件は許可しない。
@@ -256,6 +260,7 @@ flowchart TD
 - 追跡選手詳細は Core facts を複製せず overlay を追加する。
 - generic `JP` badge と追跡/JFW表示が区別され、J1を Japanese tracking workflow に含めない。
 - 視聴価値ランキングが同一入力・同一基準時刻で再現され、未算出を0として並べない。
+- 中立16.00以上の候補からブラウザがfollow係数を適用し、個人20.00以上を欠落なく復元できる。
 - JFW要因分解から戻ると同じ試合の選手評価 tab、mode、scroll position が復元される。
 - `0`、未取得、非該当、空集合がそれぞれ正しく表示される。
 - fixture が存在して detail だけ取得不能な場合、スコアを残して「詳細は取得できません」と表示する。
