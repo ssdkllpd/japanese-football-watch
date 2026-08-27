@@ -1,6 +1,6 @@
 # D1 / R2 データ設計 v1.1（再々レビュー案）
 
-状態: **Proposed — Claude正式レビューPASSまで実装禁止**
+状態: **Approved — Codex正式レビューPASS（2026-08-27）**
 対象: Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-contract-v2.md`、`player-tracking-data-model-v1.0.md`、`ui-wireframe-baseline-v1.0.md`

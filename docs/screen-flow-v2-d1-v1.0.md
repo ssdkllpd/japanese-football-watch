@@ -1,6 +1,6 @@
 # Data App v2 画面遷移 v1.1（再レビュー案）
 
-状態: **Proposed — 正式レビューPASSまで実装禁止**
+状態: **Approved — Codex正式レビューPASS（2026-08-27）**
 対象: D1/R2 移行後の Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-storage-d1-r2-design-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
