@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-27 11:46 JST",
+  "sources": {
+    "bundesliga-matchday1-probable-teams-20260826": {
+      "id": "bundesliga-matchday1-probable-teams-20260826",
+      "name": "Bundesliga official Matchday 1 probable teams",
+      "type": "league_official_team_news",
+      "url": "https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707",
+      "retrievedAt": "2026-08-27T11:46:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["preMatchAvailability"]
+    }
+  },
+  "playerUpdates": [
+    {
+      "name": "宇野禅斗",
+      "club": "ボルシアMG",
+      "league": "ブンデスリーガ",
+      "pos": "MF",
+      "status": "ブンデスリーガ第1節RBライプツィヒ戦に向け、筋肉系の問題で出場が疑わしいとリーグ公式が掲載",
+      "statsStatus": "pre_match_availability",
+      "statsAsOf": "2026-08-27 第1節前",
+      "availability": {
+        "state": "doubtful",
+        "reason": "muscular",
+        "asOf": "2026-08-26"
+      },
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["bundesliga-matchday1-probable-teams-20260826"]
+    }
+  ]
+}
