@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   node-tests:
@@ -34,13 +34,21 @@ jobs:
           PY
           node --check backfill-merge.js
           git diff --check
-      - name: Verify full suite before push
-        run: node --test tests/*.test.js
-      - name: Commit verified merge fix
+      - name: Capture patched full-suite result
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backfill-merge.js
-          git commit -m "Make rating input signatures order-insensitive"
-          git push origin HEAD:fix/current-main-ci-20260827
+          set +e
+          node --test tests/*.test.js > patched-test-output.txt 2>&1
+          status=$?
+          printf '%s\n' "$status" > patched-test-status.txt
+          exit 0
+      - name: Upload patched diagnostic output
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp1-patched-test-output
+          path: |
+            patched-test-output.txt
+            patched-test-status.txt
+      - name: Preserve patched test conclusion
+        shell: bash
+        run: test "$(cat patched-test-status.txt)" -eq 0
