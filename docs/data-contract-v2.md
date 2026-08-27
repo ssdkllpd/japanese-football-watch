@@ -114,6 +114,24 @@ Example shape:
 
 The first implementation is `scripts/v2/fixture-contract.js`.
 
+### Contract 2.1 detail availability
+
+The D1/R2 read-path migration introduces one backward-compatible top-level field and therefore advances the fixture bundle contract to `2.1.0`:
+
+```json
+{
+  "contractVersion": "2.1.0",
+  "detailAvailability": "available"
+}
+```
+
+`detailAvailability` is optional while 2.0.0 artifacts remain readable. Its values are:
+
+- `available`: the response includes the detail represented by `sectionStates`.
+- `unavailable`: the fixture exists and compact score/status facts are available, but no verified hot detail or archive pointer can be read. Detail sections must be `not_fetched`.
+
+The 2.0.0 -> 2.1.0 upcaster supplies `detailAvailability: "available"` because every valid 2.0.0 bundle was produced as a complete fixture artifact. Before the D1 endpoint is enabled, `CONTRACT_VERSION`, `normalizeFixtureBundle`, `validateFixtureBundle`, Worker DTO builders and their tests must move to 2.1.0 in one implementation commit. A 2.1.0 validator rejects values outside `available` / `unavailable`; it does not require the field when validating a 2.0.0 archive through the upcaster. Until that Phase 1 commit, the current 2.0.0 runtime remains unchanged.
+
 ## 5. Competition and Season
 
 Season identity is scoped to a competition.

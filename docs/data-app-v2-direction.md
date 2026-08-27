@@ -8,7 +8,7 @@ The application is no longer presented primarily as a Japanese-player tracking a
 
 The primary product is a general football data application inspired by the information architecture and usability of FotMob: match discovery, competition browsing, standings, clubs, players, lineups, match events and statistics.
 
-Japanese-player tracking remains a first-class optional module layered on top of the general football data model. Existing Japanese tracking data, JFW Rating, watch history and tracking-specific analysis must not be deleted.
+Japanese-player tracking remains a first-class optional module layered on top of the general football data model. Existing Japanese tracking facts, JFW Rating, attention scores and tracking-specific analysis must not be deleted. Legacy per-device watch history is not migrated into v2; the UI replaces it with a deterministic, time-decayed attention ranking. The legacy application remains available during parity validation.
 
 ## 2. Data-domain split
 

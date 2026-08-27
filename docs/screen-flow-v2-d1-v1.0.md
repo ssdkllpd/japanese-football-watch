@@ -32,7 +32,18 @@ query parameter は選択状態を表し、データそのものを保持しな�
 
 `competitionSeason` と `productSeason` は交換可能な別名ではない。route parser は prefix で namespace を検証し、逆の ID が渡された場合は既定値へ黙って変換せず `400 invalid_season_namespace` 状態を表示する。
 
-既存共有 URL は移行時に次の規則で一度だけ `replaceState` する。`#home` は `#/matches`、`#players` / `#player` は解決できる場合 `#/japanese` / `#/players/{id}`、`#leagues` は `#/competitions`、`#following` は `#/following`、`#more` は `#/more` へ移す。legacy `?season=2026-27` は product season `jfw:season:2026-27` として解釈する。認識できない裸 hash は今日画面へ黙って落とさず 404 route を表示する。
+既存共有 URL は移行時に次の規則で一度だけ `replaceState` する。対象は実在する legacy hash `#home`、`#featured`、`#stats`、`#attention`、`#matches`、`#ga`、`#insights`、`#coverage` の8つに限定する。
+
+| legacy URL | 新 route |
+|---|---|
+| `#home`、`#featured`、`#matches` | `#/matches` |
+| `#stats`、`#ga`、`#insights`、`#attention` | `#/japanese` |
+| `#coverage` | `#/more` |
+| `?player={name}` | Core player IDを一意に解決できれば `#/players/{id}`、それ以外は `#/japanese` |
+| `?club={name}` | Core team IDを一意に解決できれば `#/teams/{id}`、それ以外は `#/competitions` |
+| `?season=2026-27` | product season `jfw:season:2026-27` |
+
+実在しなかった `#players`、`#player`、`#leagues`、`#following`、`#more` を legacy 写像として実装しない。名前 query は完全一致候補が1件の場合だけ解決し、曖昧・未解決を推測で別 entity へ結び付けない。認識できない裸 hash は今日画面へ黙って落とさず 404 route を表示する。
 
 ## 3. 主ナビゲーション
 
@@ -161,7 +172,8 @@ flowchart TD
 - ランキングは scope（season / competition）を明示する。
 - 対象外移籍後も過去の tracked period と aggregate は残す。新しい対象外試合を自動追跡しない。
 - 一般画面の試合詳細へ遷移し、同じ match facts を表示する。
-- `watch=unwatched|watched|all` を route filter として持ち、視聴済み fixture ID 集合は端末の `localStorage` に保持する。既存 `jfw-watched-v1` は canonical fixture ID へ解決できる項目だけ移行し、不明な試合へ推測で付け替えない。
+- `docs/attention-score-v1.0.md` の減衰後 score で視聴価値ランキングを表示する。未算出は0とせずランキングから除外し、一覧外の試合を開いた場合は「視聴価値は未算出」と表示する。
+- legacy の視聴済みボタン、`watch=unwatched|watched|all` filter、`jfw-watched-v1` の移行は行わない。個人の視聴状態は認証と端末間同期の設計後に再検討する。
 - generic Core 画面の `JP` は国籍表示であり、tracking badge ではない。J1 は Core に表示できるが Japanese tracking workflow と JFW Rating の対象にはしない。
 
 ### その他
@@ -169,7 +181,7 @@ flowchart TD
 - theme、データ更新時刻、取得状態、legacy link を表示する。
 - 本番 Worker URL を利用者が通常操作で編集する UI は廃止し、build/config で固定する。API base override は `localhost`、`127.0.0.1`、明示した preview host でだけ有効にし、override 先も allowlist へ限定する。本番オリジンでは query parameter と `localStorage` の override をどちらも読まない。
 - API key、D1 ID、R2 bucket 名などの秘密/内部識別子を表示しない。
-- ワイヤーフレームに含まれる外部AI生成・貼付け分析は今回の基本機能に含めない。承認済みの別要件ができるまで route、API、DB、保存 UI を追加しない。
+- 利用者が貼り付ける外部AI分析の保存・表示は今回の基本機能に含めず、承認済みの別要件ができるまで route、API、DB、保存 UI を追加しない。一方、監視パイプラインが生成する `reason` / `insights` / `analysis` は承認済み `tracking_insights` として表示し、数値順位とは分離して `confidence` と出典を併記する。
 
 ## 7. 画面と API の対応
 
@@ -223,7 +235,7 @@ flowchart TD
 
 1. router と route-state の contract test
 2. D1 backed の試合一覧、fixture detail、リーグ一覧/試合/順位表
-3. 現行 Japanese view、視聴済み管理、JFW要因分解を Core canonical ID へ接続
+3. 現行 Japanese view、視聴価値ランキング、tracking insights、JFW要因分解を Core canonical ID へ接続
 4. follow ID の canonical 化と壊れた参照表示
 5. club detail / player detail
 6. 共通検索
@@ -243,13 +255,13 @@ flowchart TD
 - 一般選手詳細は日本人 registry に依存せず表示できる。
 - 追跡選手詳細は Core facts を複製せず overlay を追加する。
 - generic `JP` badge と追跡/JFW表示が区別され、J1を Japanese tracking workflow に含めない。
-- 視聴済み fixture が再読込後も同じ端末で維持され、未視聴/視聴済み/すべて filter が route から復元される。
+- 視聴価値ランキングが同一入力・同一基準時刻で再現され、未算出を0として並べない。
 - JFW要因分解から戻ると同じ試合の選手評価 tab、mode、scroll position が復元される。
 - `0`、未取得、非該当、空集合がそれぞれ正しく表示される。
 - fixture が存在して detail だけ取得不能な場合、スコアを残して「詳細は取得できません」と表示する。
 - request race により別日/別 entity の結果が表示されない。
 - legacy fallback は選択日以外の fixture を表示しない。
-- `#home` と既存 `?season=...` を含む共有 URL が対応する新 route/product season へ `replaceState` される。
+- 実在する legacy hash 8種と `?player=` / `?club=` / `?season=` が上表どおり新 routeへ一度だけ `replaceState` され、曖昧な名前を推測解決しない。
 - 本番オリジンで `?api=` または保存済み override を与えても API base が変化しない。
-- AI分析用の route、API、DB table、保存 UI が追加されていない。
+- 利用者が貼り付ける外部AI分析用の route、API、DB table、保存 UI が追加されていない。監視パイプライン生成の tracking insights は `confidence` と出典付きで数値順位から分離表示される。
 - DB 移行の Phase 1 は未実装の Phase 2 画面を理由に延期しない。

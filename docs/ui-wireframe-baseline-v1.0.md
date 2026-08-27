@@ -10,7 +10,7 @@
 
 `Hi-Fi Mockups (FotMob Style).dc.html` を視覚方向の基準にする。`Wireframes.dc.html` は情報構造の確認用、`Hi-Fi Mockups.dc.html` の Broadsheet 案はファイル内の記載どおり非採用とする。
 
-この基準は新機能を追加するものではない。既存の Core football data、Japanese tracking overlay、JFW Rating、follow、視聴済み管理を、FotMob を参考にした情報階層で表示するためのものとする。
+この基準は新機能を追加するものではない。既存の Core football data、Japanese tracking overlay、JFW Rating、follow、視聴価値ランキング、tracking insightsを、FotMob を参考にした情報階層で表示するためのものとする。
 
 ## 2. 基本画面と実装段階
 
@@ -26,7 +26,9 @@
 | 2a | 日本人タブ | 採用 | Phase 1 parity |
 | 2c | 共通検索 | 採用 | Phase 2 |
 | 3a | JFW Rating 要因分解 | 既存 `mustExpose` の表示として採用 | Phase 1 後半 |
-| 4a / 4b / 4c | 外部AI生成・貼付け分析 | **不採用 / 今回の範囲外** | 別要件として承認されるまで route/API/DB を作らない |
+| 4a / 4b / 4c | **利用者が貼り付ける**外部AI分析の保存・表示 | **不採用 / 今回の範囲外** | 別要件として承認されるまで route/API/DB を作らない |
+
+監視パイプラインが生成する `insights` / `analysis` / `topMatches.reason` は `state/product_scope_v2.json` の `tracking_insights` に含まれる承認済み機能であり、上表4a / 4b / 4cの対象外とする。
 
 ## 3. 情報アーキテクチャ
 
@@ -47,15 +49,17 @@ generic Core 画面の `JP` badge と Japanese tracking overlay を分ける。
 
 J1 は Core の大会・クラブ・選手として表示できるが、海外日本人追跡 workflow には含めない。Mock の町田/J1と `JP` はレイアウト用の例であり、J1選手へ JFW Rating や追跡 badge を出す仕様ではない。
 
-## 5. 視聴済み管理
+## 5. 視聴価値ランキング
 
-視聴済み管理は legacy parity として維持する。
+視聴済みボタンと `jfw-watched-v1` の移行は行わない。個人の視聴状態は保持せず、時点ごとの視聴価値ランキングだけを表示する。
 
-- fixture の `canonical_id` を端末内 `localStorage` に保存し、Core facts や D1/R2 へ複製しない。
-- 移行時は既存 `jfw-watched-v1` を読み、新 canonical fixture ID へ解決できた項目だけ新 key へ移す。解決不能な項目を別試合へ推測で付け替えない。
-- 試合行から視聴済み/未視聴を切り替え、日本人 tab では `未視聴`、`視聴済み`、`すべて` を絞り込める。
-- `#/japanese?productSeason={productSeasonId}&watch=unwatched|watched|all` を共有可能な filter state とし、実際の watched ID 集合は URL に含めない。
-- 認証と端末間同期は別 Phase とする。
+- 順位は決定的に算出する数値であり、算式と版は Git の `docs/attention-score-v1.0.md` に置く。LLM の判断を順位の出どころにしない。
+- 現在のD1 gate通過後の設計追補で、D1には時刻非依存のbase scoreだけを保持する。経過時間による減衰は公開Workerの純関数としてread時に適用し、減衰のためにD1へ書き戻さない。
+- 一覧は base score ではなく減衰後の値で並べ、閾値未満は表示しない。時間経過で自然に一覧から消えることを「消化」の代替とする。
+- フォロー中のクラブ/選手による重み付けは、中立な base score をブラウザ側で再計算する形とし、サーバへ個人状態を送らない。
+- 説明文（`reason` / `insights` / `analysis`）は監視パイプライン生成のまま維持し、注釈として表示する。数値の根拠としては扱わず、`confidence` と出典を併記する。
+- 視聴手段（`watch`）は個人状態ではない試合付随情報として試合行に表示する。配信期限が確認できないラベルを「現在視聴可能」と断定しない。
+- 視聴済み状態そのものは、認証と端末間同期の設計後に follow sync と同じ Phase で再検討する。
 
 ## 6. 視覚トークン
 
@@ -99,6 +103,9 @@ J1 は Core の大会・クラブ・選手として表示できるが、海外�
 - 320 px で page 全体の横スクロールが発生しない。
 - keyboard focus、44 px tap target、tab の横スクロールが機能する。
 - generic `JP` と tracked/JFW 表示が混同されず、J1を tracking workflow に含めない。
-- 視聴済み状態が再読込後も同じ端末で維持され、別 fixture へ移らない。
+- 視聴価値ランキングが同一時刻・同一入力で再現でき、`attention_version` を明示できる。
+- 減衰の適用が read 時であり、順位表示のために D1 への書込みが発生しない。
+- JFW Rating が未取得の試合の attention が `0` ではなく「未算出」として扱われ、ランキングから除外されるが価値0とは表示されない。
+- 説明文に `confidence` と出典が併記され、数値の根拠として提示されない。
 - API/JFW rating switch と要因分解が、欠落を0へ変換せず表示する。
-- AI分析用の route、API、DB table、保存 UI が生成されていない。
+- 利用者が貼り付けた外部AI分析を保存する route/API/DB/UI が存在しない。

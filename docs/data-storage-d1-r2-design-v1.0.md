@@ -1,4 +1,4 @@
-# D1 / R2 データ設計 v1.1（再レビュー案）
+# D1 / R2 データ設計 v1.1（再々レビュー案）
 
 状態: **Proposed — Claude レビュー完了まで実装禁止**
 対象: Data App v2
@@ -50,9 +50,9 @@ ID、DTO、time zone、missing、補正、tracking overlay の規則は置き換
 | 日本人追跡 ID、所属履歴 | 正本・恒久 | 監査コピー任意 | 登録・運用方針 |
 | 人手補正 | 適用/照合状態 | 根拠 snapshot | 補正定義の正本 |
 | JFW Rating | 派生結果 | 入力監査 snapshot 任意 | アルゴリズム/版 |
-| 個人のフォロー、テーマ、視聴済み fixture ID | 認証導入後に検討 | なし | なし |
+| 個人のフォロー、テーマ | 認証導入後に検討 | なし | なし |
 
-個人設定は認証がない段階ではブラウザの `localStorage` に残す。視聴済み状態は fixture の `canonical_id` だけを保存し、Core facts や archive へ混ぜない。全利用者で共有すべきサッカーの事実だけを先に D1 へ一元化する。匿名端末 ID で個人設定を D1 に保存する設計は、乗っ取り・同期競合・削除要求を扱えないため採用しない。
+個人設定は認証がない段階ではブラウザの `localStorage` に残す。ただし legacy の視聴済み fixture ID は新 UI へ移行せず、時点ごとの視聴価値ランキングへ置き換える。全利用者で共有すべきサッカーの事実だけを先に D1 へ一元化する。匿名端末 ID で個人設定を D1 に保存する設計は、乗っ取り・同期競合・削除要求を扱えないため採用しない。
 
 ## 4. 全体構成
 
@@ -101,7 +101,7 @@ erDiagram
     TEAMS ||--o{ FIXTURES : home_team
     TEAMS ||--o{ FIXTURES : away_team
     FIXTURES ||--o{ FIXTURE_REVISIONS : versions
-    FIXTURE_REVISIONS ||--o{ FIXTURE_SCORE_PARTS : scores
+    FIXTURES ||--o{ FIXTURE_SCORE_PARTS : scores
     FIXTURE_REVISIONS ||--o{ FIXTURE_EVENTS : records
     TEAMS ||--o{ FIXTURE_EVENTS : event_team
     PLAYERS ||--o{ FIXTURE_EVENTS : actor
@@ -109,13 +109,13 @@ erDiagram
     FIXTURE_REVISIONS ||--o{ FIXTURE_LINEUPS : publishes
     TEAMS ||--o{ FIXTURE_LINEUPS : lineup_team
     COACHES ||--o{ FIXTURE_LINEUPS : coaches
-    FIXTURE_REVISIONS ||--o{ FIXTURE_PLAYER_RECORDS : records_player
-    FIXTURES ||--o{ FIXTURE_PLAYER_RECORDS : indexes_player_history
+    FIXTURES ||--o{ FIXTURE_PLAYER_RECORDS : records_player
     TEAMS ||--o{ FIXTURE_PLAYER_RECORDS : player_team
     PLAYERS ||--o{ FIXTURE_PLAYER_RECORDS : appears_as
     FIXTURE_LINEUPS ||--o{ FIXTURE_LINEUP_ENTRIES : contains
-    FIXTURE_PLAYER_RECORDS ||--o| FIXTURE_LINEUP_ENTRIES : places
-    FIXTURE_PLAYER_RECORDS ||--o| FIXTURE_PLAYER_STATS : has
+    FIXTURE_PLAYER_RECORDS ||--o{ FIXTURE_LINEUP_ENTRIES : places
+    FIXTURE_REVISIONS ||--o{ FIXTURE_PLAYER_STATS : publishes
+    FIXTURE_PLAYER_RECORDS ||--o{ FIXTURE_PLAYER_STATS : has
     FIXTURE_REVISIONS ||--o{ FIXTURE_TEAM_STATS : has
     TEAMS ||--o{ FIXTURE_TEAM_STATS : measured_team
     PLAYERS ||--o{ PLAYER_TEAM_MEMBERSHIPS : joins
@@ -223,7 +223,7 @@ erDiagram
         DATETIME published_at
     }
     FIXTURE_SCORE_PARTS {
-        INTEGER fixture_revision_id PK, FK
+        INTEGER fixture_id PK, FK
         TEXT score_kind PK
         INTEGER home_value
         INTEGER away_value
@@ -250,24 +250,23 @@ erDiagram
     }
     FIXTURE_PLAYER_RECORDS {
         INTEGER id PK
-        INTEGER fixture_revision_id FK
         INTEGER fixture_id FK
         INTEGER team_id FK
         INTEGER player_id FK
         DATETIME kickoff_utc
-        INTEGER is_published
         TEXT appearance_state
         TEXT position
         INTEGER minutes
     }
     FIXTURE_LINEUP_ENTRIES {
+        INTEGER lineup_id PK, FK
         INTEGER player_record_id PK, FK
-        INTEGER lineup_id FK
         TEXT squad_role
         INTEGER shirt_number
         TEXT grid
     }
     FIXTURE_PLAYER_STATS {
+        INTEGER fixture_revision_id PK, FK
         INTEGER player_record_id PK, FK
         INTEGER goals
         INTEGER assists
@@ -319,10 +318,12 @@ erDiagram
 ### Core テーブルの補足
 
 - `canonical_id` と `(source_id, provider_id)` はそれぞれ一意制約を持つ。
-- `FIXTURES` と `FIXTURE_SCORE_PARTS` はスコアと検索に必要な compact データとして恒久保持する。`FIXTURE_SCORE_PARTS` は revision に由来するが archive 時の削除対象ではなく、公開 pointer 切替時に最新の halftime/fulltime/extratime/penalty を同じ transaction で反映する。
+- `FIXTURES` と `FIXTURE_SCORE_PARTS` はスコアと検索に必要な fixture scope の compact データとして恒久保持する。`FIXTURE_SCORE_PARTS` の PK は `(fixture_id, score_kind)` とし、公開 pointer 切替時に最新の halftime/fulltime/extratime/penalty を同じ transaction で upsert する。revision 行へ結び付けず、superseded/archive cleanup の対象にも含めない。
 - detail 子行と `SECTION_STATES` / `FIELD_STATES` は `FIXTURE_REVISIONS` に属する。公開 query は `FIXTURES.published_revision` と一致し、`lifecycle_state != 'staging'` の revision だけを読み、section/field state を含む分割 ingest の途中状態を表示しない。
 - revision は lifecycle と保存場所を分離する。`lifecycle_state` は `staging`、`published`、`superseded`、`detail_location` は `d1`、`r2`。`UNIQUE(fixture_id, revision_no)` と公開前 integrity check で、fixture の pointer が同じ fixture の実在 revision だけを指すことを保証する。
 - `PRODUCT_SEASONS.canonical_id` は `jfw:season:{label}`（例: `jfw:season:2026-27`）、`COMPETITION_SEASONS.canonical_id` は既存の `af:season:{competition}:{year}` とする。両 ID は別 namespace として扱い、春秋制/秋春制の大会シーズンを必要な場合だけアプリ共通シーズンへ対応付ける。
+- `FIXTURE_PLAYER_RECORDS` は revision scope ではなく fixture scope とし、`UNIQUE(fixture_id, team_id, player_id)` で1選手1試合1クラブの恒久 record を持つ。`appearance_state`、`position`、`minutes` の公開値だけを最終 publish transaction で更新し、revision 固有の詳細 stat は `FIXTURE_PLAYER_STATS(fixture_revision_id, player_record_id)` に閉じる。これにより公開 revision ごとに全選手 record を複製したり `is_published` を反転したりしない。
+- `FIXTURE_PLAYER_STATS` と `FIXTURE_LINEUP_ENTRIES` の player record は、参照する revision/lineup と同じ fixture に属さなければならない。個別FKだけではこの同一fixture条件を表せないため、staging完成時とpublish直前のintegrity validatorで必須検証し、不一致を含むbatchをrollbackする。
 - `FIXTURE_PLAYER_RECORDS.appearance_state` は `started`、`substitute_used`、`bench_unused`、`absent_confirmed`、`unknown` のいずれかとする。lineup が未取得でも確認済み欠場を表現でき、単に stats 行がないことを欠場と解釈しない。
 - `FIXTURE_LINEUP_ENTRIES` は formation 上の位置だけを所有する。player stats だけ取得できた場合も `FIXTURE_PLAYER_RECORDS` を作成できる。
 - ER 図の stat 列は代表例である。選手 stat の物理 DDL は `data-contract-v2.md` §6 の `values.*` を正本とし、`scripts/v2/fixture-contract.js` の `normalizePlayerStats` が生成する28項目を型付き列として網羅する。provider 由来でない legacy 追跡語彙は Core 列へ追加せず、下表の規則で tracking 側の派生値または状態として扱う。
@@ -356,7 +357,7 @@ erDiagram
     RECORD_SOURCES ||--o{ SECTION_STATES : proves
     RECORD_SOURCES ||--o{ FIELD_STATES : proves
     RECORD_SOURCES ||--o{ ENTITY_FIELD_STATES : proves
-    FIXTURE_REVISIONS ||--o| FIXTURE_ARCHIVES : archives_to
+    FIXTURE_REVISIONS ||--o{ FIXTURE_ARCHIVES : archives_to
     SYNC_RUNS o|--o{ TRACKED_PLAYERS : resolves
     PLAYERS o|--o| TRACKED_PLAYERS : maps_when_resolved
     TRACKED_PLAYERS ||--o{ LEGACY_TRACKING_MEMBERSHIPS : imports
@@ -426,11 +427,12 @@ erDiagram
     }
     FIXTURE_ARCHIVES {
         INTEGER fixture_revision_id PK, FK
+        TEXT schema_version PK
         TEXT r2_key UK
         TEXT content_sha256
-        TEXT schema_version
         INTEGER byte_size
         TEXT status
+        INTEGER is_active
         DATETIME archived_at
         DATETIME restore_checked_at
     }
@@ -506,10 +508,12 @@ erDiagram
 - `record_sources.fact_kind + fact_key` は多態参照であるため DB 外部キーを張らない。`fact_key` は restore 後も変わらない canonical ID または canonical composite key とし、内部 row ID を使わない。その代わり ingest 時のバリデータと整合性テストで参照先を必須確認する。
 - `TRACKED_PLAYERS.player_id` は nullable で、`crosswalk_state` は `resolved`、`unresolved`、`ambiguous`。解決済みの場合だけ Core player と1対1になり、`crosswalk_method`（provider ID、reviewed name match、人手）と `crosswalk_sync_run_id` を記録する。名前だけで `af:player:*` を推測せず、未解決のまま import を完了できる。
 - `TRACKING_PERIODS` は「その期間を自動追跡するか」を所有する。解決済み所属は Core の `PLAYER_TEAM_MEMBERSHIPS`、名前しかない legacy 所属は tracking 専用の `LEGACY_TRACKING_MEMBERSHIPS` を参照し、Core facts へダミー player/team を発行しない。legacy `membershipHistory` は import 時にいずれかの membership と tracking period へ分解する。
+- `TRACKING_PERIODS.core_membership_id` と `legacy_membership_id` は必ずどちらか一方だけを持ち、`CHECK ((core_membership_id IS NULL) <> (legacy_membership_id IS NULL))` を課す。crosswalk が `resolved` になったときは、同一 transaction 内で legacy 参照を Core membership 参照へ付け替えてから commit し、両参照または参照なしの中間状態を公開しない。
 - Core membership と tracking period の期間重複は DB の単純な `CHECK` だけでは防げない。更新トランザクション内の重複検査とテストを必須にする。
 - `PLAYER_TEAM_MEMBERSHIPS`、`LEGACY_TRACKING_MEMBERSHIPS`、`TRACKING_PERIODS` の `valid_to` は `NOT NULL DEFAULT '9999-12-31'` とし、無期限を `NULL` で表さない。
 - `TRACKED_PLAYER_AGGREGATES` は `season`、`competition`、`club`、`club_competition` の4粒度を持ち、Core facts または確認済み baseline から再構築する。archive 済みシーズンを再構築する場合は R2 manifest から対象 bundle を restore/stream して再計算するが、確定済み aggregate 自体は D1 に恒久保持する。
 - JFW Rating の `rating = NULL` と `rating_state = missing/not_applicable` を有効な 0 と混同しない。
+- `FIXTURE_ARCHIVES.status` は `NOT NULL` かつ `verifying`、`ready`、`superseded`、`quarantined` の4値、`is_active` は `NOT NULL DEFAULT 0 CHECK (is_active IN (0, 1))` とし、`CHECK (is_active = 0 OR status = 'ready')` を課す。PK `(fixture_revision_id, schema_version)` で同じ revision の複数 schema 世代を保持し、`is_active = 1` は revision ごとに最大1行とする。公開 Worker は `status = 'ready' AND is_active = 1` の pointer だけを読む。
 
 ## 7. 主な一意制約と index
 
@@ -524,17 +528,20 @@ erDiagram
 | `fixture_events` | `UNIQUE(fixture_revision_id, event_key)` | 再取得時の冪等 upsert |
 | `fixture_events` | `INDEX(fixture_revision_id, elapsed, event_order)` | 時系列表示 |
 | `fixture_lineups` | `UNIQUE(fixture_revision_id, team_id)` | 1 revision・1クラブ・1 lineup |
-| `fixture_player_records` | `UNIQUE(fixture_revision_id, team_id, player_id)` | revision 内の選手重複防止 |
-| `fixture_player_records` | `INDEX(player_id, is_published, kickoff_utc DESC)` | 公開中の選手試合履歴 |
+| `fixture_player_records` | `UNIQUE(fixture_id, team_id, player_id)` | fixture 内の選手重複防止 |
+| `fixture_player_records` | `INDEX(player_id, kickoff_utc DESC)` | 選手試合履歴。公開可否は親 fixture の公開 pointer で決める |
+| `fixture_player_stats` | `PRIMARY KEY(fixture_revision_id, player_record_id)` | revision 固有 stat の一意性 |
 | `fixture_lineup_entries` | `UNIQUE(lineup_id, player_record_id)` | lineup 重複防止 |
 | `player_team_memberships` | `INDEX(player_id, valid_from, valid_to)` | 日付時点の所属解決 |
 | `standings_snapshots` | `UNIQUE(competition_season_id, observed_at)` | snapshot 冪等性 |
 | `section_states` | `PRIMARY KEY(fixture_revision_id, section_key)` | section 状態一意性 |
 | `field_states` | `PRIMARY KEY(fixture_revision_id, fact_kind, fact_key, field_path)` | revision 内 field 状態一意性 |
+| `entity_field_states` | `PRIMARY KEY(fact_kind, fact_key, field_path)` | master/追跡 field 状態一意性。3列すべて `NOT NULL` |
 | `tracking_periods` | `INDEX(jfw_player_id, valid_from, valid_to)` | 日付時点の追跡可否解決 |
 | `fixture_archives` | `UNIQUE(r2_key)` | archive ポインタ一意性 |
+| `fixture_archives` | `UNIQUE(fixture_revision_id) WHERE is_active = 1` | revision ごとの active pointer を1つに限定 |
 
-D1 の row-read 課金を抑えるため、公開 endpoint の `WHERE` と `ORDER BY` に対応しない全表走査を許可しない。`FIXTURE_PLAYER_RECORDS.fixture_id`、`kickoff_utc`、`is_published` は選手履歴用の意図的な非正規化列であり、publish transaction で新 revision を true、旧 revision を false に切り替える。実装時は全 index の参照列が DDL に実在することを静的検証し、代表クエリへ `EXPLAIN QUERY PLAN` の自動テストを追加する。
+D1 の row-read 課金を抑えるため、公開 endpoint の `WHERE` と `ORDER BY` に対応しない全表走査を許可しない。`FIXTURE_PLAYER_RECORDS.fixture_id` と `kickoff_utc` は選手履歴用の意図的な非正規化列である。公開可否は `FIXTURES.published_revision` が同 fixture の `published` revision を指すことだけで決め、player record ごとの公開フラグを持たない。実装時は全 index の参照列が DDL に実在することを静的検証し、代表クエリへ `EXPLAIN QUERY PLAN` の自動テストを追加する。
 
 ## 8. 3シーズン保持と archive
 
@@ -552,10 +559,10 @@ D1 の row-read 課金を抑えるため、公開 endpoint の `WHERE` と `ORDE
 
 | 区分 | テーブル / 行 | archive 後 |
 |---|---|---|
-| compact | `fixtures`、`fixture_score_parts`、最終 `standings_rows` | D1 に保持 |
+| compact | `fixtures`、`fixture_score_parts`、最終 `standings_rows`、`entity_field_states` | D1 に保持 |
 | tracking | 追跡対象選手の公開中 `fixture_player_records` と対応する `jfw_rating_results`、`tracked_player_aggregates` | D1 に保持 |
 | detail | `fixture_events`、`fixture_lineups`、`fixture_lineup_entries`、`fixture_player_stats`、`fixture_team_stats` | R2 検証後に D1 から削除 |
-| state/provenance | `section_states`、`field_states`、detail 専用 `record_sources` | R2 bundle に含めた後、D1 から削除 |
+| state/provenance | `section_states`、`field_states`、detail 専用 `record_sources` | R2 bundle に含めた後、D1 から削除。master/追跡用 `entity_field_states` と、それが参照する `record_sources` は削除しない |
 | non-tracked appearance | 追跡対象でない `fixture_player_records` | R2 bundle に含めた後、D1 から削除 |
 
 追跡対象選手の恒久 `fixture_player_records` は Rating と過去試合一覧を D1 だけで表示するための最小行であり、lineup entry や player stat detail は保持しない。archive 後の補正で aggregate を再計算するときだけ R2 manifest を読む。
@@ -573,7 +580,7 @@ fixture archive は response-ready な完全 v2 fixture bundle と、復元に�
 
 object key に content hash を含め、既存 archive を上書きしない。archive 後の補正は新しい revision と object を生成し、D1 の公開 revision を新 object へ切り替える。旧 object は監査用に残す。
 
-Worker は `schema_version` ごとの純粋な upcaster を持ち、現行 contract と直前2つの互換 minor version を現行 DTO へ変換する。対応 version 集合はコード定数と CI で固定する。major 変更または対応集合から外す前に archive を新 schema で再 export し、D1 pointer を切り替える。CI は全 `fixture_archives.schema_version` が対応集合内であることを検証し、未知 version は配信しない。
+Worker は `schema_version` ごとの純粋な upcaster を持ち、現行 contract と直前2つの互換 minor version を現行 DTO へ変換する。対応 version 集合はコード定数と CI で固定する。major 変更または対応集合から外す前に archive を新 schema で再 export する。新 pointer は `verifying, is_active = 0` で登録し、object と復元結果の検証成功後に、1つの D1 transaction で新 pointer を `ready, is_active = 1`、旧 active pointer を `superseded, is_active = 0` へ切り替える。検証失敗時は新 pointer を `quarantined` とし、旧 pointer を active のまま維持する。CI は active な全 `fixture_archives.schema_version` が対応集合内であることを検証し、未知 version は配信しない。
 
 ### archive 手順
 
@@ -581,7 +588,7 @@ Worker は `schema_version` ごとの純粋な upcaster を持ち、現行 contr
 2. fixture ごとに canonical JSON を生成し、gzip 圧縮、SHA-256 を計算する。
 3. R2 へ content-addressed fixture object を書く。
 4. 全 object を再読込して checksum、件数、schema version を検証した後、content-addressed season manifest を書いて再検証する。
-5. fixture ごとの admin Worker の D1 `batch()` transaction で `fixture_archives(status = ready)` の登録、revision の `detail_location = 'r2'` 化、上表で削除対象とした detail/state/provenance と非追跡 `fixture_player_records` の削除を一括する。`fixture_score_parts`、追跡対象の record/rating は削除しない。
+5. fixture ごとに `fixture_archives(status = 'verifying', is_active = 0)` を登録し、Worker endpoint 経由の復元比較まで完了させる。成功後、admin Worker の D1 `batch()` transaction で新 pointer を `ready, is_active = 1`、既存 active pointer を `superseded, is_active = 0`、revision の `detail_location = 'r2'` へ切り替え、上表で削除対象とした detail/state/provenance と非追跡 `fixture_player_records` を一括削除する。`fixture_score_parts`、`entity_field_states`、追跡対象の record/rating は削除しない。
 6. batch が失敗した fixture は全変更が rollback されたことを確認し、冪等に再実行する。
 7. 無作為サンプルと追跡対象選手を含む全 fixture を Worker endpoint 経由で復元比較する。
 
@@ -612,8 +619,8 @@ archive fallback の流れは次のとおり。
 
 1. compact fixture を D1 から取得する。
 2. hot detail が存在すれば D1 から DTO を構築する。
-3. detail がなく `fixture_archives` があれば、R2 object metadata の schema version と事前検証済み checksum を pointer と照合し、必要なら対応 upcaster を通して response-ready bundle を返す。
-4. fixture が D1 に存在するが detail pointer がない場合は `200` の compact response を返し、`detailAvailability: "unavailable"`、detail 各 `sectionStates.presence: "not_fetched"` とする。fixture 自体が未知の場合だけ `404 entity_not_found` を返す。
+3. detail がなく `fixture_archives(status = 'ready', is_active = 1)` があれば、R2 object metadata の schema version と事前検証済み checksum を pointer と照合し、必要なら対応 upcaster を通して response-ready bundle を返す。
+4. fixture が D1 に存在するが detail pointer がない場合は `200` の compact response を返し、`detailAvailability: "unavailable"`、detail 各 `sectionStates.presence: "not_fetched"` とする。fixture 自体が未知の場合だけ `404 entity_not_found` を返す。`detailAvailability` は公開 contract 2.1.0 で追加する optional field（`available` / `unavailable`）であり、2.0.0 archive object は upcaster が `available` を補う。Phase 1 で `data-contract-v2.md` §4、`scripts/v2/fixture-contract.js` の `CONTRACT_VERSION` / `validateFixtureBundle`、関連テストを同時に2.1.0へ更新し、同じ version で形状を揺らさない。
 
 完了済み fixture は revision/content hash を ETag に使う。archive object は immutable とし、長い `s-maxage` を設定する。LIVE と当日一覧は短い TTL、過去日一覧は長い TTL にし、同一 URL の D1/R2 read を抑える。
 
@@ -671,7 +678,8 @@ Origin allowlist はブラウザ互換と雑な abuse の軽減には使える�
 - `sync_runs` に provider request 数、quota headers、開始/終了、失敗理由を記録する。
 - `configuredDailyBudget`、reserve、soft stop を取得ジョブで強制し、公開 Worker から bypass できないようにする。
 - fixture ごとに同時に存在できる未完了 `staging` revision は1つだけとする。同じ provider poll/retry はその staging へ差分 upsert し、公開済み content hash と意味的に同じ場合は publish しない。
-- canonical content が変わった場合だけ新しい staging detail を複数 chunk に分けて完成させる。全件検証後、admin Worker の最終 `batch()` が compact fixture/score parts、`FIXTURE_PLAYER_RECORDS.is_published`、revision lifecycle、`published_revision` を同時に切り替える。旧 revision は `superseded` とし、監査用 header/content hash だけ残して旧 detail と旧 rating を同じ batch で削除する。公開 query は staging/superseded revision を読まない。
+- `status_elapsed` だけが変わる poll は compact heartbeat とし、detail revision を作らない。スコア、イベント、lineup、player/team stat、section/field state の canonical content が変わった場合だけ新しい staging detail を複数 chunk に分けて完成させる。
+- 全件検証後、admin Worker の最終 `batch()` が compact fixture/score parts、fixture scope の `FIXTURE_PLAYER_RECORDS` の変化した `appearance_state` / `position` / `minutes`、追跡対象の `JFW_RATING_RESULTS`、revision lifecycle、`published_revision` を同時に反映する。旧 revision は `superseded` とし、監査用 header/content hash だけ残す。superseded cleanup の「旧 detail」は §8 の `detail` と `state/provenance` に列挙した `fixture_events`、`fixture_lineups`、`fixture_lineup_entries`、`fixture_player_stats`、`fixture_team_stats`、`section_states`、`field_states`、detail 専用 `record_sources` だけを指す。fixture scope の score parts/player record/rating、`entity_field_states` は削除しない。公開 query は staging/superseded revision を読まない。
 - Free の50 query/invocation と100 bound parameters/query を超えないよう、multi-row statement と chunk checkpoint を使う。途中失敗は同じ staging revision から再開する。
 - 新しい canonical bundle の content hash が公開 revision と同じなら書込みを省略し、D1 row-write を消費しない。
 - 初期実装では既存の GitHub Actions を取得・正規化 orchestrator として利用し、staging/publish は認証済み admin Worker endpoint 経由に固定する。Actions から D1 REST API や `wrangler d1 execute` で publish pointer を直接変更しない。
@@ -681,16 +689,34 @@ Origin allowlist はブラウザ互換と雑な abuse の軽減には使える�
 
 index 対象列の insert/update/delete も追加 row write として数える。実装前の上限モデルは次とし、実測がこれを超える設計を採用しない。
 
-| 項目 | 上限モデル |
-|---|---:|
-| compact/pointer/revision 切替 | 1 fixture・1 publish あたり最大8 writes |
-| 変化した detail/state | 最大25 logical rows × 平均3 writes = 75 |
-| superseded detail cleanup | 最大25 logical rows × 平均3 writes = 75 |
-| 10試合 × 30 publish | 最大47,400 writes |
-| final lineup/stats、通常同期、余白 | 最大22,000 writes |
-| 代表的な LIVE 日の設計上限 | **69,400 writes/日** |
+LIVE detail の対象は、現行 `data.json` の追跡大会集合（プレミアリーグ、EFLチャンピオンシップ、ブンデスリーガ、ベルギー、エールディヴィジ、ラ・リーガ、ポルトガル、スコットランド）からdeploy時に生成する `LIVE_COMPETITION_IDS` allowlist の8大会だけとし、`MAX_CONCURRENT_LIVE_DETAIL_FIXTURES = 20` と `MAX_DAILY_LIVE_DETAIL_FIXTURES = 20` を実行時の硬い上限にする。この20は代表値ではなく運用 cap である。チャンピオンシップ単独で12試合同時開催があり、他大会との重複を8試合まで許容する値として固定する。21試合目以降は当日はcompact score/statusだけを更新してrawをR2へ保持し、detail/final reconcileは翌UTC日以降の通常同期へqueueする。対象選択は「追跡選手が有効な所属期間にあるfixtureを先、次にkickoff、最後にfixture canonical ID」の順で決定的に行い、閲覧数や端末followから変更しない。
 
-provider poll ごとではなく content 変更時だけ publish し、実測 `rows_written` が Free 上限の70%（70,000/日）以上になる構成は gate を通さない。超える場合は publish の coalescing、対象 fixture 数、詳細更新間隔を先に調整し、quota 超過を前提に運用しない。
+LIVE detail は原則10分単位で変化をcoalesceし、1 fixture・1日あたり最大10 publish（final reconcileを含む）とする。compact heartbeat は detail publish と分離し、1 fixture・1日あたり最大30回とする。上限モデルは次のとおり。
+
+| publish 内の対象 | 行数・index 増幅 | 最大 writes |
+|---|---:|---:|
+| `fixtures` compact + `published_revision` | table 1 + 影響する index 最大4 | 5 |
+| `fixture_score_parts` | 最大5行、secondary indexなし | 5 |
+| revision lifecycle | new/old revision 各1行 | 2 |
+| `fixture_player_records` 公開値更新 | 最大40行、index対象列は更新しない | 40 |
+| `jfw_rating_results` | 追跡対象最大10行 × table/PK 最大2 | 20 |
+| 変化した detail/state | 最大25 logical rows × 平均3 | 75 |
+| superseded detail cleanup | 最大25 logical rows × 平均3 | 75 |
+| **detail publish 1回** | 上記合計 | **222** |
+
+初回の `fixture_player_records` insert はtable行に加えてunique indexと`player_id/kickoff_utc` indexの2本が増えるため、通常更新との差分を1 fixtureあたり追加80 writesと見積もる。compact-only heartbeat は `fixtures` 最大5 + score parts最大5 = 10 writes とする。
+
+| 日次項目 | 上限モデル |
+|---|---:|
+| 20 fixtures × 10 detail publish × 222 | 44,400 |
+| player record 初回 index 増幅 20 × 80 | 1,600 |
+| 20 fixtures × 30 compact heartbeat × 10 | 6,000 |
+| 通常同期・最終順位・失敗再開用 reserve | 8,000 |
+| **設計上限** | **60,000 writes/日** |
+
+provider poll ごとではなく上記の変化時だけ publish する。実装時は D1 `meta.rows_written` を statement 種別ごとに記録し、この表を実測値へ置き換える。実測または24時間 rolling 予測が70,000/日以上になる構成は gate を通さない。
+
+保護モードは設計時の判定だけでなく実行時にも強制する。70%到達時は非緊急 job を止め、detail publish の最短間隔を15分へ延長する。85%到達時は LIVE を compact-only に切り替え、final reconcile 用 reserve 以外の detail write を停止する。concurrent/dailyの20 fixture、10 publish、30 heartbeat のいずれも設定で増やす場合は、上表を再計算してレビュー gate を再度通す。
 
 ## 12. 補正と provenance
 
@@ -764,16 +790,19 @@ D1 が正本になり、追跡・画面・snapshot の parity が確認された
 - transfer 前後で同一 JFW player ID が維持され、過去クラブの成績が現在クラブへ移らない。
 - crosswalk 未解決の追跡選手を誤った Core player/team へ結び付けず import できる。
 - 同じ固定入力で import を2回実行しても `player_team_memberships`、`legacy_tracking_memberships`、`tracking_periods` の行数と内容が一致する。
+- `tracking_periods` の Core/legacy membership 参照が常に排他的で、crosswalk 解決 transaction 後に legacy 参照が残らない。
 - 人手補正の3状態が再取得後も既存挙動と一致する。
 - hot fixture と archive fixture が同じ endpoint/DTO で取得できる。
 - archive 後も追跡選手の過去 JFW Rating と確定 aggregate を D1 のみで表示できる。
 - archive 後に、恒久 master/compact fixture を seed した clean test DB へ manifest から詳細を復元できる。
 - 未対応 `schema_version` の archive pointer が存在しないことを CI で検出できる。
+- archive 再exportで新 pointer の検証が失敗しても旧 active pointer が維持され、成功時だけ `verifying -> ready` と旧 `ready -> superseded` が同一 transaction で切り替わる。
 - 代表クエリが index を使い、公開 endpoint に意図しない全表走査がない。
 - 複合 PK の全列が `NOT NULL` または `WITHOUT ROWID` で、NULL を含む重複 insert が制約違反になる。
 - 公開アクセスを増やしても API-Football request counter が増えない。
 - D1 read failure 時に date/standings/fixture endpoint が 5xx ではなく、同じ entity の検証済み degraded snapshot と最終成功時刻を返す。
 - 代表的な LIVE 日の実測 `rows_written` が70,000/日未満である。
+- LIVE detail 20 fixture、10 publish、compact heartbeat 30回の上限がruntimeで強制され、70%/85%保護モードで自動的に書込み頻度が低下する。
 - D1 350 MB 警告と archive 前倒し判定をテストできる。
 
 ## 15. 今回決めないこと
