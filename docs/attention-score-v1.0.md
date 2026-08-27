@@ -1,6 +1,6 @@
 # Attention Score v1.0 — 視聴価値ランキング仕様
 
-状態: **Proposed — Claude 正式レビュー完了まで実装禁止**
+状態: **Proposed — 独立レビュー完了まで実装禁止**
 対象: configured overseas leagues の追跡対象選手が関与した完了試合
 作成日: 2026-08-27
 関連文書: `jfw-rating-v1.0.md`、`ui-wireframe-baseline-v1.0.md`、`screen-flow-v2-d1-v1.0.md`、`state/workflow_policy.json`

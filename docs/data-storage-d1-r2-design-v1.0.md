@@ -1,6 +1,6 @@
 # D1 / R2 データ設計 v1.1（再々レビュー案）
 
-状態: **Proposed — Claude レビュー完了まで実装禁止**
+状態: **Proposed — 独立レビュー完了まで実装禁止**
 対象: Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-contract-v2.md`、`player-tracking-data-model-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
@@ -740,7 +740,7 @@ provider poll ごとではなく上記の変化時だけ publish する。実装
 
 ### Phase 0 — 設計レビュー
 
-- 本文書と画面遷移文書を Claude がレビューする。
+- DB・ER・D1/R2担当とUI・Attention担当が独立にレビューし、結果を統合判定する。
 - `BLOCKER` と `MAJOR` が 0 になるまで schema、Worker、画面の実装を開始しない。
 
 ### Phase 1 — schema とローカル変換

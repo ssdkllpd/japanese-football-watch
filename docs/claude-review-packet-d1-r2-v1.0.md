@@ -1,10 +1,10 @@
-# Claude レビューパケット: D1 / R2・ER・画面遷移・Attention v1.2
+# 独立レビューパケット: D1 / R2・ER・画面遷移・Attention v1.3
 
-状態: **Ready for Claude re-review**
+状態: **Ready for independent review**
 レビュー対象日: 2026-08-27
 実装 gate: **BLOCKER / MAJOR が 0 になるまで実装しない**
 
-## Claude への依頼
+## 独立レビュアーへの依頼
 
 以下の6文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
 
@@ -165,4 +165,4 @@ Verdict: PASS | CHANGES_REQUIRED
 | UI-001 | scope | 利用者貼付けAIだけを対象外とし、監視生成tracking insightsを承認済み機能として復帰 | `8c38816` | Pending |
 | UI-002 | scope | 視聴済み移行を廃止し、決定的な視聴価値ランキングと完全なv1.0算式を追加 | `8c38816` | Pending |
 
-第2回結果は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 2件（D1-023 / D1-024）、MINOR 5件（D1-025〜D1-029）。今回の正式レビューはこの7件とUI/Attentionの2件に絞る。`Verdict: PASS` かつ unresolved BLOCKER/MAJOR が0になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
+Claude第2回レビュー結果は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 2件（D1-023 / D1-024）、MINOR 5件（D1-025〜D1-029）。今回の独立レビューはこの7件とUI/Attentionの2件に絞る。DB・ER・D1/R2担当とUI・Attention担当を分離し、統合判定が `Verdict: PASS` かつ unresolved BLOCKER/MAJOR 0件になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
