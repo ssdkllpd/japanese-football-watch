@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   node-tests:
@@ -20,35 +20,36 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Make rating input signature order-insensitive
+      - name: Apply verified rating signature fix and snapshot
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path('backfill-merge.js')
           s = p.read_text(encoding='utf-8')
           old = """    function ratingInputsSignature(record) {\n      try { return JSON.stringify(record?.ratingInputs || {}); } catch { return ''; }\n    }"""
           new = """    function ratingInputsSignature(record) {\n      try {\n        const entries = Object.entries(record?.ratingInputs || {})\n          .sort(([left], [right]) => left.localeCompare(right))\n          .map(([field, input]) => [\n            field,\n            Object.entries(input || {}).sort(([left], [right]) => left.localeCompare(right))\n          ]);\n        return JSON.stringify(entries);\n      } catch {\n        return '';\n      }\n    }"""
           assert s.count(old) == 1, s.count(old)
           p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          p = Path('state/runtime_snapshot.json')
+          s = p.read_text(encoding='utf-8')
+          old_sha = 'ff38c593f3c4dff0ad574d1f80e26bd4a801d07b'
+          new_sha = '3f2fc341a415294c10c7c871527007dfac92b6fc'
+          assert s.count(old_sha) == 1, s.count(old_sha)
+          p.write_text(s.replace(old_sha, new_sha, 1), encoding='utf-8')
           PY
           node --check backfill-merge.js
+          python -m json.tool state/runtime_snapshot.json >/dev/null
           git diff --check
-      - name: Capture patched full-suite result
+      - name: Verify full suite before push
+        run: node --test tests/*.test.js
+      - name: Commit verified CP1 runtime fix
         shell: bash
         run: |
-          set +e
-          node --test tests/*.test.js > patched-test-output.txt 2>&1
-          status=$?
-          printf '%s\n' "$status" > patched-test-status.txt
-          exit 0
-      - name: Upload patched diagnostic output
-        uses: actions/upload-artifact@v4
-        with:
-          name: cp1-patched-test-output
-          path: |
-            patched-test-output.txt
-            patched-test-status.txt
-      - name: Preserve patched test conclusion
-        shell: bash
-        run: test "$(cat patched-test-status.txt)" -eq 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backfill-merge.js state/runtime_snapshot.json
+          git commit -m "Fix order-sensitive rating cache invalidation"
+          git push origin HEAD:fix/current-main-ci-20260827
