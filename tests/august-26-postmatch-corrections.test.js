@@ -21,11 +21,10 @@ function ratingApi() {
 function loadRuntime() {
   const D = JSON.parse(fs.readFileSync(path.join(ROOT, 'data.json'), 'utf8'));
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill/index.json'), 'utf8'));
-  let out = D;
-  for (const name of manifest.fragments) {
-    const fragment = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill', name), 'utf8'));
-    out = mergeCore.mergeBackfillData(out, fragment, { season: '2026-27' });
-  }
+  const fragments = manifest.fragments.map((name) =>
+    JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2026-27/backfill', name), 'utf8'))
+  );
+  const out = mergeCore.mergeBackfillData(D, fragments, { season: '2026-27' });
   return { D: out, manifest };
 }
 
