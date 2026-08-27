@@ -270,12 +270,16 @@ test('representative public queries use the reviewed indexes', () => {
       WHERE fixture_revision_id = ? ORDER BY elapsed, extra_minute, event_order`).all(1),
     db.prepare(`EXPLAIN QUERY PLAN SELECT id FROM fixture_player_records
       WHERE player_id = ? ORDER BY kickoff_utc DESC`).all(1),
+    db.prepare(`EXPLAIN QUERY PLAN SELECT correction_key FROM correction_states
+      WHERE target_canonical_id = ?`).all('af:fixture:1'),
   ].flat().map(row => row.detail).join('\n');
 
   assert.match(plans, /idx_fixtures_date_kickoff/);
   assert.match(plans, /idx_fixture_events_timeline|ux_fixture_events_order/);
   assert.match(plans, /idx_fixture_player_records_history/);
+  assert.match(plans, /idx_correction_states_target/);
   assert.doesNotMatch(plans, /SCAN fixtures/);
   assert.doesNotMatch(plans, /SCAN fixture_events/);
   assert.doesNotMatch(plans, /SCAN fixture_player_records/);
+  assert.doesNotMatch(plans, /SCAN correction_states/);
 });

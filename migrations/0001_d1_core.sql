@@ -456,6 +456,7 @@ CREATE INDEX idx_record_sources_fact ON record_sources(fact_kind, fact_key, obse
 CREATE INDEX idx_tracking_periods_player_period ON tracking_periods(jfw_player_id, valid_from, valid_to);
 CREATE UNIQUE INDEX ux_fixture_archives_active ON fixture_archives(fixture_revision_id) WHERE is_active = 1;
 CREATE INDEX idx_tracked_aggregates_scope ON tracked_player_aggregates(product_season_id, aggregate_scope, competition_season_id, team_id);
+CREATE INDEX idx_correction_states_target ON correction_states(target_canonical_id);
 CREATE UNIQUE INDEX ux_tracked_aggregates_identity ON tracked_player_aggregates(
   jfw_player_id,
   product_season_id,
