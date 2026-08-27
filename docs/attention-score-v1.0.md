@@ -243,7 +243,7 @@ Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displaye
 
 最初のresponseは`asOfUtc`、`candidateRevision`、`nextCursor`を返す。cursorはopaqueかつ改ざん検知可能とし、少なくとも`productSeason`、`attentionVersion`、`scopeVersion`、`asOfUtc`、`candidateRevision`、page size、直前sort tupleを束縛する。各pageは`nextCursor`を持ち、ブラウザは`nextCursor = null`まで取得してからローカルfollow係数を適用する。途中pageだけで最終順位・件数を確定表示せず、全候補取得中であることを示す。同じ時刻または同じcandidate generationを維持できないcursor、binding不一致、TTL切れは`409 attention_cursor_expired`にして先頭pageから再取得させる。
 
-ブラウザは完全な候補集合へローカルfollowだけから係数を計算し、`personal_displayed_score >= 20.00`を残して同じ4段階規則で並べ直す。個人係数は表示順と表示閾値だけに使い、`base_score`、`source_hash`、サーバの中立順位を変更しない。`base_score <= 100`かつ半減期168時間なので、16.00以上の候補期間は理論上kickoff後約18.51日以内に有界であり、endpointはこの時刻下限とindexを使って全履歴走査を避ける。
+ブラウザは完全な候補集合へローカルfollowだけから係数を計算し、`personal_displayed_score >= 20.00`を残して並べ直す。個人一覧では§6の4段階規則の第1キーだけを`personal_displayed_score`降順へ置き換え、残る`base_score`、`kickoff_utc`、fixture canonical IDの3キーは維持する。個人係数は表示順と表示閾値だけに使い、`base_score`、`source_hash`、サーバの中立順位を変更しない。`base_score <= 100`かつ半減期168時間なので、16.00以上の候補期間は理論上kickoff後約18.51日以内に有界であり、endpointはこの時刻下限とindexを使って全履歴走査を避ける。
 
 ## 7. 版管理と保存境界
 
