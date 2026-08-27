@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "season": "2026-27",
+  "updated": "2026-08-28 04:03 JST",
+  "sources": {
+    "monaco-gornik-squad-official-20260827": {
+      "id": "monaco-gornik-squad-official-20260827",
+      "name": "AS Monaco official squad for Gornik Zabrze second leg",
+      "type": "club_official_squad",
+      "url": "https://www.asmonaco.com/fr/news/le-groupe-de-l-as-monaco-pour-le-barrage-retour-face-a-gornik-zabrze",
+      "retrievedAt": "2026-08-28T04:03:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["startingLineup", "bench", "matchdaySquad"]
+    },
+    "monaco-gornik-result-20260827": {
+      "id": "monaco-gornik-result-20260827",
+      "name": "beIN Sports Monaco v Gornik Zabrze final result",
+      "type": "broadcaster_match_result",
+      "url": "https://www.beinsports.com/en-us/soccer/uefa-conference-league/monaco-vs-grnik-zabrze-2026-08-27",
+      "retrievedAt": "2026-08-28T04:03:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result"]
+    },
+    "rangers-jablonec-lineup-official-20260827": {
+      "id": "rangers-jablonec-lineup-official-20260827",
+      "name": "Rangers official team news for Jablonec second leg",
+      "type": "club_official_lineup",
+      "url": "https://www.rangers.co.uk/article/team-news-mcinnes-names-unchanged-side-for-jablonec/575O1uNEynfZUGOUGc43AS",
+      "retrievedAt": "2026-08-28T04:03:00+09:00",
+      "priority": 1,
+      "exhaustiveFor": ["startingLineup", "bench", "matchdaySquad"]
+    },
+    "jablonec-rangers-result-20260827": {
+      "id": "jablonec-rangers-result-20260827",
+      "name": "Flashscore Jablonec v Rangers final result",
+      "type": "structured_match_result_secondary",
+      "url": "https://www.flashscore.com/match/football/jablonec-CM8ySpMH/rangers-8vAWQXNS/",
+      "retrievedAt": "2026-08-28T04:03:00+09:00",
+      "priority": 2,
+      "exhaustiveFor": ["result"]
+    }
+  },
+  "matchUpdates": [
+    {
+      "matchId": "uecl-2026-08-27-monaco-gornik",
+      "league": "UEFA Conference League",
+      "round": "Play-off 2nd leg",
+      "ko": "2026-08-27 18:45 CEST",
+      "match": "AS Monaco 4-1 Gornik Zabrze",
+      "players": "南野拓実",
+      "appearance": "南野拓実はAS Monaco公式招集メンバーに入らずメンバー外。",
+      "note": "AS Monacoが4-1で勝利し、2試合合計7-3でリーグフェーズ進出。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["monaco-gornik-squad-official-20260827", "monaco-gornik-result-20260827"]
+    },
+    {
+      "matchId": "uecl-2026-08-27-jablonec-rangers",
+      "league": "UEFA Conference League",
+      "round": "Play-off 2nd leg",
+      "ko": "2026-08-27 17:00 BST",
+      "match": "ヤブロネツ 1-0 レンジャーズ",
+      "players": "横田大祐",
+      "appearance": "横田大祐はRangers公式の先発11人・控え12人のいずれにも入らずメンバー外。",
+      "note": "90分終了時1-0。2試合合計1-1となった後、レンジャーズはPK戦3-4で敗退。",
+      "status": "verified",
+      "addIfMissing": true,
+      "addToTopMatches": false,
+      "sourceIds": ["rangers-jablonec-lineup-official-20260827", "jablonec-rangers-result-20260827"]
+    }
+  ],
+  "playerUpdates": [
+    {
+      "name": "南野拓実",
+      "club": "AS Monaco",
+      "league": "リーグ・アン",
+      "pos": "MF",
+      "status": "2026-08-27 UEFA Conference League Gornik Zabrze戦メンバー外",
+      "statsStatus": "verified",
+      "statsAsOf": "2026-08-27 UEFA Conference League play-off 2nd leg",
+      "priorityUpdate": false,
+      "priorityFields": [],
+      "sourceIds": ["monaco-gornik-squad-official-20260827", "monaco-gornik-result-20260827"]
+    },
+    {
+      "name": "横田大祐",
+      "club": "レンジャーズ",
+      "league": "スコットランド",
+      "pos": "FW/MF",
+      "status": "2026-08-27 UEFA Conference League Jablonec戦メンバー外",
+      "statsStatus": "verified_matchday_absence",
+      "statsAsOf": "2026-08-27 UEFA Conference League play-off 2nd leg",
+      "priorityUpdate": true,
+      "priorityFields": ["2026-08-20 ratingPosition", "2026-08-20 penaltiesConceded", "2026-08-20 shots", "2026-08-20 shotsOnTarget", "2026-08-20 keyPasses", "2026-08-20 dribbles", "2026-08-20 duelsWon", "2026-08-20 duelsTotal", "2026-08-20 bigChancesMissed"],
+      "sourceIds": ["rangers-jablonec-lineup-official-20260827", "jablonec-rangers-result-20260827"]
+    }
+  ],
+  "playerMatchStats": [
+    {
+      "recordId": "r-minamino-monaco-gornik-20260827",
+      "matchId": "uecl-2026-08-27-monaco-gornik",
+      "player": "南野拓実",
+      "club": "AS Monaco",
+      "league": "UEFA Conference League",
+      "competition": "UEFA Conference League",
+      "match": "AS Monaco 4-1 Gornik Zabrze",
+      "ko": "2026-08-27 18:45 CEST",
+      "round": "Play-off 2nd leg",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "MF",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["monaco-gornik-squad-official-20260827", "monaco-gornik-result-20260827"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    },
+    {
+      "recordId": "r-yokota-jablonec-rangers-20260827",
+      "matchId": "uecl-2026-08-27-jablonec-rangers",
+      "player": "横田大祐",
+      "club": "レンジャーズ",
+      "league": "UEFA Conference League",
+      "competition": "UEFA Conference League",
+      "match": "ヤブロネツ 1-0 レンジャーズ",
+      "ko": "2026-08-27 17:00 BST",
+      "round": "Play-off 2nd leg",
+      "appearance": "absent_not_in_squad",
+      "ratingPosition": "FW",
+      "ratingPositionSource": "season_primary",
+      "sourceIds": ["rangers-jablonec-lineup-official-20260827", "jablonec-rangers-result-20260827"],
+      "values": {"minutes": 0, "goals": 0, "assists": 0},
+      "start": false,
+      "bench": false,
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "priorityUpdate": false,
+      "priorityFields": []
+    }
+  ]
+}
