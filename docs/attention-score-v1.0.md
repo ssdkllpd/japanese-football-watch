@@ -1,6 +1,6 @@
 # Attention Score v1.0 — 視聴価値ランキング仕様
 
-状態: **Proposed — 独立レビュー完了まで実装禁止**
+状態: **Proposed — Claude正式レビューPASSまで実装禁止**
 対象: configured overseas leagues の追跡対象選手が関与した完了試合
 作成日: 2026-08-27
 関連文書: `jfw-rating-v1.0.md`、`ui-wireframe-baseline-v1.0.md`、`screen-flow-v2-d1-v1.0.md`、`state/workflow_policy.json`、`config/competition-scope-v1.json`
@@ -132,6 +132,8 @@ drama_component = min(
 4. PK戦のkickは通常event再生へ含めず、`fixture_score_parts.penalty`だけで扱う。
 5. 再生後のhome/away scoreがcompact最終scoreと一致しなければ`conflict`としてbase score全体を未算出にする。
 
+`comeback_bonus` は、追跡選手が出場したteamについて、event再生中に一度でも相手より少ないscoreになり、その後の有効goal処理後に同点またはリードへ到達した場合に1回だけ4点とする。最終結果が再び敗戦でも、この条件を途中で満たしていれば加点する。両teamに追跡選手がいて双方が条件を満たしてもfixture全体で4点を上限とする。VAR取消後は取消対象goalが存在しなかった状態からscore列と条件判定を再計算し、取り消された同点・逆転を加点根拠に残さない。
+
 score parts / events が未取得、競合、順序不明なら0にせず、base score全体を未算出にする。延長・PKの加点は次で固定する。
 
 | `status_short` | extra-time state | penalty state | extra-time bonus | penalty bonus | 判定 |
@@ -141,6 +143,8 @@ score parts / events が未取得、競合、順序不明なら0にせず、base
 | `PEN` | `present` | `present` | 2 | 3 | 延長後PK |
 | `PEN` | `not_applicable` | `present` | 0 | 3 | 直接PK |
 | その他の組合せ | 任意 | 任意 | — | — | `conflict`または`missing`で未算出 |
+
+この表の`present`はhome/awayの両値が非NULLの非負整数であることを含む。`PEN`ではpenalty scoreが同点ではなく、PK戦を除いたcompact最終scoreは同点でなければならない。`AET` / 延長後`PEN`のextra-time scoreはcompact最終scoreと整合しなければならない。presenceだけが`present`でも値が欠ける、勝者が決まらない、またはscore間で矛盾する場合は`missing`または`conflict`として未算出にする。
 
 ### 3.5 Tracked players component（0〜10）
 
@@ -185,8 +189,8 @@ kickoffからちょうど7日後は `displayed_score = 25.25`、14日後は `12.
 
 - 算式はprecision 34、`ROUND_HALF_UP`のdecimal arithmeticを使い、実装時に同じversionのdecimal libraryをWorkerとtestへ固定する。native binary floating-pointの`Math.round` / `Math.pow`をreference計算にしない。
 - `round2(x)` は非負のdecimal値を小数第2位へ `ROUND_HALF_UP` し、常に2桁のdecimal stringとしてserializeする。例: `1.005 -> "1.01"`、`1 -> "1.00"`。
-- canonical JSONはRFC 8785（JCS）に従い、UTF-8でencodeする。
-- hash対象は `attentionVersion`、`scopeVersion`、fixture/competition canonical ID、kickoff UTC、公開revision content hash、最終score/status/score parts、正規化event列、JFW player ID順のappearance/rating/G/A/presence/source、丸め前component入力とする。
+- canonical JSONはRFC 8785（JCS）に従い、UTF-8でencodeする。precision 34で計算したdecimalをJCSのJSON numberへ直接渡さない。hash入力では、decimal値を指数表記なし・末尾0除去・負の0禁止のcanonical decimal stringへ変換し、整数はJSON integer、`round2`の結果は常に2桁のstringとしてからJCSを適用する。例: `1.2300 -> "1.23"`、`0.000 -> "0"`、`-0 -> "0"`。
+- hash対象は `attentionVersion`、`scopeVersion`、fixture/competition canonical ID、kickoff UTC、公開revision content hash、最終score/status/score parts、正規化event列、JFW player ID順のappearance/rating/G/A/presence/source、canonical decimal string化した丸め前component入力とする。
 - `now_utc`、減衰後score、follow状態、annotation本文はhashへ含めない。
 
 ## 5. 時間減衰
@@ -235,7 +239,9 @@ personal_displayed_score = round2(displayed_score × follow_multiplier)
 
 `followed player involved` は、ローカルfollow中のplayer IDが公開revisionで `started` または `substitute_used` の場合だけ真とする。`followed club involved` は、ローカルfollow中のteam IDがfixtureのhome/away team IDと一致する場合だけ真とする。
 
-Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displayedScore`、`attentionVersion`、`scopeVersion`、関与したplayer ID配列、home/away team IDを返す。ブラウザはローカルfollowだけから係数を計算し、`personal_displayed_score >= 20.00`を残して同じ4段階規則で並べ直す。個人係数は表示順と表示閾値だけに使い、`base_score`、`source_hash`、サーバの中立順位を変更しない。
+Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displayedScore`、`attentionVersion`、`scopeVersion`、関与したplayer ID配列、home/away team IDを返す。候補endpointは最初のresponseで固定した`asOfUtc`を全cursor pageで共有し、中立16.00以上の候補を欠落なく返す。各pageは`nextCursor`を持ち、ブラウザは`nextCursor = null`まで取得してからローカルfollow係数を適用する。途中pageだけで最終順位・件数を確定表示せず、全候補取得中であることを示す。同一`asOfUtc`を維持できないcursorは失効エラーにして最初から再取得する。
+
+ブラウザは完全な候補集合へローカルfollowだけから係数を計算し、`personal_displayed_score >= 20.00`を残して同じ4段階規則で並べ直す。個人係数は表示順と表示閾値だけに使い、`base_score`、`source_hash`、サーバの中立順位を変更しない。`base_score <= 100`かつ半減期168時間なので、16.00以上の候補期間は理論上kickoff後約18.51日以内に有界であり、endpointはこの時刻下限とindexを使って全履歴走査を避ける。
 
 ## 7. 版管理と保存境界
 
@@ -262,6 +268,8 @@ Workerの候補DTOは少なくとも `fixtureId`、`baseScore`、中立`displaye
 9. 中立16.00が最大follow係数で20.00となり候補から復帰し、15.99は候補外になる。
 10. own goal、missed penalty、VAR取消、延長後PK、直接PKのevent replayがtruth tableどおりになる。
 11. `1.005`境界、JSON key順、UTF-8文字列から同じround/hashを生成する。
+12. cursorをまたいでも`asOfUtc`が固定され、全page取得後の個人順位がpage sizeやneutral順の境界で変化しない。
+13. comeback成立後の再敗戦、両team成立、VAR取消後の再計算、score partsのNULL/不整合を規則どおり処理する。
 
 ## 9. 受入条件
 

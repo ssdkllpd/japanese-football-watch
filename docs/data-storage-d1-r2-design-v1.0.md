@@ -1,6 +1,6 @@
 # D1 / R2 データ設計 v1.1（再々レビュー案）
 
-状態: **Proposed — 独立レビュー完了まで実装禁止**
+状態: **Proposed — Claude正式レビューPASSまで実装禁止**
 対象: Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-contract-v2.md`、`player-tracking-data-model-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
@@ -328,7 +328,7 @@ erDiagram
 - detail 子行と `SECTION_STATES` / `FIELD_STATES` は `FIXTURE_REVISIONS` に属する。公開 query は `FIXTURES.published_revision` と一致し、`lifecycle_state != 'staging'` の revision だけを読み、section/field state を含む分割 ingest の途中状態を表示しない。
 - revision は lifecycle と保存場所を分離する。`lifecycle_state` は `staging`、`published`、`superseded`、`detail_location` は `d1`、`r2`。`UNIQUE(fixture_id, revision_no)` と公開前 integrity check で、fixture の pointer が同じ fixture の実在 revision だけを指すことを保証する。
 - `PRODUCT_SEASONS.canonical_id` は `jfw:season:{label}`（例: `jfw:season:2026-27`）、`COMPETITION_SEASONS.canonical_id` は既存の `af:season:{competition}:{year}` とする。両 ID は別 namespace として扱い、春秋制/秋春制の大会シーズンを必要な場合だけアプリ共通シーズンへ対応付ける。
-- `FIXTURE_PLAYER_RECORDS` は fixture scope の不変identityだけを持ち、`UNIQUE(fixture_id, player_id)` で同じ選手が両チームへ重複登録されることを防ぐ。`team_id` はその一意行の属性で、fixtureのhome/awayいずれかであることをpublish前validatorで確認する。staging中に新recordを作成してよいが、公開queryはrecord単体を読まず、必ず公開revisionのappearanceとJOINする。
+- `FIXTURE_PLAYER_RECORDS` は fixture scope のidentityを持ち、`UNIQUE(fixture_id, player_id)` で同じ選手が両チームへ重複登録されることを防ぐ。`team_id` はその一意行の属性で、fixtureのhome/awayいずれかであることをpublish前validatorで確認する。staging中に新recordを作成してよいが、公開queryはrecord単体を読まず、必ず公開revisionのappearanceとJOINする。まだpublished/superseded appearanceから一度も参照されていないrecordはstaging修正時にteamを訂正または削除できる。一度でも公開履歴へ使ったrecordの`fixture_id` / `player_id` / `team_id`は不変とし、訂正で別teamが必要になった場合は自動上書きせず`review_required`にする。失敗・期限切れstagingを破棄するときは、どのpublished/superseded appearance・ratingからも参照されないorphan recordを同じcleanup jobで削除する。
 - `FIXTURE_PLAYER_APPEARANCES` は revision scope とし、`UNIQUE(fixture_revision_id, player_record_id)` を持つ。`appearance_state`、`position`、`minutes`と、そのrevisionに選手が存在する事実を所有する。公開選手履歴・tracking集計・DTOは `FIXTURES.published_revision = FIXTURE_PLAYER_APPEARANCES.fixture_revision_id` を必須JOIN条件とするため、staging appearanceは公開されない。
 - `FIXTURE_PLAYER_STATS` は `player_appearance_id` を1対0..1で参照し、`FIXTURE_LINEUP_ENTRIES` も同じappearanceを参照する。appearance、lineup、fixture recordが同じfixture/revision/teamに属することをstaging完成時とpublish直前のintegrity validatorで検証し、不一致を含むbatchをrollbackする。親appearanceを先にchunk保存できるため、複数invocationをまたぐ未解決FKは作らない。
 - `FIXTURE_PLAYER_APPEARANCES.appearance_state` は `started`、`substitute_used`、`bench_unused`、`absent_confirmed`、`unknown` のいずれかとする。lineup が未取得でも確認済み欠場を表現でき、単に stats 行がないことを欠場と解釈しない。
@@ -553,6 +553,8 @@ erDiagram
 | `fixture_archives` | `UNIQUE(fixture_revision_id) WHERE is_active = 1` | revision ごとの active pointer を1つに限定 |
 
 D1 の row-read 課金を抑えるため、公開 endpoint の `WHERE` と `ORDER BY` に対応しない全表走査を許可しない。`FIXTURE_PLAYER_RECORDS.fixture_id` と `kickoff_utc` は選手履歴候補用の意図的な非正規化列である。公開可否は `FIXTURES.published_revision` が同 fixture の `published` revisionを指し、そのrevisionと一致する `FIXTURE_PLAYER_APPEARANCES` が存在する場合だけ成立する。record単体または親fixtureのpointer存在だけで公開してはならず、recordごとの公開フラグも持たない。`JFW_RATING_RESULTS.rated_fixture_revision_id` も同じpublished revisionと一致するときだけ公開する。実装時は全 index の参照列が DDL に実在することを静的検証し、代表クエリへ `EXPLAIN QUERY PLAN` の自動テストを追加する。
+
+staging cleanup の回帰テストでは、誤ったteamで作られた未公開recordを訂正できること、公開済みrecordのteamを上書きできないこと、orphan recordが選手履歴・tracking集計へ出ないこと、期限切れstaging削除後に参照のないrecordだけが削除されることを固定する。
 
 ## 8. 3シーズン保持と archive
 

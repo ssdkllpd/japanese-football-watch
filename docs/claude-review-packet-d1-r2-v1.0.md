@@ -1,12 +1,12 @@
-# 独立レビューパケット: D1 / R2・ER・画面遷移・Attention v1.4
+# Claude正式レビューパケット: D1 / R2・ER・画面遷移・Attention v1.5
 
-状態: **Ready for independent review**
+状態: **Ready for Claude formal re-review**
 レビュー対象日: 2026-08-27
 実装 gate: **BLOCKER / MAJOR が 0 になるまで実装しない**
 
-## 独立レビュアーへの依頼
+## Claudeへの正式レビュー依頼
 
-以下の6文書を設計レビューしてください。今回はレビューだけを行い、コード実装はしないでください。
+`design/d1-r2-er-screen-flow` の最新HEADにある以下の6文書を設計レビューしてください。今回はレビューだけを行い、コード実装・マージはしないでください。
 
 1. `docs/data-storage-d1-r2-design-v1.0.md`
 2. `docs/screen-flow-v2-d1-v1.0.md`
@@ -115,7 +115,7 @@
 ### 8. 移行と rollback
 
 - JSON -> D1 import、shadow read、endpoint 単位切替でデータ欠落を検出できるか。
-- 現行 143 tests / 141 pass / 0 fail / 2 todo の契約を守れるか。
+- 現行HEADの実測 `148 tests / 146 pass / 0 fail / 2 todo` の契約を守れるか。
 - 切替失敗時に旧 read path へ戻せるか。
 - legacy JSON の停止条件が早すぎないか。
 
@@ -156,22 +156,26 @@ Verdict: PASS | CHANGES_REQUIRED
 | D1-018〜D1-020 | MINOR | 初回指摘を設計 v1.1へ反映 | `3cfbd72` | Resolved 3/3（D1-020付随はD1-026） |
 | D1-021 | MINOR | URL互換規則を追加。実在集合の誤りはD1-028へ | `3cfbd72` | Partially resolved → D1-028 |
 | D1-022 | MINOR | membership/trackingの無期限sentinelを統一 | `3cfbd72` | Resolved |
-| D1-023 | MAJOR | 完全snapshotとrow-write予算を再設計 | `ad1d4ca` | Pending re-review |
+| D1-023 | MAJOR | 完全snapshotとrow-write予算を再設計 | `ad1d4ca` | Preflight resolved / Claude pending |
 | D1-024 | MAJOR | score partsをfixture scope化し、superseded cleanup対象を限定 | `8c38816` | Independent review: Resolved |
 | D1-025 | MINOR | tracking periodのCore/legacy membership XOR制約と解決transactionを追加 | `8c38816` | Independent review: Resolved |
 | D1-026 | MINOR | archive status、複数schema pointer、active切替とrollbackを追加 | `8c38816` | Independent review: Resolved |
 | D1-027 | MINOR | contract 2.1.0、`detailAvailability` enum、2.0 upcaster、Phase 1更新境界を定義 | `8c38816` | Independent review: Resolved |
 | D1-028 | MINOR | legacy hash 8種とplayer/club/season queryの実在写像へ差替え | `8c38816` | Independent review: Resolved |
 | D1-029 | MINOR | `entity_field_states`を恒久表/index表へ追加しPK NOT NULLを明示 | `8c38816` | Independent review: Resolved |
-| D1-030 | MAJOR | revision scopeのappearanceを追加し、staging FKと公開境界を分離 | `ad1d4ca` | Pending re-review |
-| D1-031 | MINOR | player recordを`UNIQUE(fixture_id, player_id)`へ変更 | `ad1d4ca` | Pending re-review |
+| D1-030 | MAJOR | revision scopeのappearanceを追加し、staging FKと公開境界を分離 | `ad1d4ca` | Preflight resolved / Claude pending |
+| D1-031 | MINOR | player recordを`UNIQUE(fixture_id, player_id)`へ変更 | `ad1d4ca` | Preflight resolved / Claude pending |
 | UI-001 | scope | 利用者貼付けAIだけを対象外とし、監視生成tracking insightsを承認済み機能として復帰 | `8c38816` | Independent review: Resolved |
 | UI-002 | scope | 視聴済み移行を廃止し、決定的な視聴価値ランキングと完全なv1.0算式を追加 | `8c38816` | Independent review: Resolved |
-| UI-003 | MAJOR | Worker候補下限16.00、候補DTO、follow involvementを固定 | `ad1d4ca` | Pending re-review |
-| UI-004 | MAJOR | goal/VAR/own-goal再生規則とFT/AET/PEN truth tableを追加 | `ad1d4ca` | Pending re-review |
-| UI-005 | MAJOR | canonical competition allowlistとscopeVersionをGit管理 | `ad1d4ca` | Pending re-review |
-| UI-006 | MINOR | decimal ROUND_HALF_UPとRFC 8785/JCS hashを固定 | `ad1d4ca` | Pending re-review |
-| UI-007 | MINOR | routeなし/有効/不正の3分岐へ遷移図を修正 | `ad1d4ca` | Pending re-review |
-| UI-008 | MINOR | legacy annotationの人手確認済みmetadata移行を縮退条件化 | `ad1d4ca` | Pending re-review |
+| UI-003 | MAJOR | Worker候補下限16.00、候補DTO、follow involvementを固定 | `ad1d4ca` | Preflight resolved / Claude pending |
+| UI-004 | MAJOR | goal/VAR/own-goal再生規則とFT/AET/PEN truth tableを追加 | `ad1d4ca` | Preflight resolved / Claude pending |
+| UI-005 | MAJOR | canonical competition allowlistとscopeVersionをGit管理 | `ad1d4ca` | Preflight resolved / Claude pending |
+| UI-006 | MINOR | decimal ROUND_HALF_UPとRFC 8785/JCS hashを固定 | `ad1d4ca` | Preflight resolved / Claude pending |
+| UI-007 | MINOR | routeなし/有効/不正の3分岐へ遷移図を修正 | `ad1d4ca` | Preflight resolved / Claude pending |
+| UI-008 | MINOR | legacy annotationの人手確認済みmetadata移行を縮退条件化 | `ad1d4ca` | Preflight resolved / Claude pending |
+| PFR-001 | MAJOR | Attentionの全cursor pageで`asOfUtc`を固定し、全候補取得後だけ個人順位を確定 | `55b8236` | Preflight resolved / Claude confirmation required |
+| PFR-002 | MINOR | precision 34 decimalをcanonical string化してからJCSへ渡す規則を追加 | `55b8236` | Preflight resolved / Claude confirmation required |
+| PFR-003 | MINOR | comeback state machine、VAR取消再計算、score parts値整合を固定 | `55b8236` | Preflight resolved / Claude confirmation required |
+| PFR-004 | MINOR | 未公開player recordの訂正・不変化・orphan cleanup境界を追加 | `55b8236` | Preflight resolved / Claude confirmation required |
 
-独立レビュー第1回は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 5件、MINOR 4件。今回の再レビューはD1-023、D1-030〜031、UI-003〜008の9件と、その修正による回帰に絞る。DB・ER・D1/R2担当とUI・Attention担当を分離し、統合判定が `Verdict: PASS` かつ unresolved BLOCKER/MAJOR 0件になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
+独立レビュー第1回は `CHANGES_REQUIRED`、未解決BLOCKER 0件、MAJOR 5件、MINOR 4件だった。事前再レビューではD1-023、D1-030〜031、UI-003〜008の9件を解消し、追加で見つけたPFR-001〜004も反映した。Claude正式再レビューはこの13件と修正による回帰に絞る。DB・ER・D1/R2とUI・Attentionを分けて確認し、統合判定が `Verdict: PASS` かつ unresolved BLOCKER/MAJOR 0件になった時点だけ実装 Phase 1へ進む。Attention用D1 3テーブルはそのgate通過後に設計追補し、別レビューを通す。
