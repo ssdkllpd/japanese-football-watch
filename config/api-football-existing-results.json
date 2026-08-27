@@ -37,7 +37,7 @@
     {"key":"eintracht-frankfurt","search":"Eintracht Frankfurt","aliases":["Eintracht Frankfurt","Frankfurt"],"matchIds":["dfbpokal-2026-08-21-st-tonis-frankfurt"]},
     {"key":"coventry","search":"Coventry","aliases":["Coventry","Coventry City"],"matchIds":["premier-2026-08-21-arsenal-coventry","eflcup-2026-08-25-plymouth-coventry"]},
     {"key":"psv","search":"PSV Eindhoven","aliases":["PSV","PSV Eindhoven"],"matchIds":["eredivisie-2026-08-15-excelsior-psv","eredivisie-2026-08-23-psv-groningen"]},
-    {"key":"real-sociedad","search":"Real Sociedad","aliases":["Real Sociedad"],"matchIds":["laliga-2026-08-21-betis-real-sociedad"]},
+    {"key":"real-sociedad","search":"Real Sociedad","aliases":["Real Sociedad"],"matchIds":["laliga-2026-08-21-betis-real-sociedad","laliga-2026-08-26-real-madrid-real-sociedad"]},
     {"key":"valencia","search":"Valencia","aliases":["Valencia","Valencia CF"],"matchIds":["laliga-2026-08-22-valencia-celta","laliga-2026-08-25-valencia-betis"]},
     {"key":"rangers","search":"Rangers","aliases":["Rangers","Rangers FC"],"matchIds":["uecl-2026-08-20-rangers-jablonec"]},
     {"key":"monaco","search":"Monaco","aliases":["Monaco","AS Monaco"],"matchIds":["uecl-2026-08-20-gornik-monaco","ligue1-2026-08-23-le-havre-monaco"]},
@@ -57,6 +57,7 @@
   "selection":{"status":"verified","requiresScore":true,"allowUnlistedMatches":false,"description":"Only matches already stored by JFW with a verified final score may be requested."},
   "providerPlanConstraints":{"plan":"pro","historicalFixtureIdDiscoveryEnabled":true,"discoveryMode":"fixed_manifest_dates","knownFixtureIdsRemainFetchable":true},
   "fixtures": [
+    {"matchId":"laliga-2026-08-26-real-madrid-real-sociedad","fixtureDate":"2026-08-26","homeAliases":["Real Madrid"],"awayAliases":["Real Sociedad"]},
     {"matchId":"eflcup-2026-08-25-forest-leeds","fixtureDate":"2026-08-25","homeAliases":["Nottingham Forest","Nott'm Forest","Nottm Forest"],"awayAliases":["Leeds United","Leeds"]},
     {"matchId":"eflcup-2026-08-25-plymouth-coventry","fixtureDate":"2026-08-25","homeAliases":["Plymouth Argyle","Plymouth"],"awayAliases":["Coventry","Coventry City"]},
     {"matchId":"ucl-2026-08-25-lask-celtic","fixtureDate":"2026-08-25","homeAliases":["LASK Linz","Lask Linz","LASK"],"awayAliases":["Celtic"]},
