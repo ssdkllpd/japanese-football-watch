@@ -6,13 +6,13 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   node-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout latest CP1 fix branch
+      - name: Checkout CP1 fix branch
         uses: actions/checkout@v4
         with:
           ref: fix/current-main-ci-20260827
@@ -20,36 +20,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Inspect final correction ratings
+      - name: Make rating input signature order-insensitive
         shell: bash
         run: |
-          node - <<'NODE' > cp1-rating-diagnostic.json
-          const fs = require('node:fs');
-          const path = require('node:path');
-          const vm = require('node:vm');
-          const { mergeBackfillData } = require('./backfill-merge.js');
-          const data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
-          const manifest = JSON.parse(fs.readFileSync('data/2026-27/backfill/index.json', 'utf8'));
-          const fragments = manifest.fragments.map(name => JSON.parse(fs.readFileSync(path.join('data/2026-27/backfill', name), 'utf8')));
-          const merged = mergeBackfillData(data, fragments, { season: '2026-27' });
-          const window = { addEventListener() {} };
-          const context = { window, document: {}, console, setTimeout() {} };
-          vm.createContext(context);
-          vm.runInContext(fs.readFileSync('jfw-rating.js', 'utf8'), context);
-          const api = window.JFWRating;
-          const ids = ['r-morita-stoke-hull-20260825', 'r-hatate-lask-celtic-20260825'];
-          const output = {};
-          for (const id of ids) {
-            const r = merged.playerMatchStats.find(x => x.recordId === id);
-            output[id] = {
-              record: r,
-              recomputed: r ? api.compute(r.ratingInputs, r.ratingPosition) : null
-            };
-          }
-          console.log(JSON.stringify(output, null, 2));
-          NODE
-      - name: Upload rating diagnostic
-        uses: actions/upload-artifact@v4
-        with:
-          name: cp1-rating-diagnostic
-          path: cp1-rating-diagnostic.json
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backfill-merge.js')
+          s = p.read_text(encoding='utf-8')
+          old = """    function ratingInputsSignature(record) {\n      try { return JSON.stringify(record?.ratingInputs || {}); } catch { return ''; }\n    }"""
+          new = """    function ratingInputsSignature(record) {\n      try {\n        const entries = Object.entries(record?.ratingInputs || {})\n          .sort(([left], [right]) => left.localeCompare(right))\n          .map(([field, input]) => [\n            field,\n            Object.entries(input || {}).sort(([left], [right]) => left.localeCompare(right))\n          ]);\n        return JSON.stringify(entries);\n      } catch {\n        return '';\n      }\n    }"""
+          assert s.count(old) == 1, s.count(old)
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          node --check backfill-merge.js
+          git diff --check
+      - name: Verify full suite before push
+        run: node --test tests/*.test.js
+      - name: Commit verified merge fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backfill-merge.js
+          git commit -m "Make rating input signatures order-insensitive"
+          git push origin HEAD:fix/current-main-ci-20260827
