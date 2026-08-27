@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-27T11:46:00+09:00",
-  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-27 updates, including corrected Hidemasa Morita and Reo Hatate records, the Keito Kumashiro tracking-gap repair, Takefusa Kubo's verified Real Madrid match, and Zento Uno's official Matchday 1 availability. J1 remains outside scope.",
+  "updatedAt": "2026-08-28T04:03:00+09:00",
+  "purpose": "Reproducible integrated snapshot for the overseas Japanese-player tracker after verified August 20-28 updates, including corrected Hidemasa Morita and Reo Hatate records, the Keito Kumashiro tracking-gap repair, Takefusa Kubo's verified Real Madrid match, Zento Uno's official Matchday 1 availability, and verified Aug 27 European matchday absences for Takumi Minamino and Daisuke Yokota. J1 remains outside scope.",
   "base": {"path":"data.json","blobSha":"23ebab3b728b0be7982501e3cbd17ae86b872dce"},
   "overlayManifest": {
     "path": "data/2026-27/backfill/index.json",
-    "blobSha": "fbad1fb349824d7bb8313cf5b4c41ede2e4d106e",
-    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json","latest-2026-08-26-2.json","latest-2026-08-26-3.json","latest-2026-08-26-4.json","latest-2026-08-27.json","latest-2026-08-27-2.json","latest-2026-08-27-3.json"]
+    "blobSha": "e206f764405001299d95253a0727e8ebb6513400",
+    "orderedFragments": ["core.json","scotland-portugal.json","belgium-stvv.json","eredivisie.json","championship.json","belgium-genk.json","latest-2026-08-20.json","source-fixes-2026-08-20.json","rating-safety-fixes-2026-08-20.json","latest-2026-08-21.json","latest-2026-08-21-2.json","latest-2026-08-21-3.json","latest-2026-08-21-4.json","api-football-existing-results.json","latest-2026-08-21-5.json","latest-2026-08-22.json","latest-2026-08-22-2.json","latest-2026-08-22-3.json","latest-2026-08-22-4.json","latest-2026-08-22-5.json","latest-2026-08-22-6.json","latest-2026-08-22-7.json","latest-2026-08-22-8.json","latest-2026-08-22-9.json","latest-2026-08-23.json","latest-2026-08-23-2.json","latest-2026-08-23-3.json","latest-2026-08-23-4.json","latest-2026-08-23-5.json","latest-2026-08-23-6.json","latest-2026-08-23-7.json","latest-2026-08-23-8.json","latest-2026-08-23-9.json","latest-2026-08-23-10.json","latest-2026-08-23-11.json","latest-2026-08-23-12.json","latest-2026-08-23-13.json","latest-2026-08-24.json","latest-2026-08-24-2.json","latest-2026-08-24-3.json","latest-2026-08-24-4.json","latest-2026-08-24-5.json","latest-2026-08-24-6.json","latest-2026-08-24-7.json","latest-2026-08-24-8.json","latest-2026-08-24-9.json","latest-2026-08-24-10.json","latest-2026-08-24-11.json","latest-2026-08-24-12.json","latest-2026-08-24-13.json","latest-2026-08-24-14.json","latest-2026-08-25.json","latest-2026-08-25-2.json","latest-2026-08-25-3.json","latest-2026-08-26.json","latest-2026-08-26-2.json","latest-2026-08-26-3.json","latest-2026-08-26-4.json","latest-2026-08-27.json","latest-2026-08-27-2.json","latest-2026-08-27-3.json","latest-2026-08-28.json"]
   },
   "trackingScope": {"type":"overseas_japanese_players","j1Included":false,"j1Owner":"separate analysis app","j1MayBlockUpdate":false},
   "validation": {
@@ -62,6 +62,8 @@
     "kuboRealMadridMatchVerified":true,
     "kuboRealMadridRatingIs609Medium":true,
     "bundesligaGladbachUnoAvailabilityTracked":true,
+    "minaminoMonacoAug27AbsenceVerified":true,
+    "yokotaRangersAug27AbsenceVerified":true,
     "incompleteRequiredRatingInputsRemainMissing":true
   },
   "verifiedCorrections": [
@@ -81,7 +83,9 @@
     "On 2026-08-25, Valencia lost 0-1 to Real Betis in La Liga Matchday 1. Ryunosuke Sato started and completed the match, was booked in the 26th minute, recorded four shots including one on target, completed 18 of 20 passes, made one tackle and zero interceptions. La Liga's official event log credits Sato with the pass leading to Ugrinic's 90th-minute shot, so keyPasses=1 is selected over the conflicting secondary aggregate value of 0. JFW Rating v1.0 is 5.99 with coverage 0.791 and high confidence.",
     "Keito Kumashiro was missing from the current tracked-player master. Eintracht Frankfurt officially signed him from Roasso Kumamoto effective 2026-01-01, and Bundesliga's 2026/27 official profile lists him as a Japanese Frankfurt striker wearing number 36 with zero league appearances to date.",
     "On 2026-08-26, Real Sociedad lost 1-4 at Real Madrid. Takefusa Kubo started and was substituted in the 74th minute. La Liga's complete event log records no Kubo goal, assist or card and records his 11th-minute pass leading directly to Mikel Oyarzabal's saved shot, so keyPasses=1. With all required discipline inputs explicit, JFW Rating v1.0 is 6.09 at 0.563 coverage / medium confidence.",
-    "On 2026-08-26, Bundesliga's official Matchday 1 probable-team report listed Zento Uno as doubtful for Borussia Mönchengladbach's trip to RB Leipzig because of a muscular issue. This is retained as pre-match availability only and does not alter completed-match playerMatchStats or JFW Rating inputs."
+    "On 2026-08-26, Bundesliga's official Matchday 1 probable-team report listed Zento Uno as doubtful for Borussia Mönchengladbach's trip to RB Leipzig because of a muscular issue. This is retained as pre-match availability only and does not alter completed-match playerMatchStats or JFW Rating inputs.",
+    "On 2026-08-27, AS Monaco beat Gornik Zabrze 4-1 and advanced 7-3 on aggregate in the UEFA Conference League play-off. Monaco's official exhaustive matchday squad omitted Takumi Minamino, so he is recorded as absent_not_in_squad with zero minutes and no JFW Rating.",
+    "On 2026-08-27, Jablonec beat Rangers 1-0 before Rangers were eliminated on penalties. Rangers' official team news listed the complete starting XI and substitutes and omitted Daisuke Yokota, so he is recorded as absent_not_in_squad with zero minutes and no JFW Rating. His unresolved advanced inputs from the Aug 20 first leg remain priority-update targets."
   ],
   "declaredCoverageGaps": [
     "Advanced player statistics remain missing where no exhaustive public source was verified; these fields stay missing and remain priority-update targets.",
@@ -97,6 +101,8 @@
     "Sato still lacks duel, dribble and possession-loss inputs; the provider disagreement on key passes is retained as an explicit conflict.",
     "Kumashiro's API-Football player ID, complete first-team matchday squad history, current availability and any first-team playerMatchStats remain priority-update targets; no missing field was converted to zero.",
     "Kubo's passing, defensive, duel, dribble and possession-loss inputs from the Real Madrid match remain priority-update targets; no missing value was converted to zero.",
+    "Yokota's Aug 20 Jablonec first-leg record still lacks the advanced JFW Rating inputs already carried in priorityFields; the verified Aug 27 absence does not clear those earlier-match gaps.",
+    "Freiburg's Aug 27 Motherwell second-leg result was identified during this run, but complete official post-match individual data was not yet available from the club matchcenter at collection time, so no playerMatchStats were written from secondary partial data.",
     "J1 is intentionally outside this repository's tracking scope and is not a coverage gap for japanese-football-watch."
   ]
 }
