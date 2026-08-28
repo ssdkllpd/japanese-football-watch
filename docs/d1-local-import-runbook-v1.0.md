@@ -61,11 +61,25 @@ node scripts/d1/create-fixture-coverage-manifest.js \
 
 provider fixture ID が確認できても、固定 snapshot 自体は完全な canonical fixture bundle を含まないため、該当行は `provider_fixture_verified` かつ `importState: "deferred"` とする。ID 不足・複数IDの競合も推測で解決しない。coverage manifest は全recordを一度ずつ収録し、canonical bundle importが別Issueで完了するまで常に `productionReady: false` とする。
 
+### Phase 2 semantic shadow compare
+
+canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
+
+```bash
+node scripts/d1/compare-fixture-shadow.js \
+  --json /tmp/json-fixture.json \
+  --d1 /tmp/d1-fixture.json \
+  --report /tmp/jfw-d1-shadow-report.json
+```
+
+意味的同値なら終了コード`0`、差分があれば機械可読なJSON Pointer付きreportを出力して終了コード`1`とする。未対応contract versionは比較せずfail closedにする。
+
 ## 4. 回帰確認
 
 ```bash
 node --test tests/d1-fixed-snapshot-importer.test.js
 node --test tests/d1-fixture-coverage.test.js
+node --test tests/d1-fixture-shadow-compare.test.js
 node --test tests/*.test.js
 ```
 
