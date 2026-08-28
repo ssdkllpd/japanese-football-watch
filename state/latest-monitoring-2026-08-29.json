@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-29T00:04:48+09:00",
+  "updatedAt": "2026-08-29T02:07:34+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "facts": [
     {
@@ -29,6 +29,52 @@
         "Bolton squad number",
         "Bolton playerMatchStats",
         "current availability"
+      ]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "player_match_correction_and_availability",
+      "player": "大橋祐紀",
+      "club": "Blackburn Rovers",
+      "league": "EFL Championship",
+      "matchId": "eflcup-2026-08-25-blackburn-sheffield",
+      "competition": "Carabao Cup",
+      "match": "Blackburn Rovers 1-2 Sheffield United",
+      "verifiedFacts": {
+        "start": true,
+        "substitutionMinute": 11,
+        "minutesStatus": "resolved_from_previous_missing",
+        "injury": "hamstring injury",
+        "availability": "expected_out_for_at_least_several_weeks"
+      },
+      "sources": [
+        {
+          "name": "BBC report carrying Tony Mowbray's BBC Radio Lancashire comments",
+          "publishedDate": "2026-08-28",
+          "url": "https://sports.yahoo.com/articles/ohashi-several-weeks-hamstring-injury-103157304.html"
+        },
+        {
+          "name": "OFStats complete match timeline cross-check",
+          "publishedDate": "2026-08-28",
+          "url": "https://ofstats.com/matches/view/blackburn-rovers-sheffield-united-2026-08-25"
+        }
+      ],
+      "verification": "The post-match injury update confirms Ohashi damaged his hamstring and will be unavailable for at least several weeks. The BBC report records him withdrawn after 11 minutes, and the complete match timeline independently records Afolayan replacing Ohashi at 11'. This resolves the stored minutes gap for the match, but does not make unresolved detailed-stat or required discipline fields safe to zero-fill.",
+      "runtimeAction": "Keep runtime correction pending until the complete workflow gate is passed. When applied, set the match minutes from missing to the verified 11-minute substitution outcome, remove minutes from priorityFields, retain all other unresolved detailed/discipline inputs as missing, and do not calculate JFW Rating until every required discipline input is explicit value.",
+      "priorityFields": [
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "dribbles",
+        "duelsWon",
+        "duelsTotal",
+        "bigChancesMissed",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals",
+        "injury recovery/current availability"
       ]
     }
   ],
