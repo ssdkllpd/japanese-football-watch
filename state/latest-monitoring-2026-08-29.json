@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-29T00:04:48+09:00",
+  "updatedAt": "2026-08-29T05:07:49+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "facts": [
     {
@@ -29,6 +29,37 @@
         "Bolton squad number",
         "Bolton playerMatchStats",
         "current availability"
+      ]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "transfer_watch",
+      "player": "堂安律",
+      "club": "Eintracht Frankfurt",
+      "league": "Bundesliga",
+      "reportedDestinationClub": "Al-Ittihad",
+      "reportedDestinationLeague": "Saudi Pro League",
+      "transferStatus": "unresolved_conflicting_reports",
+      "verification": "Multiple same-day reports confirm Al-Ittihad interest and an approximately EUR 18m bid, but sources conflict on whether Eintracht Frankfurt has accepted. A German report citing Sky states no final club agreement exists and Frankfurt has not given approval, while a Saudi-sourced report says the clubs have agreed. Do not treat the transfer as confirmed.",
+      "sources": [
+        {
+          "name": "n-tv transfer ticker citing Sky",
+          "publishedDate": "2026-08-28",
+          "url": "https://www.n-tv.de/sport/fussball/transfermarkt/Transfer-Ticker-Al-Ittihad-bietet-18-Millionen-Euro-fuer-Ritsu-Doan-von-Eintracht-Frankfurt-id31243146.html",
+          "claim": "EUR 18m offer; no final agreement; Frankfurt approval not given"
+        },
+        {
+          "name": "GOAL citing Al-Riyadiah",
+          "publishedDate": "2026-08-28",
+          "url": "https://www.goal.com/en/news/diaby-s-replacement-al-ittihad-seal-deal-from-the-german-league/blt921379e98ba1e638",
+          "claim": "clubs reportedly agreed; contractual formalities remain"
+        }
+      ],
+      "runtimeAction": "No membership mutation. Keep Eintracht Frankfurt as current club until a primary source or sufficiently authoritative final confirmation resolves the conflict.",
+      "priorityFields": [
+        "official transfer confirmation or rejection",
+        "effectiveDate",
+        "destination registration status"
       ]
     }
   ],
