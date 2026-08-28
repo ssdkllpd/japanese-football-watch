@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-29T00:04:48+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "facts": [
+    {
+      "date": "2026-08-28",
+      "type": "membership_change",
+      "player": "伊藤敦樹",
+      "previousClub": "KAA Gent",
+      "previousLeague": "Belgian Pro League",
+      "club": "Bolton Wanderers",
+      "league": "EFL Championship",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed_subject_to_EFL_international_clearance_and_visa",
+      "source": {
+        "name": "Bolton Wanderers official",
+        "publishedDate": "2026-08-28",
+        "url": "https://www.bwfc.co.uk/news/japanese-star-signs-wanderers"
+      },
+      "verification": "Bolton Wanderers officially announced the signing of Japan international midfielder Atsuki Ito from KAA Gent for an undisclosed fee, subject to EFL, international clearance and visa approval.",
+      "runtimeAction": "Do not mutate runtime data yet because the repository still lacks a resolved stable playerId for Ito. Preserve the KAA Gent membership/history, then continue tracking under the same playerId at Bolton once identity and clearance details are resolved.",
+      "priorityFields": [
+        "stablePlayerId",
+        "apiFootballPlayerId",
+        "KAA Gent 2026-27 pre-transfer match history",
+        "EFL/international clearance and visa completion",
+        "Bolton squad number",
+        "Bolton playerMatchStats",
+        "current availability"
+      ]
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false
+}
