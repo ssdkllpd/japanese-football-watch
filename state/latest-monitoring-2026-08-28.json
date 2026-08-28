@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-28T08:10:50+09:00",
+  "updatedAt": "2026-08-28T12:03:50+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed. Conflicting substitution-minute feeds are retained rather than resolved by score convenience.",
   "facts": [
@@ -74,6 +74,45 @@
       ],
       "ratingAction": "No new JFW Rating calculated: required discipline inputs and advanced individual fields are not yet exhaustive; Mio Backhaus also remains without a resolved stable playerId. Suzuki/Goto minutes are temporarily unset in monitoring because the substitution minute is conflicted.",
       "runtimeAction": "pending identity/detail-backfill, substitution-minute conflict resolution and full consistency gate"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Europa League",
+      "match": "Omonia Nicosia 4-2 Sint-Truiden",
+      "club": "STVV",
+      "players": ["小久保玲央ブライアン", "谷口彰悟", "石渡ネルソン", "松澤海斗", "荒木遼太郎", "畑大雅", "新川志音"],
+      "verifiedFacts": {
+        "小久保玲央ブライアン": {"start": true, "minutes": 90, "gaOnPitch": 4, "penaltyConcededEventObserved": true},
+        "谷口彰悟": {"start": true, "minutes": 90, "yellowCards": 1, "gaOnPitch": 4},
+        "石渡ネルソン": {"start": true, "minutes": 90, "goals": 0, "assists": 0},
+        "松澤海斗": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 1},
+        "荒木遼太郎": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 0},
+        "畑大雅": {"start": false, "substitutionOn": 81, "goals": 0, "assists": 0, "gaOnPitchObserved": 1},
+        "新川志音": {"start": false, "bench": true, "appearance": "bench_unused", "minutes": 0}
+      },
+      "matchFacts": {
+        "score": "4-2",
+        "aggregateScore": "4-3 Omonia Nicosia",
+        "stvvEliminated": true,
+        "stvvGoals": [
+          {"minute": 33, "scorer": "Ilias Sebaoui", "type": "penalty"},
+          {"minute": 90, "scorer": "Ilias Sebaoui", "assist": "松澤海斗"}
+        ]
+      },
+      "sourceNotes": [
+        "Nikkan Sports (2026-08-28 10:30 JST) confirms the 4-2 final score and Japanese participation: Taniguchi, Kokubo and Ishiwatari full match; Matsuzawa and Araki on from 71'; Hata on from 81'; Shinkawa unused. It also reports Kokubo's foul leading to Omonia's first-half penalty.",
+        "Live-Result structured match timeline independently records Taniguchi yellow at 9', Matsuzawa/Araki on at 71', Hata on at 81', Shinkawa unused, and Matsuzawa assisting Sebaoui's late goal."
+      ],
+      "ratingAction": "Do not calculate or publish new JFW Ratings yet. Although core appearance, goals/assists and some discipline facts are verified, the required discipline states and player-level detail fields have not yet been reconciled through an exhaustive primary/API source for every Japanese player.",
+      "priorityFields": [
+        "apiFootball fixture id and /fixtures/events",
+        "/fixtures/lineups",
+        "/fixtures/players",
+        "explicit secondYellowRed/straightRed/penaltiesConceded/ownGoals states per player",
+        "player-level shots/shotsOnTarget/keyPasses/passes/tackles/interceptions/duels/dribbles and position-specific fields",
+        "confirm exact stoppage-time handling for substitution-derived minutes"
+      ],
+      "runtimeAction": "highest-priority completed-match detail backfill; keep runtime 2026-27 bundle unchanged until API/detail reconciliation, integrated snapshot rebuild and full consistency gate pass"
     }
   ]
 }
