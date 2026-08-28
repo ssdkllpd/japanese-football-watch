@@ -49,10 +49,23 @@ node scripts/d1/import-fixed-snapshot.js \
 
 `deferred.legacyMatchRecords > 0` の間は `productionReady: false` である。これはローカル変換器の失敗ではなく、Phase 2 の canonical fixture bundle shadow compare 前に本番正本を切り替えないためのgateである。
 
+### Phase 2 coverage manifest
+
+固定 snapshot の全 legacy match record を、provider fixture ID の有無・競合と canonical bundle の準備状況で機械分類する。
+
+```bash
+node scripts/d1/create-fixture-coverage-manifest.js \
+  --input /tmp/jfw-fixed-snapshot.json \
+  --output /tmp/jfw-d1-fixture-coverage.json
+```
+
+provider fixture ID が確認できても、固定 snapshot 自体は完全な canonical fixture bundle を含まないため、該当行は `provider_fixture_verified` かつ `importState: "deferred"` とする。ID 不足・複数IDの競合も推測で解決しない。coverage manifest は全recordを一度ずつ収録し、canonical bundle importが別Issueで完了するまで常に `productionReady: false` とする。
+
 ## 4. 回帰確認
 
 ```bash
 node --test tests/d1-fixed-snapshot-importer.test.js
+node --test tests/d1-fixture-coverage.test.js
 node --test tests/*.test.js
 ```
 
