@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-28T13:54:16+09:00",
+  "updatedAt": "2026-08-28T20:58:30+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed. Source conflicts are resolved only by the predefined source-priority policy, never by score convenience.",
   "facts": [
@@ -89,7 +89,7 @@
         "小久保玲央ブライアン": {"start": true, "minutes": 90, "gaOnPitch": 4, "penaltyConcededEventObserved": true},
         "谷口彰悟": {"start": true, "minutes": 90, "yellowCards": 1, "gaOnPitch": 4},
         "石渡ネルソン": {"start": true, "minutes": 90, "goals": 0, "assists": 0},
-        "松澤海斗": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 1},
+        "松澤海斗": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 0},
         "荒木遼太郎": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 0},
         "畑大雅": {"start": false, "substitutionOn": 81, "goals": 0, "assists": 0, "gaOnPitchObserved": 1},
         "新川志音": {"start": false, "bench": true, "appearance": "bench_unused", "minutes": 0}
@@ -100,12 +100,21 @@
         "stvvEliminated": true,
         "stvvGoals": [
           {"minute": 33, "scorer": "Ilias Sebaoui", "type": "penalty"},
-          {"minute": 90, "scorer": "Ilias Sebaoui", "assist": "松澤海斗"}
+          {"minute": 90, "scorer": "Ilias Sebaoui", "assist": "Abdoulaye Sissako"}
         ]
       },
+      "corrections": [
+        {
+          "field": "松澤海斗.assists",
+          "previousValue": 1,
+          "correctedValue": 0,
+          "reason": "Complete post-match event logs from Sky Sports and other structured full-timeline sources credit Abdoulaye Sissako, not Kaito Matsuzawa, with the assist for Sebaoui's 90+2 goal. The earlier Live-Result attribution was inconsistent and is retained only as rejected conflict evidence.",
+          "revisedAt": "2026-08-28T20:58:30+09:00"
+        }
+      ],
       "sourceNotes": [
         "Nikkan Sports (2026-08-28 10:30 JST) confirms the 4-2 final score and Japanese participation: Taniguchi, Kokubo and Ishiwatari full match; Matsuzawa and Araki on from 71'; Hata on from 81'; Shinkawa unused. It also reports Kokubo's foul leading to Omonia's first-half penalty.",
-        "Live-Result structured match timeline independently records Taniguchi yellow at 9', Matsuzawa/Araki on at 71', Hata on at 81', Shinkawa unused, and Matsuzawa assisting Sebaoui's late goal."
+        "Sky Sports' complete post-match commentary explicitly credits Abdoulaye Sissako with the assist for Ilias Sebaoui's 90+2 goal. PlayerStats and multiple independent full timelines agree. The earlier Live-Result attribution to Matsuzawa is rejected as a source conflict under ops-v1.0."
       ],
       "ratingAction": "Do not calculate or publish new JFW Ratings yet. Although core appearance, goals/assists and some discipline facts are verified, the required discipline states and player-level detail fields have not yet been reconciled through an exhaustive primary/API source for every Japanese player.",
       "priorityFields": [
