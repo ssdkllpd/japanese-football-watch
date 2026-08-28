@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-29T05:07:49+09:00",
+  "updatedAt": "2026-08-29T06:56:20+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "facts": [
     {
@@ -61,6 +61,29 @@
         "effectiveDate",
         "destination registration status"
       ]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "completed_match_availability",
+      "player": "伊藤洋輝",
+      "club": "FC Bayern Munich",
+      "league": "Bundesliga",
+      "competition": "Bundesliga",
+      "opponent": "VfB Stuttgart",
+      "result": "5-1",
+      "appearanceState": "unused_substitute",
+      "start": false,
+      "bench": true,
+      "minutes": 0,
+      "jfwRating": null,
+      "source": {
+        "name": "FC Bayern official match report",
+        "publishedDate": "2026-08-28",
+        "url": "https://fcbayern.com/en/news/matchreports/2026/08/match-report-bundesliga-fc-bayern-v-vfb-stuttgart-280826"
+      },
+      "verification": "FC Bayern's official final match report lists Hiroki Ito among the unused substitutes and enumerates all five Bayern substitutions, none involving Ito. Bayern won 5-1.",
+      "runtimeAction": "Retain as a verified completed-match availability fact. Do not compute a JFW Rating because minutes=0. Do not mutate the active runtime bundle until the full collection and consistency gate is complete.",
+      "priorityFields": []
     }
   ],
   "runtimeBundleChanged": false,
