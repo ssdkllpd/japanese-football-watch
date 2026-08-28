@@ -74,12 +74,36 @@ node scripts/d1/compare-fixture-shadow.js \
 
 意味的同値なら終了コード`0`、差分があれば機械可読なJSON Pointer付きreportを出力して終了コード`1`とする。未対応contract versionは比較せずfail closedにする。
 
+複数fixtureをCIまたは管理ジョブで一括比較する場合は、plan fileにcanonical fixture IDと両artifactの相対pathを列挙する。
+
+```json
+{
+  "schemaVersion": "d1-fixture-shadow-plan/1",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "jsonPath": "json/9001.json",
+      "d1Path": "d1/9001.json"
+    }
+  ]
+}
+```
+
+```bash
+node scripts/d1/compare-fixture-shadow-batch.js \
+  --plan /tmp/shadow/plan.json \
+  --report /tmp/shadow/report.json
+```
+
+全件同値の場合だけbatch reportの`passed`が`true`になる。差分、読込失敗、planとartifactのfixture ID不一致はfixtureごとに収集し、1件でもあれば終了コード`1`とする。`passed`はplan内比較の結果であり、本番切替の`productionReady`を意味しない。
+
 ## 4. 回帰確認
 
 ```bash
 node --test tests/d1-fixed-snapshot-importer.test.js
 node --test tests/d1-fixture-coverage.test.js
 node --test tests/d1-fixture-shadow-compare.test.js
+node --test tests/d1-fixture-shadow-batch.test.js
 node --test tests/*.test.js
 ```
 
