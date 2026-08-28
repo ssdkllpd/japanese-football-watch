@@ -97,6 +97,31 @@ node scripts/d1/compare-fixture-shadow-batch.js \
 
 全件同値の場合だけbatch reportの`passed`が`true`になる。差分、読込失敗、planとartifactのfixture ID不一致はfixtureごとに収集し、1件でもあれば終了コード`1`とする。`passed`はplan内比較の結果であり、本番切替の`productionReady`を意味しない。
 
+### Phase 2 canonical bundle import
+
+完全な2.1 canonical bundleを入手したfixtureは、明示的なCore catalog metadataと組にしてローカルD1へ取り込み、同じ実行内でD1読み戻しとのsemantic shadow compareを行う。
+
+```bash
+node scripts/d1/import-fixture-bundle.js \
+  --input /tmp/fixture-9001.json \
+  --catalog /tmp/fixture-9001-catalog.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/fixture-9001-import-report.json
+```
+
+catalogは最低限、既にD1へimport済みの`productSeasonId`、provider API version、competition種別、competition season statusを明示する。
+
+```json
+{
+  "productSeasonId": "jfw:season:2026-27",
+  "source": { "apiVersion": "v3" },
+  "competition": { "type": "League", "countryCode": "GB" },
+  "season": { "status": "active", "startsOn": "2026-08-01", "endsOn": "2027-05-31" }
+}
+```
+
+importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時刻、provenance、section/field state、補正状態を検証する。書込みは1 transactionでstaging revisionを組み立て、検証後にpublished pointerを切り替える。同じcontent hashの再実行はno-opにし、revision飛び、未知player metadata、曖昧な時刻は書込み前またはtransaction rollbackで拒否する。27試合のlegacy enrichmentは完全bundleではないため、このコマンドへの入力に昇格させない。
+
 ## 4. 回帰確認
 
 ```bash
@@ -104,6 +129,7 @@ node --test tests/d1-fixed-snapshot-importer.test.js
 node --test tests/d1-fixture-coverage.test.js
 node --test tests/d1-fixture-shadow-compare.test.js
 node --test tests/d1-fixture-shadow-batch.test.js
+node --test tests/d1-fixture-bundle-importer.test.js
 node --test tests/*.test.js
 ```
 

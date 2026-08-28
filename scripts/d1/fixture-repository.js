@@ -184,7 +184,8 @@ FROM (
         'penaltiesScored', stats.penalties_scored,
         'penaltiesMissed', stats.penalties_missed,
         'penaltiesSaved', stats.penalties_saved
-      )
+      ),
+      'extraStatsJson', stats.extra_stats_json
     )
   FROM fixture_player_appearances appearance
   JOIN fixture_player_records record ON record.id = appearance.player_record_id

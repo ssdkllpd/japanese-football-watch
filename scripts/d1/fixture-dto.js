@@ -191,7 +191,10 @@ function buildAvailableBundle(header, detailRows, stateRows, options = {}) {
 
     if (!item.hasStats) continue;
 
-    const values = withoutNulls(parseJson(item.valuesJson, {}));
+    const values = {
+      ...parseJson(item.extraStatsJson, {}),
+      ...withoutNulls(parseJson(item.valuesJson, {})),
+    };
     playerStats.push({
       fixtureId: header.fixture_id,
       playerId: item.playerId,
