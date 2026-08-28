@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-29T06:56:20+09:00",
+  "updatedAt": "2026-08-29T07:51:35+09:00",
   "status": "verified_monitoring_facts_pending_runtime_gate",
   "facts": [
     {
@@ -84,6 +84,37 @@
       "verification": "FC Bayern's official final match report lists Hiroki Ito among the unused substitutes and enumerates all five Bayern substitutions, none involving Ito. Bayern won 5-1.",
       "runtimeAction": "Retain as a verified completed-match availability fact. Do not compute a JFW Rating because minutes=0. Do not mutate the active runtime bundle until the full collection and consistency gate is complete.",
       "priorityFields": []
+    },
+    {
+      "date": "2026-08-24",
+      "type": "membership_change",
+      "player": "小川航基",
+      "previousClub": "N.E.C. Nijmegen",
+      "previousLeague": "Eredivisie",
+      "club": "FC Machida Zelvia",
+      "league": "J1",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed",
+      "effectiveDate": "2026-08-24",
+      "trackingStatus": "out_of_scope",
+      "source": {
+        "name": "N.E.C. Nijmegen official",
+        "publishedDate": "2026-08-24",
+        "url": "https://www.nec-nijmegen.nl/nieuws/nieuws/koki-ogawa-verruilt-n.e.c.-voor-fc-machida-zelvia.htm"
+      },
+      "secondarySource": {
+        "name": "J.League official",
+        "publishedDate": "2026-08-25",
+        "url": "https://www.jleague.jp/news/article/34737/"
+      },
+      "verification": "N.E.C. officially announced that Koki Ogawa transferred immediately to FC Machida Zelvia. J.League official also confirmed Machida's permanent acquisition. Under repository policy, J1 is excluded from automatic collection; Ogawa must remain in the player dataset with prior tracked-season statistics frozen at his exit and his actual J1 destination retained as out_of_scope.",
+      "runtimeAction": "Preserve Ogawa's existing stable playerId, Eredivisie membership history, N.E.C. 2026-27 tracked-period stats and ranking eligibility. Do not create Machida as a tracked club and do not automatically collect J1 playerMatchStats. Apply the membership mutation only after the full runtime consistency gate passes.",
+      "priorityFields": [
+        "stablePlayerId verification",
+        "final N.E.C. tracked-period aggregate cutoff",
+        "membershipHistory close date",
+        "clubStats/competitionStats freeze verification"
+      ]
     }
   ],
   "runtimeBundleChanged": false,
