@@ -117,6 +117,18 @@ function validateCoverageManifest(manifest) {
   if (summary.legacyMatchRecords !== records.length) errors.push('summary legacyMatchRecords does not match records');
   if (summary.productionReadyRecords !== 0) errors.push('productionReadyRecords must remain zero without canonical bundles');
   if (manifest?.productionReady !== false) errors.push('productionReady must be false while all records are deferred');
+  const linkedRecords = records.filter(record => record.recordLink?.state === 'linked');
+  if (records.some(record => record.recordLink && record.recordLink.state !== 'linked')) {
+    errors.push('recordLink state must be linked when present');
+  }
+  if (linkedRecords.some(record => record.coverageState !== 'provider_fixture_verified'
+    || record.canonicalBundle?.state !== 'imported'
+    || !/^af:player:\d+$/.test(String(record.recordLink?.canonicalPlayerId || '')))) {
+    errors.push('linked records must reference imported canonical fixture/player identities');
+  }
+  if (summary.recordLinkedRecords !== undefined && summary.recordLinkedRecords !== linkedRecords.length) {
+    errors.push('summary recordLinkedRecords does not match linked records');
+  }
   return errors;
 }
 
@@ -212,5 +224,6 @@ module.exports = {
   COVERAGE_SCHEMA_VERSION,
   buildFixtureCoverageManifest,
   reconcileCanonicalFixtureImports,
+  reasonCounts,
   validateCoverageManifest,
 };

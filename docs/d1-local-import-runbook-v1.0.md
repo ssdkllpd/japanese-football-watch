@@ -100,6 +100,20 @@ node scripts/d1/reconcile-fixture-coverage.js \
 
 この反映ではlegacy recordとcanonical playerの照合は完了扱いにせず、全recordの`importState`は`deferred`、`productionReady`は`false`のまま維持する。
 
+import済みbundleを持つrecordは、固定snapshotと公開D1 revisionを使ってcanonical appearanceへ照合する。
+
+```bash
+node scripts/d1/link-fixture-records.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-reconciled.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-fixture-coverage-linked.json
+```
+
+照合キーはcanonical fixture IDとrecord自身が保持するAPI-Football player IDの完全一致とし、provider team IDがある場合は同時に一致を要求する。固定snapshot全体のhash、公開revisionのbundle hash、published appearanceも検証する。名前照合、player masterからのID補完、欠場選手のappearance生成は行わない。
+
+成功recordには`recordLink.state: "linked"`とcanonical player/team、player record、published revision、appearance stateを記録する。ただしこの段階ではlegacy値とcanonical field/stateのparityをまだ確認していないため、reasonは`canonical_record_linked_fact_parity_pending`、`importState`は`deferred`、`productionReady`は`false`のままにする。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
@@ -167,6 +181,7 @@ importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時
 node --test tests/d1-fixed-snapshot-importer.test.js
 node --test tests/d1-fixture-coverage.test.js
 node --test tests/d1-canonical-fixture-batch.test.js
+node --test tests/d1-fixture-record-linkage.test.js
 node --test tests/d1-fixture-shadow-compare.test.js
 node --test tests/d1-fixture-shadow-batch.test.js
 node --test tests/d1-fixture-bundle-importer.test.js
