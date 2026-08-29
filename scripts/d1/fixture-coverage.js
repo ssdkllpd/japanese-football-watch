@@ -3,6 +3,7 @@
 const { artifactSha256, validateFixedSnapshot } = require('./fixed-snapshot');
 
 const COVERAGE_SCHEMA_VERSION = 'd1-fixture-coverage/1';
+const IMPORT_REPORT_SCHEMA_VERSION = 'd1-canonical-fixture-import-report/1';
 
 function providerFixtureId(value) {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
@@ -155,8 +156,61 @@ function buildFixtureCoverageManifest(snapshot) {
   return manifest;
 }
 
+function reconcileCanonicalFixtureImports(manifest, importReport) {
+  const manifestErrors = validateCoverageManifest(manifest);
+  if (manifestErrors.length) throw new Error(`Invalid fixture coverage manifest:\n- ${manifestErrors.join('\n- ')}`);
+  if (importReport?.schemaVersion !== IMPORT_REPORT_SCHEMA_VERSION || !Array.isArray(importReport?.fixtures)) {
+    throw new Error('Invalid canonical fixture import report.');
+  }
+  const next = structuredClone(manifest);
+  const coverageFixtureIds = new Set(next.fixtures.map(item => item.canonicalFixtureId));
+  const imported = new Map();
+  for (const item of importReport.fixtures) {
+    if (!['imported', 'already_imported'].includes(item?.status)) continue;
+    if (!coverageFixtureIds.has(item.fixtureId)) {
+      throw new Error(`Imported fixture is outside the coverage manifest: ${item.fixtureId}`);
+    }
+    if (!/^[a-f0-9]{64}$/.test(String(item.contentSha256 || ''))) {
+      throw new Error(`Imported fixture has no valid content SHA-256: ${item.fixtureId}`);
+    }
+    if (imported.has(item.fixtureId)) throw new Error(`Duplicate imported fixture in report: ${item.fixtureId}`);
+    imported.set(item.fixtureId, item);
+  }
+
+  for (const fixture of next.fixtures) {
+    const item = imported.get(fixture.canonicalFixtureId);
+    if (!item) continue;
+    fixture.canonicalBundle = {
+      state: 'imported',
+      contentSha256: item.contentSha256,
+      reportStatus: item.status,
+    };
+    fixture.reason = 'canonical_bundle_imported_record_linkage_pending';
+  }
+  for (const record of next.records) {
+    const item = imported.get(record.canonicalFixtureId);
+    if (!item || record.coverageState !== 'provider_fixture_verified') continue;
+    record.canonicalBundle = {
+      state: 'imported',
+      contentSha256: item.contentSha256,
+    };
+    record.reason = 'canonical_bundle_imported_record_linkage_pending';
+  }
+
+  next.summary.canonicalBundleImportedFixtures = next.fixtures
+    .filter(item => item.canonicalBundle?.state === 'imported').length;
+  next.summary.canonicalBundleImportedRecords = next.records
+    .filter(item => item.canonicalBundle?.state === 'imported').length;
+  next.summary.reasons = reasonCounts(next.records);
+  next.productionReady = false;
+  const errors = validateCoverageManifest(next);
+  if (errors.length) throw new Error(`Reconciled fixture coverage manifest is invalid:\n- ${errors.join('\n- ')}`);
+  return next;
+}
+
 module.exports = {
   COVERAGE_SCHEMA_VERSION,
   buildFixtureCoverageManifest,
+  reconcileCanonicalFixtureImports,
   validateCoverageManifest,
 };

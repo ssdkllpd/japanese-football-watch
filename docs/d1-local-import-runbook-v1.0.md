@@ -61,6 +61,45 @@ node scripts/d1/create-fixture-coverage-manifest.js \
 
 provider fixture ID が確認できても、固定 snapshot 自体は完全な canonical fixture bundle を含まないため、該当行は `provider_fixture_verified` かつ `importState: "deferred"` とする。ID 不足・複数IDの競合も推測で解決しない。coverage manifest は全recordを一度ずつ収録し、canonical bundle importが別Issueで完了するまで常に `productionReady: false` とする。
 
+### Phase 2 canonical fixture bundle import
+
+provider fixture ID確認済みfixtureは、JSON/R2経路が生成した完全な2.1 canonical bundleだけをローカルD1へimportする。planはfixture ID、bundle path、Core catalog pathを明示し、任意で正規化後のSHA-256を固定する。
+
+```json
+{
+  "schemaVersion": "d1-canonical-fixture-import-plan/1",
+  "productSeasonCanonicalId": "jfw:season:2026-27",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "bundlePath": "bundles/9001.json",
+      "catalogPath": "catalogs/9001.json",
+      "expectedContentSha256": "<canonical-sha256>"
+    }
+  ]
+}
+```
+
+```bash
+node scripts/d1/import-canonical-fixture-batch.js \
+  --plan /tmp/canonical/plan.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/canonical/import-report.json
+```
+
+各fixtureは独立transactionでmaster、compact、完全detail、state/provenance、published pointerをまとめて登録し、直後にD1読戻しとのsemantic shadow compareを行う。同一content hashの再実行はno-op、置換は次のrevisionだけを受理する。event参加者に対応するcanonical player metadataがbundleまたはcatalogにない場合も名前を推測せず拒否する。1件の失敗で後続fixtureは止めず、import errorとshadow mismatchをreportへfixture単位で記録する。
+
+import reportをcoverageへ反映すると、`canonical_bundle_not_available`と`canonical_bundle_imported_record_linkage_pending`を区別できる。
+
+```bash
+node scripts/d1/reconcile-fixture-coverage.js \
+  --coverage /tmp/jfw-d1-fixture-coverage.json \
+  --imports /tmp/canonical/import-report.json \
+  --output /tmp/jfw-d1-fixture-coverage-reconciled.json
+```
+
+この反映ではlegacy recordとcanonical playerの照合は完了扱いにせず、全recordの`importState`は`deferred`、`productionReady`は`false`のまま維持する。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
@@ -127,6 +166,7 @@ importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時
 ```bash
 node --test tests/d1-fixed-snapshot-importer.test.js
 node --test tests/d1-fixture-coverage.test.js
+node --test tests/d1-canonical-fixture-batch.test.js
 node --test tests/d1-fixture-shadow-compare.test.js
 node --test tests/d1-fixture-shadow-batch.test.js
 node --test tests/d1-fixture-bundle-importer.test.js

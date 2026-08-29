@@ -1,7 +1,7 @@
 'use strict';
 
 const { normalizeFixtureBundle } = require('./fixture-shadow-compare');
-const { sha256 } = require('./fixed-snapshot');
+const { sha256, stableStringify } = require('./fixed-snapshot');
 
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const PRESENCES = new Set(['present', 'not_fetched', 'provider_missing', 'not_applicable']);
@@ -63,7 +63,7 @@ function requireUtc(value, path) {
 }
 
 function equalJson(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return stableStringify(left) === stableStringify(right);
 }
 
 function setPath(object, path, value) {

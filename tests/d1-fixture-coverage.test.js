@@ -7,7 +7,11 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 
-const { buildFixtureCoverageManifest, validateCoverageManifest } = require('../scripts/d1/fixture-coverage');
+const {
+  buildFixtureCoverageManifest,
+  reconcileCanonicalFixtureImports,
+  validateCoverageManifest,
+} = require('../scripts/d1/fixture-coverage');
 const { buildFixedSnapshot, currentSnapshotInputs, stableStringify } = require('../scripts/d1/fixed-snapshot');
 
 function sampleSnapshot() {
@@ -116,4 +120,40 @@ test('CLI writes a deterministic canonical manifest for an exact fixed snapshot'
 
   assert.equal(fs.readFileSync(first, 'utf8'), fs.readFileSync(second, 'utf8'));
   assert.equal(JSON.parse(fs.readFileSync(first, 'utf8')).summary.legacyMatchRecords, 2);
+});
+
+test('import registry separates available bundles from pending record linkage without opening the production gate', () => {
+  const coverage = buildFixtureCoverageManifest(sampleSnapshot());
+  const reconciled = reconcileCanonicalFixtureImports(coverage, {
+    schemaVersion: 'd1-canonical-fixture-import-report/1',
+    fixtures: [{
+      fixtureId: 'af:fixture:9001',
+      status: 'imported',
+      contentSha256: 'a'.repeat(64),
+    }],
+  });
+
+  const imported = reconciled.records.find(record => record.recordId === 'record:verified');
+  const blocked = reconciled.records.find(record => record.recordId === 'record:missing');
+  assert.equal(reconciled.productionReady, false);
+  assert.equal(reconciled.summary.productionReadyRecords, 0);
+  assert.equal(reconciled.summary.canonicalBundleImportedFixtures, 1);
+  assert.equal(reconciled.summary.canonicalBundleImportedRecords, 1);
+  assert.equal(imported.importState, 'deferred');
+  assert.equal(imported.reason, 'canonical_bundle_imported_record_linkage_pending');
+  assert.equal(imported.canonicalBundle.contentSha256, 'a'.repeat(64));
+  assert.equal(blocked.reason, 'missing_provider_fixture_id');
+  assert.deepEqual(validateCoverageManifest(reconciled), []);
+});
+
+test('coverage reconciliation rejects imported fixtures outside the fixed snapshot', () => {
+  const coverage = buildFixtureCoverageManifest(sampleSnapshot());
+  assert.throws(() => reconcileCanonicalFixtureImports(coverage, {
+    schemaVersion: 'd1-canonical-fixture-import-report/1',
+    fixtures: [{
+      fixtureId: 'af:fixture:9999',
+      status: 'imported',
+      contentSha256: 'b'.repeat(64),
+    }],
+  }), /outside the coverage manifest/);
 });
