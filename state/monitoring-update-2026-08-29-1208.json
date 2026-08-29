@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "retrievedAt": "2026-08-29T12:08:30+09:00",
+  "activeDataPath": "data.json",
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false,
+  "facts": [
+    {
+      "date": "2026-08-25",
+      "type": "completed_match_backfill_target",
+      "player": "坂元達裕",
+      "club": "Coventry City",
+      "league": "Premier League",
+      "competition": "Carabao Cup",
+      "opponent": "Plymouth Argyle",
+      "result": "4-2",
+      "appearance": true,
+      "start": true,
+      "verification": "Coventry City official confirms the 2-4 completed match; Reuters match imagery explicitly identifies Tatsuhiro Sakamoto in action; complete secondary lineup/event records list Sakamoto in Coventry's starting XI and no substitution involving him. This is a verified missing-match backfill target for a player already flagged as absent from the active player list.",
+      "sources": [
+        {
+          "name": "Coventry City official",
+          "type": "club_official_match_report",
+          "url": "https://www.ccfc.co.uk/news/2026/august/25/plymouth-argyle-2-4-coventry-city/",
+          "publishedDate": "2026-08-25"
+        },
+        {
+          "name": "Reuters Connect",
+          "type": "news_photo_match_evidence",
+          "url": "https://www.reutersconnect.com/item/carabao-cup-second-round-plymouth-argyle-v-coventry-city/dGFnOnJldXRlcnMuY29tLDIwMjY6bmV3c21sX1VQMUVNOFAxS1daOEc",
+          "publishedDate": "2026-08-25"
+        }
+      ],
+      "priorityUpdate": true,
+      "priorityFields": [
+        "stablePlayerId",
+        "membershipHistory",
+        "exactMinutesPrimaryOrExhaustiveSource",
+        "goals",
+        "assists",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "tackles",
+        "interceptions",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "possessionsLost",
+        "passesCompleted",
+        "passesAttempted",
+        "ratingPosition",
+        "ratingSources"
+      ],
+      "runtimeAction": "Do not calculate JFW Rating yet. Do not convert absent detail fields to zero. Resolve the stable playerId and required rating inputs, then backfill this completed match before normal targets."
+    }
+  ],
+  "gateStatus": "blocked_pending_full_scope_recollection_and_consistency_validation"
+}
