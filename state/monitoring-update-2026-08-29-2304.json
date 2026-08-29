@@ -1,0 +1,41 @@
+{
+  "retrievedAt": "2026-08-29T23:04:49+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "workflowGate": "collection_incomplete_do_not_update_active_data",
+  "updates": [
+    {
+      "type": "completed_match_player_status",
+      "league": "Premier League",
+      "club": "Liverpool",
+      "player": "遠藤航",
+      "match": "Liverpool 2-2 Nottingham Forest",
+      "matchDate": "2026-08-29",
+      "facts": {
+        "bench": true,
+        "appearance": false,
+        "minutes": 0,
+        "status": "unused_substitute"
+      },
+      "sources": [
+        {
+          "name": "Reuters match report",
+          "type": "major_wire_match_report",
+          "url": "https://www.straitstimes.com/sport/football/munozs-late-strike-earns-liverpool-draw-with-forest-in-iraiolas-anfield-debut"
+        },
+        {
+          "name": "This Is Anfield match report",
+          "type": "club_specialist_lineup_and_substitutions",
+          "url": "https://www.thisisanfield.com/2026/08/liverpool-nottingham-forest-2-2-premier-league-match-report/"
+        }
+      ],
+      "rating": {
+        "eligible": false,
+        "reason": "unused substitute; minutes=0; JFW Rating is null by v1.0"
+      }
+    }
+  ],
+  "activeDataUpdated": false,
+  "snapshotUpdated": false,
+  "reason": "Full defined-scope league/club/player/rating-input collection and consistency gates are not complete."
+}
