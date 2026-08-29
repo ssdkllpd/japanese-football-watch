@@ -242,6 +242,35 @@ node scripts/d1/compare-fixture-shadow-batch.js \
 
 全件同値の場合だけbatch reportの`passed`が`true`になる。差分、読込失敗、planとartifactのfixture ID不一致はfixtureごとに収集し、1件でもあれば終了コード`1`とする。`passed`はplan内比較の結果であり、本番切替の`productionReady`を意味しない。
 
+### Phase 2 統合readiness gate
+
+fixture record、fresh D1 shadow、crosswalk、JFW Rating、aggregateを一つのread-only reportで再検証する。planには固定snapshotが参照する全canonical fixtureとJSON/R2正本bundleの相対pathを列挙する。
+
+```json
+{
+  "schemaVersion": "d1-phase2-readiness-plan/1",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "jsonPath": "json/9001.json"
+    }
+  ]
+}
+```
+
+```bash
+node scripts/d1/verify-phase2-readiness.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --plan /tmp/readiness/plan.json \
+  --report /tmp/jfw-d1-phase2-readiness-report.json
+```
+
+readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから再計算する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。crosswalkは全membership期間のprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは固定snapshot由来の期待source hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。
+
+5 gateがすべて通った場合だけ`phase2TechnicalGatePassed: true`になる。CLIは未通過時に終了コード`1`を返す。ただしPhase 3の正式切替にはClaude formal reviewが別途必要なため、このreportでも`productionReady: false`、`phase3CutoverReady: false`を維持し、技術gate通過後の`remainingGates`は`claude_formal_review`だけとする。
+
 ### Phase 2 canonical bundle import
 
 完全な2.1 canonical bundleを入手したfixtureは、明示的なCore catalog metadataと組にしてローカルD1へ取り込み、同じ実行内でD1読み戻しとのsemantic shadow compareを行う。

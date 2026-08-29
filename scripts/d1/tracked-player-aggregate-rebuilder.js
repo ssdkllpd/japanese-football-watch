@@ -8,6 +8,7 @@ const { verifyFixtureRecordParity } = require('./fixture-record-parity');
 const { linkageBaseline } = require('./tracked-player-crosswalk-plan');
 
 const AGGREGATE_REPORT_SCHEMA_VERSION = 'd1-tracked-player-aggregate-rebuild-report/1';
+const AGGREGATE_VERIFY_REPORT_SCHEMA_VERSION = 'd1-tracked-player-aggregate-verify-report/1';
 const AGGREGATE_SCHEMA_VERSION = 'd1-tracked-player-aggregate/1';
 const NON_OFFICIAL_RE = /friendly|pre[- ]?season|親善|プレシーズン/i;
 const OPEN_ENDED_DATE = '9999-12-31';
@@ -427,6 +428,17 @@ function legacySeasonHash(snapshotHash, player) {
   return sha256({ inputSha256: snapshotHash, playerId: player.playerId, stats });
 }
 
+function expectedStoredAggregate(database, snapshot, player, productSeason, aggregate, snapshotHash) {
+  const payload = aggregatePayloadForStorage(database, productSeason.canonical_id, aggregate);
+  const statsJson = stableStringify(payload);
+  return {
+    statsJson,
+    sourceHash: sha256({ snapshotHash, jfwPlayerId: player.playerId,
+      productSeasonCanonicalId: productSeason.canonical_id, statsJson }),
+    rebuiltAt: snapshot.createdAt,
+  };
+}
+
 function writePlayerAggregates(database, snapshot, player, productSeason, aggregates, snapshotHash) {
   return transaction(database, () => {
     const expectedIdentities = new Set(aggregates.map(aggregate => scopeKey(
@@ -441,13 +453,12 @@ function writePlayerAggregates(database, snapshot, player, productSeason, aggreg
     if (unexpected) throw new Error(`aggregate_unexpected_existing_scope:${unexpected.aggregate_scope}`);
     let changed = false;
     for (const aggregate of aggregates) {
-      const payload = aggregatePayloadForStorage(database, productSeason.canonical_id, aggregate);
-      const statsJson = stableStringify(payload);
-      const sourceHash = sha256({ snapshotHash, jfwPlayerId: player.playerId,
-        productSeasonCanonicalId: productSeason.canonical_id, statsJson });
+      const expected = expectedStoredAggregate(database, snapshot, player,
+        productSeason, aggregate, snapshotHash);
+      const { statsJson, sourceHash, rebuiltAt } = expected;
       const existing = storedAggregate(database, player.playerId, productSeason.id, aggregate);
       if (existing && existing.source_hash === sourceHash && existing.stats_json === statsJson
-        && existing.rebuilt_at === snapshot.createdAt) continue;
+        && existing.rebuilt_at === rebuiltAt) continue;
       const replaceableLegacy = aggregate.scope === 'season'
         && aggregate.competitionSeasonId === null && aggregate.teamId === null
         && existing?.source_hash === legacySeasonHash(snapshotHash, player)
@@ -456,18 +467,18 @@ function writePlayerAggregates(database, snapshot, player, productSeason, aggreg
       if (existing) {
         database.prepare(`UPDATE tracked_player_aggregates
           SET stats_json = ?1, source_hash = ?2, rebuilt_at = ?3 WHERE id = ?4`)
-          .run(statsJson, sourceHash, snapshot.createdAt, existing.id);
+          .run(statsJson, sourceHash, rebuiltAt, existing.id);
       } else {
         database.prepare(`INSERT INTO tracked_player_aggregates(
           jfw_player_id, product_season_id, competition_season_id, team_id,
           aggregate_scope, stats_json, source_hash, rebuilt_at
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`)
           .run(player.playerId, productSeason.id, aggregate.competitionSeasonId, aggregate.teamId,
-            aggregate.scope, statsJson, sourceHash, snapshot.createdAt);
+            aggregate.scope, statsJson, sourceHash, rebuiltAt);
       }
       const stored = storedAggregate(database, player.playerId, productSeason.id, aggregate);
       if (!stored || stored.stats_json !== statsJson || stored.source_hash !== sourceHash
-        || stored.rebuilt_at !== snapshot.createdAt) throw new Error('aggregate_failed_roundtrip_validation');
+        || stored.rebuilt_at !== rebuiltAt) throw new Error('aggregate_failed_roundtrip_validation');
       changed = true;
     }
     if (database.prepare('PRAGMA foreign_key_check').all().length) {
@@ -546,17 +557,110 @@ function rebuildTrackedPlayerAggregates(database, snapshot, coverage) {
   };
 }
 
+function verifyTrackedPlayerAggregates(database, snapshot, coverage) {
+  if (!database || typeof database.prepare !== 'function') {
+    throw new TypeError('A node:sqlite DatabaseSync instance is required.');
+  }
+  const snapshotErrors = validateFixedSnapshot(snapshot);
+  if (snapshotErrors.length) throw new Error(`Invalid fixed snapshot:\n- ${snapshotErrors.join('\n- ')}`);
+  const coverageErrors = validateCoverageManifest(coverage);
+  if (coverageErrors.length) throw new Error(`Invalid fixture coverage manifest:\n- ${coverageErrors.join('\n- ')}`);
+  const snapshotHash = artifactSha256(snapshot);
+  if (coverage.snapshot?.artifactSha256 !== snapshotHash) {
+    throw new Error('Fixture coverage manifest does not belong to the supplied fixed snapshot.');
+  }
+  const productSeason = row(database, `SELECT id, canonical_id FROM product_seasons
+    WHERE canonical_id = ?1`, `jfw:season:${snapshot.season.id}`);
+  if (!productSeason) throw new Error('Fixed snapshot product season is absent from D1.');
+  const verifiedCoverage = verifyFixtureRecordParity(database, snapshot,
+    linkFixtureRecords(database, snapshot, linkageBaseline(coverage)));
+  const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
+  const results = [];
+  let expectedRows = 0;
+
+  for (const player of [...snapshot.data.players]
+    .sort((left, right) => left.playerId.localeCompare(right.playerId))) {
+    const built = buildPlayerAggregates(database, snapshot, player, coverageByRecord, productSeason.id);
+    if (built.state !== 'ready') {
+      results.push({ jfwPlayerId: player.playerId, status: built.state, reason: built.reason,
+        recordId: built.recordId || null, scope: built.scope || null });
+      continue;
+    }
+    expectedRows += built.aggregates.length;
+    const expectedIdentities = new Set(built.aggregates.map(aggregate => scopeKey(
+      aggregate.scope, aggregate.competitionSeasonId, aggregate.teamId,
+    )));
+    const existingRows = database.prepare(`SELECT aggregate_scope, competition_season_id, team_id
+      FROM tracked_player_aggregates
+      WHERE jfw_player_id = ?1 AND product_season_id = ?2`).all(player.playerId, productSeason.id);
+    const unexpected = existingRows.find(existing => !expectedIdentities.has(scopeKey(
+      existing.aggregate_scope, existing.competition_season_id, existing.team_id,
+    )));
+    if (existingRows.length !== built.aggregates.length || unexpected) {
+      results.push({ jfwPlayerId: player.playerId, status: 'failed',
+        reason: 'stored_aggregate_scope_set_mismatch' });
+      continue;
+    }
+    let mismatch = null;
+    for (const aggregate of built.aggregates) {
+      const expected = expectedStoredAggregate(database, snapshot, player,
+        productSeason, aggregate, snapshotHash);
+      const stored = storedAggregate(database, player.playerId, productSeason.id, aggregate);
+      if (!stored) {
+        mismatch = `expected_aggregate_not_stored:${aggregate.scope}`;
+        break;
+      }
+      if (stored.stats_json !== expected.statsJson || stored.source_hash !== expected.sourceHash
+        || stored.rebuilt_at !== expected.rebuiltAt) {
+        mismatch = `stored_aggregate_does_not_match_fixed_snapshot:${aggregate.scope}`;
+        break;
+      }
+    }
+    results.push(mismatch
+      ? { jfwPlayerId: player.playerId, status: 'failed', reason: mismatch }
+      : { jfwPlayerId: player.playerId, status: 'verified',
+        aggregateRows: built.aggregates.length });
+  }
+
+  const count = status => results.filter(result => result.status === status).length;
+  const storedRows = row(database, `SELECT COUNT(*) AS count FROM tracked_player_aggregates
+    WHERE product_season_id = ?1`, productSeason.id).count;
+  return {
+    schemaVersion: AGGREGATE_VERIFY_REPORT_SCHEMA_VERSION,
+    snapshot: { artifactSha256: snapshotHash, inputSha256: snapshot.inputSha256,
+      seasonId: snapshot.season.id },
+    productionReady: false,
+    summary: {
+      trackedPlayers: results.length,
+      verifiedPlayers: count('verified'),
+      deferredPlayers: count('deferred'),
+      failedPlayers: count('failed'),
+      expectedAggregateRows: expectedRows,
+      storedAggregateRows: storedRows,
+      aggregateParityGatePassed: results.length > 0
+        && count('verified') === results.length
+        && count('deferred') === 0
+        && count('failed') === 0
+        && storedRows === expectedRows,
+    },
+    players: results,
+  };
+}
+
 module.exports = {
   AGG_FIELDS,
   AGGREGATE_REPORT_SCHEMA_VERSION,
   AGGREGATE_SCHEMA_VERSION,
+  AGGREGATE_VERIFY_REPORT_SCHEMA_VERSION,
   CANONICAL_RECORD_SQL,
   addValues,
   baselineSegments,
   buildPlayerAggregates,
   canonicalRecordValue,
   finalizedBucket,
+  expectedStoredAggregate,
   rebuildTrackedPlayerAggregates,
   sourceRecordOfficial,
   sourceRecordValue,
+  verifyTrackedPlayerAggregates,
 };

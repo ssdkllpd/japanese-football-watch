@@ -7,12 +7,14 @@ const { verifyFixtureRecordParity } = require('./fixture-record-parity');
 const { linkageBaseline } = require('./tracked-player-crosswalk-plan');
 
 const RATING_IMPORT_REPORT_SCHEMA_VERSION = 'd1-tracked-player-rating-import-report/1';
+const RATING_VERIFY_REPORT_SCHEMA_VERSION = 'd1-tracked-player-rating-verify-report/1';
 const SUPPORTED_RATING_VERSION = '1.0';
 
 const RATING_SCOPE_SQL = `
 SELECT
   record.id AS player_record_id,
   fixture.published_revision AS rated_fixture_revision_id,
+  season.product_season_id,
   player.canonical_id AS canonical_player_id,
   tracked.jfw_player_id,
   tracked.crosswalk_state,
@@ -35,6 +37,7 @@ JOIN fixture_revisions revision
   AND revision.fixture_id = fixture.id
   AND revision.lifecycle_state = 'published'
 JOIN players player ON player.id = record.player_id
+JOIN competition_seasons season ON season.id = fixture.competition_season_id
 JOIN tracked_players tracked
   ON tracked.player_id = record.player_id
   AND tracked.jfw_player_id = ?2
@@ -174,7 +177,20 @@ function importOneRating(database, expected) {
   });
 }
 
-function importTrackedPlayerRatings(database, snapshot, coverage) {
+function ratingCountForProductSeason(database, tableName, productSeasonCanonicalId) {
+  if (!new Set(['jfw_rating_results', 'published_jfw_rating_results']).has(tableName)) {
+    throw new Error('Unsupported Rating count source.');
+  }
+  return row(database, `SELECT COUNT(*) AS count
+    FROM ${tableName} rating
+    JOIN fixture_player_records record ON record.id = rating.player_record_id
+    JOIN fixtures fixture ON fixture.id = record.fixture_id
+    JOIN competition_seasons season ON season.id = fixture.competition_season_id
+    JOIN product_seasons product ON product.id = season.product_season_id
+    WHERE product.canonical_id = ?1`, productSeasonCanonicalId).count;
+}
+
+function prepareRatingExpectations(database, snapshot, coverage) {
   if (!database || typeof database.prepare !== 'function') {
     throw new TypeError('A node:sqlite DatabaseSync instance is required.');
   }
@@ -186,35 +202,39 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
   if (coverage.snapshot?.artifactSha256 !== snapshotHash) {
     throw new Error('Fixture coverage manifest does not belong to the supplied fixed snapshot.');
   }
+  const productSeasonCanonicalId = `jfw:season:${snapshot.season.id}`;
+  const productSeason = row(database, 'SELECT id FROM product_seasons WHERE canonical_id = ?1',
+    productSeasonCanonicalId);
+  if (!productSeason) throw new Error('Fixed snapshot product season is absent from D1.');
   const verifiedCoverage = verifyFixtureRecordParity(
     database,
     snapshot,
     linkFixtureRecords(database, snapshot, linkageBaseline(coverage)),
   );
   const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
-  const results = [];
+  const entries = [];
 
   for (const sourceRecord of [...snapshot.data.playerMatchStats]
     .sort((left, right) => left.recordId.localeCompare(right.recordId))) {
     const coverageRecord = coverageByRecord.get(sourceRecord.recordId);
     if (coverageRecord?.recordLink?.state !== 'linked') {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'canonical_record_not_linked' });
       continue;
     }
     if (coverageRecord.factParity?.state !== 'passed') {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'canonical_fact_parity_not_passed' });
       continue;
     }
     if (sourceRecord.trackedAtMatch !== true) {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'tracked_at_match_not_verified' });
       continue;
     }
     const candidate = ratingCandidate(sourceRecord);
     if (candidate.state !== 'ready') {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: candidate.reason });
       continue;
     }
@@ -222,36 +242,66 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
       coverageRecord.recordLink.playerRecordId, sourceRecord.playerId);
     if (!scope || scope.crosswalk_state !== 'resolved'
       || scope.canonical_player_id !== coverageRecord.recordLink.canonicalPlayerId) {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'tracked_player_crosswalk_not_resolved' });
       continue;
     }
     if (!scope.tracked_period_matches) {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'canonical_tracking_period_not_matched' });
       continue;
     }
-    const expected = expectedStoredRating(sourceRecord, coverageRecord, scope, candidate, snapshotHash);
+    if (scope.product_season_id !== productSeason.id) {
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+        status: 'deferred', reason: 'canonical_product_season_not_matched' });
+      continue;
+    }
+    entries.push({
+      recordId: sourceRecord.recordId,
+      jfwPlayerId: sourceRecord.playerId,
+      canonicalPlayerId: scope.canonical_player_id,
+      playerRecordId: scope.player_record_id,
+      ratingVersion: sourceRecord.ratingVersion,
+      ratingState: candidate.ratingState,
+      status: 'ready',
+      expected: expectedStoredRating(sourceRecord, coverageRecord, scope, candidate, snapshotHash),
+    });
+  }
+  return { snapshotHash, productSeasonCanonicalId, entries };
+}
+
+function importTrackedPlayerRatings(database, snapshot, coverage) {
+  const prepared = prepareRatingExpectations(database, snapshot, coverage);
+  const snapshotHash = prepared.snapshotHash;
+  const results = [];
+
+  for (const entry of prepared.entries) {
+    if (entry.status !== 'ready') {
+      results.push(entry);
+      continue;
+    }
     try {
-      const status = importOneRating(database, expected);
+      const status = importOneRating(database, entry.expected);
       results.push({
-        recordId: sourceRecord.recordId,
-        jfwPlayerId: sourceRecord.playerId,
-        canonicalPlayerId: scope.canonical_player_id,
-        playerRecordId: scope.player_record_id,
-        ratingVersion: sourceRecord.ratingVersion,
-        ratingState: candidate.ratingState,
+        recordId: entry.recordId,
+        jfwPlayerId: entry.jfwPlayerId,
+        canonicalPlayerId: entry.canonicalPlayerId,
+        playerRecordId: entry.playerRecordId,
+        ratingVersion: entry.ratingVersion,
+        ratingState: entry.ratingState,
         status,
       });
     } catch (error) {
-      results.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+      results.push({ recordId: entry.recordId, jfwPlayerId: entry.jfwPlayerId,
         status: 'failed', error: error.message });
     }
   }
 
   const count = status => results.filter(result => result.status === status).length;
-  const storedCount = row(database, 'SELECT COUNT(*) AS count FROM jfw_rating_results').count;
-  const publishedCount = row(database, 'SELECT COUNT(*) AS count FROM published_jfw_rating_results').count;
+  const storedCount = ratingCountForProductSeason(database, 'jfw_rating_results',
+    prepared.productSeasonCanonicalId);
+  const publishedCount = ratingCountForProductSeason(database, 'published_jfw_rating_results',
+    prepared.productSeasonCanonicalId);
   const acceptedCount = count('imported') + count('already_imported');
   return {
     schemaVersion: RATING_IMPORT_REPORT_SCHEMA_VERSION,
@@ -281,14 +331,68 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
   };
 }
 
+function verifyTrackedPlayerRatings(database, snapshot, coverage) {
+  const prepared = prepareRatingExpectations(database, snapshot, coverage);
+  const results = prepared.entries.map(entry => {
+    if (entry.status !== 'ready') return entry;
+    const stored = storedRating(database, entry.expected.playerRecordId, entry.expected.ratingVersion);
+    if (!stored) {
+      return { recordId: entry.recordId, jfwPlayerId: entry.jfwPlayerId,
+        status: 'failed', reason: 'expected_rating_not_stored' };
+    }
+    if (!storedMatches(stored, entry.expected)) {
+      return { recordId: entry.recordId, jfwPlayerId: entry.jfwPlayerId,
+        status: 'failed', reason: 'stored_rating_does_not_match_fixed_snapshot' };
+    }
+    return {
+      recordId: entry.recordId,
+      jfwPlayerId: entry.jfwPlayerId,
+      playerRecordId: entry.playerRecordId,
+      ratingVersion: entry.ratingVersion,
+      ratingState: entry.ratingState,
+      status: 'verified',
+    };
+  });
+  const count = status => results.filter(result => result.status === status).length;
+  const storedCount = ratingCountForProductSeason(database, 'jfw_rating_results',
+    prepared.productSeasonCanonicalId);
+  const publishedCount = ratingCountForProductSeason(database, 'published_jfw_rating_results',
+    prepared.productSeasonCanonicalId);
+  return {
+    schemaVersion: RATING_VERIFY_REPORT_SCHEMA_VERSION,
+    snapshot: { artifactSha256: prepared.snapshotHash, inputSha256: snapshot.inputSha256,
+      seasonId: snapshot.season.id },
+    productionReady: false,
+    summary: {
+      legacyMatchRecords: results.length,
+      verifiedRatings: count('verified'),
+      deferredRatings: count('deferred'),
+      failedRatings: count('failed'),
+      storedRatings: storedCount,
+      publishedRatings: publishedCount,
+      ratingGatePassed: results.length > 0
+        && count('verified') === results.length
+        && count('deferred') === 0
+        && count('failed') === 0
+        && storedCount === results.length
+        && publishedCount === results.length,
+    },
+    records: results,
+  };
+}
+
 module.exports = {
   RATING_IMPORT_REPORT_SCHEMA_VERSION,
+  RATING_VERIFY_REPORT_SCHEMA_VERSION,
   RATING_SCOPE_SQL,
   SUPPORTED_RATING_VERSION,
   expectedStoredRating,
   importTrackedPlayerRatings,
   isRatingValue,
+  prepareRatingExpectations,
   ratingCandidate,
   ratingInputsPayload,
+  ratingCountForProductSeason,
   storedMatches,
+  verifyTrackedPlayerRatings,
 };

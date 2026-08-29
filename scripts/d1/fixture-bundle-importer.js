@@ -549,4 +549,10 @@ function importFixtureBundle(database, bundle, catalog = {}) {
   }
 }
 
-module.exports = { PLAYER_STAT_COLUMNS, TEAM_STAT_COLUMNS, importFixtureBundle, validateBundle };
+module.exports = {
+  PLAYER_STAT_COLUMNS,
+  TEAM_STAT_COLUMNS,
+  correctionDefinitions,
+  importFixtureBundle,
+  validateBundle,
+};
