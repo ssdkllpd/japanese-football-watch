@@ -146,6 +146,21 @@ preflightは入力coverageのlink/parityをそのまま信用せず、固定snap
 
 planの`resolution`は既存`resolveTrackedPlayerCrosswalk`へ渡せる形式だが、このCLI自体はDBを書き換えない。`ready`が存在しても適用前なので`productionReady`は`false`、`crosswalkGatePassed`も`false`のままとする。
 
+preflight planのうち、実行直前の再検証でも同じ`ready` resolutionになるplayerだけをローカルD1へ適用する。
+
+```bash
+node scripts/d1/apply-tracked-player-crosswalk.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --plan /tmp/jfw-d1-tracked-player-crosswalk-plan.json \
+  --report /tmp/jfw-d1-tracked-player-crosswalk-apply-report.json
+```
+
+executorもrecord linkageとfact parityを公開D1 revisionから再計算する。plan生成後にprovider identity、公開bundle、fact parity、period候補のいずれかが変わったplayerは`stale`として書き込まない。`ready` playerは1人ずつ`resolveTrackedPlayerCrosswalk`へ渡し、そのplayerの全期間付替え、crosswalk更新、未参照legacy membership削除を同じtransactionで行う。1人の失敗は完全rollbackし、他playerの処理は継続する。
+
+同じplanの再実行時、Core playerと全期間のteam/competition seasonが適用済みresolutionと完全一致すれば`already_resolved`としてno-opにする。適用reportの`crosswalkGatePassed`は全追跡playerが解決済みになった場合だけ`true`になる。ただしfixture recordの本番切替とは別gateなので、report全体の`productionReady`は`false`のまま維持する。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。

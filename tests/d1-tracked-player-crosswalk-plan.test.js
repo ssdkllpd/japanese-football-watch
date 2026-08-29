@@ -1,7 +1,9 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const childProcess = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { DatabaseSync } = require('node:sqlite');
@@ -19,6 +21,10 @@ const {
   buildTrackedPlayerCrosswalkPlan,
   periodContainsDate,
 } = require('../scripts/d1/tracked-player-crosswalk-plan');
+const {
+  applyTrackedPlayerCrosswalkPlan,
+  validatePlan,
+} = require('../scripts/d1/tracked-player-crosswalk-executor');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
 const CONTENT_SHA256 = 'a'.repeat(64);
@@ -70,8 +76,8 @@ function snapshot(options = {}) {
   });
 }
 
-function canonicalDatabase(fixedSnapshot) {
-  const database = new DatabaseSync(':memory:');
+function canonicalDatabase(fixedSnapshot, file = ':memory:') {
+  const database = new DatabaseSync(file);
   database.exec(migration);
   importFixedSnapshot(database, fixedSnapshot);
   database.exec(`
@@ -242,4 +248,133 @@ test('stale published bundle linkage becomes deferred without retaining old pari
 test('period bounds are half-open so a change date belongs only to the new membership', () => {
   assert.equal(periodContainsDate({ validFrom: '2026-07-01', validTo: '2026-08-22' }, '2026-08-22'), false);
   assert.equal(periodContainsDate({ validFrom: '2026-08-22', validTo: '9999-12-31' }, '2026-08-22'), true);
+});
+
+test('executor applies an exact ready plan atomically and replays without new writes', t => {
+  const fixedSnapshot = snapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+
+  const first = applyTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage, plan);
+  const counts = {
+    syncRuns: database.prepare(`SELECT COUNT(*) AS count FROM sync_runs
+      WHERE run_type = 'tracked_player_crosswalk_apply'`).get().count,
+    memberships: database.prepare('SELECT COUNT(*) AS count FROM player_team_memberships').get().count,
+    legacy: database.prepare('SELECT COUNT(*) AS count FROM legacy_tracking_memberships').get().count,
+  };
+  const second = applyTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage, plan);
+
+  assert.equal(first.productionReady, false);
+  assert.deepEqual(first.summary, {
+    plannedReadyPlayers: 1,
+    resolvedPlayers: 1,
+    alreadyResolvedPlayers: 0,
+    deferredPlayers: 0,
+    stalePlayers: 0,
+    failedPlayers: 0,
+    remainingDeferredPlayers: 0,
+    remainingAmbiguousPlayers: 0,
+    crosswalkGatePassed: true,
+  });
+  assert.equal(first.players[0].resolvedPeriods, 1);
+  assert.equal(database.prepare(`SELECT crosswalk_state FROM tracked_players
+    WHERE jfw_player_id = 'jp:one'`).get().crosswalk_state, 'resolved');
+  assert.deepEqual(counts, { syncRuns: 1, memberships: 1, legacy: 0 });
+  assert.equal(second.syncRunId, null);
+  assert.equal(second.players[0].status, 'already_resolved');
+  assert.equal(database.prepare(`SELECT COUNT(*) AS count FROM sync_runs
+    WHERE run_type = 'tracked_player_crosswalk_apply'`).get().count, 1);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM player_team_memberships').get().count, 1);
+});
+
+test('executor rejects a stale or tampered ready resolution without writes', t => {
+  const fixedSnapshot = snapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+  plan.players[0].resolution.memberships[0].teamCanonicalId = 'af:team:50';
+
+  const report = applyTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage, plan);
+
+  assert.equal(report.syncRunId, null);
+  assert.equal(report.summary.stalePlayers, 1);
+  assert.equal(report.players[0].reason, 'planned_resolution_no_longer_matches_current_evidence');
+  assert.equal(database.prepare(`SELECT crosswalk_state FROM tracked_players
+    WHERE jfw_player_id = 'jp:one'`).get().crosswalk_state, 'unresolved');
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM player_team_memberships').get().count, 0);
+});
+
+test('executor contains a resolver failure and rolls back that complete player', t => {
+  const fixedSnapshot = snapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+  database.exec(`CREATE TRIGGER reject_crosswalk BEFORE UPDATE OF player_id ON tracked_players
+    BEGIN SELECT RAISE(ABORT, 'test crosswalk rejection'); END`);
+
+  const report = applyTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage, plan);
+
+  assert.equal(report.summary.failedPlayers, 1);
+  assert.match(report.players[0].error, /test crosswalk rejection/);
+  assert.equal(database.prepare(`SELECT crosswalk_state FROM tracked_players
+    WHERE jfw_player_id = 'jp:one'`).get().crosswalk_state, 'unresolved');
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM player_team_memberships').get().count, 0);
+  assert.equal(database.prepare(`SELECT status FROM sync_runs
+    WHERE id = ?1`).get(report.syncRunId).status, 'completed_with_errors');
+});
+
+test('plan validation rejects snapshot drift and resolutions on non-ready players', () => {
+  const fixedSnapshot = snapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+  database.close();
+
+  const wrongSnapshot = structuredClone(plan);
+  wrongSnapshot.snapshot.artifactSha256 = 'b'.repeat(64);
+  assert.match(validatePlan(wrongSnapshot, fixedSnapshot).join('\n'), /does not belong/);
+
+  const invalidState = structuredClone(plan);
+  invalidState.players[0].status = 'deferred';
+  assert.match(validatePlan(invalidState, fixedSnapshot).join('\n'), /only ready players/);
+});
+
+test('apply CLI writes a deterministic report and updates the supplied database', t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-crosswalk-apply-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshotPath = path.join(temporary, 'snapshot.json');
+  const coveragePath = path.join(temporary, 'coverage.json');
+  const planPath = path.join(temporary, 'plan.json');
+  const reportPath = path.join(temporary, 'report.json');
+  const databasePath = path.join(temporary, 'local.sqlite3');
+  const fixedSnapshot = snapshot();
+  const database = canonicalDatabase(fixedSnapshot, databasePath);
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+  database.close();
+  fs.writeFileSync(snapshotPath, JSON.stringify(fixedSnapshot));
+  fs.writeFileSync(coveragePath, JSON.stringify(coverage));
+  fs.writeFileSync(planPath, JSON.stringify(plan));
+
+  const applied = childProcess.spawnSync(process.execPath, [
+    'scripts/d1/apply-tracked-player-crosswalk.js',
+    '--snapshot', snapshotPath,
+    '--coverage', coveragePath,
+    '--database', databasePath,
+    '--plan', planPath,
+    '--report', reportPath,
+  ], { cwd: path.join(__dirname, '..'), encoding: 'utf8' });
+
+  assert.equal(applied.status, 0, applied.stderr);
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  const verified = new DatabaseSync(databasePath, { readOnly: true });
+  t.after(() => verified.close());
+  assert.equal(report.summary.resolvedPlayers, 1);
+  assert.equal(report.productionReady, false);
+  assert.equal(verified.prepare(`SELECT crosswalk_state FROM tracked_players
+    WHERE jfw_player_id = 'jp:one'`).get().crosswalk_state, 'resolved');
 });
