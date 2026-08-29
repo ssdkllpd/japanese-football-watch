@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-08-29T21:04:00+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "pastSeasonOverwrite": false,
+  "workflowStatus": "monitoring_update_only_full_gate_not_completed",
+  "newConfirmedFacts": [
+    {
+      "type": "completed_match_player_status",
+      "competition": "Premier League",
+      "matchDate": "2026-08-29",
+      "match": "Crystal Palace 1-4 Manchester City",
+      "player": "Takehiro Tomiyasu",
+      "club": "Crystal Palace",
+      "appearance": true,
+      "start": true,
+      "substitution": "off_74",
+      "minutesStatus": "value_from_official_substitution_minute",
+      "minutes": 74,
+      "source": {
+        "name": "Crystal Palace official match report",
+        "url": "https://www.cpfc.co.uk/news/match-reports/report-highlights-palace-manchester-city-august-2026/",
+        "retrievedDate": "2026-08-29",
+        "priority": 1,
+        "exhaustiveFor": ["startingXI", "substitutions", "result"]
+      },
+      "priorityUpdate": true,
+      "priorityFields": ["goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "gaOnPitch", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "clearances", "blocks", "duelsWon", "duelsTotal", "aerialDuelsWon", "aerialDuelsTotal", "dribbledPast", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"]
+    },
+    {
+      "type": "completed_match_player_status",
+      "competition": "Premier League",
+      "matchDate": "2026-08-29",
+      "match": "Crystal Palace 1-4 Manchester City",
+      "player": "Daichi Kamada",
+      "club": "Crystal Palace",
+      "appearance": true,
+      "start": true,
+      "substitution": "none_listed_in_complete_official_substitution_log",
+      "minutesStatus": "value_from_complete_official_lineup_and_substitution_log",
+      "minutes": 90,
+      "source": {
+        "name": "Crystal Palace official match report",
+        "url": "https://www.cpfc.co.uk/news/match-reports/report-highlights-palace-manchester-city-august-2026/",
+        "retrievedDate": "2026-08-29",
+        "priority": 1,
+        "exhaustiveFor": ["startingXI", "substitutions", "result"]
+      },
+      "priorityUpdate": true,
+      "priorityFields": ["goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "possessionsLost", "duelsWon", "duelsTotal", "dribbles", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"]
+    }
+  ],
+  "ratingAction": {
+    "calculateNow": false,
+    "reason": "Required JFW Rating v1.0 discipline inputs and other rating inputs are not yet all explicit value states from exhaustive sources. No missing field is converted to zero. Tomiyasu also requires gaOnPitch from the verified event/substitution timeline before a DF rating can be calculated."
+  },
+  "dataMutation": {
+    "activeSeasonJsonUpdated": false,
+    "snapshotUpdated": false,
+    "reason": "The full tracked-league/club/player/rating-input collection and consistency gates have not been completed in this run."
+  }
+}
