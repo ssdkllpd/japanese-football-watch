@@ -1,0 +1,56 @@
+{
+  "retrievedAt": "2026-08-30T05:56:40+09:00",
+  "season": "2026-27",
+  "activeDataPath": "data.json",
+  "scopeNote": "J1 is excluded by state/workflow_policy.json from this repository's collection/update gate.",
+  "confirmedUpdates": [
+    {
+      "competition": "Bundesliga",
+      "matchDate": "2026-08-29",
+      "match": "1. FSV Mainz 05 0-0 SC Paderborn 07",
+      "club": "1. FSV Mainz 05",
+      "player": "Kaishu Sano",
+      "facts": {
+        "start": true,
+        "appearance": true,
+        "teamGoals": 0,
+        "teamAssists": 0
+      },
+      "source": {
+        "name": "1. FSV Mainz 05 official match report",
+        "url": "https://www.mainz05.de/en/news-en/points-shared-in-the-opener",
+        "priority": 1
+      },
+      "ratingStatus": "not_calculated",
+      "ratingReason": "Full JFW Rating v1.0 mandatory inputs, including minutes and all required discipline inputs, have not all been confirmed as explicit value states from exhaustive sources. Missing values were not converted to zero."
+    },
+    {
+      "competition": "Bundesliga",
+      "matchDate": "2026-08-29",
+      "match": "1. FSV Mainz 05 0-0 SC Paderborn 07",
+      "club": "1. FSV Mainz 05",
+      "player": "Sota Kawasaki",
+      "facts": {
+        "bench": true,
+        "appearance": false
+      },
+      "source": {
+        "name": "1. FSV Mainz 05 official match report",
+        "url": "https://www.mainz05.de/en/news-en/points-shared-in-the-opener",
+        "priority": 1
+      },
+      "ratingStatus": "not_applicable_no_appearance"
+    }
+  ],
+  "workflowStatus": {
+    "fullLeagueClubCollectionComplete": false,
+    "fullPlayerCollectionComplete": false,
+    "jfwRatingInputCollectionComplete": false,
+    "snapshotBuilt": false,
+    "consistencyValidated": false,
+    "activeSeasonDataUpdated": false,
+    "siteContractValidated": false
+  },
+  "activeSeasonDataModified": false,
+  "snapshotModified": false
+}
