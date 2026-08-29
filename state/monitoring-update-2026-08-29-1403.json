@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "createdAt": "2026-08-29T14:03:55+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "sourceScope": ["Belgian Pro League", "EFL Championship"],
+  "facts": [
+    {
+      "date": "2026-08-28",
+      "type": "confirmed_tracked_to_tracked_transfer",
+      "player": "伊藤敦樹",
+      "fromClub": "KAA Gent",
+      "fromLeague": "Belgian Pro League",
+      "toClub": "Bolton Wanderers",
+      "toLeague": "EFL Championship",
+      "movement": "permanent_transfer",
+      "contract": "three-year deal",
+      "verification": "Both Bolton Wanderers and KAA Gent officially confirm Atsuki Ito's permanent move from Gent to Bolton on 2026-08-28. Bolton states the signing is subject to EFL/international clearance and visa approval. This is a tracked-to-tracked movement under workflow_policy.json: reuse the stable playerId, append membership history, continue automatic tracking, keep prior Gent match/club statistics attached to Gent, and begin Bolton club statistics from the effective movement period. Do not rewrite historical Gent match provenance.",
+      "sources": [
+        {
+          "id": "bolton-ito-signing-20260828",
+          "name": "Bolton Wanderers official",
+          "type": "club_official_transfer",
+          "url": "https://www.bwfc.co.uk/news/japanese-star-signs-wanderers",
+          "retrievedAt": "2026-08-29T14:03:55+09:00",
+          "priority": 1
+        },
+        {
+          "id": "gent-ito-departure-20260828",
+          "name": "KAA Gent official",
+          "type": "club_official_transfer",
+          "url": "https://www.kaagent.be/nl/nieuws/28-08-2026/atsuki-ito-trekt-naar-bolton-wanderers",
+          "retrievedAt": "2026-08-29T14:03:55+09:00",
+          "priority": 1
+        }
+      ],
+      "priorityUpdate": true,
+      "priorityFields": [
+        "stablePlayerId",
+        "membershipHistory",
+        "effectiveDate",
+        "Bolton registration/clearance status",
+        "2026-27 Gent playerMatchStats and clubStats preservation",
+        "2026-27 Bolton playerMatchStats after eligibility begins",
+        "competitionStats",
+        "clubCompetitionStats"
+      ],
+      "jfwRatingAction": "No rating is calculated from transfer information. Existing valid rated matches remain attached to their historical club/competition records and ratingVersion."
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false,
+  "runtimeGateReason": "Full all-league/all-player collection, backfill, rating-input completion, integrated snapshot and consistency/site-contract gates have not all passed in this monitoring run."
+}
