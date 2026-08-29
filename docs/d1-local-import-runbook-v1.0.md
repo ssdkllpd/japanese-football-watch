@@ -128,6 +128,24 @@ node scripts/d1/verify-fixture-record-parity.js \
 
 全比較が一致しても追跡player crosswalkとmembership移行が未完了なので、record reasonは`canonical_record_parity_verified_tracking_crosswalk_pending`、`productionReady`は`false`のままにする。
 
+### Phase 2 tracked player crosswalk preflight
+
+fact parity後のcoverageとローカルD1から、追跡playerと全legacy membership期間をCoreへ付け替えられるかをread-onlyで判定する。
+
+```bash
+node scripts/d1/plan-tracked-player-crosswalk.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-tracked-player-crosswalk-plan.json
+```
+
+preflightは入力coverageのlink/parityをそのまま信用せず、固定snapshotと公開D1 revisionからrecord linkageとfact parityを再計算する。選手はsnapshot内のAPI-Football player IDが単一で、Core playerのprovider identityと完全一致し、fact parityが`passed`のrecordが1件以上ある場合だけ候補にする。
+
+各legacy期間は`[valid_from, valid_to)`として扱い、その期間内にある`trackedAtMatch: true`のpassed recordが保持するteam/league provider IDと、公開fixtureのCore team/competition seasonが完全一致する場合だけmapping候補にする。全期間に候補がちょうど1件ずつあるplayerだけ`ready`となる。証拠なしは`deferred`、複数候補またはprovider player ID競合は`ambiguous`とし、名前・master label・隣接期間から補完しない。
+
+planの`resolution`は既存`resolveTrackedPlayerCrosswalk`へ渡せる形式だが、このCLI自体はDBを書き換えない。`ready`が存在しても適用前なので`productionReady`は`false`、`crosswalkGatePassed`も`false`のままとする。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
