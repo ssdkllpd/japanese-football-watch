@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-30T00:06:49+09:00",
+  "status": "verified_monitoring_facts_pending_match_completion_and_runtime_gate",
+  "facts": [
+    {
+      "date": "2026-08-29",
+      "type": "live_match_lineup",
+      "competition": "Premier League",
+      "match": "Coventry City vs Hull City",
+      "player": "守田英正",
+      "club": "Hull City",
+      "appearanceState": "starting_xi_confirmed_match_in_progress",
+      "start": true,
+      "bench": false,
+      "minutes": {"state": "missing"},
+      "jfwRating": null,
+      "source": {
+        "name": "Oddschecker confirmed lineups",
+        "publishedDate": "2026-08-29",
+        "url": "https://www.oddschecker.com/insight/football/20260829-coventry-vs-hull-confirmed-lineups"
+      },
+      "verification": "Confirmed-lineup report lists Hidemasa Morita in Hull City's starting XI. The Premier League official fixture page confirms Coventry City vs Hull City as the 29 August 2026 Matchweek 2 fixture, but its dynamic lineup payload was not retrievable as text during this run.",
+      "runtimeAction": "Do not create final playerMatchStats or calculate JFW Rating until the match is final and minutes/goals/assists plus all required discipline inputs are resolved as explicit value states. Recheck post-match and within the 72-hour correction window.",
+      "priorityUpdate": true,
+      "priorityFields": ["final appearance minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "detailed match stats", "ratingPosition", "ratingSources"]
+    },
+    {
+      "date": "2026-08-29",
+      "type": "live_match_lineup",
+      "competition": "Premier League",
+      "match": "Coventry City vs Hull City",
+      "player": "坂元達裕",
+      "club": "Coventry City",
+      "appearanceState": "substitute_bench_confirmed_match_in_progress",
+      "start": false,
+      "bench": true,
+      "minutes": {"state": "missing"},
+      "jfwRating": null,
+      "source": {
+        "name": "Oddschecker confirmed lineups",
+        "publishedDate": "2026-08-29",
+        "url": "https://www.oddschecker.com/insight/football/20260829-coventry-vs-hull-confirmed-lineups"
+      },
+      "verification": "Confirmed-lineup report lists Tatsuhiro Sakamoto among Coventry City's substitutes. Match is still in progress, so unused-substitute versus substitute appearance is not yet final.",
+      "runtimeAction": "Do not set appearance=false or minutes=0 before full-time. Recheck the final substitution log, then collect rating inputs only if minutes>0.",
+      "priorityUpdate": true,
+      "priorityFields": ["final appearance state", "substitution event", "final minutes", "goals", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "detailed match stats", "ratingPosition", "ratingSources"]
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false
+}
