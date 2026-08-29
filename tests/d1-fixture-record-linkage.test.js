@@ -14,6 +14,10 @@ const {
   reconcileCanonicalFixtureImports,
 } = require('../scripts/d1/fixture-coverage');
 const { linkFixtureRecords } = require('../scripts/d1/fixture-record-linkage');
+const {
+  compareLegacyRecordFacts,
+  verifyFixtureRecordParity,
+} = require('../scripts/d1/fixture-record-parity');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
 const CONTENT_SHA256 = 'a'.repeat(64);
@@ -33,7 +37,12 @@ function snapshot(options = {}) {
     fragments: [{
       playerMatchStats: [{
         recordId: 'record:verified', playerId: 'jp:one', matchId: 'match:verified',
-        appearance: true, values: { goals: 0 },
+        appearance: true, start: true, bench: false, values: { goals: 0 },
+        ratingInputs: options.ratingInputs || {
+          minutes: { state: 'value', value: 90 },
+          goals: { state: 'value', value: 0 },
+        },
+        providerRatings: { apiFootball: { value: 7.1 } },
         providerIds: options.providerIds === false ? undefined : {
           apiFootball: { player: 1001, team: options.providerTeamId || 40 },
         },
@@ -91,8 +100,8 @@ function createDatabase(file = ':memory:', options = {}) {
       INSERT INTO fixture_player_appearances(
         id, fixture_revision_id, player_record_id, appearance_state, position, minutes, captain
       ) VALUES (1, 1, 1, 'started', 'F', 90, 0);
-      INSERT INTO fixture_player_stats(player_appearance_id, minutes, goals)
-        VALUES (1, 90, 0);
+      INSERT INTO fixture_player_stats(player_appearance_id, minutes, provider_rating, goals)
+        VALUES (1, 90, 7.1, 0);
     `);
   }
   return database;
@@ -179,6 +188,100 @@ test('duplicate legacy records for one fixture/player remain unresolved', t => {
   ]);
 });
 
+test('safe mapped values and appearance state pass fact parity without opening production', t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const fixedSnapshot = snapshot();
+  const linked = linkFixtureRecords(database, fixedSnapshot, importedCoverage(fixedSnapshot));
+
+  const verified = verifyFixtureRecordParity(database, fixedSnapshot, linked);
+  const record = verified.records[0];
+
+  assert.equal(record.factParity.state, 'passed');
+  assert.equal(record.factParity.compared, 3);
+  assert.equal(record.factParity.matched, 3);
+  assert.deepEqual(record.factParity.mismatches, []);
+  assert.equal(record.reason, 'canonical_record_parity_verified_tracking_crosswalk_pending');
+  assert.equal(verified.summary.factParityPassedRecords, 1);
+  assert.equal(verified.summary.factParityGatePassed, true);
+  assert.equal(verified.fixtures[0].factParity.state, 'complete');
+  assert.equal(verified.productionReady, false);
+  assert.equal(verified.summary.productionReadyRecords, 0);
+});
+
+test('explicit zero does not match canonical null or a different value', t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  database.exec('UPDATE fixture_player_stats SET goals = NULL WHERE player_appearance_id = 1');
+  const fixedSnapshot = snapshot();
+  const linked = linkFixtureRecords(database, fixedSnapshot, importedCoverage(fixedSnapshot));
+
+  const verified = verifyFixtureRecordParity(database, fixedSnapshot, linked);
+  const mismatch = verified.records[0].factParity.mismatches.find(item => item.legacyField === 'goals');
+
+  assert.equal(verified.records[0].factParity.state, 'failed');
+  assert.deepEqual(mismatch, {
+    legacyField: 'goals', canonicalField: 'goals', kind: 'canonical_missing',
+    legacy: 0, canonical: null, canonicalPresence: 'unknown',
+  });
+  assert.equal(verified.records[0].reason, 'canonical_record_fact_parity_mismatch');
+  assert.equal(verified.summary.factParityFailedRecords, 1);
+  assert.equal(verified.productionReady, false);
+});
+
+test('unsupported semantics stay outside parity while same-source pass accuracy remains comparable', () => {
+  const result = compareLegacyRecordFacts({
+    ratingInputs: {
+      passesCompleted: { state: 'value', value: 25 },
+      straightRed: { state: 'value', value: 0 },
+      saves: { state: 'missing' },
+    },
+    providerRatings: { apiFootball: { value: 7.1 } },
+  }, {
+    appearanceState: 'unknown',
+    values: { passAccuracy: 25, saves: null, rating: 7.1 },
+    fieldStates: { saves: 'not_applicable' },
+  });
+
+  assert.equal(result.state, 'partial');
+  assert.equal(result.compared, 2);
+  assert.equal(result.matched, 2);
+  assert.deepEqual(result.notCompared, [{
+    legacyField: 'straightRed', legacyState: 'value', reason: 'no_safe_canonical_mapping',
+  }]);
+  assert.deepEqual(result.missingOnBoth, [{
+    legacyField: 'saves', canonicalField: 'saves', canonicalPresence: 'not_applicable',
+  }]);
+});
+
+test('top-level core facts remain comparable when legacy ratingInputs are absent', () => {
+  const result = compareLegacyRecordFacts({ minutes: 0, goals: 0, assists: 0 }, {
+    appearanceState: 'unknown',
+    values: { minutes: 0, goals: 0, assists: 0 },
+    fieldStates: {},
+  });
+
+  assert.equal(result.state, 'passed');
+  assert.equal(result.compared, 3);
+  assert.equal(result.matched, 3);
+});
+
+test('canonical enrichment stays partial until its migration effect is reviewed', () => {
+  const result = compareLegacyRecordFacts({
+    ratingInputs: {
+      goals: { state: 'value', value: 0 },
+      shots: { state: 'missing' },
+    },
+  }, {
+    appearanceState: 'unknown',
+    values: { goals: 0, shots: 2 },
+    fieldStates: {},
+  });
+
+  assert.equal(result.state, 'partial');
+  assert.deepEqual(result.canonicalEnrichments, [{ legacyField: 'shots', canonicalField: 'shots', canonical: 2 }]);
+});
+
 test('record-link CLI is deterministic and opens no production gate', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'd1-record-link-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -206,4 +309,20 @@ test('record-link CLI is deterministic and opens no production gate', t => {
     });
   }
   assert.equal(fs.readFileSync(outputs[0], 'utf8'), fs.readFileSync(outputs[1], 'utf8'));
+
+  const parityCli = path.join(__dirname, '..', 'scripts', 'd1', 'verify-fixture-record-parity.js');
+  const parityOutput = path.join(directory, 'parity.json');
+  const parity = spawnSync(process.execPath, [
+    parityCli, '--snapshot', snapshotPath, '--coverage', outputs[0],
+    '--database', databasePath, '--output', parityOutput,
+  ], { encoding: 'utf8' });
+  assert.equal(parity.status, 0, parity.stderr);
+  assert.deepEqual(JSON.parse(parity.stdout), {
+    factParityPassedRecords: 1,
+    factParityPartialRecords: 0,
+    factParityFailedRecords: 0,
+    factParityGatePassed: true,
+    productionReady: false,
+  });
+  assert.equal(JSON.parse(fs.readFileSync(parityOutput, 'utf8')).productionReady, false);
 });

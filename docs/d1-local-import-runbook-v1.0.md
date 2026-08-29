@@ -114,6 +114,20 @@ node scripts/d1/link-fixture-records.js \
 
 成功recordには`recordLink.state: "linked"`とcanonical player/team、player record、published revision、appearance stateを記録する。ただしこの段階ではlegacy値とcanonical field/stateのparityをまだ確認していないため、reasonは`canonical_record_linked_fact_parity_pending`、`importState`は`deferred`、`productionReady`は`false`のままにする。
 
+linked recordは、安全な対応表を持つfieldだけlegacy `ratingInputs`と公開D1 player statsで比較する。
+
+```bash
+node scripts/d1/verify-fixture-record-parity.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-linked.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-fixture-coverage-parity.json
+```
+
+`minutes`、goal/assist、shot、pass、tackle、duel、dribble、GK失点/セーブなど、同じprovider fieldから作られる値だけを比較する。legacyの`passesCompleted`は現行mapperがAPI-Football `passes.accuracy`から生成しているためcanonical `passAccuracy`と照合する。second-yellowとstraight-redの分離、own goal、clean sheetなど、canonical fieldと意味が1対1でない項目は比較対象外としてreportへ残す。比較不能fieldにlegacy既知値があるrecordは`partial`として完全一致扱いにしない。明示的な`0`と`null`は一致させない。legacy missingにcanonical値がある場合はmismatchではなくenrichmentとして記録するが、表示・Ratingへの影響確認までは`partial`としてgateを閉じる。
+
+全比較が一致しても追跡player crosswalkとmembership移行が未完了なので、record reasonは`canonical_record_parity_verified_tracking_crosswalk_pending`、`productionReady`は`false`のままにする。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。

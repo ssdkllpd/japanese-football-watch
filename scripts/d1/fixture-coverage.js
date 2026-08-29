@@ -129,6 +129,25 @@ function validateCoverageManifest(manifest) {
   if (summary.recordLinkedRecords !== undefined && summary.recordLinkedRecords !== linkedRecords.length) {
     errors.push('summary recordLinkedRecords does not match linked records');
   }
+  const parityRecords = records.filter(record => record.factParity);
+  if (parityRecords.some(record => !['passed', 'partial', 'failed', 'not_comparable'].includes(record.factParity.state)
+    || record.recordLink?.state !== 'linked')) {
+    errors.push('factParity requires a linked record and a valid state');
+  }
+  if (summary.factParityPassedRecords !== undefined
+    && summary.factParityPassedRecords !== parityRecords.filter(record => record.factParity.state === 'passed').length) {
+    errors.push('summary factParityPassedRecords does not match records');
+  }
+  for (const [summaryKey, state] of [
+    ['factParityPartialRecords', 'partial'],
+    ['factParityFailedRecords', 'failed'],
+    ['factParityNotComparableRecords', 'not_comparable'],
+  ]) {
+    if (summary[summaryKey] !== undefined
+      && summary[summaryKey] !== parityRecords.filter(record => record.factParity.state === state).length) {
+      errors.push(`summary ${summaryKey} does not match records`);
+    }
+  }
   return errors;
 }
 
