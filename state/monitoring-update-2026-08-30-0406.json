@@ -1,0 +1,57 @@
+{
+  "checkedAt": "2026-08-30T04:06:03+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "workflowStatus": "monitoring_only_full_update_gate_not_satisfied",
+  "scope": {
+    "policyLeagues": [
+      "Premier League",
+      "EFL Championship",
+      "Bundesliga",
+      "Belgian Pro League",
+      "Eredivisie",
+      "La Liga",
+      "Ligue 1",
+      "Serie A",
+      "Scottish Premiership",
+      "Primeira Liga"
+    ],
+    "j1ExcludedByRepositoryPolicy": true
+  },
+  "confirmedUpdates": [
+    {
+      "player": "Daiki Hashioka",
+      "club": "Borussia Monchengladbach",
+      "competition": "Bundesliga",
+      "matchDate": "2026-08-29",
+      "match": "RB Leipzig 3-0 Borussia Monchengladbach",
+      "facts": [
+        "Hashioka made his Bundesliga debut in the match.",
+        "He was involved in a collision with Antonio Nusa in the 72nd minute and was removed on a stretcher.",
+        "After the match Borussia sporting director Rouven Schroder confirmed that Hashioka was taken to a hospital in Leipzig for medical examination.",
+        "Reports described pain in the neck area; no definitive diagnosis was confirmed at this check time."
+      ],
+      "source": {
+        "name": "dpa report carried by DieSachsen",
+        "url": "https://www.diesachsen.de/es/deportes/hashioka-del-gladbach-ingresado-en-un-hospital-de-leipzig-tras-un-choque-3174840",
+        "published": "2026-08-29T18:16:00+02:00",
+        "priority": 2
+      },
+      "analysis": {
+        "text": "This is a meaningful status escalation from the earlier confirmed stretcher removal: post-match hospital transfer is now confirmed, while injury diagnosis remains unknown.",
+        "confidence": "high"
+      }
+    }
+  ],
+  "dataMutation": {
+    "activeSeasonJsonUpdated": false,
+    "snapshotUpdated": false,
+    "jfwRatingUpdated": false,
+    "reason": "The required all-league/all-club/all-player/rating-input/snapshot/validation workflow was not completed in this monitoring pass."
+  },
+  "ratingPolicy": {
+    "version": "1.0",
+    "opsVersion": "ops-v1.0",
+    "missingConvertedToZero": false
+  }
+}
