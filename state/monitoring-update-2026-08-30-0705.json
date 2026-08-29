@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-08-30T07:05:22+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "pastSeasonModified": false,
+  "scopePolicy": {
+    "j1ExcludedByRepositoryPolicy": true,
+    "trackedLeagues": [
+      "Premier League",
+      "EFL Championship",
+      "Bundesliga",
+      "Belgian Pro League",
+      "Eredivisie",
+      "La Liga",
+      "Ligue 1",
+      "Serie A",
+      "Scottish Premiership",
+      "Primeira Liga"
+    ]
+  },
+  "confirmedUpdates": [
+    {
+      "type": "transfer_out_of_scope",
+      "player": "Atsuki Ito",
+      "playerJa": "伊藤敦樹",
+      "fromClub": "KAA Gent",
+      "fromLeague": "Belgian Pro League",
+      "toClub": "Bolton Wanderers",
+      "toLeague": "EFL League One",
+      "effectiveEvidenceDate": "2026-08-28",
+      "status": "confirmed",
+      "trackingStatusAfterTransfer": "out_of_scope",
+      "sources": [
+        {
+          "name": "KAA Gent official",
+          "url": "https://www.kaagent.be/nl/nieuws/28-08-2026/atsuki-ito-trekt-naar-bolton-wanderers",
+          "priority": 1
+        },
+        {
+          "name": "Bolton Wanderers official",
+          "url": "https://www.bwfc.co.uk/news/japanese-star-signs-wanderers",
+          "priority": 1
+        }
+      ],
+      "note": "Confirmed permanent transfer from tracked Belgian Pro League to out-of-scope EFL League One. Under transferPolicy, retain player identity/history and already tracked season statistics, freeze tracked-period statistics at exit, and do not create Bolton as a tracked club."
+    }
+  ],
+  "jfwRating": {
+    "version": "1.0",
+    "opsVersion": "ops-v1.0",
+    "newRatingsCalculated": 0,
+    "missingConvertedToZero": false
+  },
+  "workflowStatus": {
+    "latestInformationFetched": true,
+    "allLeagueAndClubCollectionComplete": false,
+    "allPlayerCollectionComplete": false,
+    "allRatingInputsComplete": false,
+    "integratedSnapshotBuilt": false,
+    "activeSeasonDataUpdated": false,
+    "siteContractValidationComplete": false,
+    "completed": false
+  }
+}
