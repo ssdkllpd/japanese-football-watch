@@ -25,11 +25,18 @@ const {
   applyTrackedPlayerCrosswalkPlan,
   validatePlan,
 } = require('../scripts/d1/tracked-player-crosswalk-executor');
+const {
+  importTrackedPlayerRatings,
+  ratingCandidate,
+} = require('../scripts/d1/tracked-player-rating-importer');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
 const CONTENT_SHA256 = 'a'.repeat(64);
 
 function snapshot(options = {}) {
+  const authoredRating = Object.hasOwn(options, 'jfwRating')
+    ? { jfwRating: options.jfwRating, ratingVersion: options.ratingVersion || '1.0' }
+    : {};
   return buildFixedSnapshot({
     baseData: {
       updated: '2026-08-27T00:00:00.000Z',
@@ -68,6 +75,7 @@ function snapshot(options = {}) {
         },
         providerRatings: { apiFootball: { value: 7.1 } },
         providerIds: { apiFootball: { fixture: 9001, player: 1001, team: 40, league: 39 } },
+        ...authoredRating,
       }],
     }],
     fragmentNames: ['data/test.json'],
@@ -127,6 +135,11 @@ function parityCoverage(database, fixedSnapshot) {
     fixedSnapshot,
     linkFixtureRecords(database, fixedSnapshot, imported),
   );
+}
+
+function resolveCrosswalk(database, fixedSnapshot, coverage) {
+  const plan = buildTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage);
+  return applyTrackedPlayerCrosswalkPlan(database, fixedSnapshot, coverage, plan);
 }
 
 test('exact provider player, team, competition and period evidence produces an executable resolution', t => {
@@ -377,4 +390,127 @@ test('apply CLI writes a deterministic report and updates the supplied database'
   assert.equal(report.productionReady, false);
   assert.equal(verified.prepare(`SELECT crosswalk_state FROM tracked_players
     WHERE jfw_player_id = 'jp:one'`).get().crosswalk_state, 'resolved');
+});
+
+test('rating importer preserves an authored numeric Rating and is idempotent', t => {
+  const fixedSnapshot = snapshot({ jfwRating: 6.25 });
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+
+  const first = importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+  const second = importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+  const stored = database.prepare(`SELECT rating, rating_state, rating_version, inputs_json
+    FROM jfw_rating_results`).get();
+
+  assert.equal(first.summary.importedRatings, 1);
+  assert.equal(first.summary.publishedRatings, 1);
+  assert.equal(first.summary.ratingGatePassed, true);
+  assert.equal(first.productionReady, false);
+  assert.equal(second.summary.importedRatings, 0);
+  assert.equal(second.summary.alreadyImportedRatings, 1);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM jfw_rating_results').get().count, 1);
+  assert.equal(stored.rating, 6.25);
+  assert.equal(stored.rating_state, 'computed');
+  assert.equal(stored.rating_version, '1.0');
+  assert.equal(JSON.parse(stored.inputs_json).authoredState, 'authored_value');
+});
+
+test('authored null is stored as missing while undefined remains deferred', t => {
+  const authoredNull = snapshot({ jfwRating: null });
+  const database = canonicalDatabase(authoredNull);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, authoredNull);
+  resolveCrosswalk(database, authoredNull, coverage);
+
+  const report = importTrackedPlayerRatings(database, authoredNull, coverage);
+  const stored = database.prepare(`SELECT rating, rating_state, inputs_json
+    FROM jfw_rating_results`).get();
+
+  assert.equal(report.summary.importedRatings, 1);
+  assert.equal(stored.rating, null);
+  assert.equal(stored.rating_state, 'missing');
+  assert.equal(JSON.parse(stored.inputs_json).authoredState, 'authored_null');
+  assert.deepEqual(ratingCandidate({ ratingVersion: '1.0' }), {
+    state: 'deferred', reason: 'authored_rating_missing',
+  });
+});
+
+test('rating import remains deferred until the exact tracked player crosswalk is resolved', t => {
+  const fixedSnapshot = snapshot({ jfwRating: 6.25 });
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+
+  const report = importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+
+  assert.equal(report.summary.deferredRatings, 1);
+  assert.equal(report.records[0].reason, 'tracked_player_crosswalk_not_resolved');
+  assert.equal(report.summary.ratingGatePassed, false);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM jfw_rating_results').get().count, 0);
+});
+
+test('rating import requires the exact active Core tracking period for the fixture', t => {
+  const fixedSnapshot = snapshot({ jfwRating: 6.25 });
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  database.exec(`UPDATE tracking_periods SET tracking_status = 'inactive'
+    WHERE jfw_player_id = 'jp:one'`);
+
+  const report = importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+
+  assert.equal(report.summary.deferredRatings, 1);
+  assert.equal(report.records[0].reason, 'canonical_tracking_period_not_matched');
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM jfw_rating_results').get().count, 0);
+});
+
+test('an existing conflicting Rating is reported and never overwritten', t => {
+  const fixedSnapshot = snapshot({ jfwRating: 6.25 });
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+  database.exec(`UPDATE jfw_rating_results SET source_hash = '${'b'.repeat(64)}'`);
+
+  const report = importTrackedPlayerRatings(database, fixedSnapshot, coverage);
+
+  assert.equal(report.summary.failedRatings, 1);
+  assert.match(report.records[0].error, /conflicts_with_fixed_snapshot/);
+  assert.equal(database.prepare('SELECT rating FROM jfw_rating_results').get().rating, 6.25);
+  assert.equal(database.prepare('SELECT source_hash FROM jfw_rating_results').get().source_hash, 'b'.repeat(64));
+});
+
+test('rating import CLI persists the authored-null distinction in its report and D1', t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-rating-import-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshotPath = path.join(temporary, 'snapshot.json');
+  const coveragePath = path.join(temporary, 'coverage.json');
+  const reportPath = path.join(temporary, 'report.json');
+  const databasePath = path.join(temporary, 'local.sqlite3');
+  const fixedSnapshot = snapshot({ jfwRating: null });
+  const database = canonicalDatabase(fixedSnapshot, databasePath);
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  database.close();
+  fs.writeFileSync(snapshotPath, JSON.stringify(fixedSnapshot));
+  fs.writeFileSync(coveragePath, JSON.stringify(coverage));
+
+  const imported = childProcess.spawnSync(process.execPath, [
+    'scripts/d1/import-tracked-player-ratings.js',
+    '--snapshot', snapshotPath,
+    '--coverage', coveragePath,
+    '--database', databasePath,
+    '--report', reportPath,
+  ], { cwd: path.join(__dirname, '..'), encoding: 'utf8' });
+
+  assert.equal(imported.status, 0, imported.stderr);
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  const verified = new DatabaseSync(databasePath, { readOnly: true });
+  t.after(() => verified.close());
+  assert.equal(report.records[0].ratingState, 'missing');
+  assert.equal(verified.prepare('SELECT rating FROM jfw_rating_results').get().rating, null);
 });

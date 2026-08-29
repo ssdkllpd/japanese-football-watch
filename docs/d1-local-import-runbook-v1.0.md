@@ -161,6 +161,29 @@ executorもrecord linkageとfact parityを公開D1 revisionから再計算する
 
 同じplanの再実行時、Core playerと全期間のteam/competition seasonが適用済みresolutionと完全一致すれば`already_resolved`としてno-opにする。適用reportの`crosswalkGatePassed`は全追跡playerが解決済みになった場合だけ`true`になる。ただしfixture recordの本番切替とは別gateなので、report全体の`productionReady`は`false`のまま維持する。
 
+crosswalk適用後は、公開canonical recordとfact parityが確認できた追跡recordのauthored JFW RatingをD1へ移行する。
+
+```bash
+node scripts/d1/import-tracked-player-ratings.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/jfw-d1-tracked-player-rating-import-report.json
+```
+
+importerはcoverageのlink/parityを公開D1 revisionから再計算し、次の条件をすべて満たすrecordだけを`jfw_rating_results`へ保存する。
+
+- canonical recordのfact parityが`passed`
+- `trackedAtMatch: true`
+- JFW player crosswalkが同じcanonical playerへ`resolved`
+- fixture JST日付がactive Core tracking periodの`[valid_from, valid_to)`内
+- tracking periodのteamとcompetition seasonがfixtureと完全一致
+- authored `ratingVersion`が対応version `1.0`
+
+authored `jfwRating`の数値は`rating_state: "computed"`として原値を保存し、このmigration内では再計算しない。authored `jfwRating: null`は算出不可／Ratingなしの明示値なので`rating_state: "missing"`として保存する。property欠落または`undefined`はauthored nullと同一視せず`authored_rating_missing`で保留する。`inputs_json`には生の`ratingInputs`、position、coverage、breakdown、sources、conflictsと`authoredState`をcanonical JSONで保持する。
+
+同じsource hashの再実行は`already_imported`、既存行との差異は`failed`として上書きしない。未解決recordが残る間は`ratingGatePassed: false`であり、Rating移行後もaggregate parityとendpoint shadow gateが未完了なので`productionReady`は`false`のままにする。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
