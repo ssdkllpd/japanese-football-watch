@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-08-29T16:52:45+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "previousSeasonOverwrite": false,
+  "scopePolicy": {
+    "repositoryTrackedLeagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
+    "j1ExcludedFromRepositoryWorkflow": true
+  },
+  "confirmedUpdates": [
+    {
+      "type": "match_availability_update",
+      "player": "Ritsu Doan",
+      "club": "Eintracht Frankfurt",
+      "league": "Bundesliga",
+      "date": "2026-08-29",
+      "competition": "Bundesliga",
+      "opponent": "1. FC Union Berlin",
+      "availability": "unavailable",
+      "source": {
+        "name": "Eintracht Frankfurt official opponent preview",
+        "publishedDate": "2026-08-28",
+        "url": "https://go.eintracht.de/aVY33G"
+      },
+      "verification": "Eintracht Frankfurt's official preview for the 2026-08-29 Bundesliga opener explicitly lists Ritsu Doan among the players unavailable for the match at Union Berlin.",
+      "transferWatch": {
+        "status": "unresolved_conflicting_reports",
+        "runtimeMembershipAction": "none",
+        "note": "The official match-availability update does not confirm a transfer. Keep Eintracht Frankfurt as current club until the existing transfer conflict is resolved by authoritative confirmation."
+      },
+      "priorityUpdate": true,
+      "priorityFields": ["official medical/injury detail if published", "official transfer confirmation or rejection", "effectiveDate if transfer occurs", "destination registration status if transfer occurs"],
+      "jfwRating": null,
+      "ratingStatus": "not_applicable_until_completed_appearance_exists_for_this_fixture",
+      "missingToZeroCoercion": false
+    }
+  ],
+  "workflowGate": {
+    "latestInformationChecked": true,
+    "allTrackedLeaguesAndClubsComplete": false,
+    "allJapanesePlayerDataComplete": false,
+    "allJfwRatingInputsComplete": false,
+    "integratedSnapshotBuilt": false,
+    "consistencyValidated": false,
+    "activeSeasonJsonUpdated": false,
+    "snapshotRechecked": false,
+    "siteContractValidated": false,
+    "complete": false
+  }
+}
