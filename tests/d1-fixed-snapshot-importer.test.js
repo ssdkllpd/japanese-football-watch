@@ -122,7 +122,7 @@ test('current backfill produces and idempotently imports one deterministic first
 
   assert.equal(first.inputSha256, second.inputSha256);
   assert.equal(first.data.players.length, 64);
-  assert.equal(first.data.playerMatchStats.length, 118);
+  assert.equal(first.data.playerMatchStats.length, 120);
   assert.deepEqual(validateFixedSnapshot(first), []);
   assert.equal(first.inputs.fragments.length, inputs.fragmentNames.length);
 
@@ -323,7 +323,7 @@ test('one-time CLIs create the current fixed file, local D1 database and migrati
     .update(fs.readFileSync(snapshotPath)).digest('hex'));
   assert.equal(manifest.counts.trackedPlayers, 64);
   assert.equal(manifest.counts.trackingPeriods, manifest.counts.legacyMemberships);
-  assert.equal(manifest.deferred.legacyMatchRecords, 118);
+  assert.equal(manifest.deferred.legacyMatchRecords, 120);
   assert.equal(manifest.productionReady, false);
   assert.deepEqual(manifest.validation.errors, []);
   assert.equal(database.prepare('PRAGMA foreign_key_check').all().length, 0);

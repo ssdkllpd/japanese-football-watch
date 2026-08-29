@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "season": "2026-27",
-  "updatedAt": "2026-08-25T21:14:05+09:00",
+  "updatedAt": "2026-08-29T00:04:48+09:00",
   "reason": "Verified current-season Japanese player memberships missing from the repository search. Runtime data is not mutated until match-history/playerMatchStats backfill and snapshot consistency gates are completed.",
   "priority": "highest",
   "players": [
@@ -72,12 +72,17 @@
     },
     {
       "name": "伊藤敦樹",
-      "club": "KAA Gent",
-      "league": "Belgian Pro League",
+      "previousClub": "KAA Gent",
+      "previousLeague": "Belgian Pro League",
+      "club": "Bolton Wanderers",
+      "league": "EFL Championship",
       "position": "MF",
-      "squadNumber": 15,
-      "verifiedBy": ["KAA Gent official 2026-27 player profile"],
-      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 matchday history", "playerMatchStats", "current availability"]
+      "transferDate": "2026-08-28",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed_subject_to_EFL_international_clearance_and_visa",
+      "verifiedBy": ["Bolton Wanderers official transfer announcement dated 2026-08-28", "KAA Gent official 2026-27 player profile for prior membership"],
+      "membershipNote": "Tracked-to-tracked transfer. Reuse one stable playerId once resolved; preserve KAA Gent history and continue automatic tracking at Bolton without moving historical Gent stats to Bolton.",
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "2026-27 KAA Gent matchday history before transfer", "Bolton registration/clearance completion", "Bolton squad number", "Bolton matchday history", "playerMatchStats", "current availability"]
     },
     {
       "name": "増井健人",

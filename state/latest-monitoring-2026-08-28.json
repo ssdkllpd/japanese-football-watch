@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-28T20:58:30+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "note": "Verified post-match facts discovered after the 04:03 JST integrated snapshot. These facts are retained without mutating runtime season data until stable player identity, API detail-backfill registration and full consistency gates are completed. Source conflicts are resolved only by the predefined source-priority policy, never by score convenience.",
+  "facts": [
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "Brighton & Hove Albion 4-0 Tromso",
+      "club": "Brighton & Hove Albion",
+      "player": "三笘薫",
+      "appearance": "absent_not_in_squad",
+      "minutes": 0,
+      "jfwRating": null,
+      "verification": "Complete published Brighton starting XI and substitutes omit Kaoru Mitoma.",
+      "runtimeAction": "pending completed-match/API-backfill integration"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "Hibernian 2-3 KAA Gent",
+      "club": "KAA Gent",
+      "player": "伊藤敦樹",
+      "appearance": "absent_not_in_squad",
+      "minutes": 0,
+      "jfwRating": null,
+      "verification": "Complete Gent starting XI and substitutes omit Atsuki Ito.",
+      "runtimeAction": "keep in highest-priority identity/backfill queue because stable playerId remains unresolved"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Conference League",
+      "match": "SC Freiburg 4-1 Motherwell",
+      "club": "SC Freiburg",
+      "players": ["長田澪", "鈴木唯人", "後藤啓介"],
+      "verifiedFacts": {
+        "長田澪": {"start": true, "minutes": 90, "gaOnPitch": 1},
+        "鈴木唯人": {"start": true, "goals": 0, "substitutionOff": 65, "minutes": 65},
+        "後藤啓介": {"start": false, "goals": 1, "goalMinute": 85, "substitutionOn": 68, "minutes": 22}
+      },
+      "timelineConflicts": [
+        {
+          "field": "鈴木唯人.substitutionOff",
+          "previousMonitoringValue": null,
+          "competingValues": [64, 65],
+          "evidence": [
+            "SC Freiburg official post-match Match facts: Suzuki (65' Höler)",
+            "FotMob structured timeline: Lucas Höler on / Yuito Suzuki off at 64'",
+            "multiple structured secondary reports: Suzuki off at 64'"
+          ],
+          "selectedValue": 65,
+          "selectedSourcePriority": 1,
+          "resolution": "resolved_by_primary_official_source_priority"
+        },
+        {
+          "field": "後藤啓介.substitutionOn",
+          "previousMonitoringValue": null,
+          "competingValues": [67, 68],
+          "evidence": [
+            "SC Freiburg official post-match Match facts: Matanovic (68' Goto)",
+            "multiple structured secondary reports: Keisuke Goto on at 67'",
+            "FotMob timeline presentation places substitution around 67-68'"
+          ],
+          "selectedValue": 68,
+          "selectedSourcePriority": 1,
+          "resolution": "resolved_by_primary_official_source_priority"
+        }
+      ],
+      "additionalVerifiedFacts": {
+        "鈴木唯人": {"shotsObservedMinimum": 2},
+        "後藤啓介": {"goalAssist": null}
+      },
+      "sourceNotes": [
+        "SC Freiburg official post-match report and Match facts explicitly list Yuito Suzuki off at 65' for Lucas Höler and Keisuke Goto on at 68' for Igor Matanovic; these primary-source values resolve the one-minute secondary-feed conflicts under ops-v1.0 source priority.",
+        "The same official report confirms Goto scored at 85' and describes Suzuki shot attempts at 33' and 53'. Those narrative shot mentions are not treated as an exhaustive player-stat total."
+      ],
+      "ratingAction": "Do not calculate or publish new JFW Ratings yet. Exact minutes are now resolved, but required discipline states and advanced individual fields have not yet been reconciled through an exhaustive primary/API source for each Japanese player; Mio Backhaus also remains without a resolved stable playerId.",
+      "runtimeAction": "pending identity/detail-backfill, required-input reconciliation and full consistency gate"
+    },
+    {
+      "date": "2026-08-27",
+      "competition": "UEFA Europa League",
+      "match": "Omonia Nicosia 4-2 Sint-Truiden",
+      "club": "STVV",
+      "players": ["小久保玲央ブライアン", "谷口彰悟", "石渡ネルソン", "松澤海斗", "荒木遼太郎", "畑大雅", "新川志音"],
+      "verifiedFacts": {
+        "小久保玲央ブライアン": {"start": true, "minutes": 90, "gaOnPitch": 4, "penaltyConcededEventObserved": true},
+        "谷口彰悟": {"start": true, "minutes": 90, "yellowCards": 1, "gaOnPitch": 4},
+        "石渡ネルソン": {"start": true, "minutes": 90, "goals": 0, "assists": 0},
+        "松澤海斗": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 0},
+        "荒木遼太郎": {"start": false, "substitutionOn": 71, "goals": 0, "assists": 0},
+        "畑大雅": {"start": false, "substitutionOn": 81, "goals": 0, "assists": 0, "gaOnPitchObserved": 1},
+        "新川志音": {"start": false, "bench": true, "appearance": "bench_unused", "minutes": 0}
+      },
+      "matchFacts": {
+        "score": "4-2",
+        "aggregateScore": "4-3 Omonia Nicosia",
+        "stvvEliminated": true,
+        "stvvGoals": [
+          {"minute": 33, "scorer": "Ilias Sebaoui", "type": "penalty"},
+          {"minute": 90, "scorer": "Ilias Sebaoui", "assist": "Abdoulaye Sissako"}
+        ]
+      },
+      "corrections": [
+        {
+          "field": "松澤海斗.assists",
+          "previousValue": 1,
+          "correctedValue": 0,
+          "reason": "Complete post-match event logs from Sky Sports and other structured full-timeline sources credit Abdoulaye Sissako, not Kaito Matsuzawa, with the assist for Sebaoui's 90+2 goal. The earlier Live-Result attribution was inconsistent and is retained only as rejected conflict evidence.",
+          "revisedAt": "2026-08-28T20:58:30+09:00"
+        }
+      ],
+      "sourceNotes": [
+        "Nikkan Sports (2026-08-28 10:30 JST) confirms the 4-2 final score and Japanese participation: Taniguchi, Kokubo and Ishiwatari full match; Matsuzawa and Araki on from 71'; Hata on from 81'; Shinkawa unused. It also reports Kokubo's foul leading to Omonia's first-half penalty.",
+        "Sky Sports' complete post-match commentary explicitly credits Abdoulaye Sissako with the assist for Ilias Sebaoui's 90+2 goal. PlayerStats and multiple independent full timelines agree. The earlier Live-Result attribution to Matsuzawa is rejected as a source conflict under ops-v1.0."
+      ],
+      "ratingAction": "Do not calculate or publish new JFW Ratings yet. Although core appearance, goals/assists and some discipline facts are verified, the required discipline states and player-level detail fields have not yet been reconciled through an exhaustive primary/API source for every Japanese player.",
+      "priorityFields": [
+        "apiFootball fixture id and /fixtures/events",
+        "/fixtures/lineups",
+        "/fixtures/players",
+        "explicit secondYellowRed/straightRed/penaltiesConceded/ownGoals states per player",
+        "player-level shots/shotsOnTarget/keyPasses/passes/tackles/interceptions/duels/dribbles and position-specific fields",
+        "confirm exact stoppage-time handling for substitution-derived minutes"
+      ],
+      "runtimeAction": "highest-priority completed-match detail backfill; keep runtime 2026-27 bundle unchanged until API/detail reconciliation, integrated snapshot rebuild and full consistency gate pass"
+    }
+  ]
+}

@@ -92,13 +92,13 @@ test('current fixed input accounts for every legacy record without making any pr
 
   const manifest = buildFixtureCoverageManifest(snapshot);
 
-  assert.equal(manifest.summary.legacyMatchRecords, 118);
+  assert.equal(manifest.summary.legacyMatchRecords, 120);
   assert.equal(manifest.summary.providerFixtureVerifiedRecords, 61);
-  assert.equal(manifest.summary.blockedRecords, 57);
+  assert.equal(manifest.summary.blockedRecords, 59);
   assert.equal(manifest.summary.uniqueProviderFixtures, 27);
   assert.equal(manifest.summary.productionReadyRecords, 0);
-  assert.equal(manifest.records.length, 118);
-  assert.equal(new Set(manifest.records.map(record => record.recordId)).size, 118);
+  assert.equal(manifest.records.length, 120);
+  assert.equal(new Set(manifest.records.map(record => record.recordId)).size, 120);
 });
 
 test('CLI writes a deterministic canonical manifest for an exact fixed snapshot', t => {

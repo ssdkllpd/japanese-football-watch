@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-29T09:04:29+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "facts": [
+    {
+      "date": "2026-08-28",
+      "type": "membership_change",
+      "player": "伊藤敦樹",
+      "previousClub": "KAA Gent",
+      "previousLeague": "Belgian Pro League",
+      "club": "Bolton Wanderers",
+      "league": "EFL Championship",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed_subject_to_EFL_international_clearance_and_visa",
+      "source": {"name": "Bolton Wanderers official", "publishedDate": "2026-08-28", "url": "https://www.bwfc.co.uk/news/japanese-star-signs-wanderers"},
+      "verification": "Bolton Wanderers officially announced the signing of Japan international midfielder Atsuki Ito from KAA Gent for an undisclosed fee, subject to EFL, international clearance and visa approval.",
+      "runtimeAction": "Do not mutate runtime data yet because the repository still lacks a resolved stable playerId for Ito. Preserve the KAA Gent membership/history, then continue tracking under the same playerId at Bolton once identity and clearance details are resolved.",
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "KAA Gent 2026-27 pre-transfer match history", "EFL/international clearance and visa completion", "Bolton squad number", "Bolton playerMatchStats", "current availability"]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "transfer_watch",
+      "player": "堂安律",
+      "club": "Eintracht Frankfurt",
+      "league": "Bundesliga",
+      "reportedDestinationClub": "Al-Ittihad",
+      "reportedDestinationLeague": "Saudi Pro League",
+      "transferStatus": "unresolved_conflicting_reports",
+      "verification": "Multiple same-day reports confirm Al-Ittihad interest and an approximately EUR 18m bid, but sources conflict on whether Eintracht Frankfurt has accepted. Do not treat the transfer as confirmed.",
+      "sources": [
+        {"name": "n-tv transfer ticker citing Sky", "publishedDate": "2026-08-28", "url": "https://www.n-tv.de/sport/fussball/transfermarkt/Transfer-Ticker-Al-Ittihad-bietet-18-Millionen-Euro-fuer-Ritsu-Doan-von-Eintracht-Frankfurt-id31243146.html", "claim": "EUR 18m offer; no final agreement; Frankfurt approval not given"},
+        {"name": "GOAL citing Al-Riyadiah", "publishedDate": "2026-08-28", "url": "https://www.goal.com/en/news/diaby-s-replacement-al-ittihad-seal-deal-from-the-german-league/blt921379e98ba1e638", "claim": "clubs reportedly agreed; contractual formalities remain"}
+      ],
+      "runtimeAction": "No membership mutation. Keep Eintracht Frankfurt as current club until a primary source or sufficiently authoritative final confirmation resolves the conflict.",
+      "priorityFields": ["official transfer confirmation or rejection", "effectiveDate", "destination registration status"]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "completed_match_availability",
+      "player": "伊藤洋輝",
+      "club": "FC Bayern Munich",
+      "league": "Bundesliga",
+      "competition": "Bundesliga",
+      "opponent": "VfB Stuttgart",
+      "result": "5-1",
+      "appearanceState": "unused_substitute",
+      "start": false,
+      "bench": true,
+      "minutes": 0,
+      "jfwRating": null,
+      "source": {"name": "FC Bayern official match report", "publishedDate": "2026-08-28", "url": "https://fcbayern.com/en/news/matchreports/2026/08/match-report-bundesliga-fc-bayern-v-vfb-stuttgart-280826"},
+      "verification": "FC Bayern's official final match report lists Hiroki Ito among the unused substitutes and enumerates all five Bayern substitutions, none involving Ito. Bayern won 5-1.",
+      "runtimeAction": "Retain as a verified completed-match availability fact. Do not compute a JFW Rating because minutes=0. Do not mutate the active runtime bundle until the full collection and consistency gate is complete.",
+      "priorityFields": []
+    },
+    {
+      "date": "2026-08-24",
+      "type": "membership_change",
+      "player": "小川航基",
+      "previousClub": "N.E.C. Nijmegen",
+      "previousLeague": "Eredivisie",
+      "club": "FC Machida Zelvia",
+      "league": "J1",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed",
+      "effectiveDate": "2026-08-24",
+      "trackingStatus": "out_of_scope",
+      "source": {"name": "N.E.C. Nijmegen official", "publishedDate": "2026-08-24", "url": "https://www.nec-nijmegen.nl/nieuws/nieuws/koki-ogawa-verruilt-n.e.c.-voor-fc-machida-zelvia.htm"},
+      "secondarySource": {"name": "J.League official", "publishedDate": "2026-08-25", "url": "https://www.jleague.jp/news/article/34737/"},
+      "verification": "N.E.C. officially announced that Koki Ogawa transferred immediately to FC Machida Zelvia. J.League official also confirmed Machida's permanent acquisition. Under repository policy, J1 is excluded from automatic collection; Ogawa must remain in the player dataset with prior tracked-season statistics frozen at his exit and his actual J1 destination retained as out_of_scope.",
+      "runtimeAction": "Preserve Ogawa's existing stable playerId, Eredivisie membership history, N.E.C. 2026-27 tracked-period stats and ranking eligibility. Do not create Machida as a tracked club and do not automatically collect J1 playerMatchStats. Apply the membership mutation only after the full runtime consistency gate passes.",
+      "priorityFields": ["stablePlayerId verification", "final N.E.C. tracked-period aggregate cutoff", "membershipHistory close date", "clubStats/competitionStats freeze verification"]
+    },
+    {
+      "date": "2026-08-29",
+      "type": "scope_omission_correction",
+      "player": "佐藤龍之介",
+      "club": "Valencia CF",
+      "league": "La Liga",
+      "membershipChangeType": "transfer",
+      "transferStatus": "confirmed",
+      "effectiveDate": "2026-07-07",
+      "trackingStatus": "tracked_pending_runtime_backfill",
+      "sources": [
+        {"name": "Valencia CF official", "publishedDate": "2026-07-07", "url": "https://mdsk7r6f.valenciacf.com/official-statement-ryunosuke-sato", "claim": "Five-year first-team contract through 2031; first Japanese men's first-team player in club history"},
+        {"name": "LALIGA official player page", "retrievedDate": "2026-08-29", "url": "https://www.laliga.com/jugador/ryunosuke-sato", "claim": "Valencia CF, 2026-27: 2 appearances, 2 starts, 147 minutes, 0 goals, 0 assists, 1 yellow, 0 red, 0 second-yellow red"}
+      ],
+      "verifiedMatches": [
+        {"date": "2026-08-22", "competition": "La Liga", "opponent": "Celta Vigo", "result": "0-0", "start": true, "minutes": 57},
+        {"date": "2026-08-25", "competition": "La Liga", "opponent": "Real Betis", "result": "0-1", "start": true, "minutes": 90}
+      ],
+      "verification": "Repository code search contains no Valencia or Ryunosuke Sato record, while Valencia CF officially signed Sato as a first-team player on 2026-07-07 and LALIGA currently records two 2026-27 league starts totaling 147 minutes. This is a material tracked-scope omission, not a transfer-rumour update.",
+      "runtimeAction": "Restart the collection flow for the affected scope. Add Valencia CF as a tracked La Liga club and Sato as a tracked Japanese player only after resolving a stable playerId and backfilling both completed La Liga matches plus all required rating inputs. Do not fabricate missing discipline/detail inputs and do not update data.json or latest_snapshot.json until the full consistency gate passes.",
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "apiFootballPlayerId", "Valencia club/provider IDs", "2026-08-22 Celta Vigo playerMatchStats", "2026-08-25 Real Betis playerMatchStats", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"]
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false
+}
