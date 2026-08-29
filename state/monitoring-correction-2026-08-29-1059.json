@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "retrievedAt": "2026-08-29T10:59:17+09:00",
+  "activeDataPath": "data.json",
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false,
+  "corrections": [
+    {
+      "type": "monitoring_false_omission_correction",
+      "player": "佐藤龍之介",
+      "club": "バレンシア",
+      "league": "ラ・リーガ",
+      "previousMonitoringClaim": "repository lacked Valencia / Ryunosuke Sato record",
+      "correctFinding": "data.json already contains 佐藤龍之介 / バレンシア in the current-season player list; the prior omission claim was caused by relying on GitHub code search rather than reading the resolved active data bundle directly.",
+      "action": "Invalidate the prior scope_omission_correction as an omission claim. Keep the legitimate need to refresh his post-opening-match playerMatchStats and rating inputs, but do not treat him as a newly missing player."
+    }
+  ],
+  "verifiedScopeGaps": [
+    {
+      "player": "守田英正",
+      "club": "Hull City",
+      "league": "Premier League",
+      "status": "tracked_scope_missing_from_data_json_player_list",
+      "evidence": [
+        "Premier League 2026/27 current transfer/squad coverage lists Hidemasa Morita at Hull City",
+        "Current data.json player list contains no 守田英正 entry"
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "membershipHistory", "Hull playerMatchStats", "appearance/bench status", "ratingPosition", "ratingInputs", "ratingSources"]
+    },
+    {
+      "player": "坂元達裕",
+      "club": "Coventry City",
+      "league": "Premier League",
+      "status": "tracked_scope_missing_from_data_json_player_list",
+      "evidence": [
+        "Premier League 2026/27 Coventry squad lists Tatsuhiro Sakamoto, No.7, Japan",
+        "Current data.json player list contains no 坂元達裕 entry"
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "membershipHistory", "Coventry playerMatchStats", "appearance/bench status", "ratingPosition", "ratingInputs", "ratingSources"]
+    },
+    {
+      "player": "冨安健洋",
+      "club": "Crystal Palace",
+      "league": "Premier League",
+      "status": "confirmed_membership_missing_from_data_json_player_list",
+      "effectiveDate": "2026-08-07",
+      "evidence": [
+        "Crystal Palace officially announced Takehiro Tomiyasu on 2026-08-07",
+        "Current data.json player list contains no 冨安健洋 entry"
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["stablePlayerId", "membershipHistory", "Crystal Palace playerMatchStats", "appearance/bench status", "ratingPosition", "ratingInputs", "ratingSources"]
+    }
+  ],
+  "gateStatus": "blocked_pending_full_scope_recollection_and_consistency_validation",
+  "note": "Do not update data.json or latest_snapshot.json from this audit alone. Re-run full tracked-scope collection before runtime mutation, and do not derive missing fields as zero."
+}
