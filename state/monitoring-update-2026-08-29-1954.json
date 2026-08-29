@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-08-29T19:54:00+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "pastSeasonOverwrite": false,
+  "workflowStatus": "monitoring_update_only_full_gate_not_completed",
+  "newConfirmedFacts": [
+    {
+      "type": "match_squad_status",
+      "competition": "Premier League",
+      "matchDate": "2026-08-29",
+      "match": "Liverpool vs Nottingham Forest",
+      "player": "Wataru Endo",
+      "club": "Liverpool",
+      "fact": "Named among the substitutes in Liverpool's official starting XI announcement.",
+      "appearanceState": "bench_pre_match",
+      "source": {
+        "name": "Liverpool FC official",
+        "url": "https://www.liverpoolfc.com/news/confirmed-liverpool-line-v-nottingham-forest-8",
+        "published": "2026-08-29"
+      }
+    }
+  ],
+  "ratingAction": {
+    "calculateNow": false,
+    "reason": "Match has not finished and required JFW Rating v1.0 inputs are not yet final/value-complete. No missing value is converted to zero."
+  },
+  "dataMutation": {
+    "activeSeasonJsonUpdated": false,
+    "snapshotUpdated": false,
+    "reason": "Full league/club/player/rating-input collection and consistency gates have not been completed in this run."
+  }
+}
