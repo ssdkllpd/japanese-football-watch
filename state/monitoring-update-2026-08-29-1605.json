@@ -1,0 +1,71 @@
+{
+  "checkedAt": "2026-08-29T16:05:33+09:00",
+  "activeSeason": "2026-27",
+  "activeDataPath": "data.json",
+  "previousSeasonOverwrite": false,
+  "scopePolicy": {
+    "repositoryTrackedLeagues": ["Premier League", "EFL Championship", "Bundesliga", "Belgian Pro League", "Eredivisie", "La Liga", "Ligue 1", "Serie A", "Scottish Premiership", "Primeira Liga"],
+    "j1ExcludedFromRepositoryWorkflow": true
+  },
+  "confirmedUpdates": [
+    {
+      "type": "completed_match_backfill_target",
+      "player": "Keisuke Goto",
+      "club": "SC Freiburg",
+      "competition": "UEFA Conference League qualifying",
+      "facts": [
+        {
+          "date": "2026-08-20",
+          "match": "Motherwell 1-3 SC Freiburg",
+          "appearance": "substitute",
+          "goalMinute": "90+6",
+          "goals": 1,
+          "source": "https://www.scfreiburg.com/en/latest/first-team/match-reports/2026-27/sc-come-from-behind-to-win-in-scotland/"
+        },
+        {
+          "date": "2026-08-27",
+          "match": "SC Freiburg 4-1 Motherwell",
+          "appearance": "substitute",
+          "subOnMinute": 69,
+          "goalMinute": 85,
+          "goals": 1,
+          "source": "https://www.scfreiburg.com/en/latest/first-team/match-reports/2026-27/dominant-sc-secure-spot-in-league-phase/"
+        }
+      ],
+      "summary": "Scored in both legs of the Conference League play-off against Motherwell; two goals in two consecutive appearances in the tie.",
+      "priorityUpdate": true,
+      "priorityFields": [
+        "minutes",
+        "assists",
+        "yellowCards",
+        "secondYellowRed",
+        "straightRed",
+        "penaltiesConceded",
+        "ownGoals",
+        "shots",
+        "shotsOnTarget",
+        "keyPasses",
+        "duelsWon",
+        "duelsTotal",
+        "dribbles",
+        "bigChancesMissed"
+      ],
+      "jfwRating": null,
+      "ratingVersion": "1.0",
+      "ratingStatus": "not_calculated_required_inputs_incomplete",
+      "missingToZeroCoercion": false
+    }
+  ],
+  "workflowGate": {
+    "latestInformationChecked": true,
+    "allTrackedLeaguesAndClubsComplete": false,
+    "allJapanesePlayerDataComplete": false,
+    "allJfwRatingInputsComplete": false,
+    "integratedSnapshotBuilt": false,
+    "consistencyValidated": false,
+    "activeSeasonJsonUpdated": false,
+    "snapshotRechecked": false,
+    "siteContractValidated": false,
+    "complete": false
+  }
+}
