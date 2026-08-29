@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "createdAt": "2026-08-29T13:06:14+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "sourceScope": "Belgian Pro League",
+  "facts": [
+    {
+      "date": "2026-08-28",
+      "type": "completed_match_player_update",
+      "competition": "Belgian Pro League",
+      "club": "KRC Genk",
+      "opponent": "SK Beveren",
+      "result": "4-0",
+      "player": "伊東純也",
+      "appearanceState": "started",
+      "start": true,
+      "goals": 1,
+      "goalMinuteOfficial": 18,
+      "assists": 0,
+      "verification": "Belgian Pro League official match centre confirms Genk 4-0 SK Beveren and Junya Ito's goal at 18'. The official event list does not show Ito among Genk substitutions. A secondary detailed match-stat source records 82 played minutes; because this conflicts with the event-only inference of remaining on the field, minutes are not promoted to a verified value in this monitoring record.",
+      "sources": [
+        {
+          "id": "proleague-genk-beveren-20260828",
+          "name": "Belgian Pro League official match centre",
+          "type": "league_official_match_centre",
+          "url": "https://www.proleague.be/wedstrijden/seizoen-2026-2027-jupiler-pro-league-4-krc-genk-vs-sk-beveren-623",
+          "retrievedAt": "2026-08-29T13:06:14+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["goals", "team_yellow_cards", "team_red_cards", "substitution_events"]
+        }
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"],
+      "jfwRating": null,
+      "runtimeAction": "Do not calculate JFW Rating or mutate the active season bundle until exact minutes and all required discipline inputs are explicit value states under rating ops v1.0."
+    },
+    {
+      "date": "2026-08-28",
+      "type": "completed_match_player_update",
+      "competition": "Belgian Pro League",
+      "club": "KRC Genk",
+      "opponent": "SK Beveren",
+      "result": "4-0",
+      "player": "横山歩夢",
+      "appearanceState": "started_substituted",
+      "start": true,
+      "substitutionMinuteOfficial": 70,
+      "goals": 0,
+      "assists": 0,
+      "verification": "Belgian Pro League official match centre confirms Ayumu Yokoyama started and was replaced by Noah Adedeji-Sternberg at 70'. The official scorer list contains no Yokoyama goal or assist. A secondary player page reports 71 minutes, so exact minutes remain to be normalized under repository convention rather than inferred from the substitution minute alone.",
+      "sources": [
+        {
+          "id": "proleague-genk-beveren-20260828",
+          "name": "Belgian Pro League official match centre",
+          "type": "league_official_match_centre",
+          "url": "https://www.proleague.be/wedstrijden/seizoen-2026-2027-jupiler-pro-league-4-krc-genk-vs-sk-beveren-623",
+          "retrievedAt": "2026-08-29T13:06:14+09:00",
+          "priority": 1,
+          "exhaustiveFor": ["goals", "substitution_events", "team_yellow_cards", "team_red_cards"]
+        }
+      ],
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"],
+      "jfwRating": null,
+      "runtimeAction": "Keep rating null until the exact minute convention and all required discipline inputs are explicit value states."
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false
+}
