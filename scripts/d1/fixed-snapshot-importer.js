@@ -252,6 +252,7 @@ function resolveTrackedPlayerCrosswalk(database, resolution) {
 }
 
 module.exports = {
+  aggregatePayload,
   importFixedSnapshot,
   resolveTrackedPlayerCrosswalk,
   validateImportedSnapshot,

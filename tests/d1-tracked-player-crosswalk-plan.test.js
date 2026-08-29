@@ -29,6 +29,9 @@ const {
   importTrackedPlayerRatings,
   ratingCandidate,
 } = require('../scripts/d1/tracked-player-rating-importer');
+const {
+  rebuildTrackedPlayerAggregates,
+} = require('../scripts/d1/tracked-player-aggregate-rebuilder');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
 const CONTENT_SHA256 = 'a'.repeat(64);
@@ -76,6 +79,58 @@ function snapshot(options = {}) {
         providerRatings: { apiFootball: { value: 7.1 } },
         providerIds: { apiFootball: { fixture: 9001, player: 1001, team: 40, league: 39 } },
         ...authoredRating,
+      }],
+    }],
+    fragmentNames: ['data/test.json'],
+    createdAt: '2026-08-27T12:00:00.000Z',
+    season: { id: '2026-27', label: '2026-27', startsOn: '2026-07-01', endsOn: '2027-06-30' },
+  });
+}
+
+function aggregateSnapshot() {
+  return buildFixedSnapshot({
+    baseData: {
+      updated: '2026-08-20 00:00 JST',
+      players: [{
+        playerId: 'jp:one',
+        name: 'One',
+        club: 'Home FC',
+        league: 'Premier League',
+        membershipHistory: [{
+          club: 'Home FC', league: 'Premier League', from: '2026-07-01', to: null,
+          tracked: true, changeType: 'initial',
+        }],
+        seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+      }],
+      matches: [{
+        matchId: 'match:verified',
+        ko: '2026-08-22 05:00 JST',
+        league: 'Premier League',
+        round: '第1節',
+      }],
+      playerMatchStats: [],
+    },
+    basePath: 'data.json',
+    fragments: [{
+      playerMatchStats: [{
+        recordId: 'record:verified',
+        playerId: 'jp:one',
+        matchId: 'match:verified',
+        club: 'Home FC',
+        competition: 'Premier League',
+        ko: '2026-08-22 05:00 JST',
+        appearance: true,
+        start: true,
+        bench: false,
+        trackedAtMatch: true,
+        minutes: 90,
+        goals: 0,
+        ratingInputs: {
+          minutes: { state: 'value', value: 90 },
+          goals: { state: 'value', value: 0 },
+        },
+        providerRatings: { apiFootball: { value: 7.1 } },
+        providerIds: { apiFootball: { fixture: 9001, player: 1001, team: 40, league: 39 } },
       }],
     }],
     fragmentNames: ['data/test.json'],
@@ -513,4 +568,137 @@ test('rating import CLI persists the authored-null distinction in its report and
   t.after(() => verified.close());
   assert.equal(report.records[0].ratingState, 'missing');
   assert.equal(verified.prepare('SELECT rating FROM jfw_rating_results').get().rating, null);
+});
+
+test('aggregate rebuild replaces the legacy season row with four canonical scopes and is idempotent', t => {
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+
+  const first = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+  const second = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+  const rows = database.prepare(`SELECT aggregate_scope, stats_json
+    FROM tracked_player_aggregates ORDER BY aggregate_scope`).all();
+  const season = JSON.parse(rows.find(item => item.aggregate_scope === 'season').stats_json);
+
+  assert.equal(first.summary.rebuiltPlayers, 1);
+  assert.equal(first.summary.aggregateParityGatePassed, true);
+  assert.equal(first.productionReady, false);
+  assert.equal(second.summary.alreadyRebuiltPlayers, 1);
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map(item => item.aggregate_scope),
+    ['club', 'club_competition', 'competition', 'season']);
+  assert.equal(season.stats.apps, 1);
+  assert.equal(season.stats.starts, 1);
+  assert.equal(season.stats.minutes, 90);
+  assert.equal(season.stats.goals, 0);
+  assert.equal(season.stats.assists, null);
+  assert.deepEqual(season.provenance.canonicalRecordIds, ['record:verified']);
+});
+
+test('aggregate rebuild remains deferred until the tracked player crosswalk is resolved', t => {
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  const legacy = database.prepare(`SELECT stats_json, source_hash FROM tracked_player_aggregates
+    WHERE aggregate_scope = 'season'`).get();
+
+  const report = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+  const stored = database.prepare(`SELECT stats_json, source_hash FROM tracked_player_aggregates
+    WHERE aggregate_scope = 'season'`).get();
+
+  assert.equal(report.summary.deferredPlayers, 1);
+  assert.equal(report.players[0].reason, 'tracked_player_crosswalk_not_resolved');
+  assert.equal(report.summary.aggregateParityGatePassed, false);
+  assert.deepEqual({ ...stored }, { ...legacy });
+});
+
+test('aggregate rebuild rejects a Core competition season outside the fixed product season', t => {
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  database.exec(`
+    INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
+      VALUES (2, 'jfw:season:2025-26', '2025-26', '2025-07-01', '2026-06-30');
+    UPDATE competition_seasons SET product_season_id = 2 WHERE id = 1;
+  `);
+
+  const report = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+
+  assert.equal(report.summary.deferredPlayers, 1);
+  assert.equal(report.players[0].reason, 'canonical_tracking_scope_not_matched');
+  assert.equal(report.summary.aggregateParityGatePassed, false);
+});
+
+test('aggregate parity catches canonical enrichment that record parity does not compare', t => {
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  database.exec('UPDATE fixture_player_stats SET assists = 1');
+
+  const report = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+  const stored = JSON.parse(database.prepare(`SELECT stats_json FROM tracked_player_aggregates
+    WHERE aggregate_scope = 'season'`).get().stats_json);
+
+  assert.equal(report.summary.failedPlayers, 1);
+  assert.equal(report.players[0].reason, 'aggregate_stats_parity_mismatch');
+  assert.equal(report.players[0].actual.assists, 1);
+  assert.equal(report.players[0].expected.assists, null);
+  assert.ok(stored.seasonStats);
+});
+
+test('a conflicting rebuilt aggregate is reported and never overwritten', t => {
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+  database.exec(`UPDATE tracked_player_aggregates SET source_hash = '${'b'.repeat(64)}'
+    WHERE aggregate_scope = 'season'`);
+
+  const report = rebuildTrackedPlayerAggregates(database, fixedSnapshot, coverage);
+
+  assert.equal(report.summary.failedPlayers, 1);
+  assert.match(report.players[0].reason, /aggregate_conflicts_with_existing_row/);
+  assert.equal(database.prepare(`SELECT source_hash FROM tracked_player_aggregates
+    WHERE aggregate_scope = 'season'`).get().source_hash, 'b'.repeat(64));
+});
+
+test('aggregate rebuild CLI writes a stable report and canonical aggregate rows', t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-aggregate-rebuild-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshotPath = path.join(temporary, 'snapshot.json');
+  const coveragePath = path.join(temporary, 'coverage.json');
+  const reportPath = path.join(temporary, 'report.json');
+  const databasePath = path.join(temporary, 'local.sqlite3');
+  const fixedSnapshot = aggregateSnapshot();
+  const database = canonicalDatabase(fixedSnapshot, databasePath);
+  const coverage = parityCoverage(database, fixedSnapshot);
+  resolveCrosswalk(database, fixedSnapshot, coverage);
+  database.close();
+  fs.writeFileSync(snapshotPath, JSON.stringify(fixedSnapshot));
+  fs.writeFileSync(coveragePath, JSON.stringify(coverage));
+
+  const rebuilt = childProcess.spawnSync(process.execPath, [
+    'scripts/d1/rebuild-tracked-player-aggregates.js',
+    '--snapshot', snapshotPath,
+    '--coverage', coveragePath,
+    '--database', databasePath,
+    '--report', reportPath,
+  ], { cwd: path.join(__dirname, '..'), encoding: 'utf8' });
+
+  assert.equal(rebuilt.status, 0, rebuilt.stderr);
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  const verified = new DatabaseSync(databasePath, { readOnly: true });
+  t.after(() => verified.close());
+  assert.equal(report.summary.aggregateParityGatePassed, true);
+  assert.equal(verified.prepare('SELECT COUNT(*) AS count FROM tracked_player_aggregates').get().count, 4);
 });

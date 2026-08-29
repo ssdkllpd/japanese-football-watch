@@ -184,6 +184,28 @@ authored `jfwRating`の数値は`rating_state: "computed"`として原値を保�
 
 同じsource hashの再実行は`already_imported`、既存行との差異は`failed`として上書きしない。未解決recordが残る間は`ratingGatePassed: false`であり、Rating移行後もaggregate parityとendpoint shadow gateが未完了なので`productionReady`は`false`のままにする。
 
+Rating移行後は、確認済みbaselineと公開canonical player factsから追跡aggregateを再構築する。
+
+```bash
+node scripts/d1/rebuild-tracked-player-aggregates.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/jfw-d1-tracked-player-aggregate-rebuild-report.json
+```
+
+rebuildはcoverageのlink/parityを公開D1 revisionから再計算し、crosswalk解決済みplayerについて次を検証する。
+
+- legacy aggregate baselineを、固定snapshotのmembership期間と解決済みCore tracking periodの完全一致でteam/competition seasonへ割り当てる
+- 対象JFW product seasonと同じcompetition seasonだけを集計する
+- baseline更新後の公式戦recordは、fact parityが`passed`かつactive tracking period内の公開canonical appearance/statだけを加算する
+- `season`、`competition`、`club`、`club_competition`の4粒度をcanonical ID単位で生成する
+- legacy入力から同じscopeへ再計算した期待値とcanonical値を比較し、全fieldの`0`、`null`、欠落状態が一致した場合だけ保存する
+
+baselineにないfieldまたは途中のrecordで欠落したfieldは`null`を維持し、0補完しない。canonical側にlegacy未比較のenrichmentが存在する場合もaggregate parityで検出し、自動採用しない。初回snapshot importが作ったseason baseline行だけは、固定snapshot由来のsource hashが一致する場合に限りcanonical aggregateへ置換する。再構築済み行のsource hash競合は`failed`として全scopeをplayer単位transactionで非上書きにする。
+
+全追跡player・全scopeが一致した場合だけ`aggregateParityGatePassed: true`になる。ただしendpoint shadow gateと切替前レビューが未完了なので、report全体の`productionReady`は`false`のまま維持する。
+
 ### Phase 2 semantic shadow compare
 
 canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
