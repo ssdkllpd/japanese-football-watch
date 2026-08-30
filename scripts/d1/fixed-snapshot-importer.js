@@ -44,6 +44,8 @@ function aggregatePayload(player) {
     allCompetitionsStats: player.allCompetitionsStats || {},
     competitionStats: player.competitionStats || {},
     clubStats: player.clubStats || {},
+    clubCompetitionStats: player.clubCompetitionStats || {},
+    _aggregateBaselines: player._aggregateBaselines || {},
   };
 }
 

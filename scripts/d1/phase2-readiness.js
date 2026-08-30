@@ -19,7 +19,6 @@ const { verifyFixtureRecordParity } = require('./fixture-record-parity');
 const { FixtureRepository } = require('./fixture-repository');
 const { compareFixtureBundles } = require('./fixture-shadow-compare');
 const { resolveArtifactPath } = require('./fixture-shadow-batch');
-const { aggregatePayload } = require('./fixed-snapshot-importer');
 const { createLocalD1 } = require('./local-d1');
 const {
   CROSSWALK_METHOD,
@@ -350,6 +349,27 @@ function expectedLegacyMembership(snapshot, player, membership) {
   };
 }
 
+// Keep this expectation independent from fixed-snapshot-importer. The readiness
+// gate must prove that every Phase 2 aggregate field survived the importer, not
+// merely reproduce the importer's projection.
+function expectedLegacyAggregatePayload(player) {
+  return {
+    profile: {
+      name: player.name || null,
+      position: player.pos || null,
+      currentClub: player.currentClub || player.club || null,
+      currentLeague: player.currentLeague || player.league || null,
+      trackingStatus: player.trackingStatus || 'active',
+    },
+    seasonStats: player.seasonStats || player.stats || {},
+    allCompetitionsStats: player.allCompetitionsStats || {},
+    competitionStats: player.competitionStats || {},
+    clubStats: player.clubStats || {},
+    clubCompetitionStats: player.clubCompetitionStats || {},
+    _aggregateBaselines: player._aggregateBaselines || {},
+  };
+}
+
 function unresolvedIdentityState(database, snapshot, player) {
   const tracked = row(database, `SELECT
       player_id, crosswalk_state, tracking_status, tracking_started_on, tracking_ended_on
@@ -403,34 +423,45 @@ function unresolvedIdentityState(database, snapshot, player) {
   if (legacyRows !== expected.length || stableStringify(periods) !== stableStringify(expected)) {
     return { status: 'failed', reason: 'legacy_memberships_do_not_match_fixed_snapshot' };
   }
+  const productSeasonCanonicalId = `jfw:season:${snapshot.season.id}`;
   const aggregateRows = database.prepare(`SELECT
+      aggregate.aggregate_scope, aggregate.competition_season_id, aggregate.team_id,
       aggregate.stats_json, aggregate.source_hash, aggregate.rebuilt_at,
       season.canonical_id AS product_season_canonical_id
     FROM tracked_player_aggregates aggregate
     JOIN product_seasons season ON season.id = aggregate.product_season_id
     WHERE aggregate.jfw_player_id = ?1
-      AND aggregate.aggregate_scope = 'season'
-      AND aggregate.competition_season_id IS NULL
-      AND aggregate.team_id IS NULL`).all(player.playerId);
-  const stats = aggregatePayload(player);
+      AND season.canonical_id = ?2
+    ORDER BY aggregate.aggregate_scope, aggregate.competition_season_id, aggregate.team_id`)
+    .all(player.playerId, productSeasonCanonicalId);
+  const aggregateScopeMatches = aggregateRows.length === 1
+    && aggregateRows[0].aggregate_scope === 'season'
+    && aggregateRows[0].competition_season_id === null
+    && aggregateRows[0].team_id === null;
+  if (!aggregateScopeMatches) {
+    return { status: 'failed', reason: 'legacy_aggregate_scope_set_mismatch' };
+  }
+  const stats = expectedLegacyAggregatePayload(player);
   const expectedAggregate = {
-    productSeasonCanonicalId: `jfw:season:${snapshot.season.id}`,
+    productSeasonCanonicalId,
     stats,
     sourceHash: sha256({ inputSha256: artifactSha256(snapshot),
       playerId: player.playerId, stats }),
     rebuiltAt: snapshot.createdAt,
   };
-  const actualAggregate = aggregateRows.length === 1 ? {
+  const actualAggregate = {
     productSeasonCanonicalId: aggregateRows[0].product_season_canonical_id,
     stats: JSON.parse(aggregateRows[0].stats_json),
     sourceHash: aggregateRows[0].source_hash,
     rebuiltAt: aggregateRows[0].rebuilt_at,
-  } : null;
+  };
   if (stableStringify(actualAggregate) !== stableStringify(expectedAggregate)) {
     return { status: 'failed', reason: 'legacy_season_aggregate_does_not_match_fixed_snapshot' };
   }
   return { status: 'no_match_evidence', crosswalkState: tracked.crosswalk_state,
-    membershipPeriods: periods.length, legacySeasonAggregateVerified: true };
+    membershipPeriods: periods.length, legacySeasonAggregateVerified: true,
+    preservedAggregateFields: ['seasonStats', 'allCompetitionsStats', 'competitionStats',
+      'clubStats', 'clubCompetitionStats', '_aggregateBaselines'] };
 }
 
 function verifyUnresolvedTrackedPlayerIdentities(database, snapshot, evidencePlayerIds) {

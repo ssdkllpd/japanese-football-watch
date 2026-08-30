@@ -59,6 +59,16 @@ function sampleBase() {
         allCompetitionsStats: { apps: 0, goals: 0, assists: null },
         competitionStats: {},
         clubStats: {},
+        clubCompetitionStats: {
+          'ブライトン': { 'プレミアリーグ': { apps: 0, goals: 0, assists: null } },
+        },
+        _aggregateBaselines: {
+          'ブライトン|||プレミアリーグ': {
+            club: 'ブライトン', competition: 'プレミアリーグ',
+            stats: { apps: 0, goals: 0, assists: null },
+            updated: '2026-08-27 21:00 JST', statsAsOf: '開幕前',
+          },
+        },
       },
       {
         playerId: 'jp:ambiguous',
@@ -195,6 +205,12 @@ test('import is atomic, preserves zero versus null, and is idempotent by input h
   assert.equal(stats.seasonStats.goals, 1);
   assert.equal(stats.seasonStats.assists, 0);
   assert.equal(stats.seasonStats.starts, null);
+  const unresolvedStats = JSON.parse(database.prepare(`SELECT stats_json
+    FROM tracked_player_aggregates WHERE jfw_player_id = 'jp:unresolved'`).get().stats_json);
+  const unresolvedPlayer = snapshot.data.players
+    .find(player => player.playerId === 'jp:unresolved');
+  assert.deepEqual(unresolvedStats.clubCompetitionStats, unresolvedPlayer.clubCompetitionStats);
+  assert.deepEqual(unresolvedStats._aggregateBaselines, unresolvedPlayer._aggregateBaselines);
   assert.deepEqual(validateImportedSnapshot(database, snapshot), []);
 });
 

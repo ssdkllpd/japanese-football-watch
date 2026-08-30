@@ -31,6 +31,7 @@ const {
   PHASE2_PLAN_SCHEMA_VERSION,
   evaluatePhase2Readiness,
   validatePhase2ReadinessPlan,
+  verifyUnresolvedTrackedPlayerIdentities,
 } = require('../scripts/d1/phase2-readiness');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
@@ -49,6 +50,16 @@ function fixedSnapshot({ mixed = false } = {}) {
       tracked: false, changeType: 'scope_exit',
     }],
     seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+    clubCompetitionStats: {
+      'Former FC': { 'Former League': { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 } },
+    },
+    _aggregateBaselines: {
+      'Former FC|||Former League': {
+        club: 'Former FC', competition: 'Former League',
+        stats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+        updated: '2026-08-20 00:00 JST', statsAsOf: 'scope exit',
+      },
+    },
   }] : [];
   const extraMatches = mixed ? [{
     matchId: 'match:unscoped', ko: '2026-08-23 05:00 JST', league: 'Unknown League', round: '第1節',
@@ -166,6 +177,11 @@ function migrateTrackingFacts(database, snapshot, coverage) {
   rebuildTrackedPlayerAggregates(database, snapshot, coverage);
 }
 
+function verifyIdentityOnlyPlayers(database, snapshot) {
+  return verifyUnresolvedTrackedPlayerIdentities(database, snapshot,
+    new Set(['jp:one', 'jp:unresolved']));
+}
+
 async function readinessArtifacts(database, directory) {
   const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture('af:fixture:9001');
   const fixturePath = path.join(directory, 'fixture-9001.json');
@@ -277,6 +293,9 @@ test('snapshot-derived scope rejects omissions and reports migration gaps withou
   });
   assert.equal(blocked.trackedPlayerIdentities.players[0].status, 'no_match_evidence');
   assert.equal(blocked.trackedPlayerIdentities.players[0].legacySeasonAggregateVerified, true);
+  assert.deepEqual(blocked.trackedPlayerIdentities.players[0].preservedAggregateFields,
+    ['seasonStats', 'allCompetitionsStats', 'competitionStats', 'clubStats',
+      'clubCompetitionStats', '_aggregateBaselines']);
 });
 
 test('identity-only player membership drift closes the independent identity gate', async t => {
@@ -327,6 +346,73 @@ test('identity-only legacy aggregate drift closes the independent identity gate'
   assert.equal(report.gates.trackedPlayerIdentities, false);
   assert.equal(report.trackedPlayerIdentities.players[0].reason,
     'legacy_season_aggregate_does_not_match_fixed_snapshot');
+});
+
+test('identity-only aggregate scope drift closes the independent identity gate', t => {
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  database.exec(`INSERT INTO tracked_player_aggregates(
+      jfw_player_id, product_season_id, competition_season_id, team_id,
+      aggregate_scope, stats_json, source_hash, rebuilt_at
+    ) VALUES (
+      'jp:outside', 1, NULL, 1, 'club', '{}', '${'f'.repeat(64)}',
+      '2026-08-27T12:00:00.000Z'
+    )`);
+
+  const identities = verifyIdentityOnlyPlayers(database, snapshot);
+
+  assert.equal(identities.passed, false);
+  assert.equal(identities.players[0].reason, 'legacy_aggregate_scope_set_mismatch');
+});
+
+test('identity-only missing tracked player closes the independent identity gate', t => {
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  database.exec(`
+    DELETE FROM tracking_periods WHERE jfw_player_id = 'jp:outside';
+    DELETE FROM legacy_tracking_memberships WHERE jfw_player_id = 'jp:outside';
+    DELETE FROM tracked_player_aggregates WHERE jfw_player_id = 'jp:outside';
+    DELETE FROM tracked_players WHERE jfw_player_id = 'jp:outside';
+  `);
+
+  const identities = verifyIdentityOnlyPlayers(database, snapshot);
+
+  assert.equal(identities.passed, false);
+  assert.equal(identities.players[0].reason, 'tracked_player_not_stored');
+});
+
+test('identity-only unsupported resolution closes the independent identity gate', t => {
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  database.exec(`
+    INSERT INTO players(id, canonical_id, source_id, provider_id, display_name)
+      VALUES (2, 'af:player:1002', 2, 1002, 'Outside');
+    UPDATE tracked_players SET player_id = 2, crosswalk_state = 'resolved'
+      WHERE jfw_player_id = 'jp:outside';
+  `);
+
+  const identities = verifyIdentityOnlyPlayers(database, snapshot);
+
+  assert.equal(identities.passed, false);
+  assert.equal(identities.players[0].reason,
+    'unexpected_resolved_identity_without_match_evidence');
+});
+
+test('identity-only tracked state drift closes the independent identity gate', t => {
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  database.exec(`UPDATE tracked_players SET tracking_started_on = '2026-07-02'
+    WHERE jfw_player_id = 'jp:outside'`);
+
+  const identities = verifyIdentityOnlyPlayers(database, snapshot);
+
+  assert.equal(identities.passed, false);
+  assert.equal(identities.players[0].reason,
+    'tracked_player_state_does_not_match_fixed_snapshot');
 });
 
 test('Rating and aggregate verifiers detect tampering without repairing D1', t => {
