@@ -1,6 +1,6 @@
 # D1 Phase 2 implementation — Claude formal review packet v1.0
 
-状態: **R3 CHANGES APPLIED — CLAUDE RE-REVIEW REQUIRED — PHASE 3 CUTOVER BLOCKED**
+状態: **R4 CHANGES APPLIED — CLAUDE RE-REVIEW REQUIRED — PHASE 3 CUTOVER BLOCKED**
 
 対象branch: `fix/d1-phase2-review-r2`
 
@@ -12,11 +12,15 @@ R2修正対象HEAD: `afd2767a58f9861914c7a569afa2080efd0fdb83`
 
 R3修正対象HEAD: `12baf4f8629ce4b70d879a8d60805cd9ab663fc7`
 
+R4修正対象HEAD: `ad2758d`
+
 初回レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30.md`
 
 R2レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30-r2.md`
 
 R3レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30-r3.md`
+
+R4レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30-r4.md`
 
 ## 1. レビュー目的
 
@@ -51,6 +55,7 @@ D1 Phase 1/2実装が、承認済みのD1/R2設計とfail-closed migration規則
 | `0e74f2c` | Claude findings: expected scope、order parity、correction provenance、constraints |
 | `afd2767` | R2 findings: snapshot-derived scope、event round-trip order、import-time correction parity |
 | `12baf4f` | R3 findings: identity-only player parity、event order uniqueness、index test alignment |
+| `ad2758d` | R4 findings: lossless legacy aggregate parity、identity-only scope-set validation、failure-branch tests |
 
 主な実装・仕様ファイル:
 
@@ -122,17 +127,24 @@ R3レビューは`CHANGES_REQUIRED`（BLOCKER 0 / MAJOR 1 / MINOR 2）。`12baf4
 - 旧timeline indexを削除し、schema query plan testをrepositoryの`ORDER BY event_order`へ合わせた。
 - expectationsの`unexpected`方向にも回帰testを追加した。
 
+R4レビューは`CHANGES_REQUIRED`（BLOCKER 0 / MAJOR 1 / MINOR 2）。`ad2758d`で次を反映した。
+
+- `clubCompetitionStats`と`_aggregateBaselines`をlegacy season aggregateへ欠落なく保存する。
+- recordなしplayerのreadiness期待値をimporter helperから切り離し、固定snapshotから独立に構築する。
+- match evidenceなしでCore team / competition IDを推測せず、対象product seasonはlegacy `season` row 1件のみを期待し、余剰scopeを`legacy_aggregate_scope_set_mismatch`で拒否する。
+- identity gateの未保存player、根拠のないresolved化、tracking state drift、aggregate scope driftに回帰testを追加する。
+
 ## 5. 検証証跡
 
-- `node --test tests/*.test.js`: **252 tests / 250 pass / 0 fail / 2 todo / exit 0**
+- `node --test tests/*.test.js`: **256 tests / 254 pass / 0 fail / 2 todo / exit 0**
 - 既知TODO: backfill idempotency 2件
 - `git diff --check`: pass
 
 ## 6. 未充足の切替証跡
 
-R3レビューのMAJOR 1件、MINOR 2件と観察事項は`12baf4f`で修正した。実データ固定snapshotを生成してidentity gateを単独実行し、64 playerのうちrecordあり55、recordなし9、`no_match_evidence`検証済み9、failed 0を確認した。
+R4レビューのMAJOR 1件とMINOR 2件は`ad2758d`で修正した。Phase 2で`clubCompetitionStats`と`_aggregateBaselines`を運ぶ方針とし、recordなし6 playerが持つ両fieldをlegacy season rowに保存した。Core identityを推測できないため正規化`club_competition`行は作らず、snapshot由来の独立期待値と対象seasonのscope集合を厳密に検証する。
 
-全回帰は`252 tests / 250 pass / 0 fail / 2 todo / exit 0`。ただしリポジトリには、期待scope全件の完全な2.1 canonical JSON/R2 bundle、Git補正定義、fixture catalog、適用済みローカルD1 database、reconciled parity coverage、readiness plan v2が保存されていない。そのため、現時点で実データ期待scopeの`phase2TechnicalGatePassed: true`は確認していない。
+全回帰は`256 tests / 254 pass / 0 fail / 2 todo / exit 0`。ただしリポジトリには、期待scope全件の完全な2.1 canonical JSON/R2 bundle、Git補正定義、fixture catalog、適用済みローカルD1 database、reconciled parity coverage、readiness plan v2が保存されていない。そのため、現時点で実データ期待scopeの`phase2TechnicalGatePassed: true`は確認していない。
 
 これはコードレビューを妨げないが、Phase 3 cutoverの承認条件を満たさない。実データ成果物が揃った後に、次を実行し、reportをこのパケットへ添付する必要がある。
 
@@ -147,7 +159,7 @@ node scripts/d1/verify-phase2-readiness.js \
 
 ## 7. Claudeへの判定依頼
 
-コード修正commit `12baf4f`（差分範囲`087479e..12baf4f`）を対象に、R3 findingが解消されたかdiff-focusedで再レビューし、次の形式で回答すること。
+コード修正commit `ad2758d`（差分範囲`a8b4bc1..ad2758d`）を対象に、R4 findingが解消されたかdiff-focusedで再レビューし、次の形式で回答すること。
 
 ```text
 Verdict: PASS | CHANGES_REQUIRED
