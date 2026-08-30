@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-08-30T09:06:56+09:00",
+  "season": "2026-27",
+  "activeDataPath": "data.json",
+  "scopeNote": "J1 excluded from japanese-football-watch update gate per workflow_policy.json",
+  "updates": [
+    {
+      "type": "confirmed_match_appearance",
+      "competition": "Bundesliga",
+      "date": "2026-08-29",
+      "match": "Union Berlin 3-3 Eintracht Frankfurt",
+      "player": "小杉啓太",
+      "club": "Eintracht Frankfurt",
+      "facts": {
+        "start": true,
+        "appearance": true,
+        "bundesligaDebutForClub": true,
+        "substituted": false,
+        "goals": 0,
+        "assists": 0
+      },
+      "source": "Bundesliga official match center",
+      "sourceUrl": "https://www.bundesliga.com/en/bundesliga/matchday/2026-2027/1/1-fc-union-berlin-vs-eintracht-frankfurt/liveticker",
+      "jfwRatingStatus": "not_calculated_missing_required_exhaustive_inputs"
+    },
+    {
+      "type": "confirmed_match_squad_status",
+      "competition": "Bundesliga",
+      "date": "2026-08-29",
+      "match": "Union Berlin 3-3 Eintracht Frankfurt",
+      "player": "堂安律",
+      "club": "Eintracht Frankfurt",
+      "facts": {
+        "inStartingXI": false,
+        "onBench": false,
+        "appearance": false
+      },
+      "source": "Bundesliga official match center",
+      "sourceUrl": "https://www.bundesliga.com/en/bundesliga/matchday/2026-2027/1/1-fc-union-berlin-vs-eintracht-frankfurt/liveticker",
+      "jfwRatingStatus": "not_applicable_no_appearance"
+    },
+    {
+      "type": "confirmed_match_appearance",
+      "competition": "La Liga",
+      "date": "2026-08-29",
+      "match": "Real Sociedad 2-1 Espanyol",
+      "player": "久保建英",
+      "club": "Real Sociedad",
+      "facts": {
+        "start": false,
+        "bench": true,
+        "appearance": true,
+        "substitutionMinute": 78,
+        "goals": 0,
+        "assists": 0
+      },
+      "source": "LaLiga official match center",
+      "sourceUrl": "https://www.laliga.com/en-CO/match/temporada-2026-2027-laliga-ea-sports-real-sociedad-rcd-espanyol-de-barcelona-3",
+      "jfwRatingStatus": "not_calculated_missing_required_exhaustive_inputs"
+    }
+  ],
+  "workflowGate": {
+    "allTrackedLeaguesAndClubsComplete": false,
+    "allPlayerLevelCollectionComplete": false,
+    "allJfwRatingInputsComplete": false,
+    "integratedSnapshotBuilt": false,
+    "consistencyValidated": false,
+    "activeSeasonDataUpdated": false,
+    "snapshotReconciled": false,
+    "siteContractValidated": false,
+    "complete": false
+  },
+  "dataJsonModified": false,
+  "latestSnapshotModified": false
+}
