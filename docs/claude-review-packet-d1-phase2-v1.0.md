@@ -2,13 +2,17 @@
 
 状態: **CHANGES APPLIED — CLAUDE RE-REVIEW REQUIRED — PHASE 3 CUTOVER BLOCKED**
 
-対象branch: `design/d1-r2-er-screen-flow`
+対象branch: `fix/d1-phase2-review-r2`
 
 初回レビュー対象HEAD: `3f9fe90ffa5ccad8c21b478180619114c7702c61`
 
-修正対象HEAD: `0e74f2c0e479b0fb7720c4d51f614d6b900027de`
+R1修正対象HEAD: `0e74f2c0e479b0fb7720c4d51f614d6b900027de`
+
+R2修正対象HEAD: `afd2767a58f9861914c7a569afa2080efd0fdb83`
 
 初回レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30.md`
+
+R2レビュー結果: `docs/claude-review-result-d1-phase2-2026-08-30-r2.md`
 
 ## 1. レビュー目的
 
@@ -41,6 +45,7 @@ D1 Phase 1/2実装が、承認済みのD1/R2設計とfail-closed migration規則
 | `62e9507` | verified tracked-player aggregate rebuild |
 | `3f9fe90` | integrated read-only Phase 2 readiness verification |
 | `0e74f2c` | Claude findings: expected scope、order parity、correction provenance、constraints |
+| `afd2767` | R2 findings: snapshot-derived scope、event round-trip order、import-time correction parity |
 
 主な実装・仕様ファイル:
 
@@ -56,11 +61,11 @@ D1 Phase 1/2実装が、承認済みのD1/R2設計とfail-closed migration規則
 
 | Gate | 合格条件 |
 |---|---|
-| `fixtureRecords` | plan v2の`fixtureRecordIds`全件が公開D1 appearanceへ一意にlinkされ、比較可能な全fact parityがpassed |
+| `fixtureRecords` | snapshot全`playerMatchStats`から導出した`fixtureRecordIds`全件が公開D1 appearanceへ一意にlinkされ、比較可能な全fact parityがpassed |
 | `fixtureShadows` | scoped fixtureのJSON/R2、公開D1、独立Git補正定義が一致し、event/lineup entry順も一致 |
-| `trackedPlayerCrosswalks` | `trackedPlayerIds`全員と全membership期間がprovider evidenceどおりのCore identityへresolved |
-| `jfwRatings` | `ratingRecordIds`全件がauthored値・null状態・source hash・公開revisionと一致 |
-| `trackedPlayerAggregates` | `aggregatePlayerIds`全員の期待scopeが値・null・欠落・source hash・scope identityまで一致 |
+| `trackedPlayerCrosswalks` | snapshot recordから導出した`trackedPlayerIds`全員と全membership期間がprovider evidenceどおりのCore identityへresolved |
+| `jfwRatings` | snapshotのRating宣言から導出した`ratingRecordIds`全件がauthored値・null状態・source hash・公開revisionと一致 |
+| `trackedPlayerAggregates` | `trackedPlayerIds`と同一に導出した`aggregatePlayerIds`全員の期待scopeが値・null・欠落・source hash・scope identityまで一致 |
 
 5 gateの論理積だけが`phase2TechnicalGatePassed`になる。技術gate通過後も、Claude正式レビューまでは次を維持する。
 
@@ -72,7 +77,7 @@ D1 Phase 1/2実装が、承認済みのD1/R2設計とfail-closed migration規則
 }
 ```
 
-## 4. 初回レビューと修正結果
+## 4. レビュー履歴と修正結果
 
 初回Codex自己レビューのBLOCKER 0 / MAJOR 0判定は撤回する。Claude実データレビュー結果は次のとおり。
 
@@ -93,16 +98,26 @@ MINOR: 4
 - link+parityはreadiness実行中に1回だけ再計算し、各verifierで共有する。
 - tracking statusへDB CHECKを追加する。
 
+R2レビューは`CHANGES_REQUIRED`（BLOCKER 1 / MAJOR 2 / MINOR 5）。`afd2767`で次を反映した。
+
+- 4つのexpectation集合を固定snapshotから導出し、planの過少・過大宣言を完全一致validationで拒否する。
+- fixture parityはsnapshot全120 record、crosswalk／aggregateはrecordを持つ55 player、Ratingは宣言済み55 recordを分母とする。
+- eventsを`event_order`単独で復元し、source JSONの配列順をround-tripする。
+- Rating件数をproduct seasonと`rating_version`の両方で照合する。
+- `entry_order`のDEFAULTを外し、ordered array比較をcontract pathに限定する。
+- canonical fixture importでGit補正定義fileを必須にし、bundleとの一致をtransaction開始前に検証する。
+
 ## 5. 検証証跡
 
-- Claude finding関連tests: **59 pass / 0 fail**
-- `node --test tests/*.test.js`: **246 tests / 244 pass / 0 fail / 2 todo / exit 0**
+- `node --test tests/*.test.js`: **250 tests / 248 pass / 0 fail / 2 todo / exit 0**
 - 既知TODO: backfill idempotency 2件
 - `git diff --check`: pass
 
 ## 6. 未充足の切替証跡
 
-実データsnapshotの分母不成立は`0e74f2c`で修正した。ただしリポジトリには、期待scope全件の完全な2.1 canonical JSON/R2 bundle、Git補正定義、fixture catalog、適用済みローカルD1 database、reconciled parity coverage、readiness plan v2が保存されていない。そのため、現時点で実データ期待scopeの`phase2TechnicalGatePassed: true`は確認していない。
+R2レビューのBLOCKER 1件、MAJOR 2件、MINOR 5件は`afd2767`で修正した。readinessの4 expectationsは固定snapshotから導出してplanと完全照合し、eventsは`event_order`単独でsource配列順を復元する。Rating件数はproduct seasonとversionを照合し、lineup順序列はDEFAULTなし、ordered array判定はcontract path限定、canonical importはGit補正定義を必須入力として書込み前にbundleと照合する。
+
+全回帰は`250 tests / 248 pass / 0 fail / 2 todo / exit 0`。ただしリポジトリには、期待scope全件の完全な2.1 canonical JSON/R2 bundle、Git補正定義、fixture catalog、適用済みローカルD1 database、reconciled parity coverage、readiness plan v2が保存されていない。そのため、現時点で実データ期待scopeの`phase2TechnicalGatePassed: true`は確認していない。
 
 これはコードレビューを妨げないが、Phase 3 cutoverの承認条件を満たさない。実データ成果物が揃った後に、次を実行し、reportをこのパケットへ添付する必要がある。
 
@@ -117,7 +132,7 @@ node scripts/d1/verify-phase2-readiness.js \
 
 ## 7. Claudeへの判定依頼
 
-`3f9fe90..0e74f2c`を対象に、初回findingが解消されたかdiff-focusedで再レビューし、次の形式で回答すること。
+コード修正commit `afd2767`（差分範囲`4b3809f..afd2767`）を対象に、R2 findingが解消されたかdiff-focusedで再レビューし、次の形式で回答すること。
 
 ```text
 Verdict: PASS | CHANGES_REQUIRED
