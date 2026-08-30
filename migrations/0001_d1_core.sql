@@ -447,13 +447,7 @@ CREATE INDEX idx_fixtures_competition_date_kickoff ON fixtures(competition_seaso
 CREATE INDEX idx_fixtures_status_date ON fixtures(status_short, date_jst);
 CREATE INDEX idx_fixtures_home_kickoff ON fixtures(home_team_id, kickoff_utc DESC);
 CREATE INDEX idx_fixtures_away_kickoff ON fixtures(away_team_id, kickoff_utc DESC);
-CREATE INDEX idx_fixture_events_timeline ON fixture_events(fixture_revision_id, elapsed, extra_minute, event_order);
-CREATE UNIQUE INDEX ux_fixture_events_order ON fixture_events(
-  fixture_revision_id,
-  COALESCE(elapsed, -1),
-  COALESCE(extra_minute, -1),
-  event_order
-);
+CREATE UNIQUE INDEX ux_fixture_events_order ON fixture_events(fixture_revision_id, event_order);
 CREATE INDEX idx_fixture_player_records_history ON fixture_player_records(player_id, kickoff_utc DESC);
 CREATE INDEX idx_fixture_player_appearances_record_revision ON fixture_player_appearances(player_record_id, fixture_revision_id);
 CREATE INDEX idx_player_team_memberships_period ON player_team_memberships(player_id, valid_from, valid_to);

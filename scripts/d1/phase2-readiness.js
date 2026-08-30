@@ -1,7 +1,13 @@
 'use strict';
 
 const fs = require('node:fs');
-const { artifactSha256, stableStringify, validateFixedSnapshot } = require('./fixed-snapshot');
+const {
+  artifactSha256,
+  membershipKey,
+  sha256,
+  stableStringify,
+  validateFixedSnapshot,
+} = require('./fixed-snapshot');
 const {
   CORRECTION_DEFINITIONS_SCHEMA_VERSION,
   correctionDefinitions,
@@ -13,6 +19,7 @@ const { verifyFixtureRecordParity } = require('./fixture-record-parity');
 const { FixtureRepository } = require('./fixture-repository');
 const { compareFixtureBundles } = require('./fixture-shadow-compare');
 const { resolveArtifactPath } = require('./fixture-shadow-batch');
+const { aggregatePayload } = require('./fixed-snapshot-importer');
 const { createLocalD1 } = require('./local-d1');
 const {
   CROSSWALK_METHOD,
@@ -24,7 +31,7 @@ const { verifyTrackedPlayerRatings } = require('./tracked-player-rating-importer
 const { verifyTrackedPlayerAggregates } = require('./tracked-player-aggregate-rebuilder');
 
 const PHASE2_PLAN_SCHEMA_VERSION = 'd1-phase2-readiness-plan/2';
-const PHASE2_REPORT_SCHEMA_VERSION = 'd1-phase2-readiness-report/2';
+const PHASE2_REPORT_SCHEMA_VERSION = 'd1-phase2-readiness-report/3';
 const OPEN_ENDED_DATE = '9999-12-31';
 const EXPECTATION_KEYS = [
   'fixtureRecordIds',
@@ -323,6 +330,130 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage, expected
   };
 }
 
+function expectedLegacyMembership(snapshot, player, membership) {
+  const validFrom = membership.from || snapshot.season.startsOn;
+  const validTo = membership.to || OPEN_ENDED_DATE;
+  const identity = membershipKey(membership, snapshot.season.startsOn);
+  return {
+    legacyTeamLabel: membership.club,
+    legacyCompetitionLabel: membership.league,
+    validFrom,
+    validTo,
+    sourceHash: sha256({ inputSha256: artifactSha256(snapshot),
+      playerId: player.playerId, identity }),
+    periodValidFrom: validFrom,
+    periodValidTo: validTo,
+    periodTrackingStatus: membership.tracked === false
+      ? 'inactive' : (player.trackingStatus || 'active'),
+    changeType: membership.changeType || 'legacy_import',
+    verification: 'legacy_unverified',
+  };
+}
+
+function unresolvedIdentityState(database, snapshot, player) {
+  const tracked = row(database, `SELECT
+      player_id, crosswalk_state, tracking_status, tracking_started_on, tracking_ended_on
+    FROM tracked_players WHERE jfw_player_id = ?1`, player.playerId);
+  if (!tracked) return { status: 'failed', reason: 'tracked_player_not_stored' };
+  if (tracked.crosswalk_state === 'resolved' || tracked.player_id !== null) {
+    return { status: 'failed', reason: 'unexpected_resolved_identity_without_match_evidence' };
+  }
+  if (tracked.tracking_status !== (player.trackingStatus || 'active')
+    || tracked.tracking_started_on !== snapshot.season.startsOn
+    || tracked.tracking_ended_on !== null) {
+    return { status: 'failed', reason: 'tracked_player_state_does_not_match_fixed_snapshot' };
+  }
+
+  const periods = database.prepare(`SELECT
+      legacy.legacy_team_label, legacy.legacy_competition_label,
+      legacy.valid_from, legacy.valid_to, legacy.source_hash,
+      period.legacy_membership_id, period.core_membership_id, period.competition_season_id,
+      period.valid_from AS period_valid_from, period.valid_to AS period_valid_to,
+      period.tracking_status AS period_tracking_status,
+      period.change_type, period.verification
+    FROM tracking_periods period
+    LEFT JOIN legacy_tracking_memberships legacy ON legacy.id = period.legacy_membership_id
+    WHERE period.jfw_player_id = ?1
+    ORDER BY period.id`).all(player.playerId).map(period => ({
+    legacyTeamLabel: period.legacy_team_label,
+    legacyCompetitionLabel: period.legacy_competition_label,
+    validFrom: period.valid_from,
+    validTo: period.valid_to,
+    sourceHash: period.source_hash,
+    periodValidFrom: period.period_valid_from,
+    periodValidTo: period.period_valid_to,
+    periodTrackingStatus: period.period_tracking_status,
+    changeType: period.change_type,
+    verification: period.verification,
+    legacyMembershipStored: period.legacy_membership_id !== null,
+    coreMembershipStored: period.core_membership_id !== null,
+    competitionSeasonStored: period.competition_season_id !== null,
+  }));
+  const legacyRows = row(database, `SELECT COUNT(*) AS count
+    FROM legacy_tracking_memberships WHERE jfw_player_id = ?1`, player.playerId).count;
+  const expected = (player.membershipHistory || [])
+    .map(membership => ({
+      ...expectedLegacyMembership(snapshot, player, membership),
+      legacyMembershipStored: true,
+      coreMembershipStored: false,
+      competitionSeasonStored: false,
+    }))
+    .sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)));
+  periods.sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)));
+  if (legacyRows !== expected.length || stableStringify(periods) !== stableStringify(expected)) {
+    return { status: 'failed', reason: 'legacy_memberships_do_not_match_fixed_snapshot' };
+  }
+  const aggregateRows = database.prepare(`SELECT
+      aggregate.stats_json, aggregate.source_hash, aggregate.rebuilt_at,
+      season.canonical_id AS product_season_canonical_id
+    FROM tracked_player_aggregates aggregate
+    JOIN product_seasons season ON season.id = aggregate.product_season_id
+    WHERE aggregate.jfw_player_id = ?1
+      AND aggregate.aggregate_scope = 'season'
+      AND aggregate.competition_season_id IS NULL
+      AND aggregate.team_id IS NULL`).all(player.playerId);
+  const stats = aggregatePayload(player);
+  const expectedAggregate = {
+    productSeasonCanonicalId: `jfw:season:${snapshot.season.id}`,
+    stats,
+    sourceHash: sha256({ inputSha256: artifactSha256(snapshot),
+      playerId: player.playerId, stats }),
+    rebuiltAt: snapshot.createdAt,
+  };
+  const actualAggregate = aggregateRows.length === 1 ? {
+    productSeasonCanonicalId: aggregateRows[0].product_season_canonical_id,
+    stats: JSON.parse(aggregateRows[0].stats_json),
+    sourceHash: aggregateRows[0].source_hash,
+    rebuiltAt: aggregateRows[0].rebuilt_at,
+  } : null;
+  if (stableStringify(actualAggregate) !== stableStringify(expectedAggregate)) {
+    return { status: 'failed', reason: 'legacy_season_aggregate_does_not_match_fixed_snapshot' };
+  }
+  return { status: 'no_match_evidence', crosswalkState: tracked.crosswalk_state,
+    membershipPeriods: periods.length, legacySeasonAggregateVerified: true };
+}
+
+function verifyUnresolvedTrackedPlayerIdentities(database, snapshot, evidencePlayerIds) {
+  const players = snapshot.data.players
+    .filter(player => !evidencePlayerIds.has(player.playerId))
+    .sort((left, right) => left.playerId.localeCompare(right.playerId))
+    .map(player => ({ jfwPlayerId: player.playerId,
+      ...unresolvedIdentityState(database, snapshot, player) }));
+  const failed = players.filter(player => player.status === 'failed').length;
+  const verified = players.filter(player => player.status === 'no_match_evidence').length;
+  return {
+    passed: failed === 0 && verified === players.length,
+    summary: {
+      snapshotPlayers: snapshot.data.players.length,
+      evidenceBackedPlayers: evidencePlayerIds.size,
+      noMatchEvidencePlayers: players.length,
+      verifiedNoMatchPlayers: verified,
+      failedPlayers: failed,
+    },
+    players,
+  };
+}
+
 async function verifyFixtureShadows(database, plan, verifiedCoverage, expectedRecordIds, options = {}) {
   const baseDirectory = options.baseDirectory || process.cwd();
   const readJson = options.readJson || (filePath => JSON.parse(fs.readFileSync(filePath, 'utf8')));
@@ -407,6 +538,8 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
     scope.fixtureRecordIds, options);
   const crosswalks = verifyResolvedCrosswalks(database, snapshot, verifiedCoverage,
     scope.trackedPlayerIds);
+  const identities = verifyUnresolvedTrackedPlayerIdentities(database, snapshot,
+    scope.trackedPlayerIds);
   const ratings = verifyTrackedPlayerRatings(database, snapshot, coverage, {
     expectedRecordIds: scope.ratingRecordIds,
     verifiedCoverage,
@@ -418,6 +551,7 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
   const gates = {
     fixtureRecords: fixtureRecords.passed,
     fixtureShadows: shadows.passed,
+    trackedPlayerIdentities: identities.passed,
     trackedPlayerCrosswalks: crosswalks.passed,
     jfwRatings: ratings.summary.ratingGatePassed,
     trackedPlayerAggregates: aggregates.summary.aggregateParityGatePassed,
@@ -439,6 +573,7 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
         'claude_formal_review'],
     fixtureRecords,
     fixtureShadows: shadows,
+    trackedPlayerIdentities: identities,
     trackedPlayerCrosswalks: crosswalks,
     jfwRatings: ratings,
     trackedPlayerAggregates: aggregates,
@@ -459,4 +594,5 @@ module.exports = {
   validateCorrectionDefinitions,
   verifyFixtureShadows,
   verifyResolvedCrosswalks,
+  verifyUnresolvedTrackedPlayerIdentities,
 };

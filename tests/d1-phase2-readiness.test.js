@@ -44,7 +44,10 @@ function fixedSnapshot({ mixed = false } = {}) {
     seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
   }, {
     playerId: 'jp:outside', name: 'Outside', club: null, league: null,
-    trackingStatus: 'out_of_scope', membershipHistory: [],
+    trackingStatus: 'out_of_scope', membershipHistory: [{
+      club: 'Former FC', league: 'Former League', from: '2026-07-01', to: '2026-08-01',
+      tracked: false, changeType: 'scope_exit',
+    }],
     seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
   }] : [];
   const extraMatches = mixed ? [{
@@ -207,6 +210,7 @@ test('Phase 2 readiness recomputes every gate without writes and remains pending
   assert.deepEqual(report.gates, {
     fixtureRecords: true,
     fixtureShadows: true,
+    trackedPlayerIdentities: true,
     trackedPlayerCrosswalks: true,
     jfwRatings: true,
     trackedPlayerAggregates: true,
@@ -236,6 +240,11 @@ test('snapshot-derived scope rejects omissions and reports migration gaps withou
   derived.expectations.fixtureRecordIds.push('record:unscored');
   derived.expectations.trackedPlayerIds.push('jp:unresolved');
   derived.expectations.aggregatePlayerIds.push('jp:unresolved');
+  const overdeclared = structuredClone(derived);
+  overdeclared.expectations.fixtureRecordIds.push('record:ghost');
+  await assert.rejects(evaluatePhase2Readiness(database, snapshot, coverage, overdeclared, {
+    baseDirectory: temporary,
+  }), /expectations\.fixtureRecordIds must exactly match.*unexpected: record:ghost/);
   const blocked = await evaluatePhase2Readiness(database, snapshot, coverage, derived, {
     baseDirectory: temporary,
   });
@@ -249,6 +258,7 @@ test('snapshot-derived scope rejects omissions and reports migration gaps withou
     parityPassedRecords: 1,
   });
   assert.equal(blocked.gates.fixtureRecords, false);
+  assert.equal(blocked.gates.trackedPlayerIdentities, true);
   assert.equal(blocked.gates.trackedPlayerCrosswalks, false);
   assert.equal(blocked.gates.jfwRatings, true);
   assert.equal(blocked.gates.trackedPlayerAggregates, false);
@@ -258,6 +268,65 @@ test('snapshot-derived scope rejects omissions and reports migration gaps withou
   assert.equal(blocked.jfwRatings.summary.notApplicableRatings, 1);
   assert.equal(blocked.trackedPlayerAggregates.summary.expectedPlayers, 2);
   assert.equal(blocked.trackedPlayerAggregates.summary.notApplicablePlayers, 1);
+  assert.deepEqual(blocked.trackedPlayerIdentities.summary, {
+    snapshotPlayers: 3,
+    evidenceBackedPlayers: 2,
+    noMatchEvidencePlayers: 1,
+    verifiedNoMatchPlayers: 1,
+    failedPlayers: 0,
+  });
+  assert.equal(blocked.trackedPlayerIdentities.players[0].status, 'no_match_evidence');
+  assert.equal(blocked.trackedPlayerIdentities.players[0].legacySeasonAggregateVerified, true);
+});
+
+test('identity-only player membership drift closes the independent identity gate', async t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-phase2-identity-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, snapshot);
+  migrateTrackingFacts(database, snapshot, coverage);
+  const artifacts = await readinessArtifacts(database, temporary);
+  artifacts.plan.expectations.fixtureRecordIds.push('record:unscored');
+  artifacts.plan.expectations.trackedPlayerIds.push('jp:unresolved');
+  artifacts.plan.expectations.aggregatePlayerIds.push('jp:unresolved');
+  database.exec(`UPDATE legacy_tracking_memberships SET legacy_team_label = 'Tampered FC'
+    WHERE jfw_player_id = 'jp:outside'`);
+
+  const report = await evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+    baseDirectory: temporary,
+  });
+
+  assert.equal(report.gates.trackedPlayerIdentities, false);
+  assert.equal(report.trackedPlayerIdentities.players[0].status, 'failed');
+  assert.equal(report.trackedPlayerIdentities.players[0].reason,
+    'legacy_memberships_do_not_match_fixed_snapshot');
+  assert.equal(report.phase2TechnicalGatePassed, false);
+});
+
+test('identity-only legacy aggregate drift closes the independent identity gate', async t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-phase2-identity-aggregate-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, snapshot);
+  migrateTrackingFacts(database, snapshot, coverage);
+  const artifacts = await readinessArtifacts(database, temporary);
+  artifacts.plan.expectations.fixtureRecordIds.push('record:unscored');
+  artifacts.plan.expectations.trackedPlayerIds.push('jp:unresolved');
+  artifacts.plan.expectations.aggregatePlayerIds.push('jp:unresolved');
+  database.exec(`UPDATE tracked_player_aggregates SET source_hash = '${'e'.repeat(64)}'
+    WHERE jfw_player_id = 'jp:outside' AND aggregate_scope = 'season'`);
+
+  const report = await evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+    baseDirectory: temporary,
+  });
+
+  assert.equal(report.gates.trackedPlayerIdentities, false);
+  assert.equal(report.trackedPlayerIdentities.players[0].reason,
+    'legacy_season_aggregate_does_not_match_fixed_snapshot');
 });
 
 test('Rating and aggregate verifiers detect tampering without repairing D1', t => {

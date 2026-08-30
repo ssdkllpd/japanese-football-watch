@@ -181,7 +181,7 @@ test('appearance, lineup and rating rows cannot cross fixture or team boundaries
     SET fixture_revision_id = 2 WHERE id = 1`), /same fixture|existing lineup/);
 });
 
-test('event ordering treats null extra minute as a real uniqueness key', () => {
+test('event ordering is unique by source array position within a revision', () => {
   const db = openDatabase();
   seedCore(db);
   addRevision(db, { id: 1, fixtureId: 1, revisionNo: 1 });
@@ -190,7 +190,7 @@ test('event ordering treats null extra minute as a real uniqueness key', () => {
   ) VALUES (1, 'event-1', 10, NULL, 1, 'goal')`);
   assert.throws(() => insert(db, `INSERT INTO fixture_events(
     fixture_revision_id, event_key, elapsed, extra_minute, event_order, type
-  ) VALUES (1, 'event-2', 10, NULL, 1, 'goal')`), /UNIQUE constraint failed/);
+  ) VALUES (1, 'event-2', 70, 2, 1, 'goal')`), /UNIQUE constraint failed/);
 });
 
 test('missing-state, tracking XOR and archive active-pointer checks fail closed', () => {
@@ -274,7 +274,7 @@ test('representative public queries use the reviewed indexes', () => {
     db.prepare(`EXPLAIN QUERY PLAN SELECT id FROM fixtures
       WHERE date_jst = ? ORDER BY kickoff_utc`).all('2026-08-22'),
     db.prepare(`EXPLAIN QUERY PLAN SELECT id FROM fixture_events
-      WHERE fixture_revision_id = ? ORDER BY elapsed, extra_minute, event_order`).all(1),
+      WHERE fixture_revision_id = ? ORDER BY event_order`).all(1),
     db.prepare(`EXPLAIN QUERY PLAN SELECT id FROM fixture_player_records
       WHERE player_id = ? ORDER BY kickoff_utc DESC`).all(1),
     db.prepare(`EXPLAIN QUERY PLAN SELECT correction_key FROM correction_states
@@ -282,7 +282,7 @@ test('representative public queries use the reviewed indexes', () => {
   ].flat().map(row => row.detail).join('\n');
 
   assert.match(plans, /idx_fixtures_date_kickoff/);
-  assert.match(plans, /idx_fixture_events_timeline|ux_fixture_events_order/);
+  assert.match(plans, /ux_fixture_events_order/);
   assert.match(plans, /idx_fixture_player_records_history/);
   assert.match(plans, /idx_correction_states_target/);
   assert.doesNotMatch(plans, /SCAN fixtures/);

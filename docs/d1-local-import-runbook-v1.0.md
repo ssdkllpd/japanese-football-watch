@@ -245,7 +245,7 @@ node scripts/d1/compare-fixture-shadow-batch.js \
 
 ### Phase 2 統合readiness gate
 
-fixture record、fresh D1 shadow、crosswalk、JFW Rating、aggregateを一つのread-only reportで再検証する。planには固定snapshotが参照する全canonical fixtureとJSON/R2正本bundleの相対pathを列挙する。
+fixture record、fresh D1 shadow、recordなしplayer identity、crosswalk、JFW Rating、aggregateを一つのread-only reportで再検証する。planには固定snapshotが参照する全canonical fixtureとJSON/R2正本bundleの相対pathを列挙する。
 
 ```json
 {
@@ -287,11 +287,13 @@ node scripts/d1/verify-phase2-readiness.js \
 
 readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから1回だけ再計算し、その結果をfixture、crosswalk、Rating、aggregateの各gateで共有する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。補正定義は比較対象JSONからD1 DTOへ注入せず、独立したGit定義、JSON bundle、D1保存状態の三者を照合する。
 
-`expectations`の4集合は任意のscope宣言ではなく、固定snapshotから導出した期待値との照合用である。evaluatorは`fixtureRecordIds`を`playerMatchStats`全record、`trackedPlayerIds`をそのrecordに登場する全player、`ratingRecordIds`を`ratingVersion`または`jfwRating`が宣言された全record、`aggregatePlayerIds`を`trackedPlayerIds`と同一集合として再計算する。plan側の欠落・余分なIDはいずれもvalidation errorにし、gate評価へ進めない。これにより任意の除外でgateを通すことを防ぎつつ、recordを持たないsnapshot playerをcrosswalk分母へ混入させない。
+`expectations`の4集合は任意のscope宣言ではなく、固定snapshotから導出した期待値との照合用である。evaluatorは`fixtureRecordIds`を`playerMatchStats`全record、`trackedPlayerIds`をそのrecordに登場する全player、`ratingRecordIds`を`ratingVersion`または`jfwRating`が宣言された全record、`aggregatePlayerIds`を`trackedPlayerIds`と同一集合として再計算する。plan側の欠落・余分なIDはいずれもvalidation errorにし、gate評価へ進めない。これにより任意の除外でgateを通すことを防ぎつつ、recordを持たないsnapshot playerをresolved crosswalk分母へ混入させない。
+
+recordを持たないsnapshot playerも検証から除外しない。`trackedPlayerIdentities` gateが、未解決identity、tracking属性、legacy membershipのラベル・期間・status・change type・verification・source hash、およびlegacy season aggregateを固定snapshotと完全照合する。match由来provider evidenceがない正常状態は`no_match_evidence`として明示し、欠落・改変・根拠のないresolved化は`failed`としてgateを閉じる。
 
 crosswalkは期待集合内の全membership期間についてprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは各期待集合について固定snapshot由来のsource hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。`ratingVersion`を持たない未採点recordはRating migration非対象の`not_applicable`であり、期待集合へ宣言された場合だけ`expected_rating_not_authored`としてgateを閉じる。
 
-5 gateがすべて通った場合だけ`phase2TechnicalGatePassed: true`になる。CLIは未通過時に終了コード`1`を返す。ただしPhase 3の正式切替にはClaude formal reviewが別途必要なため、このreportでも`productionReady: false`、`phase3CutoverReady: false`を維持し、技術gate通過後の`remainingGates`は`claude_formal_review`だけとする。
+6 gateがすべて通った場合だけ`phase2TechnicalGatePassed: true`になる。CLIは未通過時に終了コード`1`を返す。ただしPhase 3の正式切替にはClaude formal reviewが別途必要なため、このreportでも`productionReady: false`、`phase3CutoverReady: false`を維持し、技術gate通過後の`remainingGates`は`claude_formal_review`だけとする。
 
 ### Phase 2 canonical bundle import
 
