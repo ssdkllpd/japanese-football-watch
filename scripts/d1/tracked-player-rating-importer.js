@@ -192,15 +192,21 @@ function ratingCountForProductSeason(database, tableName, productSeasonCanonical
     WHERE product.canonical_id = ?1`, productSeasonCanonicalId).count;
 }
 
-function ratingCountForExpectedEntries(database, tableName, entries) {
+function ratingCountForExpectedEntries(database, tableName, entries, productSeasonCanonicalId) {
   if (!new Set(['jfw_rating_results', 'published_jfw_rating_results']).has(tableName)) {
     throw new Error('Unsupported Rating count source.');
   }
   const expected = new Set(entries
     .filter(entry => entry.playerRecordId && entry.ratingVersion)
-    .map(entry => entry.playerRecordId));
-  return database.prepare(`SELECT player_record_id, rating_version FROM ${tableName}`).all()
-    .filter(item => expected.has(item.player_record_id)).length;
+    .map(entry => `${entry.playerRecordId}:${entry.ratingVersion}`));
+  return database.prepare(`SELECT rating.player_record_id, rating.rating_version
+    FROM ${tableName} rating
+    JOIN fixture_player_records record ON record.id = rating.player_record_id
+    JOIN fixtures fixture ON fixture.id = record.fixture_id
+    JOIN competition_seasons season ON season.id = fixture.competition_season_id
+    JOIN product_seasons product ON product.id = season.product_season_id
+    WHERE product.canonical_id = ?1`).all(productSeasonCanonicalId)
+    .filter(item => expected.has(`${item.player_record_id}:${item.rating_version}`)).length;
 }
 
 function prepareRatingExpectations(database, snapshot, coverage, options = {}) {
@@ -376,10 +382,12 @@ function verifyTrackedPlayerRatings(database, snapshot, coverage, options = {}) 
   });
   const count = status => results.filter(result => result.status === status).length;
   const storedCount = options.expectedRecordIds
-    ? ratingCountForExpectedEntries(database, 'jfw_rating_results', prepared.entries)
+    ? ratingCountForExpectedEntries(database, 'jfw_rating_results', prepared.entries,
+      prepared.productSeasonCanonicalId)
     : ratingCountForProductSeason(database, 'jfw_rating_results', prepared.productSeasonCanonicalId);
   const publishedCount = options.expectedRecordIds
-    ? ratingCountForExpectedEntries(database, 'published_jfw_rating_results', prepared.entries)
+    ? ratingCountForExpectedEntries(database, 'published_jfw_rating_results', prepared.entries,
+      prepared.productSeasonCanonicalId)
     : ratingCountForProductSeason(database, 'published_jfw_rating_results',
       prepared.productSeasonCanonicalId);
   const expectedCount = results.length - count('not_applicable');

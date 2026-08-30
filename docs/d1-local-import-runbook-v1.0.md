@@ -74,6 +74,7 @@ provider fixture ID確認済みfixtureは、JSON/R2経路が生成した完全�
       "fixtureId": "af:fixture:9001",
       "bundlePath": "bundles/9001.json",
       "catalogPath": "catalogs/9001.json",
+      "correctionsPath": "corrections/9001.json",
       "expectedContentSha256": "<canonical-sha256>"
     }
   ]
@@ -87,7 +88,7 @@ node scripts/d1/import-canonical-fixture-batch.js \
   --report /tmp/canonical/import-report.json
 ```
 
-各fixtureは独立transactionでmaster、compact、完全detail、state/provenance、published pointerをまとめて登録し、直後にD1読戻しとのsemantic shadow compareを行う。同一content hashの再実行はno-op、置換は次のrevisionだけを受理する。event参加者に対応するcanonical player metadataがbundleまたはcatalogにない場合も名前を推測せず拒否する。1件の失敗で後続fixtureは止めず、import errorとshadow mismatchをreportへfixture単位で記録する。
+各fixtureは独立transactionでmaster、compact、完全detail、state/provenance、published pointerをまとめて登録し、直後にD1読戻しとのsemantic shadow compareを行う。書込み前にGit管理の`correctionsPath`とbundleの補正定義を完全照合し、不一致ならfixture stateを一切書き込まない。同一content hashの再実行はno-op、置換は次のrevisionだけを受理する。event配列とlineup entry配列はsourceの配列順をそれぞれ`event_order`／`entry_order`で保存する。event参加者に対応するcanonical player metadataがbundleまたはcatalogにない場合も名前を推測せず拒否する。1件の失敗で後続fixtureは止めず、import errorとshadow mismatchをreportへfixture単位で記録する。
 
 import reportをcoverageへ反映すると、`canonical_bundle_not_available`と`canonical_bundle_imported_record_linkage_pending`を区別できる。
 
@@ -286,7 +287,7 @@ node scripts/d1/verify-phase2-readiness.js \
 
 readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから1回だけ再計算し、その結果をfixture、crosswalk、Rating、aggregateの各gateで共有する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。補正定義は比較対象JSONからD1 DTOへ注入せず、独立したGit定義、JSON bundle、D1保存状態の三者を照合する。
 
-`expectations`の4集合がD1 v1 migrationの期待分母である。snapshotに存在しても集合外のrecord/playerは`not_applicable`としてreportへ残し、`deferred`と混同しない。集合内の未採点record、provider identity不足、link/parity不足は`deferred`または`failed`としてgateを閉じる。Rating recordはfixture recordとtracked player、aggregate playerはtracked playerの期待集合に含まれなければplan validationで拒否する。これにより任意の除外でgateを通すことと、snapshot全120 record／64 playerを一律分母にして原理的に通らなくすることの両方を防ぐ。
+`expectations`の4集合は任意のscope宣言ではなく、固定snapshotから導出した期待値との照合用である。evaluatorは`fixtureRecordIds`を`playerMatchStats`全record、`trackedPlayerIds`をそのrecordに登場する全player、`ratingRecordIds`を`ratingVersion`または`jfwRating`が宣言された全record、`aggregatePlayerIds`を`trackedPlayerIds`と同一集合として再計算する。plan側の欠落・余分なIDはいずれもvalidation errorにし、gate評価へ進めない。これにより任意の除外でgateを通すことを防ぎつつ、recordを持たないsnapshot playerをcrosswalk分母へ混入させない。
 
 crosswalkは期待集合内の全membership期間についてprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは各期待集合について固定snapshot由来のsource hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。`ratingVersion`を持たない未採点recordはRating migration非対象の`not_applicable`であり、期待集合へ宣言された場合だけ`expected_rating_not_authored`としてgateを閉じる。
 
@@ -300,6 +301,7 @@ crosswalkは期待集合内の全membership期間についてprovider player/tea
 node scripts/d1/import-fixture-bundle.js \
   --input /tmp/fixture-9001.json \
   --catalog /tmp/fixture-9001-catalog.json \
+  --corrections /tmp/fixture-9001-corrections.json \
   --database /tmp/jfw-local-d1.sqlite3 \
   --report /tmp/fixture-9001-import-report.json
 ```
@@ -315,7 +317,7 @@ catalogは最低限、既にD1へimport済みの`productSeasonId`、provider API
 }
 ```
 
-importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時刻、provenance、section/field state、補正状態を検証する。書込みは1 transactionでstaging revisionを組み立て、検証後にpublished pointerを切り替える。同じcontent hashの再実行はno-opにし、revision飛び、未知player metadata、曖昧な時刻は書込み前またはtransaction rollbackで拒否する。27試合のlegacy enrichmentは完全bundleではないため、このコマンドへの入力に昇格させない。
+importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時刻、provenance、section/field state、補正状態を検証する。`--corrections`は補正なしでも空の定義fileを必須とし、fixture ID、補正key、field path、理由、source URL、検証時刻をbundleと完全照合してから書込みを開始する。書込みは1 transactionでstaging revisionを組み立て、検証後にpublished pointerを切り替える。同じcontent hashの再実行はno-opにし、revision飛び、未知player metadata、曖昧な時刻は書込み前またはtransaction rollbackで拒否する。27試合のlegacy enrichmentは完全bundleではないため、このコマンドへの入力に昇格させない。
 
 ## 4. 回帰確認
 

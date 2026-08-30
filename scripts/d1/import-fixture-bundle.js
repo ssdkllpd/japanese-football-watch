@@ -14,8 +14,8 @@ function parseArguments(argv) {
   return values;
 }
 
-async function importAndCompare(database, bundle, catalog) {
-  const imported = importFixtureBundle(database, bundle, catalog);
+async function importAndCompare(database, bundle, catalog, correctionDocument) {
+  const imported = importFixtureBundle(database, bundle, catalog, correctionDocument);
   const resolved = await new FixtureRepository(createLocalD1(database))
     .resolveFixture(bundle.fixture.id);
   if (!resolved || resolved.source !== 'd1') throw new Error(`Imported fixture did not resolve from D1: ${bundle.fixture.id}`);
@@ -31,14 +31,16 @@ async function importAndCompare(database, bundle, catalog) {
 
 async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  if (!args['--input'] || !args['--catalog'] || !args['--database'] || !args['--report']) {
-    throw new Error('Usage: node scripts/d1/import-fixture-bundle.js --input FILE --catalog FILE --database FILE --report FILE');
+  if (!args['--input'] || !args['--catalog'] || !args['--corrections']
+    || !args['--database'] || !args['--report']) {
+    throw new Error('Usage: node scripts/d1/import-fixture-bundle.js --input FILE --catalog FILE --corrections FILE --database FILE --report FILE');
   }
   const bundle = JSON.parse(fs.readFileSync(args['--input'], 'utf8'));
   const catalog = JSON.parse(fs.readFileSync(args['--catalog'], 'utf8'));
+  const correctionDocument = JSON.parse(fs.readFileSync(args['--corrections'], 'utf8'));
   const database = new DatabaseSync(args['--database']);
   try {
-    const report = await importAndCompare(database, bundle, catalog);
+    const report = await importAndCompare(database, bundle, catalog, correctionDocument);
     fs.writeFileSync(args['--report'], `${stableStringify(report)}\n`);
     process.stdout.write(`${JSON.stringify({ fixtureId: report.fixtureId, imported: report.imported.imported, passed: report.passed })}\n`);
     if (!report.passed) process.exitCode = 1;

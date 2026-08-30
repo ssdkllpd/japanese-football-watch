@@ -192,7 +192,7 @@ CREATE TABLE fixture_lineup_entries (
   lineup_id INTEGER NOT NULL REFERENCES fixture_lineups(id) ON DELETE CASCADE,
   player_appearance_id INTEGER NOT NULL REFERENCES fixture_player_appearances(id) ON DELETE CASCADE,
   squad_role TEXT NOT NULL CHECK (squad_role IN ('starter', 'substitute')),
-  entry_order INTEGER NOT NULL DEFAULT 0 CHECK (entry_order >= 0),
+  entry_order INTEGER NOT NULL CHECK (entry_order >= 0),
   shirt_number INTEGER CHECK (shirt_number IS NULL OR shirt_number > 0),
   grid TEXT,
   PRIMARY KEY (lineup_id, player_appearance_id),

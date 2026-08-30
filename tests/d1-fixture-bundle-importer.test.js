@@ -6,7 +6,11 @@ const path = require('node:path');
 const test = require('node:test');
 const { DatabaseSync } = require('node:sqlite');
 
-const { importFixtureBundle, validateBundle } = require('../scripts/d1/fixture-bundle-importer');
+const {
+  correctionDefinitions,
+  importFixtureBundle,
+  validateBundle,
+} = require('../scripts/d1/fixture-bundle-importer');
 const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { compareFixtureBundles } = require('../scripts/d1/fixture-shadow-compare');
 const { importAndCompare } = require('../scripts/d1/import-fixture-bundle');
@@ -91,6 +95,14 @@ function catalog() {
   };
 }
 
+function corrections(bundle) {
+  return {
+    schemaVersion: 'd1-fixture-correction-definitions/1',
+    fixtureId: bundle.fixture.id,
+    definitions: correctionDefinitions(bundle),
+  };
+}
+
 function createDatabase() {
   const database = new DatabaseSync(':memory:');
   database.exec(migration);
@@ -104,7 +116,7 @@ test('complete 2.1 bundle imports transactionally and has semantic round-trip pa
   t.after(() => database.close());
   const bundle = fixtureBundle();
 
-  const report = await importAndCompare(database, bundle, catalog());
+  const report = await importAndCompare(database, bundle, catalog(), corrections(bundle));
   const imported = report.imported;
   const resolved = await new FixtureRepository(createLocalD1(database))
     .resolveFixture(bundle.fixture.id);
@@ -123,7 +135,7 @@ test('shadow parity detects correction provenance drift stored in D1', async t =
   const database = createDatabase();
   t.after(() => database.close());
   const bundle = fixtureBundle();
-  importFixtureBundle(database, bundle, catalog());
+  importFixtureBundle(database, bundle, catalog(), corrections(bundle));
   database.exec(`UPDATE correction_states SET reason = 'Tampered reason',
     source_url = 'https://example.com/tampered',
     verified_at = '2026-08-21T20:59:00.000Z'`);
@@ -145,7 +157,7 @@ test('D1 round-trip preserves lineup entry order and detects stored order drift'
     id: 'af:player:1002', providerId: 1002, name: 'Second Player', number: 8,
     position: 'M', grid: '2:1', role: 'starter',
   });
-  importFixtureBundle(database, bundle, catalog());
+  importFixtureBundle(database, bundle, catalog(), corrections(bundle));
 
   const before = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
   assert.deepEqual(before.bundle.lineups[0].startXI.map(player => player.id),
@@ -161,11 +173,42 @@ test('D1 round-trip preserves lineup entry order and detects stored order drift'
   assert.equal(comparison.differences.some(item => item.path.includes('/startXI/')), true);
 });
 
+test('D1 round-trip preserves authored event array order independent of elapsed time', async t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const bundle = fixtureBundle();
+  bundle.events = [{
+    id: 'event:card:70', type: 'card', detail: 'Yellow Card', comments: null,
+    elapsed: 70, extra: null, teamId: 'af:team:40', playerId: 'af:player:1001',
+    relatedPlayerId: null, provenance: provenance(),
+  }, ...bundle.events];
+
+  const report = await importAndCompare(database, bundle, catalog(), corrections(bundle));
+  const resolved = await new FixtureRepository(createLocalD1(database))
+    .resolveFixture(bundle.fixture.id);
+
+  assert.equal(report.passed, true, JSON.stringify(report.shadow.differences));
+  assert.deepEqual(resolved.bundle.events.map(event => event.id),
+    ['event:card:70', 'event:goal:12']);
+});
+
+test('import rejects correction definition drift before writing fixture state', t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const bundle = fixtureBundle();
+  const declared = corrections(bundle);
+  declared.definitions[0].reason = 'Drifted Git reason';
+
+  assert.throws(() => importFixtureBundle(database, bundle, catalog(), declared),
+    /must exactly match/);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM fixtures').get().count, 0);
+});
+
 test('a replacement revision removes stale correction state and superseded detail', async t => {
   const database = createDatabase();
   t.after(() => database.close());
   const original = fixtureBundle();
-  importFixtureBundle(database, original, catalog());
+  importFixtureBundle(database, original, catalog(), corrections(original));
   const replacement = JSON.parse(JSON.stringify(original));
   const nextObservedAt = '2026-08-22T01:00:00.000Z';
   replacement.fixture.revision = 2;
@@ -177,7 +220,7 @@ test('a replacement revision removes stale correction state and superseded detai
   replacement.fixture.score.fulltime.home = 2;
   replacement.overrides = {};
 
-  const report = await importAndCompare(database, replacement, catalog());
+  const report = await importAndCompare(database, replacement, catalog(), corrections(replacement));
 
   assert.equal(report.passed, true, JSON.stringify(report.shadow.differences));
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM correction_states').get().count, 0);
@@ -193,8 +236,8 @@ test('identical published content is a no-op with no new revision', t => {
   t.after(() => database.close());
   const bundle = fixtureBundle();
 
-  importFixtureBundle(database, bundle, catalog());
-  const repeated = importFixtureBundle(database, bundle, catalog());
+  importFixtureBundle(database, bundle, catalog(), corrections(bundle));
+  const repeated = importFixtureBundle(database, bundle, catalog(), corrections(bundle));
 
   assert.equal(repeated.imported, false);
   assert.equal(repeated.reason, 'already_published');
@@ -205,12 +248,13 @@ test('invalid next revision rolls the attempted replacement back to the publishe
   const database = createDatabase();
   t.after(() => database.close());
   const original = fixtureBundle();
-  importFixtureBundle(database, original, catalog());
+  importFixtureBundle(database, original, catalog(), corrections(original));
   const invalid = fixtureBundle();
   invalid.fixture.revision = 3;
   invalid.fixture.score.goals.home = 4;
 
-  assert.throws(() => importFixtureBundle(database, invalid, catalog()), /next revision \(2\)/);
+  assert.throws(() => importFixtureBundle(database, invalid, catalog(), corrections(invalid)),
+    /next revision \(2\)/);
   const resolved = await new FixtureRepository(createLocalD1(database))
     .resolveFixture(original.fixture.id);
 

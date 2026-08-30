@@ -2,7 +2,11 @@
 
 const fs = require('node:fs');
 const { artifactSha256, stableStringify, validateFixedSnapshot } = require('./fixed-snapshot');
-const { correctionDefinitions } = require('./fixture-bundle-importer');
+const {
+  CORRECTION_DEFINITIONS_SCHEMA_VERSION,
+  correctionDefinitions,
+  validateCorrectionDefinitions,
+} = require('./fixture-bundle-importer');
 const { validateCoverageManifest } = require('./fixture-coverage');
 const { linkFixtureRecords } = require('./fixture-record-linkage');
 const { verifyFixtureRecordParity } = require('./fixture-record-parity');
@@ -22,7 +26,6 @@ const { verifyTrackedPlayerAggregates } = require('./tracked-player-aggregate-re
 const PHASE2_PLAN_SCHEMA_VERSION = 'd1-phase2-readiness-plan/2';
 const PHASE2_REPORT_SCHEMA_VERSION = 'd1-phase2-readiness-report/2';
 const OPEN_ENDED_DATE = '9999-12-31';
-const CORRECTION_DEFINITIONS_SCHEMA_VERSION = 'd1-fixture-correction-definitions/1';
 const EXPECTATION_KEYS = [
   'fixtureRecordIds',
   'trackedPlayerIds',
@@ -85,50 +88,27 @@ function validatePhase2ReadinessPlan(plan) {
   return errors;
 }
 
-function validateCorrectionDefinitions(document, fixtureId) {
-  const errors = [];
-  if (document?.schemaVersion !== CORRECTION_DEFINITIONS_SCHEMA_VERSION) {
-    errors.push('unsupported correction definitions schemaVersion');
-  }
-  if (document?.fixtureId !== fixtureId) errors.push('correction definitions fixtureId mismatch');
-  if (!Array.isArray(document?.definitions)) {
-    errors.push('correction definitions must be an array');
-    return errors;
-  }
-  const keys = new Set();
-  for (const [index, definition] of document.definitions.entries()) {
-    if (definition?.correctionKey !== `${fixtureId}:${definition?.fieldPath || ''}`) {
-      errors.push(`definitions[${index}].correctionKey must derive from fixtureId and fieldPath`);
-    }
-    if (!definition?.fieldPath) errors.push(`definitions[${index}].fieldPath is required`);
-    if (keys.has(definition?.correctionKey)) {
-      errors.push(`duplicate correctionKey: ${definition.correctionKey}`);
-    }
-    keys.add(definition?.correctionKey);
-  }
-  return errors;
-}
-
 function expectedScope(plan, snapshot, verifiedCoverage) {
-  const recordIds = new Set(snapshot.data.playerMatchStats.map(record => record.recordId));
-  const playerIds = new Set(snapshot.data.players.map(player => player.playerId));
-  const recordsById = new Map(snapshot.data.playerMatchStats.map(record => [record.recordId, record]));
+  const records = snapshot.data.playerMatchStats;
   const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
-  const scope = Object.fromEntries(EXPECTATION_KEYS.map(key => [key, new Set(plan.expectations[key])]));
+  const trackedPlayerIds = new Set(records.map(record => record.playerId));
+  const scope = {
+    fixtureRecordIds: new Set(records.map(record => record.recordId)),
+    trackedPlayerIds,
+    ratingRecordIds: new Set(records
+      .filter(record => Object.hasOwn(record, 'ratingVersion') || Object.hasOwn(record, 'jfwRating'))
+      .map(record => record.recordId)),
+    aggregatePlayerIds: new Set(trackedPlayerIds),
+  };
   const errors = [];
-  for (const id of scope.fixtureRecordIds) if (!recordIds.has(id)) errors.push(`unknown fixtureRecordId: ${id}`);
-  for (const id of scope.ratingRecordIds) if (!recordIds.has(id)) errors.push(`unknown ratingRecordId: ${id}`);
-  for (const id of scope.trackedPlayerIds) if (!playerIds.has(id)) errors.push(`unknown trackedPlayerId: ${id}`);
-  for (const id of scope.aggregatePlayerIds) if (!playerIds.has(id)) errors.push(`unknown aggregatePlayerId: ${id}`);
-  for (const id of scope.ratingRecordIds) {
-    if (!scope.fixtureRecordIds.has(id)) errors.push(`ratingRecordId is outside fixtureRecordIds: ${id}`);
-    const playerId = recordsById.get(id)?.playerId;
-    if (playerId && !scope.trackedPlayerIds.has(playerId)) {
-      errors.push(`ratingRecordId player is outside trackedPlayerIds: ${id}`);
+  for (const key of EXPECTATION_KEYS) {
+    const declared = new Set(plan.expectations[key]);
+    const missing = [...scope[key]].filter(id => !declared.has(id)).sort();
+    const unexpected = [...declared].filter(id => !scope[key].has(id)).sort();
+    if (missing.length || unexpected.length) {
+      errors.push(`expectations.${key} must exactly match the fixed snapshot-derived set`
+        + ` (missing: ${missing.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'})`);
     }
-  }
-  for (const id of scope.aggregatePlayerIds) {
-    if (!scope.trackedPlayerIds.has(id)) errors.push(`aggregatePlayerId is outside trackedPlayerIds: ${id}`);
   }
   const scopedFixtureIds = [...new Set([...scope.fixtureRecordIds]
     .map(recordId => coverageByRecord.get(recordId)?.canonicalFixtureId)

@@ -86,6 +86,14 @@ function catalog() {
   };
 }
 
+function corrections(value) {
+  return {
+    schemaVersion: 'd1-fixture-correction-definitions/1',
+    fixtureId: value.fixture.id,
+    definitions: [],
+  };
+}
+
 function contentSha256(value) {
   return sha256(normalizeFixtureBundle(value));
 }
@@ -105,10 +113,14 @@ test('batch registry records imported fixtures and continues to report independe
     ['/plan/bundles/9001.json', bundle(9001)],
     ['/plan/bundles/wrong.json', bundle(9999)],
     ['/plan/catalogs/default.json', catalog()],
+    ['/plan/corrections/9001.json', corrections(bundle(9001))],
+    ['/plan/corrections/9002.json', corrections(bundle(9002))],
   ]);
   const report = await runCanonicalFixturePlan(database, plan([
-    { fixtureId: 'af:fixture:9001', bundlePath: 'bundles/9001.json', catalogPath: 'catalogs/default.json' },
-    { fixtureId: 'af:fixture:9002', bundlePath: 'bundles/wrong.json', catalogPath: 'catalogs/default.json' },
+    { fixtureId: 'af:fixture:9001', bundlePath: 'bundles/9001.json',
+      catalogPath: 'catalogs/default.json', correctionsPath: 'corrections/9001.json' },
+    { fixtureId: 'af:fixture:9002', bundlePath: 'bundles/wrong.json',
+      catalogPath: 'catalogs/default.json', correctionsPath: 'corrections/9002.json' },
   ]), {
     baseDirectory: '/plan',
     readJson: filePath => structuredClone(artifacts.get(filePath)),
@@ -126,15 +138,18 @@ test('batch registry records imported fixtures and continues to report independe
 
 test('plan validation rejects duplicate IDs and paths outside its directory', async () => {
   const duplicate = plan([
-    { fixtureId: 'af:fixture:9001', bundlePath: 'a.json', catalogPath: 'catalog.json' },
-    { fixtureId: 'af:fixture:9001', bundlePath: 'b.json', catalogPath: 'catalog.json' },
+    { fixtureId: 'af:fixture:9001', bundlePath: 'a.json', catalogPath: 'catalog.json',
+      correctionsPath: 'corrections/9001.json' },
+    { fixtureId: 'af:fixture:9001', bundlePath: 'b.json', catalogPath: 'catalog.json',
+      correctionsPath: 'corrections/9001.json' },
   ]);
   assert.ok(validateCanonicalFixturePlan(duplicate).some(error => error.includes('duplicate fixtureId')));
 
   const database = createDatabase();
   try {
     const report = await runCanonicalFixturePlan(database, plan([
-      { fixtureId: 'af:fixture:9001', bundlePath: '../outside.json', catalogPath: 'catalog.json' },
+      { fixtureId: 'af:fixture:9001', bundlePath: '../outside.json',
+        catalogPath: 'catalog.json', correctionsPath: 'corrections/9001.json' },
     ]), { baseDirectory: '/plan' });
     assert.equal(report.passed, false);
     assert.match(report.fixtures[0].error, /escapes plan directory/);
@@ -148,16 +163,20 @@ test('batch CLI writes a deterministic registry and reports the second run as id
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   fs.mkdirSync(path.join(directory, 'bundles'));
   fs.mkdirSync(path.join(directory, 'catalogs'));
+  fs.mkdirSync(path.join(directory, 'corrections'));
   const databasePath = path.join(directory, 'd1.sqlite3');
   const database = createDatabase(databasePath);
   database.close();
   const canonical = bundle(9001);
   fs.writeFileSync(path.join(directory, 'bundles', '9001.json'), JSON.stringify(canonical));
   fs.writeFileSync(path.join(directory, 'catalogs', 'default.json'), JSON.stringify(catalog()));
+  fs.writeFileSync(path.join(directory, 'corrections', '9001.json'),
+    JSON.stringify(corrections(canonical)));
   fs.writeFileSync(path.join(directory, 'plan.json'), JSON.stringify(plan([{
     fixtureId: canonical.fixture.id,
     bundlePath: 'bundles/9001.json',
     catalogPath: 'catalogs/default.json',
+    correctionsPath: 'corrections/9001.json',
     expectedContentSha256: contentSha256(canonical),
   }])));
 

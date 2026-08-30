@@ -9,6 +9,7 @@ const INGESTION_STATES = new Set(['scheduled', 'live', 'provisional_final', 'fin
 const EVENT_TYPES = new Set(['goal', 'card', 'substitution', 'var', 'other']);
 const COMPETITION_TYPES = new Set(['League', 'Cup']);
 const SCORE_KINDS = ['halftime', 'fulltime', 'extratime', 'penalty'];
+const CORRECTION_DEFINITIONS_SCHEMA_VERSION = 'd1-fixture-correction-definitions/1';
 
 const PLAYER_STAT_COLUMNS = {
   minutes: 'minutes', rating: 'provider_rating', goals: 'goals', assists: 'assists',
@@ -344,10 +345,48 @@ function correctionDefinitions(bundle) {
   }));
 }
 
-function importFixtureBundle(database, bundle, catalog = {}) {
+function validateCorrectionDefinitions(document, fixtureId) {
+  const errors = [];
+  if (document?.schemaVersion !== CORRECTION_DEFINITIONS_SCHEMA_VERSION) {
+    errors.push('unsupported correction definitions schemaVersion');
+  }
+  if (document?.fixtureId !== fixtureId) errors.push('correction definitions fixtureId mismatch');
+  if (!Array.isArray(document?.definitions)) {
+    errors.push('correction definitions must be an array');
+    return errors;
+  }
+  const keys = new Set();
+  for (const [index, definition] of document.definitions.entries()) {
+    if (definition?.correctionKey !== `${fixtureId}:${definition?.fieldPath || ''}`) {
+      errors.push(`definitions[${index}].correctionKey must derive from fixtureId and fieldPath`);
+    }
+    if (!definition?.fieldPath) errors.push(`definitions[${index}].fieldPath is required`);
+    if (keys.has(definition?.correctionKey)) {
+      errors.push(`duplicate correctionKey: ${definition.correctionKey}`);
+    }
+    keys.add(definition?.correctionKey);
+  }
+  return errors;
+}
+
+function assertCorrectionDefinitions(bundle, document) {
+  const fixtureId = bundle?.fixture?.id;
+  const errors = validateCorrectionDefinitions(document, fixtureId);
+  if (errors.length) throw new Error(`Invalid correction definitions:\n- ${errors.join('\n- ')}`);
+  const declared = [...document.definitions]
+    .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+  const authored = correctionDefinitions(bundle)
+    .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+  if (stableStringify(declared) !== stableStringify(authored)) {
+    throw new Error('Git correction definitions must exactly match the fixture bundle overrides.');
+  }
+}
+
+function importFixtureBundle(database, bundle, catalog = {}, correctionDocument) {
   if (!database || typeof database.prepare !== 'function') throw new TypeError('A node:sqlite DatabaseSync instance is required.');
   const context = validateBundle(bundle, catalog);
   const { normalized, fixture, kickoffUtc, publishedAt, playerStats } = context;
+  assertCorrectionDefinitions(normalized, correctionDocument);
   const contentSha256 = sha256(normalized);
   const definitions = correctionDefinitions(normalized);
   const current = row(database, `SELECT revision.content_sha256, revision.revision_no
@@ -557,9 +596,12 @@ function importFixtureBundle(database, bundle, catalog = {}) {
 }
 
 module.exports = {
+  CORRECTION_DEFINITIONS_SCHEMA_VERSION,
   PLAYER_STAT_COLUMNS,
   TEAM_STAT_COLUMNS,
+  assertCorrectionDefinitions,
   correctionDefinitions,
   importFixtureBundle,
+  validateCorrectionDefinitions,
   validateBundle,
 };

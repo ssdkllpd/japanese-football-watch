@@ -91,8 +91,9 @@ function createDatabase() {
       (1, 1, 1, 'started', 'F', 90, 1),
       (2, 2, 1, 'started', 'F', 90, 0);
 
-    INSERT INTO fixture_lineup_entries(lineup_id, player_appearance_id, squad_role, shirt_number, grid)
-    VALUES (1, 1, 'starter', 7, '1:1');
+    INSERT INTO fixture_lineup_entries(
+      lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid
+    ) VALUES (1, 1, 'starter', 0, 7, '1:1');
 
     INSERT INTO fixture_player_stats(
       player_appearance_id, minutes, provider_rating, goals, assists, shots, shots_on_target,

@@ -41,6 +41,9 @@ function validateCanonicalFixturePlan(plan) {
     if (typeof fixture?.catalogPath !== 'string' || !fixture.catalogPath) {
       errors.push(`fixtures[${index}].catalogPath is required`);
     }
+    if (typeof fixture?.correctionsPath !== 'string' || !fixture.correctionsPath) {
+      errors.push(`fixtures[${index}].correctionsPath is required`);
+    }
     if (fixture?.expectedContentSha256 !== undefined
       && !/^[a-f0-9]{64}$/.test(fixture.expectedContentSha256)) {
       errors.push(`fixtures[${index}].expectedContentSha256 must be lowercase SHA-256`);
@@ -60,6 +63,7 @@ async function runCanonicalFixturePlan(database, plan, options = {}) {
     try {
       const bundle = readJson(resolveArtifactPath(baseDirectory, item.bundlePath));
       const catalog = readJson(resolveArtifactPath(baseDirectory, item.catalogPath));
+      const correctionDocument = readJson(resolveArtifactPath(baseDirectory, item.correctionsPath));
       if (bundle?.fixture?.id !== item.fixtureId) {
         throw new Error(`plan fixture ${item.fixtureId} points to bundle ${bundle?.fixture?.id || 'missing'}`);
       }
@@ -70,7 +74,7 @@ async function runCanonicalFixturePlan(database, plan, options = {}) {
       if (item.expectedContentSha256 && item.expectedContentSha256 !== contentSha256) {
         throw new Error(`content SHA-256 mismatch for ${item.fixtureId}`);
       }
-      const result = await importAndCompare(database, bundle, catalog);
+      const result = await importAndCompare(database, bundle, catalog, correctionDocument);
       fixtures.push({
         fixtureId: item.fixtureId,
         status: result.passed
@@ -78,6 +82,7 @@ async function runCanonicalFixturePlan(database, plan, options = {}) {
           : 'shadow_mismatch',
         bundlePath: item.bundlePath,
         catalogPath: item.catalogPath,
+        correctionsPath: item.correctionsPath,
         contentSha256,
         result,
       });
@@ -87,6 +92,7 @@ async function runCanonicalFixturePlan(database, plan, options = {}) {
         status: 'error',
         bundlePath: item.bundlePath,
         catalogPath: item.catalogPath,
+        correctionsPath: item.correctionsPath,
         error: error.message,
       });
     }

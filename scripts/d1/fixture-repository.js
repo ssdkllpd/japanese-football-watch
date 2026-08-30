@@ -90,8 +90,8 @@ FROM (
   SELECT
     'event',
     1,
-    printf('%05d', COALESCE(event.elapsed, -1)),
-    printf('%05d:%05d', COALESCE(event.extra_minute, -1), event.event_order),
+    printf('%010d', event.event_order),
+    '',
     json_object(
       'eventKey', event.event_key,
       'teamId', team.canonical_id,

@@ -166,12 +166,16 @@ test('appearance, lineup and rating rows cannot cross fixture or team boundaries
   insert(db, `INSERT INTO fixture_lineups(id, fixture_revision_id, team_id)
     VALUES (1, 1, 2)`);
   assert.throws(() => insert(db, `INSERT INTO fixture_lineup_entries(
-    lineup_id, player_appearance_id, squad_role
-  ) VALUES (1, 1, 'starter')`), /revision and team/);
+    lineup_id, player_appearance_id, squad_role, entry_order
+  ) VALUES (1, 1, 'starter', 0)`), /revision and team/);
 
   insert(db, 'UPDATE fixture_lineups SET team_id = 1 WHERE id = 1');
-  insert(db, `INSERT INTO fixture_lineup_entries(lineup_id, player_appearance_id, squad_role)
-    VALUES (1, 1, 'starter')`);
+  assert.throws(() => insert(db, `INSERT INTO fixture_lineup_entries(
+    lineup_id, player_appearance_id, squad_role
+  ) VALUES (1, 1, 'starter')`), /NOT NULL constraint failed/);
+  insert(db, `INSERT INTO fixture_lineup_entries(
+    lineup_id, player_appearance_id, squad_role, entry_order
+  ) VALUES (1, 1, 'starter', 0)`);
   assert.throws(() => insert(db, 'UPDATE fixture_lineups SET team_id = 2 WHERE id = 1'), /existing appearance/);
   assert.throws(() => insert(db, `UPDATE fixture_player_appearances
     SET fixture_revision_id = 2 WHERE id = 1`), /same fixture|existing lineup/);

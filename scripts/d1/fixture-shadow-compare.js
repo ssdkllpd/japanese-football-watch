@@ -5,7 +5,7 @@ const { sha256, stableStringify } = require('./fixed-snapshot');
 const REPORT_SCHEMA_VERSION = 'd1-fixture-shadow-compare/1';
 const SUPPORTED_CONTRACT_VERSIONS = new Set(['2.0.0', '2.1.0']);
 const TIME_FIELDS = new Set(['kickoffUtc', 'reconciledAt', 'fetchedAt', 'verifiedAt', 'publishedAt']);
-const ORDERED_ARRAY_FIELDS = new Set(['events', 'startXI', 'substitutes']);
+const ORDERED_ARRAY_PATHS = new Set(['events', 'lineups[].startXI', 'lineups[].substitutes']);
 const COMPARISON_COVERAGE = Object.freeze({
   normalized: ['contract_2_0_to_2_1', 'utc_timestamp_representation', 'object_key_order'],
   orderedArrays: ['events', 'lineups[].startXI', 'lineups[].substitutes'],
@@ -18,18 +18,21 @@ function normalizeTime(value) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
 }
 
-function normalizeNode(value, key = '') {
+function normalizeNode(value, path = []) {
   if (Array.isArray(value)) {
-    const normalized = value.map(item => normalizeNode(item));
-    if (ORDERED_ARRAY_FIELDS.has(key)) return normalized;
+    const normalized = value.map(item => normalizeNode(item, [...path, '[]']));
+    if (ORDERED_ARRAY_PATHS.has(path.join('.').replaceAll('.[]', '[]'))) return normalized;
     return normalized.sort((left, right) => {
         const leftKey = stableStringify(left);
         const rightKey = stableStringify(right);
         return leftKey < rightKey ? -1 : (leftKey > rightKey ? 1 : 0);
       });
   }
-  if (!value || typeof value !== 'object') return TIME_FIELDS.has(key) ? normalizeTime(value) : value;
-  return Object.fromEntries(Object.keys(value).sort().map(childKey => [childKey, normalizeNode(value[childKey], childKey)]));
+  if (!value || typeof value !== 'object') {
+    return TIME_FIELDS.has(path.at(-1)) ? normalizeTime(value) : value;
+  }
+  return Object.fromEntries(Object.keys(value).sort()
+    .map(childKey => [childKey, normalizeNode(value[childKey], [...path, childKey])]));
 }
 
 function upcastFixtureBundle(bundle) {

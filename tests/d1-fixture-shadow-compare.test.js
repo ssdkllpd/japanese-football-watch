@@ -80,6 +80,15 @@ test('event and lineup-entry order are part of semantic parity', () => {
   assert.equal(report.comparisonCoverage.orderedArrays.includes('lineups[].startXI'), true);
 });
 
+test('ordered array matching is limited to declared contract paths', () => {
+  const left = bundle();
+  const right = bundle();
+  left.fixture.events = [{ id: 'nested:2' }, { id: 'nested:1' }];
+  right.fixture.events = [...left.fixture.events].reverse();
+
+  assert.equal(compareFixtureBundles(left, right).equal, true);
+});
+
 test('explicit zero never compares equal to null', () => {
   const left = bundle();
   const right = bundle();

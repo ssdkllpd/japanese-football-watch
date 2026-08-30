@@ -17,7 +17,11 @@ const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
 const { buildTrackedPlayerCrosswalkPlan } = require('../scripts/d1/tracked-player-crosswalk-plan');
 const { applyTrackedPlayerCrosswalkPlan } = require('../scripts/d1/tracked-player-crosswalk-executor');
-const { importTrackedPlayerRatings, verifyTrackedPlayerRatings } = require('../scripts/d1/tracked-player-rating-importer');
+const {
+  importTrackedPlayerRatings,
+  ratingCountForExpectedEntries,
+  verifyTrackedPlayerRatings,
+} = require('../scripts/d1/tracked-player-rating-importer');
 const {
   rebuildTrackedPlayerAggregates,
   verifyTrackedPlayerAggregates,
@@ -214,7 +218,7 @@ test('Phase 2 readiness recomputes every gate without writes and remains pending
   assert.equal(database.prepare('SELECT total_changes() AS count').get().count, changesBefore);
 });
 
-test('mixed snapshot excludes unscored records and unresolved players as not applicable', async t => {
+test('snapshot-derived scope rejects omissions and reports migration gaps without exclusions', async t => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-phase2-mixed-'));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
   const snapshot = fixedSnapshot({ mixed: true });
@@ -224,40 +228,36 @@ test('mixed snapshot excludes unscored records and unresolved players as not app
   migrateTrackingFacts(database, snapshot, coverage);
   const artifacts = await readinessArtifacts(database, temporary);
 
-  const report = await evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+  await assert.rejects(evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+    baseDirectory: temporary,
+  }), /expectations\.fixtureRecordIds must exactly match.*record:unscored/);
+
+  const derived = structuredClone(artifacts.plan);
+  derived.expectations.fixtureRecordIds.push('record:unscored');
+  derived.expectations.trackedPlayerIds.push('jp:unresolved');
+  derived.expectations.aggregatePlayerIds.push('jp:unresolved');
+  const blocked = await evaluatePhase2Readiness(database, snapshot, coverage, derived, {
     baseDirectory: temporary,
   });
 
-  assert.equal(report.phase2TechnicalGatePassed, true, JSON.stringify(report.gates));
-  assert.deepEqual(report.fixtureRecords, {
-    passed: true,
+  assert.deepEqual(blocked.fixtureRecords, {
+    passed: false,
     snapshotRecords: 2,
-    expectedRecords: 1,
-    notApplicableRecords: 1,
+    expectedRecords: 2,
+    notApplicableRecords: 0,
     linkedRecords: 1,
     parityPassedRecords: 1,
   });
-  assert.equal(report.trackedPlayerCrosswalks.summary.expectedPlayers, 1);
-  assert.equal(report.trackedPlayerCrosswalks.summary.notApplicablePlayers, 2);
-  assert.equal(report.jfwRatings.summary.expectedRatings, 1);
-  assert.equal(report.jfwRatings.summary.notApplicableRatings, 1);
-  assert.equal(report.trackedPlayerAggregates.summary.expectedPlayers, 1);
-  assert.equal(report.trackedPlayerAggregates.summary.notApplicablePlayers, 2);
-  assert.equal(report.jfwRatings.records.find(record => record.recordId === 'record:unscored').status,
-    'not_applicable');
-
-  const expanded = structuredClone(artifacts.plan);
-  expanded.expectations.fixtureRecordIds.push('record:unscored');
-  expanded.expectations.ratingRecordIds.push('record:unscored');
-  expanded.expectations.trackedPlayerIds.push('jp:unresolved');
-  const blocked = await evaluatePhase2Readiness(database, snapshot, coverage, expanded, {
-    baseDirectory: temporary,
-  });
   assert.equal(blocked.gates.fixtureRecords, false);
   assert.equal(blocked.gates.trackedPlayerCrosswalks, false);
-  assert.equal(blocked.gates.jfwRatings, false);
-  assert.equal(blocked.jfwRatings.records.find(record => record.recordId === 'record:unscored').reason,
-    'expected_rating_not_authored');
+  assert.equal(blocked.gates.jfwRatings, true);
+  assert.equal(blocked.gates.trackedPlayerAggregates, false);
+  assert.equal(blocked.trackedPlayerCrosswalks.summary.expectedPlayers, 2);
+  assert.equal(blocked.trackedPlayerCrosswalks.summary.notApplicablePlayers, 1);
+  assert.equal(blocked.jfwRatings.summary.expectedRatings, 1);
+  assert.equal(blocked.jfwRatings.summary.notApplicableRatings, 1);
+  assert.equal(blocked.trackedPlayerAggregates.summary.expectedPlayers, 2);
+  assert.equal(blocked.trackedPlayerAggregates.summary.notApplicablePlayers, 1);
 });
 
 test('Rating and aggregate verifiers detect tampering without repairing D1', t => {
@@ -282,6 +282,26 @@ test('Rating and aggregate verifiers detect tampering without repairing D1', t =
   assert.equal(database.prepare('SELECT source_hash FROM jfw_rating_results').get().source_hash, 'b'.repeat(64));
   assert.equal(database.prepare(`SELECT source_hash FROM tracked_player_aggregates
     WHERE aggregate_scope = 'season'`).get().source_hash, 'c'.repeat(64));
+});
+
+test('expected Rating counts require the product season and exact Rating version', t => {
+  const snapshot = fixedSnapshot();
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, snapshot);
+  migrateTrackingFacts(database, snapshot, coverage);
+  database.exec(`INSERT INTO jfw_rating_results(
+      player_record_id, jfw_player_id, rating_version, rated_fixture_revision_id,
+      rating, rating_state, inputs_json, source_hash
+    ) VALUES (1, 'jp:one', '2.0', 1, 7.0, 'computed', '{}', '${'d'.repeat(64)}')`);
+
+  const entries = [{ playerRecordId: 1, ratingVersion: '1.0' }];
+  assert.equal(ratingCountForExpectedEntries(database, 'jfw_rating_results', entries,
+    'jfw:season:2026-27'), 1);
+  assert.equal(ratingCountForExpectedEntries(database, 'published_jfw_rating_results', entries,
+    'jfw:season:2026-27'), 1);
+  assert.equal(ratingCountForExpectedEntries(database, 'jfw_rating_results', entries,
+    'jfw:season:2025-26'), 0);
 });
 
 test('readiness ignores stale artifact linkage and recomputes published D1 evidence', async t => {
