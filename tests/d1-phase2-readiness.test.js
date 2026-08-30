@@ -23,6 +23,7 @@ const {
   verifyTrackedPlayerAggregates,
 } = require('../scripts/d1/tracked-player-aggregate-rebuilder');
 const {
+  CORRECTION_DEFINITIONS_SCHEMA_VERSION,
   PHASE2_PLAN_SCHEMA_VERSION,
   evaluatePhase2Readiness,
   validatePhase2ReadinessPlan,
@@ -31,7 +32,25 @@ const {
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
 const CONTENT_SHA256 = 'a'.repeat(64);
 
-function fixedSnapshot() {
+function fixedSnapshot({ mixed = false } = {}) {
+  const extraPlayers = mixed ? [{
+    playerId: 'jp:unresolved', name: 'Unresolved', club: 'Unknown FC', league: 'Unknown League',
+    trackingStatus: 'active', membershipHistory: [{ club: 'Unknown FC', league: 'Unknown League',
+      from: '2026-07-01', to: null, tracked: true, changeType: 'initial' }],
+    seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+  }, {
+    playerId: 'jp:outside', name: 'Outside', club: null, league: null,
+    trackingStatus: 'out_of_scope', membershipHistory: [],
+    seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+  }] : [];
+  const extraMatches = mixed ? [{
+    matchId: 'match:unscoped', ko: '2026-08-23 05:00 JST', league: 'Unknown League', round: '第1節',
+  }] : [];
+  const extraRecords = mixed ? [{
+    recordId: 'record:unscored', playerId: 'jp:unresolved', matchId: 'match:unscoped',
+    club: 'Unknown FC', competition: 'Unknown League', ko: '2026-08-23 05:00 JST',
+    appearance: false, start: false, bench: false, trackedAtMatch: false,
+  }] : [];
   return buildFixedSnapshot({
     baseData: {
       updated: '2026-08-20 00:00 JST',
@@ -45,11 +64,11 @@ function fixedSnapshot() {
           tracked: true, changeType: 'initial',
         }],
         seasonStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
-      }],
+      }, ...extraPlayers],
       matches: [{
         matchId: 'match:verified', ko: '2026-08-22 05:00 JST',
         league: 'Premier League', round: '第1節',
-      }],
+      }, ...extraMatches],
       playerMatchStats: [],
     },
     basePath: 'data.json',
@@ -75,7 +94,7 @@ function fixedSnapshot() {
         providerIds: { apiFootball: { fixture: 9001, player: 1001, team: 40, league: 39 } },
         jfwRating: 6.25,
         ratingVersion: '1.0',
-      }],
+      }, ...extraRecords],
     }],
     fragmentNames: ['data/test.json'],
     createdAt: '2026-08-27T12:00:00.000Z',
@@ -143,12 +162,25 @@ function migrateTrackingFacts(database, snapshot, coverage) {
 async function readinessArtifacts(database, directory) {
   const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture('af:fixture:9001');
   const fixturePath = path.join(directory, 'fixture-9001.json');
+  const correctionsPath = path.join(directory, 'fixture-9001-corrections.json');
   fs.writeFileSync(fixturePath, JSON.stringify(resolved.bundle));
+  fs.writeFileSync(correctionsPath, JSON.stringify({
+    schemaVersion: CORRECTION_DEFINITIONS_SCHEMA_VERSION,
+    fixtureId: 'af:fixture:9001',
+    definitions: [],
+  }));
   return {
     fixturePath,
     plan: {
       schemaVersion: PHASE2_PLAN_SCHEMA_VERSION,
-      fixtures: [{ fixtureId: 'af:fixture:9001', jsonPath: path.basename(fixturePath) }],
+      fixtures: [{ fixtureId: 'af:fixture:9001', jsonPath: path.basename(fixturePath),
+        correctionsPath: path.basename(correctionsPath) }],
+      expectations: {
+        fixtureRecordIds: ['record:verified'],
+        trackedPlayerIds: ['jp:one'],
+        ratingRecordIds: ['record:verified'],
+        aggregatePlayerIds: ['jp:one'],
+      },
     },
   };
 }
@@ -175,11 +207,57 @@ test('Phase 2 readiness recomputes every gate without writes and remains pending
     jfwRatings: true,
     trackedPlayerAggregates: true,
   });
-  assert.equal(report.phase2TechnicalGatePassed, true);
+  assert.equal(report.phase2TechnicalGatePassed, true, JSON.stringify(report.gates));
   assert.equal(report.productionReady, false);
   assert.equal(report.phase3CutoverReady, false);
   assert.deepEqual(report.remainingGates, ['claude_formal_review']);
   assert.equal(database.prepare('SELECT total_changes() AS count').get().count, changesBefore);
+});
+
+test('mixed snapshot excludes unscored records and unresolved players as not applicable', async t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-phase2-mixed-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, snapshot);
+  migrateTrackingFacts(database, snapshot, coverage);
+  const artifacts = await readinessArtifacts(database, temporary);
+
+  const report = await evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+    baseDirectory: temporary,
+  });
+
+  assert.equal(report.phase2TechnicalGatePassed, true, JSON.stringify(report.gates));
+  assert.deepEqual(report.fixtureRecords, {
+    passed: true,
+    snapshotRecords: 2,
+    expectedRecords: 1,
+    notApplicableRecords: 1,
+    linkedRecords: 1,
+    parityPassedRecords: 1,
+  });
+  assert.equal(report.trackedPlayerCrosswalks.summary.expectedPlayers, 1);
+  assert.equal(report.trackedPlayerCrosswalks.summary.notApplicablePlayers, 2);
+  assert.equal(report.jfwRatings.summary.expectedRatings, 1);
+  assert.equal(report.jfwRatings.summary.notApplicableRatings, 1);
+  assert.equal(report.trackedPlayerAggregates.summary.expectedPlayers, 1);
+  assert.equal(report.trackedPlayerAggregates.summary.notApplicablePlayers, 2);
+  assert.equal(report.jfwRatings.records.find(record => record.recordId === 'record:unscored').status,
+    'not_applicable');
+
+  const expanded = structuredClone(artifacts.plan);
+  expanded.expectations.fixtureRecordIds.push('record:unscored');
+  expanded.expectations.ratingRecordIds.push('record:unscored');
+  expanded.expectations.trackedPlayerIds.push('jp:unresolved');
+  const blocked = await evaluatePhase2Readiness(database, snapshot, coverage, expanded, {
+    baseDirectory: temporary,
+  });
+  assert.equal(blocked.gates.fixtureRecords, false);
+  assert.equal(blocked.gates.trackedPlayerCrosswalks, false);
+  assert.equal(blocked.gates.jfwRatings, false);
+  assert.equal(blocked.jfwRatings.records.find(record => record.recordId === 'record:unscored').reason,
+    'expected_rating_not_authored');
 });
 
 test('Rating and aggregate verifiers detect tampering without repairing D1', t => {
@@ -249,6 +327,36 @@ test('fresh D1 shadow mismatch closes only the shadow gate', async t => {
   assert.equal(report.gates.trackedPlayerAggregates, true);
   assert.equal(report.phase2TechnicalGatePassed, false);
   assert.ok(report.remainingGates.includes('fixtureShadows'));
+});
+
+test('Git correction definitions are compared independently from JSON and D1 state', async t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-phase2-corrections-'));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const snapshot = fixedSnapshot();
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  const coverage = parityCoverage(database, snapshot);
+  migrateTrackingFacts(database, snapshot, coverage);
+  const artifacts = await readinessArtifacts(database, temporary);
+  const correctionsPath = path.join(temporary, artifacts.plan.fixtures[0].correctionsPath);
+  fs.writeFileSync(correctionsPath, JSON.stringify({
+    schemaVersion: CORRECTION_DEFINITIONS_SCHEMA_VERSION,
+    fixtureId: 'af:fixture:9001',
+    definitions: [{
+      correctionKey: 'af:fixture:9001:fixture.status.long',
+      fieldPath: 'fixture.status.long',
+      reason: 'Git-only definition', sourceUrl: null, verifiedAt: null,
+    }],
+  }));
+
+  const report = await evaluatePhase2Readiness(database, snapshot, coverage, artifacts.plan, {
+    baseDirectory: temporary,
+  });
+
+  assert.equal(report.gates.fixtureShadows, false);
+  assert.equal(report.fixtureShadows.fixtures[0].correctionDefinitionParity.passed, false);
+  assert.deepEqual(report.fixtureShadows.fixtures[0].correctionDefinitionParity.jsonDefinitions, []);
+  assert.deepEqual(report.fixtureShadows.fixtures[0].correctionDefinitionParity.d1Definitions, []);
 });
 
 test('resolved crosswalk drift closes the crosswalk gate', async t => {

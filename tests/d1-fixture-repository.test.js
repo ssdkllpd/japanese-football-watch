@@ -119,10 +119,11 @@ function createDatabase() {
 
     INSERT INTO correction_states(
       correction_key, target_kind, target_canonical_id, field_path, status,
-      provider_baseline_json, applied_value_json, reconciled_at
+      provider_baseline_json, applied_value_json, reason, source_url, verified_at, reconciled_at
     ) VALUES (
       'fixture-9001-home-score', 'fixture', 'af:fixture:9001', 'fixture.score.fulltime.home', 'active',
-      '2', '3', '2026-08-21T22:00:00.000Z'
+      '2', '3', 'Official match report', 'https://example.com/report',
+      '2026-08-21T21:30:00.000Z', '2026-08-21T22:00:00.000Z'
     );
   `);
   return database;
@@ -190,14 +191,7 @@ test('published D1 revision rebuilds the 2.1 DTO and never leaks staging facts',
   const database = createDatabase();
   t.after(() => database.close());
   const tracked = trackedBinding(database);
-  const repository = new FixtureRepository(tracked.binding, {
-    correctionDefinitions: [{
-      correctionKey: 'fixture-9001-home-score',
-      reason: 'Official match report',
-      sourceUrl: 'https://example.com/report',
-      verifiedAt: '2026-08-21T21:30:00.000Z',
-    }],
-  });
+  const repository = new FixtureRepository(tracked.binding);
 
   const result = await repository.resolveFixture('af:fixture:9001');
   const bundle = result.bundle;

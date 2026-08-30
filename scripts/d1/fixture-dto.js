@@ -126,20 +126,18 @@ function fieldStateMaps(rows) {
   return { states, issues };
 }
 
-function correctionMaps(rows, definitions = []) {
-  const definitionByKey = new Map(definitions.map(item => [item.correctionKey || item.key, item]));
+function correctionMaps(rows) {
   const overrides = {};
   const issues = {};
   for (const row of rows.filter(item => item.kind === 'correction')) {
     const item = parseJson(row.payload, {});
-    const definition = definitionByKey.get(item.correctionKey) || {};
     overrides[item.fieldPath] = {
       status: item.status,
       correctedProviderValue: parseJson(item.providerBaselineJson, null),
       value: parseJson(item.appliedValueJson, null),
-      reason: definition.reason || null,
-      sourceUrl: definition.sourceUrl || null,
-      verifiedAt: definition.verifiedAt || null,
+      reason: item.reason ?? null,
+      sourceUrl: item.sourceUrl ?? null,
+      verifiedAt: item.verifiedAt ?? null,
       reconciledAt: item.reconciledAt,
     };
     if (item.status === 'review_required') issues[item.fieldPath] = ['conflict'];
@@ -147,11 +145,11 @@ function correctionMaps(rows, definitions = []) {
   return { issues, overrides };
 }
 
-function buildAvailableBundle(header, detailRows, stateRows, options = {}) {
+function buildAvailableBundle(header, detailRows, stateRows) {
   const parsed = detailRows.map(row => ({ ...row, value: parseJson(row.payload, {}) }));
   const scoreParts = parsed.filter(row => row.kind === 'score').map(row => row.value);
   const fieldMaps = fieldStateMaps(stateRows);
-  const corrections = correctionMaps(stateRows, options.correctionDefinitions);
+  const corrections = correctionMaps(stateRows);
   const baseProvenance = provenance(header);
   const lineups = new Map();
 

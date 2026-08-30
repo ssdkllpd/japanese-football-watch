@@ -766,6 +766,7 @@ provider poll ごとではなく上記の変化時だけ publish する。実装
 - 補正キーと対象 path
 - 補正時に観測した provider baseline
 - 適用値
+- 適用時点の定義snapshot（reason、source URL、verified at）。正本はGitであり、D1値だけから定義を更新しない
 - `active`、`provider_caught_up`、`review_required` の状態
 - 最後に照合した sync run
 
@@ -775,7 +776,7 @@ provider poll ごとではなく上記の変化時だけ publish する。実装
 - provider が補正値に追いついた: provider 値を採用し `provider_caught_up`
 - provider が別の値へ変わった: 自動上書きせず `review_required`
 
-表示 DTO には既存の `overrides` と `fieldIssues` を再構築する。DB 内の補正状態だけを唯一の根拠にせず、Git の定義と D1 状態の不一致を CI で検出する。
+表示 DTO には既存の `overrides` と `fieldIssues` を再構築する。DB 内の補正状態だけを唯一の根拠にせず、比較対象bundleとは独立したGit定義file、JSON/R2 bundle、D1保存snapshotの三者不一致をCIとPhase 2 readiness gateで検出する。
 
 ## 13. 移行計画と gate
 
@@ -797,7 +798,7 @@ provider poll ごとではなく上記の変化時だけ publish する。実装
 
 - 本番表示は既存 JSON/R2 のまま維持する。
 - CI と管理ジョブで JSON 経路と D1 経路の DTO を比較する。
-- 順序、日時表記、nullable、0、補正状態を正規化した上で意味的同値を確認する。
+- 日時表記、object key、集合配列の順序を正規化し、nullable、0、補正状態に加えてevents時系列とlineup entry順を保持した上で意味的同値を確認する。
 
 ### Phase 3 — endpoint 単位の切替
 

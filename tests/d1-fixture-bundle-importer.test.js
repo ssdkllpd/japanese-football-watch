@@ -106,9 +106,8 @@ test('complete 2.1 bundle imports transactionally and has semantic round-trip pa
 
   const report = await importAndCompare(database, bundle, catalog());
   const imported = report.imported;
-  const resolved = await new FixtureRepository(createLocalD1(database), {
-    correctionDefinitions: imported.correctionDefinitions,
-  }).resolveFixture(bundle.fixture.id);
+  const resolved = await new FixtureRepository(createLocalD1(database))
+    .resolveFixture(bundle.fixture.id);
 
   assert.equal(imported.imported, true);
   assert.deepEqual(imported.counts, { events: 1, lineups: 1, playerStats: 1, teamStats: 1 });
@@ -118,6 +117,48 @@ test('complete 2.1 bundle imports transactionally and has semantic round-trip pa
   assert.equal(resolved.bundle.playerStats[0].values.expectedAssists, 0);
   assert.equal(resolved.bundle.teamStats[0].values.fouls, 0);
   assert.equal(resolved.bundle.teamStats[0].values.offsides, 0);
+});
+
+test('shadow parity detects correction provenance drift stored in D1', async t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const bundle = fixtureBundle();
+  importFixtureBundle(database, bundle, catalog());
+  database.exec(`UPDATE correction_states SET reason = 'Tampered reason',
+    source_url = 'https://example.com/tampered',
+    verified_at = '2026-08-21T20:59:00.000Z'`);
+
+  const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
+  const comparison = compareFixtureBundles(bundle, resolved.bundle);
+
+  assert.equal(comparison.equal, false);
+  assert.equal(comparison.differences.some(item => item.path.endsWith('/reason')), true);
+  assert.equal(comparison.differences.some(item => item.path.endsWith('/sourceUrl')), true);
+  assert.equal(comparison.differences.some(item => item.path.endsWith('/verifiedAt')), true);
+});
+
+test('D1 round-trip preserves lineup entry order and detects stored order drift', async t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const bundle = fixtureBundle();
+  bundle.lineups[0].startXI.push({
+    id: 'af:player:1002', providerId: 1002, name: 'Second Player', number: 8,
+    position: 'M', grid: '2:1', role: 'starter',
+  });
+  importFixtureBundle(database, bundle, catalog());
+
+  const before = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
+  assert.deepEqual(before.bundle.lineups[0].startXI.map(player => player.id),
+    ['af:player:1001', 'af:player:1002']);
+
+  database.exec(`
+    UPDATE fixture_lineup_entries SET entry_order = entry_order + 10;
+    UPDATE fixture_lineup_entries SET entry_order = CASE entry_order WHEN 10 THEN 1 ELSE 0 END;
+  `);
+  const after = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
+  const comparison = compareFixtureBundles(bundle, after.bundle);
+  assert.equal(comparison.equal, false);
+  assert.equal(comparison.differences.some(item => item.path.includes('/startXI/')), true);
 });
 
 test('a replacement revision removes stale correction state and superseded detail', async t => {
@@ -164,15 +205,14 @@ test('invalid next revision rolls the attempted replacement back to the publishe
   const database = createDatabase();
   t.after(() => database.close());
   const original = fixtureBundle();
-  const imported = importFixtureBundle(database, original, catalog());
+  importFixtureBundle(database, original, catalog());
   const invalid = fixtureBundle();
   invalid.fixture.revision = 3;
   invalid.fixture.score.goals.home = 4;
 
   assert.throws(() => importFixtureBundle(database, invalid, catalog()), /next revision \(2\)/);
-  const resolved = await new FixtureRepository(createLocalD1(database), {
-    correctionDefinitions: imported.correctionDefinitions,
-  }).resolveFixture(original.fixture.id);
+  const resolved = await new FixtureRepository(createLocalD1(database))
+    .resolveFixture(original.fixture.id);
 
   assert.equal(compareFixtureBundles(original, resolved.bundle).equal, true);
   assert.equal(database.prepare(`SELECT COUNT(*) AS count FROM fixture_revisions

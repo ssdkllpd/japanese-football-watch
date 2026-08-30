@@ -53,7 +53,6 @@ test('2.0 JSON and 2.1 D1 bundles compare equal after safe semantic normalizatio
   d1Bundle.fixture.reconciledAt = '2026-08-21T22:00:00.000Z';
   d1Bundle.fixture.provenance.fetchedAt = '2026-08-21T22:00:00.000Z';
   d1Bundle.overrides['fixture.score.goals.home'].verifiedAt = '2026-08-21T21:30:00.000Z';
-  d1Bundle.events.reverse();
   d1Bundle.lineups.reverse();
   d1Bundle.playerStats.reverse();
   d1Bundle.fixture.provenance.issues.reverse();
@@ -65,6 +64,20 @@ test('2.0 JSON and 2.1 D1 bundles compare equal after safe semantic normalizatio
   assert.equal(report.json.contractVersion, '2.1.0');
   assert.equal(report.json.semanticSha256, report.d1.semanticSha256);
   assert.deepEqual(report.differences, []);
+});
+
+test('event and lineup-entry order are part of semantic parity', () => {
+  const jsonBundle = bundle();
+  const reorderedEvents = bundle();
+  reorderedEvents.events.reverse();
+  assert.equal(compareFixtureBundles(jsonBundle, reorderedEvents).equal, false);
+
+  jsonBundle.lineups[0].startXI.push({ id: 'af:player:3', number: 10 });
+  const reorderedLineup = JSON.parse(JSON.stringify(jsonBundle));
+  reorderedLineup.lineups[0].startXI.reverse();
+  const report = compareFixtureBundles(jsonBundle, reorderedLineup);
+  assert.equal(report.equal, false);
+  assert.equal(report.comparisonCoverage.orderedArrays.includes('lineups[].startXI'), true);
 });
 
 test('explicit zero never compares equal to null', () => {

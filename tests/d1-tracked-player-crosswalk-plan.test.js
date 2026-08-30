@@ -490,6 +490,12 @@ test('authored null is stored as missing while undefined remains deferred', t =>
   assert.deepEqual(ratingCandidate({ ratingVersion: '1.0' }), {
     state: 'deferred', reason: 'authored_rating_missing',
   });
+  assert.deepEqual(ratingCandidate({}), {
+    state: 'not_applicable', reason: 'authored_rating_not_declared',
+  });
+  assert.deepEqual(ratingCandidate({ jfwRating: 6.25 }), {
+    state: 'deferred', reason: 'authored_rating_version_missing',
+  });
 });
 
 test('rating import remains deferred until the exact tracked player crosswalk is resolved', t => {

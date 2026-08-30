@@ -91,7 +91,9 @@ function ratingInputsPayload(record) {
 
 function ratingCandidate(record) {
   if (record.ratingVersion === undefined || record.ratingVersion === null || record.ratingVersion === '') {
-    return { state: 'deferred', reason: 'authored_rating_version_missing' };
+    return !Object.hasOwn(record, 'jfwRating') || record.jfwRating === undefined
+      ? { state: 'not_applicable', reason: 'authored_rating_not_declared' }
+      : { state: 'deferred', reason: 'authored_rating_version_missing' };
   }
   if (record.ratingVersion !== SUPPORTED_RATING_VERSION) {
     return { state: 'deferred', reason: 'authored_rating_version_unsupported' };
@@ -190,7 +192,18 @@ function ratingCountForProductSeason(database, tableName, productSeasonCanonical
     WHERE product.canonical_id = ?1`, productSeasonCanonicalId).count;
 }
 
-function prepareRatingExpectations(database, snapshot, coverage) {
+function ratingCountForExpectedEntries(database, tableName, entries) {
+  if (!new Set(['jfw_rating_results', 'published_jfw_rating_results']).has(tableName)) {
+    throw new Error('Unsupported Rating count source.');
+  }
+  const expected = new Set(entries
+    .filter(entry => entry.playerRecordId && entry.ratingVersion)
+    .map(entry => entry.playerRecordId));
+  return database.prepare(`SELECT player_record_id, rating_version FROM ${tableName}`).all()
+    .filter(item => expected.has(item.player_record_id)).length;
+}
+
+function prepareRatingExpectations(database, snapshot, coverage, options = {}) {
   if (!database || typeof database.prepare !== 'function') {
     throw new TypeError('A node:sqlite DatabaseSync instance is required.');
   }
@@ -206,16 +219,27 @@ function prepareRatingExpectations(database, snapshot, coverage) {
   const productSeason = row(database, 'SELECT id FROM product_seasons WHERE canonical_id = ?1',
     productSeasonCanonicalId);
   if (!productSeason) throw new Error('Fixed snapshot product season is absent from D1.');
-  const verifiedCoverage = verifyFixtureRecordParity(
-    database,
-    snapshot,
-    linkFixtureRecords(database, snapshot, linkageBaseline(coverage)),
-  );
+  const verifiedCoverage = options.verifiedCoverage || verifyFixtureRecordParity(
+    database, snapshot, linkFixtureRecords(database, snapshot, linkageBaseline(coverage)));
   const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
+  const expectedRecordIds = options.expectedRecordIds || null;
   const entries = [];
 
   for (const sourceRecord of [...snapshot.data.playerMatchStats]
     .sort((left, right) => left.recordId.localeCompare(right.recordId))) {
+    if (expectedRecordIds && !expectedRecordIds.has(sourceRecord.recordId)) {
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+        status: 'not_applicable', reason: 'outside_phase2_expected_scope' });
+      continue;
+    }
+    const candidate = ratingCandidate(sourceRecord);
+    if (candidate.state !== 'ready') {
+      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
+        status: candidate.state === 'not_applicable' && expectedRecordIds ? 'deferred' : candidate.state,
+        reason: candidate.state === 'not_applicable' && expectedRecordIds
+          ? 'expected_rating_not_authored' : candidate.reason });
+      continue;
+    }
     const coverageRecord = coverageByRecord.get(sourceRecord.recordId);
     if (coverageRecord?.recordLink?.state !== 'linked') {
       entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
@@ -230,12 +254,6 @@ function prepareRatingExpectations(database, snapshot, coverage) {
     if (sourceRecord.trackedAtMatch !== true) {
       entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
         status: 'deferred', reason: 'tracked_at_match_not_verified' });
-      continue;
-    }
-    const candidate = ratingCandidate(sourceRecord);
-    if (candidate.state !== 'ready') {
-      entries.push({ recordId: sourceRecord.recordId, jfwPlayerId: sourceRecord.playerId,
-        status: 'deferred', reason: candidate.reason });
       continue;
     }
     const scope = row(database, RATING_SCOPE_SQL,
@@ -303,6 +321,7 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
   const publishedCount = ratingCountForProductSeason(database, 'published_jfw_rating_results',
     prepared.productSeasonCanonicalId);
   const acceptedCount = count('imported') + count('already_imported');
+  const expectedCount = results.length - count('not_applicable');
   return {
     schemaVersion: RATING_IMPORT_REPORT_SCHEMA_VERSION,
     snapshot: {
@@ -313,6 +332,8 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
     productionReady: false,
     summary: {
       legacyMatchRecords: results.length,
+      expectedRatings: expectedCount,
+      notApplicableRatings: count('not_applicable'),
       importedRatings: count('imported'),
       alreadyImportedRatings: count('already_imported'),
       deferredRatings: count('deferred'),
@@ -320,10 +341,10 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
       acceptedRatings: acceptedCount,
       storedRatings: storedCount,
       publishedRatings: publishedCount,
-      ratingGatePassed: results.length > 0
+      ratingGatePassed: expectedCount > 0
         && count('deferred') === 0
         && count('failed') === 0
-        && acceptedCount === results.length
+        && acceptedCount === expectedCount
         && storedCount === acceptedCount
         && publishedCount === acceptedCount,
     },
@@ -331,8 +352,8 @@ function importTrackedPlayerRatings(database, snapshot, coverage) {
   };
 }
 
-function verifyTrackedPlayerRatings(database, snapshot, coverage) {
-  const prepared = prepareRatingExpectations(database, snapshot, coverage);
+function verifyTrackedPlayerRatings(database, snapshot, coverage, options = {}) {
+  const prepared = prepareRatingExpectations(database, snapshot, coverage, options);
   const results = prepared.entries.map(entry => {
     if (entry.status !== 'ready') return entry;
     const stored = storedRating(database, entry.expected.playerRecordId, entry.expected.ratingVersion);
@@ -354,10 +375,14 @@ function verifyTrackedPlayerRatings(database, snapshot, coverage) {
     };
   });
   const count = status => results.filter(result => result.status === status).length;
-  const storedCount = ratingCountForProductSeason(database, 'jfw_rating_results',
-    prepared.productSeasonCanonicalId);
-  const publishedCount = ratingCountForProductSeason(database, 'published_jfw_rating_results',
-    prepared.productSeasonCanonicalId);
+  const storedCount = options.expectedRecordIds
+    ? ratingCountForExpectedEntries(database, 'jfw_rating_results', prepared.entries)
+    : ratingCountForProductSeason(database, 'jfw_rating_results', prepared.productSeasonCanonicalId);
+  const publishedCount = options.expectedRecordIds
+    ? ratingCountForExpectedEntries(database, 'published_jfw_rating_results', prepared.entries)
+    : ratingCountForProductSeason(database, 'published_jfw_rating_results',
+      prepared.productSeasonCanonicalId);
+  const expectedCount = results.length - count('not_applicable');
   return {
     schemaVersion: RATING_VERIFY_REPORT_SCHEMA_VERSION,
     snapshot: { artifactSha256: prepared.snapshotHash, inputSha256: snapshot.inputSha256,
@@ -365,17 +390,19 @@ function verifyTrackedPlayerRatings(database, snapshot, coverage) {
     productionReady: false,
     summary: {
       legacyMatchRecords: results.length,
+      expectedRatings: expectedCount,
       verifiedRatings: count('verified'),
+      notApplicableRatings: count('not_applicable'),
       deferredRatings: count('deferred'),
       failedRatings: count('failed'),
       storedRatings: storedCount,
       publishedRatings: publishedCount,
-      ratingGatePassed: results.length > 0
-        && count('verified') === results.length
+      ratingGatePassed: expectedCount > 0
+        && count('verified') === expectedCount
         && count('deferred') === 0
         && count('failed') === 0
-        && storedCount === results.length
-        && publishedCount === results.length,
+        && storedCount === expectedCount
+        && publishedCount === expectedCount,
     },
     records: results,
   };
@@ -393,6 +420,7 @@ module.exports = {
   ratingCandidate,
   ratingInputsPayload,
   ratingCountForProductSeason,
+  ratingCountForExpectedEntries,
   storedMatches,
   verifyTrackedPlayerRatings,
 };

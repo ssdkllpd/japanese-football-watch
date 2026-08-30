@@ -137,7 +137,11 @@ FROM (
     'appearance',
     3,
     team.canonical_id,
-    printf('%010d', appearance.id),
+    CASE entry.squad_role
+      WHEN 'starter' THEN '0:' || printf('%05d', entry.entry_order)
+      WHEN 'substitute' THEN '1:' || printf('%05d', entry.entry_order)
+      ELSE '2:' || printf('%010d', appearance.id)
+    END,
     json_object(
       'appearanceId', appearance.id,
       'playerRecordId', record.id,
@@ -153,6 +157,7 @@ FROM (
       'captain', appearance.captain,
       'hasStats', stats.player_appearance_id IS NOT NULL,
       'squadRole', entry.squad_role,
+      'entryOrder', entry.entry_order,
       'shirtNumber', entry.shirt_number,
       'grid', entry.grid,
       'valuesJson', json_object(
@@ -260,6 +265,9 @@ FROM (
       'status', status,
       'providerBaselineJson', provider_baseline_json,
       'appliedValueJson', applied_value_json,
+      'reason', reason,
+      'sourceUrl', source_url,
+      'verifiedAt', verified_at,
       'reconciledAt', reconciled_at
     )
   FROM correction_states
@@ -273,10 +281,9 @@ function results(response) {
 }
 
 class FixtureRepository {
-  constructor(db, options = {}) {
+  constructor(db) {
     if (!db || typeof db.prepare !== 'function') throw new TypeError('A D1-compatible database binding is required.');
     this.db = db;
-    this.correctionDefinitions = options.correctionDefinitions || [];
   }
 
   async resolveFixture(fixtureId) {
@@ -312,9 +319,7 @@ class FixtureRepository {
       .all());
     return {
       source: 'd1',
-      bundle: buildAvailableBundle(header, detailRows, stateRows, {
-        correctionDefinitions: this.correctionDefinitions,
-      }),
+      bundle: buildAvailableBundle(header, detailRows, stateRows),
     };
   }
 }

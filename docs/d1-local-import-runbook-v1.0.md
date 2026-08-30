@@ -208,7 +208,7 @@ baselineにないfieldまたは途中のrecordで欠落したfieldは`null`を�
 
 ### Phase 2 semantic shadow compare
 
-canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記・object key・配列順を正規化する。一方、`null`、明示的な`0`、fieldの欠落、section presence、補正状態は同一視せず差分として残す。
+canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記、object key、集合として扱う`lineups` / `playerStats` / `teamStats`の順序を正規化する。一方、`events`の時系列順と`lineups[].startXI` / `substitutes`のentry順は意味を持つため正規化せず、順序差をparity failureとして残す。`null`、明示的な`0`、fieldの欠落、section presence、補正状態も同一視しない。reportの`comparisonCoverage`にordered/unordered arrayの境界を明記する。
 
 ```bash
 node scripts/d1/compare-fixture-shadow.js \
@@ -248,13 +248,30 @@ fixture record、fresh D1 shadow、crosswalk、JFW Rating、aggregateを一つ�
 
 ```json
 {
-  "schemaVersion": "d1-phase2-readiness-plan/1",
+  "schemaVersion": "d1-phase2-readiness-plan/2",
   "fixtures": [
     {
       "fixtureId": "af:fixture:9001",
-      "jsonPath": "json/9001.json"
+      "jsonPath": "json/9001.json",
+      "correctionsPath": "corrections/9001.json"
     }
-  ]
+  ],
+  "expectations": {
+    "fixtureRecordIds": ["record:verified"],
+    "trackedPlayerIds": ["jp:one"],
+    "ratingRecordIds": ["record:verified"],
+    "aggregatePlayerIds": ["jp:one"]
+  }
+}
+```
+
+`correctionsPath`は比較対象bundleとは独立したGit管理の補正定義で、次の形式を使う。補正がないfixtureも空配列の定義fileを明示する。
+
+```json
+{
+  "schemaVersion": "d1-fixture-correction-definitions/1",
+  "fixtureId": "af:fixture:9001",
+  "definitions": []
 }
 ```
 
@@ -267,7 +284,11 @@ node scripts/d1/verify-phase2-readiness.js \
   --report /tmp/jfw-d1-phase2-readiness-report.json
 ```
 
-readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから再計算する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。crosswalkは全membership期間のprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは固定snapshot由来の期待source hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。
+readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから1回だけ再計算し、その結果をfixture、crosswalk、Rating、aggregateの各gateで共有する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。補正定義は比較対象JSONからD1 DTOへ注入せず、独立したGit定義、JSON bundle、D1保存状態の三者を照合する。
+
+`expectations`の4集合がD1 v1 migrationの期待分母である。snapshotに存在しても集合外のrecord/playerは`not_applicable`としてreportへ残し、`deferred`と混同しない。集合内の未採点record、provider identity不足、link/parity不足は`deferred`または`failed`としてgateを閉じる。Rating recordはfixture recordとtracked player、aggregate playerはtracked playerの期待集合に含まれなければplan validationで拒否する。これにより任意の除外でgateを通すことと、snapshot全120 record／64 playerを一律分母にして原理的に通らなくすることの両方を防ぐ。
+
+crosswalkは期待集合内の全membership期間についてprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは各期待集合について固定snapshot由来のsource hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。`ratingVersion`を持たない未採点recordはRating migration非対象の`not_applicable`であり、期待集合へ宣言された場合だけ`expected_rating_not_authored`としてgateを閉じる。
 
 5 gateがすべて通った場合だけ`phase2TechnicalGatePassed: true`になる。CLIは未通過時に終了コード`1`を返す。ただしPhase 3の正式切替にはClaude formal reviewが別途必要なため、このreportでも`productionReady: false`、`phase3CutoverReady: false`を維持し、技術gate通過後の`remainingGates`は`claude_formal_review`だけとする。
 

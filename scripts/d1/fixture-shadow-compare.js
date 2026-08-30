@@ -5,6 +5,12 @@ const { sha256, stableStringify } = require('./fixed-snapshot');
 const REPORT_SCHEMA_VERSION = 'd1-fixture-shadow-compare/1';
 const SUPPORTED_CONTRACT_VERSIONS = new Set(['2.0.0', '2.1.0']);
 const TIME_FIELDS = new Set(['kickoffUtc', 'reconciledAt', 'fetchedAt', 'verifiedAt', 'publishedAt']);
+const ORDERED_ARRAY_FIELDS = new Set(['events', 'startXI', 'substitutes']);
+const COMPARISON_COVERAGE = Object.freeze({
+  normalized: ['contract_2_0_to_2_1', 'utc_timestamp_representation', 'object_key_order'],
+  orderedArrays: ['events', 'lineups[].startXI', 'lineups[].substitutes'],
+  unorderedArrays: ['lineups', 'playerStats', 'teamStats', 'provenance.issues', 'fieldIssues.*'],
+});
 
 function normalizeTime(value) {
   if (typeof value !== 'string') return value;
@@ -14,9 +20,9 @@ function normalizeTime(value) {
 
 function normalizeNode(value, key = '') {
   if (Array.isArray(value)) {
-    return value
-      .map(item => normalizeNode(item))
-      .sort((left, right) => {
+    const normalized = value.map(item => normalizeNode(item));
+    if (ORDERED_ARRAY_FIELDS.has(key)) return normalized;
+    return normalized.sort((left, right) => {
         const leftKey = stableStringify(left);
         const rightKey = stableStringify(right);
         return leftKey < rightKey ? -1 : (leftKey > rightKey ? 1 : 0);
@@ -110,6 +116,7 @@ function compareFixtureBundles(jsonBundle, d1Bundle, options = {}) {
   const d1FixtureId = normalizedD1.fixture?.id || null;
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
+    comparisonCoverage: COMPARISON_COVERAGE,
     fixtureId: jsonFixtureId === d1FixtureId ? jsonFixtureId : null,
     equal: found.length === 0,
     json: {
@@ -129,6 +136,7 @@ function compareFixtureBundles(jsonBundle, d1Bundle, options = {}) {
 
 module.exports = {
   REPORT_SCHEMA_VERSION,
+  COMPARISON_COVERAGE,
   SUPPORTED_CONTRACT_VERSIONS,
   compareFixtureBundles,
   differences,

@@ -422,7 +422,10 @@ function importFixtureBundle(database, bundle, catalog = {}) {
         VALUES (?1, ?2, ?3, ?4)`, revision.id, team.id, coach?.id || null, lineup.formation);
       const lineupRow = row(database, 'SELECT last_insert_rowid() AS id');
       for (const [role, entries] of [['starter', lineup.startXI], ['substitute', lineup.substitutes]]) {
-        for (const player of entries) lineupPlayers.set(player.id, { ...player, teamId: lineup.teamId, role, lineupId: lineupRow.id });
+        for (const [entryOrder, player] of entries.entries()) {
+          lineupPlayers.set(player.id, { ...player, teamId: lineup.teamId, role,
+            entryOrder, lineupId: lineupRow.id });
+        }
       }
       for (const [fieldPath, state] of Object.entries(lineup.fieldStates || {})) {
         run(database, `INSERT INTO field_states(
@@ -457,9 +460,9 @@ function importFixtureBundle(database, bundle, catalog = {}) {
       const appearance = row(database, 'SELECT last_insert_rowid() AS id');
       if (lineupPlayer) {
         run(database, `INSERT INTO fixture_lineup_entries(
-          lineup_id, player_appearance_id, squad_role, shirt_number, grid
-        ) VALUES (?1, ?2, ?3, ?4, ?5)`, lineupPlayer.lineupId, appearance.id,
-        lineupPlayer.role, lineupPlayer.number, lineupPlayer.grid);
+          lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`, lineupPlayer.lineupId, appearance.id,
+        lineupPlayer.role, lineupPlayer.entryOrder, lineupPlayer.number, lineupPlayer.grid);
       }
       if (stat) {
         const knownKeys = Object.keys(PLAYER_STAT_COLUMNS);
@@ -519,13 +522,17 @@ function importFixtureBundle(database, bundle, catalog = {}) {
       const correctionKey = `${fixture.id}:${fieldPath}`;
       run(database, `INSERT INTO correction_states(
         correction_key, target_kind, target_canonical_id, field_path, status,
-        provider_baseline_json, applied_value_json, reconciled_at
-      ) VALUES (?1, 'fixture', ?2, ?3, ?4, ?5, ?6, ?7)
+        provider_baseline_json, applied_value_json, reason, source_url, verified_at, reconciled_at
+      ) VALUES (?1, 'fixture', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
       ON CONFLICT(correction_key) DO UPDATE SET status = excluded.status,
         provider_baseline_json = excluded.provider_baseline_json,
-        applied_value_json = excluded.applied_value_json, reconciled_at = excluded.reconciled_at`,
+        applied_value_json = excluded.applied_value_json, reason = excluded.reason,
+        source_url = excluded.source_url, verified_at = excluded.verified_at,
+        reconciled_at = excluded.reconciled_at`,
       correctionKey, fixture.id, fieldPath, override.status,
-      JSON.stringify(override.correctedProviderValue), JSON.stringify(override.value), override.reconciledAt);
+      JSON.stringify(override.correctedProviderValue), JSON.stringify(override.value),
+      override.reason ?? null, override.sourceUrl ?? null, override.verifiedAt ?? null,
+      override.reconciledAt);
     }
     run(database, `UPDATE fixture_revisions SET lifecycle_state = 'published', published_at = ?1 WHERE id = ?2`, publishedAt, revision.id);
     run(database, 'UPDATE fixtures SET published_revision = ?1 WHERE id = ?2', revision.id, fixtureRow.id);

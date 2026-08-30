@@ -201,10 +201,13 @@ test('missing-state, tracking XOR and archive active-pointer checks fail closed'
   ) VALUES (1, 'lineups', 'provider_unavailable', '2026-08-22T00:01:00.000Z')`), /CHECK constraint failed/);
 
   insert(db, `INSERT INTO tracked_players(jfw_player_id, crosswalk_state, tracking_status)
-    VALUES ('jp:test', 'unresolved', 'tracked')`);
+    VALUES ('jp:test', 'unresolved', 'active')`);
   assert.throws(() => insert(db, `INSERT INTO tracking_periods(
     jfw_player_id, valid_from, valid_to, tracking_status, change_type, verification
-  ) VALUES ('jp:test', '2026-08-01', '9999-12-31', 'tracked', 'registration', 'verified')`), /CHECK constraint failed/);
+  ) VALUES ('jp:test', '2026-08-01', '9999-12-31', 'active', 'registration', 'verified')`), /CHECK constraint failed/);
+  assert.throws(() => insert(db, `INSERT INTO tracked_players(
+    jfw_player_id, crosswalk_state, tracking_status
+  ) VALUES ('jp:invalid-status', 'unresolved', 'tracked')`), /CHECK constraint failed/);
 
   insert(db, `INSERT INTO fixture_archives(
     fixture_revision_id, schema_version, r2_key, content_sha256, byte_size, status, is_active, archived_at
@@ -221,7 +224,7 @@ test('nullable aggregate scope columns still form one deterministic identity', (
   const db = openDatabase();
   seedCore(db);
   insert(db, `INSERT INTO tracked_players(jfw_player_id, player_id, crosswalk_state, tracking_status)
-    VALUES ('jp:test', 1, 'resolved', 'tracked')`);
+    VALUES ('jp:test', 1, 'resolved', 'active')`);
   insert(db, `INSERT INTO tracked_player_aggregates(
     jfw_player_id, product_season_id, aggregate_scope, stats_json, source_hash, rebuilt_at
   ) VALUES ('jp:test', 1, 'season', '{}', ?, '2026-08-22T00:00:00.000Z')`, SHA_A);

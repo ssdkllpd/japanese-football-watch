@@ -19,9 +19,16 @@ const {
 const { verifyTrackedPlayerRatings } = require('./tracked-player-rating-importer');
 const { verifyTrackedPlayerAggregates } = require('./tracked-player-aggregate-rebuilder');
 
-const PHASE2_PLAN_SCHEMA_VERSION = 'd1-phase2-readiness-plan/1';
-const PHASE2_REPORT_SCHEMA_VERSION = 'd1-phase2-readiness-report/1';
+const PHASE2_PLAN_SCHEMA_VERSION = 'd1-phase2-readiness-plan/2';
+const PHASE2_REPORT_SCHEMA_VERSION = 'd1-phase2-readiness-report/2';
 const OPEN_ENDED_DATE = '9999-12-31';
+const CORRECTION_DEFINITIONS_SCHEMA_VERSION = 'd1-fixture-correction-definitions/1';
+const EXPECTATION_KEYS = [
+  'fixtureRecordIds',
+  'trackedPlayerIds',
+  'ratingRecordIds',
+  'aggregatePlayerIds',
+];
 
 function row(database, sql, ...params) {
   return database.prepare(sql).get(...params) || null;
@@ -50,8 +57,88 @@ function validatePhase2ReadinessPlan(plan) {
     if (typeof fixture?.jsonPath !== 'string' || !fixture.jsonPath) {
       errors.push(`fixtures[${index}].jsonPath is required`);
     }
+    if (typeof fixture?.correctionsPath !== 'string' || !fixture.correctionsPath) {
+      errors.push(`fixtures[${index}].correctionsPath is required`);
+    }
+  }
+  if (!plan?.expectations || typeof plan.expectations !== 'object'
+    || Array.isArray(plan.expectations)) {
+    errors.push('expectations must be an object');
+    return errors;
+  }
+  for (const key of EXPECTATION_KEYS) {
+    const values = plan.expectations[key];
+    if (!Array.isArray(values) || values.length === 0) {
+      errors.push(`expectations.${key} must be a non-empty array`);
+      continue;
+    }
+    const unique = new Set();
+    for (const [index, value] of values.entries()) {
+      if (typeof value !== 'string' || value.length === 0) {
+        errors.push(`expectations.${key}[${index}] must be a non-empty string`);
+      } else if (unique.has(value)) {
+        errors.push(`duplicate expectations.${key}: ${value}`);
+      }
+      unique.add(value);
+    }
   }
   return errors;
+}
+
+function validateCorrectionDefinitions(document, fixtureId) {
+  const errors = [];
+  if (document?.schemaVersion !== CORRECTION_DEFINITIONS_SCHEMA_VERSION) {
+    errors.push('unsupported correction definitions schemaVersion');
+  }
+  if (document?.fixtureId !== fixtureId) errors.push('correction definitions fixtureId mismatch');
+  if (!Array.isArray(document?.definitions)) {
+    errors.push('correction definitions must be an array');
+    return errors;
+  }
+  const keys = new Set();
+  for (const [index, definition] of document.definitions.entries()) {
+    if (definition?.correctionKey !== `${fixtureId}:${definition?.fieldPath || ''}`) {
+      errors.push(`definitions[${index}].correctionKey must derive from fixtureId and fieldPath`);
+    }
+    if (!definition?.fieldPath) errors.push(`definitions[${index}].fieldPath is required`);
+    if (keys.has(definition?.correctionKey)) {
+      errors.push(`duplicate correctionKey: ${definition.correctionKey}`);
+    }
+    keys.add(definition?.correctionKey);
+  }
+  return errors;
+}
+
+function expectedScope(plan, snapshot, verifiedCoverage) {
+  const recordIds = new Set(snapshot.data.playerMatchStats.map(record => record.recordId));
+  const playerIds = new Set(snapshot.data.players.map(player => player.playerId));
+  const recordsById = new Map(snapshot.data.playerMatchStats.map(record => [record.recordId, record]));
+  const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
+  const scope = Object.fromEntries(EXPECTATION_KEYS.map(key => [key, new Set(plan.expectations[key])]));
+  const errors = [];
+  for (const id of scope.fixtureRecordIds) if (!recordIds.has(id)) errors.push(`unknown fixtureRecordId: ${id}`);
+  for (const id of scope.ratingRecordIds) if (!recordIds.has(id)) errors.push(`unknown ratingRecordId: ${id}`);
+  for (const id of scope.trackedPlayerIds) if (!playerIds.has(id)) errors.push(`unknown trackedPlayerId: ${id}`);
+  for (const id of scope.aggregatePlayerIds) if (!playerIds.has(id)) errors.push(`unknown aggregatePlayerId: ${id}`);
+  for (const id of scope.ratingRecordIds) {
+    if (!scope.fixtureRecordIds.has(id)) errors.push(`ratingRecordId is outside fixtureRecordIds: ${id}`);
+    const playerId = recordsById.get(id)?.playerId;
+    if (playerId && !scope.trackedPlayerIds.has(playerId)) {
+      errors.push(`ratingRecordId player is outside trackedPlayerIds: ${id}`);
+    }
+  }
+  for (const id of scope.aggregatePlayerIds) {
+    if (!scope.trackedPlayerIds.has(id)) errors.push(`aggregatePlayerId is outside trackedPlayerIds: ${id}`);
+  }
+  const scopedFixtureIds = [...new Set([...scope.fixtureRecordIds]
+    .map(recordId => coverageByRecord.get(recordId)?.canonicalFixtureId)
+    .filter(Boolean))].sort();
+  const planFixtureIds = plan.fixtures.map(fixture => fixture.fixtureId).sort();
+  if (stableStringify(scopedFixtureIds) !== stableStringify(planFixtureIds)) {
+    errors.push('plan fixtures must exactly match canonical fixtures referenced by fixtureRecordIds');
+  }
+  if (errors.length) throw new Error(`Invalid Phase 2 expected scope:\n- ${errors.join('\n- ')}`);
+  return scope;
 }
 
 function recomputeFixtureCoverage(database, snapshot, coverage) {
@@ -59,16 +146,19 @@ function recomputeFixtureCoverage(database, snapshot, coverage) {
     linkFixtureRecords(database, snapshot, linkageBaseline(coverage)));
 }
 
-function fixtureRecordGate(snapshot, verifiedCoverage) {
-  const total = snapshot.data.playerMatchStats.length;
-  const linked = verifiedCoverage.records.filter(record => record.recordLink?.state === 'linked').length;
-  const passed = verifiedCoverage.records.filter(record => record.factParity?.state === 'passed').length;
+function fixtureRecordGate(snapshot, verifiedCoverage, expectedRecordIds) {
+  const records = verifiedCoverage.records.filter(record => expectedRecordIds.has(record.recordId));
+  const total = records.length;
+  const linked = records.filter(record => record.recordLink?.state === 'linked').length;
+  const passed = records.filter(record => record.factParity?.state === 'passed').length;
   return {
     passed: total > 0
-      && verifiedCoverage.records.length === total
+      && total === expectedRecordIds.size
       && linked === total
       && passed === total,
-    totalRecords: total,
+    snapshotRecords: snapshot.data.playerMatchStats.length,
+    expectedRecords: expectedRecordIds.size,
+    notApplicableRecords: snapshot.data.playerMatchStats.length - expectedRecordIds.size,
     linkedRecords: linked,
     parityPassedRecords: passed,
   };
@@ -203,7 +293,7 @@ function resolvedStateForReadiness(database, jfwPlayerId) {
   };
 }
 
-function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage) {
+function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage, expectedPlayerIds) {
   const sourceByPlayer = new Map();
   for (const record of snapshot.data.playerMatchStats) {
     const records = sourceByPlayer.get(record.playerId) || [];
@@ -214,6 +304,10 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage) {
   const players = [...snapshot.data.players]
     .sort((left, right) => left.playerId.localeCompare(right.playerId))
     .map(player => {
+      if (!expectedPlayerIds.has(player.playerId)) {
+        return { jfwPlayerId: player.playerId, status: 'not_applicable',
+          reason: 'outside_phase2_expected_scope' };
+      }
       const expected = expectedResolvedState(database, snapshot, player,
         sourceByPlayer.get(player.playerId) || [], coverageByRecord);
       if (expected.state !== 'ready') {
@@ -235,10 +329,13 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage) {
     });
   const count = status => players.filter(player => player.status === status).length;
   return {
-    passed: players.length > 0 && count('verified') === players.length,
+    passed: expectedPlayerIds.size > 0 && count('verified') === expectedPlayerIds.size
+      && count('deferred') === 0 && count('failed') === 0,
     summary: {
-      trackedPlayers: players.length,
+      snapshotPlayers: players.length,
+      expectedPlayers: expectedPlayerIds.size,
       verifiedPlayers: count('verified'),
+      notApplicablePlayers: count('not_applicable'),
       deferredPlayers: count('deferred'),
       failedPlayers: count('failed'),
     },
@@ -246,10 +343,11 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage) {
   };
 }
 
-async function verifyFixtureShadows(database, plan, verifiedCoverage, options = {}) {
+async function verifyFixtureShadows(database, plan, verifiedCoverage, expectedRecordIds, options = {}) {
   const baseDirectory = options.baseDirectory || process.cwd();
   const readJson = options.readJson || (filePath => JSON.parse(fs.readFileSync(filePath, 'utf8')));
   const expectedFixtureIds = [...new Set(verifiedCoverage.records
+    .filter(record => expectedRecordIds.has(record.recordId))
     .map(record => record.canonicalFixtureId)
     .filter(Boolean))].sort();
   const planFixtureIds = plan.fixtures.map(fixture => fixture.fixtureId).sort();
@@ -260,19 +358,39 @@ async function verifyFixtureShadows(database, plan, verifiedCoverage, options = 
     .sort((left, right) => left.fixtureId.localeCompare(right.fixtureId))) {
     try {
       const jsonBundle = readJson(resolveArtifactPath(baseDirectory, fixture.jsonPath));
-      const resolved = await new FixtureRepository(createLocalD1(database), {
-        correctionDefinitions: correctionDefinitions(jsonBundle),
-      }).resolveFixture(fixture.fixtureId);
+      const correctionDocument = readJson(resolveArtifactPath(baseDirectory, fixture.correctionsPath));
+      const correctionErrors = validateCorrectionDefinitions(correctionDocument, fixture.fixtureId);
+      if (correctionErrors.length) {
+        fixtures.push({ fixtureId: fixture.fixtureId, status: 'error',
+          error: `invalid_correction_definitions: ${correctionErrors.join('; ')}` });
+        continue;
+      }
+      const resolved = await new FixtureRepository(createLocalD1(database))
+        .resolveFixture(fixture.fixtureId);
       if (!resolved || resolved.source !== 'd1' || !resolved.bundle) {
         fixtures.push({ fixtureId: fixture.fixtureId, status: 'error',
           error: 'fixture_did_not_resolve_from_d1' });
         continue;
       }
       const comparison = compareFixtureBundles(jsonBundle, resolved.bundle);
+      const gitDefinitions = [...correctionDocument.definitions]
+        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+      const jsonDefinitions = correctionDefinitions(jsonBundle)
+        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+      const d1Definitions = correctionDefinitions(resolved.bundle)
+        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+      const correctionDefinitionParity = {
+        passed: stableStringify(gitDefinitions) === stableStringify(jsonDefinitions)
+          && stableStringify(gitDefinitions) === stableStringify(d1Definitions),
+        gitDefinitions,
+        jsonDefinitions,
+        d1Definitions,
+      };
       const fixtureIdsMatch = comparison.json.fixtureId === fixture.fixtureId
         && comparison.d1.fixtureId === fixture.fixtureId;
       fixtures.push({ fixtureId: fixture.fixtureId,
-        status: comparison.equal && fixtureIdsMatch ? 'equal' : 'different', comparison });
+        status: comparison.equal && fixtureIdsMatch && correctionDefinitionParity.passed
+          ? 'equal' : 'different', comparison, correctionDefinitionParity });
     } catch (error) {
       fixtures.push({ fixtureId: fixture.fixtureId, status: 'error', error: error.message });
     }
@@ -303,11 +421,20 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
   if (planErrors.length) throw new Error(`Invalid Phase 2 readiness plan:\n- ${planErrors.join('\n- ')}`);
 
   const verifiedCoverage = recomputeFixtureCoverage(database, snapshot, coverage);
-  const fixtureRecords = fixtureRecordGate(snapshot, verifiedCoverage);
-  const shadows = await verifyFixtureShadows(database, plan, verifiedCoverage, options);
-  const crosswalks = verifyResolvedCrosswalks(database, snapshot, verifiedCoverage);
-  const ratings = verifyTrackedPlayerRatings(database, snapshot, coverage);
-  const aggregates = verifyTrackedPlayerAggregates(database, snapshot, coverage);
+  const scope = expectedScope(plan, snapshot, verifiedCoverage);
+  const fixtureRecords = fixtureRecordGate(snapshot, verifiedCoverage, scope.fixtureRecordIds);
+  const shadows = await verifyFixtureShadows(database, plan, verifiedCoverage,
+    scope.fixtureRecordIds, options);
+  const crosswalks = verifyResolvedCrosswalks(database, snapshot, verifiedCoverage,
+    scope.trackedPlayerIds);
+  const ratings = verifyTrackedPlayerRatings(database, snapshot, coverage, {
+    expectedRecordIds: scope.ratingRecordIds,
+    verifiedCoverage,
+  });
+  const aggregates = verifyTrackedPlayerAggregates(database, snapshot, coverage, {
+    expectedPlayerIds: scope.aggregatePlayerIds,
+    verifiedCoverage,
+  });
   const gates = {
     fixtureRecords: fixtureRecords.passed,
     fixtureShadows: shadows.passed,
@@ -320,6 +447,8 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
     schemaVersion: PHASE2_REPORT_SCHEMA_VERSION,
     snapshot: { artifactSha256: artifactSha256(snapshot), inputSha256: snapshot.inputSha256,
       seasonId: snapshot.season.id },
+    expectations: Object.fromEntries(EXPECTATION_KEYS.map(key => [key,
+      [...scope[key]].sort()])),
     gates,
     phase2TechnicalGatePassed: technicalGatePassed,
     productionReady: false,
@@ -339,12 +468,15 @@ async function evaluatePhase2Readiness(database, snapshot, coverage, plan, optio
 module.exports = {
   PHASE2_PLAN_SCHEMA_VERSION,
   PHASE2_REPORT_SCHEMA_VERSION,
+  CORRECTION_DEFINITIONS_SCHEMA_VERSION,
   evaluatePhase2Readiness,
+  expectedScope,
   expectedResolvedState,
   fixtureRecordGate,
   recomputeFixtureCoverage,
   resolvedStateForReadiness,
   validatePhase2ReadinessPlan,
+  validateCorrectionDefinitions,
   verifyFixtureShadows,
   verifyResolvedCrosswalks,
 };

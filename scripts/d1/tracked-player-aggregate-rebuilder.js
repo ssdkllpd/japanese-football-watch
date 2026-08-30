@@ -557,7 +557,7 @@ function rebuildTrackedPlayerAggregates(database, snapshot, coverage) {
   };
 }
 
-function verifyTrackedPlayerAggregates(database, snapshot, coverage) {
+function verifyTrackedPlayerAggregates(database, snapshot, coverage, options = {}) {
   if (!database || typeof database.prepare !== 'function') {
     throw new TypeError('A node:sqlite DatabaseSync instance is required.');
   }
@@ -572,14 +572,20 @@ function verifyTrackedPlayerAggregates(database, snapshot, coverage) {
   const productSeason = row(database, `SELECT id, canonical_id FROM product_seasons
     WHERE canonical_id = ?1`, `jfw:season:${snapshot.season.id}`);
   if (!productSeason) throw new Error('Fixed snapshot product season is absent from D1.');
-  const verifiedCoverage = verifyFixtureRecordParity(database, snapshot,
+  const verifiedCoverage = options.verifiedCoverage || verifyFixtureRecordParity(database, snapshot,
     linkFixtureRecords(database, snapshot, linkageBaseline(coverage)));
   const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
+  const expectedPlayerIds = options.expectedPlayerIds || null;
   const results = [];
   let expectedRows = 0;
 
   for (const player of [...snapshot.data.players]
     .sort((left, right) => left.playerId.localeCompare(right.playerId))) {
+    if (expectedPlayerIds && !expectedPlayerIds.has(player.playerId)) {
+      results.push({ jfwPlayerId: player.playerId, status: 'not_applicable',
+        reason: 'outside_phase2_expected_scope' });
+      continue;
+    }
     const built = buildPlayerAggregates(database, snapshot, player, coverageByRecord, productSeason.id);
     if (built.state !== 'ready') {
       results.push({ jfwPlayerId: player.playerId, status: built.state, reason: built.reason,
@@ -623,22 +629,30 @@ function verifyTrackedPlayerAggregates(database, snapshot, coverage) {
   }
 
   const count = status => results.filter(result => result.status === status).length;
-  const storedRows = row(database, `SELECT COUNT(*) AS count FROM tracked_player_aggregates
-    WHERE product_season_id = ?1`, productSeason.id).count;
+  const expectedPlayers = expectedPlayerIds ? expectedPlayerIds.size
+    : results.length - count('not_applicable');
+  const storedRows = expectedPlayerIds
+    ? database.prepare(`SELECT jfw_player_id FROM tracked_player_aggregates
+        WHERE product_season_id = ?1`).all(productSeason.id)
+      .filter(item => expectedPlayerIds.has(item.jfw_player_id)).length
+    : row(database, `SELECT COUNT(*) AS count FROM tracked_player_aggregates
+        WHERE product_season_id = ?1`, productSeason.id).count;
   return {
     schemaVersion: AGGREGATE_VERIFY_REPORT_SCHEMA_VERSION,
     snapshot: { artifactSha256: snapshotHash, inputSha256: snapshot.inputSha256,
       seasonId: snapshot.season.id },
     productionReady: false,
     summary: {
-      trackedPlayers: results.length,
+      snapshotPlayers: results.length,
+      expectedPlayers,
       verifiedPlayers: count('verified'),
+      notApplicablePlayers: count('not_applicable'),
       deferredPlayers: count('deferred'),
       failedPlayers: count('failed'),
       expectedAggregateRows: expectedRows,
       storedAggregateRows: storedRows,
-      aggregateParityGatePassed: results.length > 0
-        && count('verified') === results.length
+      aggregateParityGatePassed: expectedPlayers > 0
+        && count('verified') === expectedPlayers
         && count('deferred') === 0
         && count('failed') === 0
         && storedRows === expectedRows,

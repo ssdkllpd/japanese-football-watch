@@ -192,10 +192,12 @@ CREATE TABLE fixture_lineup_entries (
   lineup_id INTEGER NOT NULL REFERENCES fixture_lineups(id) ON DELETE CASCADE,
   player_appearance_id INTEGER NOT NULL REFERENCES fixture_player_appearances(id) ON DELETE CASCADE,
   squad_role TEXT NOT NULL CHECK (squad_role IN ('starter', 'substitute')),
+  entry_order INTEGER NOT NULL DEFAULT 0 CHECK (entry_order >= 0),
   shirt_number INTEGER CHECK (shirt_number IS NULL OR shirt_number > 0),
   grid TEXT,
   PRIMARY KEY (lineup_id, player_appearance_id),
-  UNIQUE (player_appearance_id)
+  UNIQUE (player_appearance_id),
+  UNIQUE (lineup_id, squad_role, entry_order)
 ) WITHOUT ROWID;
 
 CREATE TABLE fixture_player_stats (
@@ -359,7 +361,7 @@ CREATE TABLE tracked_players (
   crosswalk_state TEXT NOT NULL CHECK (crosswalk_state IN ('resolved', 'unresolved', 'ambiguous')),
   crosswalk_method TEXT,
   crosswalk_sync_run_id INTEGER REFERENCES sync_runs(id),
-  tracking_status TEXT NOT NULL,
+  tracking_status TEXT NOT NULL CHECK (tracking_status IN ('active', 'out_of_scope', 'unattached')),
   tracking_started_on TEXT CHECK (tracking_started_on IS NULL OR tracking_started_on GLOB '????-??-??'),
   tracking_ended_on TEXT CHECK (tracking_ended_on IS NULL OR tracking_ended_on GLOB '????-??-??'),
   CHECK ((crosswalk_state = 'resolved' AND player_id IS NOT NULL) OR (crosswalk_state <> 'resolved' AND player_id IS NULL)),
@@ -386,7 +388,7 @@ CREATE TABLE tracking_periods (
   competition_season_id INTEGER REFERENCES competition_seasons(id),
   valid_from TEXT NOT NULL CHECK (valid_from GLOB '????-??-??'),
   valid_to TEXT NOT NULL DEFAULT '9999-12-31' CHECK (valid_to GLOB '????-??-??'),
-  tracking_status TEXT NOT NULL,
+  tracking_status TEXT NOT NULL CHECK (tracking_status IN ('active', 'inactive', 'out_of_scope', 'unattached')),
   change_type TEXT NOT NULL,
   verification TEXT NOT NULL CHECK (verification IN ('verified', 'provider', 'legacy_unverified')),
   CHECK ((core_membership_id IS NULL) <> (legacy_membership_id IS NULL)),
@@ -433,6 +435,9 @@ CREATE TABLE correction_states (
   status TEXT NOT NULL CHECK (status IN ('active', 'provider_caught_up', 'review_required')),
   provider_baseline_json TEXT NOT NULL CHECK (json_valid(provider_baseline_json)),
   applied_value_json TEXT NOT NULL CHECK (json_valid(applied_value_json)),
+  reason TEXT,
+  source_url TEXT,
+  verified_at TEXT CHECK (verified_at IS NULL OR verified_at GLOB '????-??-??T??:??:??*Z'),
   reconciled_sync_run_id INTEGER REFERENCES sync_runs(id),
   reconciled_at TEXT CHECK (reconciled_at IS NULL OR reconciled_at GLOB '????-??-??T??:??:??*Z')
 );

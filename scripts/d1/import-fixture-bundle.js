@@ -16,9 +16,8 @@ function parseArguments(argv) {
 
 async function importAndCompare(database, bundle, catalog) {
   const imported = importFixtureBundle(database, bundle, catalog);
-  const resolved = await new FixtureRepository(createLocalD1(database), {
-    correctionDefinitions: imported.correctionDefinitions,
-  }).resolveFixture(bundle.fixture.id);
+  const resolved = await new FixtureRepository(createLocalD1(database))
+    .resolveFixture(bundle.fixture.id);
   if (!resolved || resolved.source !== 'd1') throw new Error(`Imported fixture did not resolve from D1: ${bundle.fixture.id}`);
   const shadow = compareFixtureBundles(bundle, resolved.bundle);
   return {
