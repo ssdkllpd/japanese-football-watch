@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "season": "2026-27",
+  "updatedAt": "2026-08-30T09:57:12+09:00",
+  "status": "verified_monitoring_facts_pending_runtime_gate",
+  "sourceScope": "Premier League",
+  "facts": [
+    {
+      "date": "2026-08-29",
+      "type": "completed_match_player_update",
+      "competition": "Premier League",
+      "match": "Coventry City 0-1 Hull City",
+      "player": "守田英正",
+      "club": "Hull City",
+      "appearanceState": "started_substituted_at_half_time",
+      "start": true,
+      "bench": false,
+      "substitutionTiming": "half_time",
+      "minutes": {"state": "missing"},
+      "goals": {"state": "value", "value": 0},
+      "assists": {"state": "value", "value": 0},
+      "jfwRating": null,
+      "sources": [
+        {
+          "id": "nikkansports-coventry-hull-20260829",
+          "name": "Nikkan Sports post-match report",
+          "type": "secondary_match_report",
+          "url": "https://www.nikkansports.com/soccer/world/news/202608300000050.html",
+          "retrievedAt": "2026-08-30T09:57:12+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["appearance_state", "substitution_timing", "match_result", "goals"]
+        }
+      ],
+      "verification": "Post-match report confirms Morita started for Hull and was withdrawn at half-time with the match still 0-0. Hull's only goal came in the second half after Morita had left the pitch, so goals and assists are explicitly zero for his on-pitch period. Exact stored minutes remain unresolved because the repository must apply its own minute normalization rather than infer from half-time alone.",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"],
+      "runtimeAction": "Keep JFW Rating null until minutes and all required discipline inputs are explicit value states. Recheck within the 72-hour post-match correction window."
+    },
+    {
+      "date": "2026-08-29",
+      "type": "completed_match_player_update",
+      "competition": "Premier League",
+      "match": "Coventry City 0-1 Hull City",
+      "player": "坂元達裕",
+      "club": "Coventry City",
+      "appearanceState": "substitute_appearance",
+      "start": false,
+      "bench": true,
+      "substitutionMinuteReported": 59,
+      "minutes": {"state": "missing"},
+      "goals": {"state": "value", "value": 0},
+      "assists": {"state": "missing"},
+      "jfwRating": null,
+      "sources": [
+        {
+          "id": "nikkansports-coventry-hull-20260829",
+          "name": "Nikkan Sports post-match report",
+          "type": "secondary_match_report",
+          "url": "https://www.nikkansports.com/soccer/world/news/202608300000050.html",
+          "retrievedAt": "2026-08-30T09:57:12+09:00",
+          "priority": 2,
+          "exhaustiveFor": ["appearance_state", "substitution_event", "match_result", "goals"]
+        }
+      ],
+      "verification": "Post-match report confirms Sakamoto entered in the 59th minute and made his Premier League debut. It states he did not score; assists are left missing because the report is not treated as exhaustive for assist attribution. Exact stored minutes remain unresolved pending repository minute normalization.",
+      "priorityUpdate": true,
+      "priorityFields": ["minutes", "assists", "yellowCards", "secondYellowRed", "straightRed", "penaltiesConceded", "ownGoals", "shots", "shotsOnTarget", "keyPasses", "tackles", "interceptions", "duelsWon", "duelsTotal", "dribbles", "possessionsLost", "passesCompleted", "passesAttempted", "ratingPosition", "ratingSources"],
+      "runtimeAction": "Keep JFW Rating null until minutes/goals/assists and all required discipline inputs are explicit value states. Recheck within the 72-hour post-match correction window."
+    }
+  ],
+  "runtimeBundleChanged": false,
+  "snapshotChanged": false,
+  "ratingChanged": false,
+  "missingConvertedToZero": false
+}
