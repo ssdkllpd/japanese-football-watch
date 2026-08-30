@@ -9,7 +9,7 @@ This contract separates the application from the legacy Japanese-tracker-shaped 
 The contract has three boundaries:
 
 1. **Provider input** — API-Football v3 response objects.
-2. **Canonical football facts** — normalized fixture-centric records stored in R2.
+2. **Canonical football facts** — normalized fixture-centric records。D1/R2移行後の構造化factsの正本はD1とし、R2はraw・監査snapshot・短期LIVE projection・古いdetail archiveを所有する。
 3. **UI delivery DTOs** — small Worker responses such as `LiveFixtureDTO` or the canonical fixture bundle read API.
 
 Japanese Tracking consumes canonical facts and never owns a second copy of those facts.
@@ -113,6 +113,24 @@ Example shape:
 ```
 
 The first implementation is `scripts/v2/fixture-contract.js`.
+
+### Contract 2.1 detail availability
+
+The D1/R2 read-path migration introduces one backward-compatible top-level field and therefore advances the fixture bundle contract to `2.1.0`:
+
+```json
+{
+  "contractVersion": "2.1.0",
+  "detailAvailability": "available"
+}
+```
+
+`detailAvailability` is optional while 2.0.0 artifacts remain readable. Its values are:
+
+- `available`: the response includes the detail represented by `sectionStates`.
+- `unavailable`: the fixture exists and compact score/status facts are available, but no verified hot detail or archive pointer can be read. Detail sections must be `not_fetched`.
+
+The 2.0.0 -> 2.1.0 upcaster supplies `detailAvailability: "available"` because every valid 2.0.0 bundle was produced as a complete fixture artifact. Before the D1 endpoint is enabled, `CONTRACT_VERSION`, `normalizeFixtureBundle`, `validateFixtureBundle`, Worker DTO builders and their tests must move to 2.1.0 in one implementation commit. A 2.1.0 validator rejects values outside `available` / `unavailable`; it does not require the field when validating a 2.0.0 archive through the upcaster. Until that Phase 1 commit, the current 2.0.0 runtime remains unchanged.
 
 ## 5. Competition and Season
 
@@ -270,7 +288,9 @@ Reconciliation compares current provider value `P1` with original provider value
 
 The third case does not silently let either provider or manual correction win.
 
-## 11. R2 key layout
+## 11. R2 key layout（既存2.0 artifact互換）
+
+以下の`football/v2/...` keyは移行前に作成済みの2.0 artifactを読み戻すため維持する。新規のD1/R2配置、LIVE projection、archive keyは`data-storage-d1-r2-design-v1.0.md`を正本とし、この節からR2を恒久的な構造化factsの正本と解釈しない。
 
 Canonical bundle:
 
@@ -292,7 +312,7 @@ football/v2/indexes/date-jst/{YYYY-MM-DD}.json
 
 The pointer allows the Worker to resolve a fixture by `fixtureId` without making the UI know the R2 hierarchy.
 
-## 12. Git / R2 / KV / Cache API ownership
+## 12. Git / D1 / R2 / KV / Cache API ownership
 
 ### Git
 
@@ -304,14 +324,21 @@ Human-authored / reviewable assets:
 - manual corrections and evidence
 - rating algorithm
 
-### R2
+### D1
 
 Canonical machine facts:
-- fixture bundles
-- events / lineups / stats
-- historical standings snapshots
-- team / player master snapshots
-- generated indexes
+- competition / season / fixture compact facts
+- hot events / lineups / appearances / stats
+- latest/final standings and generated query indexes
+- team / player masters and tracking-derived structured results
+
+### R2
+
+Non-canonical or archived objects:
+- provider raw responses and audit snapshots
+- validated response-ready LIVE projections before final D1 publication
+- old fixture detail archives and manifests
+- verified degraded-response snapshots reconstructable from D1/provider facts
 
 ### KV
 
@@ -319,7 +346,7 @@ Optional hot indexes and cache data only. KV must never be the only copy of a fa
 
 ### `caches.default`
 
-Demand-driven live snapshot cache only. Default TTL: 60 seconds.
+Saved Worker responsesのedge cache。公開requestからAPI-Footballを呼ばず、LIVEの取得頻度や履歴完成度を閲覧数に依存させない。
 
 ## 13. LiveFixtureDTO
 
@@ -366,6 +393,8 @@ R2 is private from the browser. Worker origin checks and a soft per-isolate abus
 
 ### Standings snapshots
 
+The following R2 objects and manual workflow describe the current pre-migration 2.0 implementation. The D1 target stores latest/final structured standings in D1 and may retain historical/audit snapshots in R2 as defined by `data-storage-d1-r2-design-v1.0.md`.
+
 Standings are normalized from API-Football `/standings` by `scripts/v2/fetch-standings.js`. Competition and season identity are provider-native. Each row preserves explicit provider zeroes while missing rank, points, goal difference and record fields remain `null`.
 
 Every ingestion writes both an immutable timestamped snapshot and the latest object consumed by the Worker:
@@ -389,15 +418,17 @@ finalized
 needs_review
 ```
 
-Live delivery is demand-driven and is not used to guarantee historical ingestion.
+Live deliveryはscheduled ingestが作るD1 compact factsと検証済みR2 LIVE projectionを読む。公開requestはprovider fetchを起動せず、historical ingestionの完成度を閲覧数へ依存させない。
 
 Separate reconciliation rule:
 
-> Every 6 hours, inspect scheduled fixtures whose KO + 3 hours has passed and ensure a finalized R2 bundle exists.
+> Every 6 hours, inspect scheduled fixtures whose KO + 3 hours has passed and ensure a finalized D1 revision exists, or a complete verified bundle is queued in R2 for the next permitted D1 publish window.
 
 This later reconcile job closes fixtures that nobody viewed live.
 
-## 16. One-fixture vertical slice
+## 16. One-fixture vertical slice（移行前の既存実装）
+
+この節は現行2.0 vertical sliceの回帰境界を記録するもので、D1/R2移行後のtarget runtimeではない。target runtimeと実装順序は`data-storage-d1-r2-design-v1.0.md`を正本とする。
 
 Repository implementation:
 
@@ -429,7 +460,7 @@ The workflow is manual for the first proof. It requires:
 - `CLOUDFLARE_ACCOUNT_ID` secret
 - `R2_BUCKET` repository variable
 
-## 17. Vertical slice acceptance criteria
+## 17. Existing vertical slice acceptance criteria
 
 The first slice is considered proven only when all are true:
 

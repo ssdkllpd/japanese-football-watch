@@ -1,0 +1,333 @@
+# D1 Phase 1 ローカル固定 snapshot import 手順 v1.0
+
+## 目的
+
+現行 backfill を first-pass で1回だけ適用した固定 snapshot を作り、レビュー済み D1 schema へローカル import する。既存 Worker/R2 の runtime 正本は切り替えない。
+
+## 1. 固定 snapshot の生成
+
+生成時刻と product season の境界は明示入力する。
+
+```bash
+node scripts/d1/create-current-fixed-snapshot.js \
+  --output /tmp/jfw-fixed-snapshot.json \
+  --created-at 2026-08-27T12:00:00.000Z \
+  --starts-on 2026-07-01 \
+  --ends-on 2027-06-30
+```
+
+生成物は次を含む。
+
+- base JSON と全 fragment の canonical SHA-256
+- first-pass merge 後の全データ
+- snapshot内部payloadの `inputSha256`
+- 生成artifact全体のcanonical SHA-256（CLI出力とmigration manifestの`inputSha256`）
+- schema version、product season、生成時刻
+
+同一入力・同一生成時刻では同じpayload hashとartifact hashになる。membership の完全重複、期間逆転・重複、player/record ID 重複、未知 player 参照、hash 不一致は生成または import 前に拒否する。
+
+## 2. ローカル D1 互換 SQLite への import
+
+```bash
+node scripts/d1/import-fixed-snapshot.js \
+  --input /tmp/jfw-fixed-snapshot.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --manifest /tmp/jfw-d1-migration-manifest.json
+```
+
+未作成 database には `migrations/0001_d1_core.sql` を適用する。import、FK/XOR、件数、provenance の検証は1 transaction内で行う。
+
+- 同じcanonical artifact SHA-256の再実行は no-op。
+- 異なる固定 snapshot の重ね掛けは拒否する。
+- `0` と `null` は aggregate JSON 内でも区別して保持する。
+- Core player/team を確定できない選手は `unresolved` / `ambiguous` と legacy membership で保持し、ダミー Core entityを作らない。
+- crosswalk 解決時は `resolveTrackedPlayerCrosswalk` が全期間を Core membership へ付け替え、legacy 参照削除まで同じ transactionで行う。
+
+## 3. fail-closed gate
+
+現行 legacy `playerMatchStats` は完全な canonical fixture bundle ではない。provider IDや名称から不足事実を推測して Core fixture を作らず、固定 snapshot 内に保持したまま migration manifest の `deferred.legacyMatchRecords` に件数を記録する。
+
+`deferred.legacyMatchRecords > 0` の間は `productionReady: false` である。これはローカル変換器の失敗ではなく、Phase 2 の canonical fixture bundle shadow compare 前に本番正本を切り替えないためのgateである。
+
+### Phase 2 coverage manifest
+
+固定 snapshot の全 legacy match record を、provider fixture ID の有無・競合と canonical bundle の準備状況で機械分類する。
+
+```bash
+node scripts/d1/create-fixture-coverage-manifest.js \
+  --input /tmp/jfw-fixed-snapshot.json \
+  --output /tmp/jfw-d1-fixture-coverage.json
+```
+
+provider fixture ID が確認できても、固定 snapshot 自体は完全な canonical fixture bundle を含まないため、該当行は `provider_fixture_verified` かつ `importState: "deferred"` とする。ID 不足・複数IDの競合も推測で解決しない。coverage manifest は全recordを一度ずつ収録し、canonical bundle importが別Issueで完了するまで常に `productionReady: false` とする。
+
+### Phase 2 canonical fixture bundle import
+
+provider fixture ID確認済みfixtureは、JSON/R2経路が生成した完全な2.1 canonical bundleだけをローカルD1へimportする。planはfixture ID、bundle path、Core catalog pathを明示し、任意で正規化後のSHA-256を固定する。
+
+```json
+{
+  "schemaVersion": "d1-canonical-fixture-import-plan/1",
+  "productSeasonCanonicalId": "jfw:season:2026-27",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "bundlePath": "bundles/9001.json",
+      "catalogPath": "catalogs/9001.json",
+      "expectedContentSha256": "<canonical-sha256>"
+    }
+  ]
+}
+```
+
+```bash
+node scripts/d1/import-canonical-fixture-batch.js \
+  --plan /tmp/canonical/plan.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/canonical/import-report.json
+```
+
+各fixtureは独立transactionでmaster、compact、完全detail、state/provenance、published pointerをまとめて登録し、直後にD1読戻しとのsemantic shadow compareを行う。同一content hashの再実行はno-op、置換は次のrevisionだけを受理する。event参加者に対応するcanonical player metadataがbundleまたはcatalogにない場合も名前を推測せず拒否する。1件の失敗で後続fixtureは止めず、import errorとshadow mismatchをreportへfixture単位で記録する。
+
+import reportをcoverageへ反映すると、`canonical_bundle_not_available`と`canonical_bundle_imported_record_linkage_pending`を区別できる。
+
+```bash
+node scripts/d1/reconcile-fixture-coverage.js \
+  --coverage /tmp/jfw-d1-fixture-coverage.json \
+  --imports /tmp/canonical/import-report.json \
+  --output /tmp/jfw-d1-fixture-coverage-reconciled.json
+```
+
+この反映ではlegacy recordとcanonical playerの照合は完了扱いにせず、全recordの`importState`は`deferred`、`productionReady`は`false`のまま維持する。
+
+import済みbundleを持つrecordは、固定snapshotと公開D1 revisionを使ってcanonical appearanceへ照合する。
+
+```bash
+node scripts/d1/link-fixture-records.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-reconciled.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-fixture-coverage-linked.json
+```
+
+照合キーはcanonical fixture IDとrecord自身が保持するAPI-Football player IDの完全一致とし、provider team IDがある場合は同時に一致を要求する。固定snapshot全体のhash、公開revisionのbundle hash、published appearanceも検証する。名前照合、player masterからのID補完、欠場選手のappearance生成は行わない。
+
+成功recordには`recordLink.state: "linked"`とcanonical player/team、player record、published revision、appearance stateを記録する。ただしこの段階ではlegacy値とcanonical field/stateのparityをまだ確認していないため、reasonは`canonical_record_linked_fact_parity_pending`、`importState`は`deferred`、`productionReady`は`false`のままにする。
+
+linked recordは、安全な対応表を持つfieldだけlegacy `ratingInputs`と公開D1 player statsで比較する。
+
+```bash
+node scripts/d1/verify-fixture-record-parity.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-linked.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-fixture-coverage-parity.json
+```
+
+`minutes`、goal/assist、shot、pass、tackle、duel、dribble、GK失点/セーブなど、同じprovider fieldから作られる値だけを比較する。legacyの`passesCompleted`は現行mapperがAPI-Football `passes.accuracy`から生成しているためcanonical `passAccuracy`と照合する。second-yellowとstraight-redの分離、own goal、clean sheetなど、canonical fieldと意味が1対1でない項目は比較対象外としてreportへ残す。比較不能fieldにlegacy既知値があるrecordは`partial`として完全一致扱いにしない。明示的な`0`と`null`は一致させない。legacy missingにcanonical値がある場合はmismatchではなくenrichmentとして記録するが、表示・Ratingへの影響確認までは`partial`としてgateを閉じる。
+
+全比較が一致しても追跡player crosswalkとmembership移行が未完了なので、record reasonは`canonical_record_parity_verified_tracking_crosswalk_pending`、`productionReady`は`false`のままにする。
+
+### Phase 2 tracked player crosswalk preflight
+
+fact parity後のcoverageとローカルD1から、追跡playerと全legacy membership期間をCoreへ付け替えられるかをread-onlyで判定する。
+
+```bash
+node scripts/d1/plan-tracked-player-crosswalk.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --output /tmp/jfw-d1-tracked-player-crosswalk-plan.json
+```
+
+preflightは入力coverageのlink/parityをそのまま信用せず、固定snapshotと公開D1 revisionからrecord linkageとfact parityを再計算する。選手はsnapshot内のAPI-Football player IDが単一で、Core playerのprovider identityと完全一致し、fact parityが`passed`のrecordが1件以上ある場合だけ候補にする。
+
+各legacy期間は`[valid_from, valid_to)`として扱い、その期間内にある`trackedAtMatch: true`のpassed recordが保持するteam/league provider IDと、公開fixtureのCore team/competition seasonが完全一致する場合だけmapping候補にする。全期間に候補がちょうど1件ずつあるplayerだけ`ready`となる。証拠なしは`deferred`、複数候補またはprovider player ID競合は`ambiguous`とし、名前・master label・隣接期間から補完しない。
+
+planの`resolution`は既存`resolveTrackedPlayerCrosswalk`へ渡せる形式だが、このCLI自体はDBを書き換えない。`ready`が存在しても適用前なので`productionReady`は`false`、`crosswalkGatePassed`も`false`のままとする。
+
+preflight planのうち、実行直前の再検証でも同じ`ready` resolutionになるplayerだけをローカルD1へ適用する。
+
+```bash
+node scripts/d1/apply-tracked-player-crosswalk.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --plan /tmp/jfw-d1-tracked-player-crosswalk-plan.json \
+  --report /tmp/jfw-d1-tracked-player-crosswalk-apply-report.json
+```
+
+executorもrecord linkageとfact parityを公開D1 revisionから再計算する。plan生成後にprovider identity、公開bundle、fact parity、period候補のいずれかが変わったplayerは`stale`として書き込まない。`ready` playerは1人ずつ`resolveTrackedPlayerCrosswalk`へ渡し、そのplayerの全期間付替え、crosswalk更新、未参照legacy membership削除を同じtransactionで行う。1人の失敗は完全rollbackし、他playerの処理は継続する。
+
+同じplanの再実行時、Core playerと全期間のteam/competition seasonが適用済みresolutionと完全一致すれば`already_resolved`としてno-opにする。適用reportの`crosswalkGatePassed`は全追跡playerが解決済みになった場合だけ`true`になる。ただしfixture recordの本番切替とは別gateなので、report全体の`productionReady`は`false`のまま維持する。
+
+crosswalk適用後は、公開canonical recordとfact parityが確認できた追跡recordのauthored JFW RatingをD1へ移行する。
+
+```bash
+node scripts/d1/import-tracked-player-ratings.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/jfw-d1-tracked-player-rating-import-report.json
+```
+
+importerはcoverageのlink/parityを公開D1 revisionから再計算し、次の条件をすべて満たすrecordだけを`jfw_rating_results`へ保存する。
+
+- canonical recordのfact parityが`passed`
+- `trackedAtMatch: true`
+- JFW player crosswalkが同じcanonical playerへ`resolved`
+- fixture JST日付がactive Core tracking periodの`[valid_from, valid_to)`内
+- tracking periodのteamとcompetition seasonがfixtureと完全一致
+- authored `ratingVersion`が対応version `1.0`
+
+authored `jfwRating`の数値は`rating_state: "computed"`として原値を保存し、このmigration内では再計算しない。authored `jfwRating: null`は算出不可／Ratingなしの明示値なので`rating_state: "missing"`として保存する。property欠落または`undefined`はauthored nullと同一視せず`authored_rating_missing`で保留する。`inputs_json`には生の`ratingInputs`、position、coverage、breakdown、sources、conflictsと`authoredState`をcanonical JSONで保持する。
+
+同じsource hashの再実行は`already_imported`、既存行との差異は`failed`として上書きしない。未解決recordが残る間は`ratingGatePassed: false`であり、Rating移行後もaggregate parityとendpoint shadow gateが未完了なので`productionReady`は`false`のままにする。
+
+Rating移行後は、確認済みbaselineと公開canonical player factsから追跡aggregateを再構築する。
+
+```bash
+node scripts/d1/rebuild-tracked-player-aggregates.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/jfw-d1-tracked-player-aggregate-rebuild-report.json
+```
+
+rebuildはcoverageのlink/parityを公開D1 revisionから再計算し、crosswalk解決済みplayerについて次を検証する。
+
+- legacy aggregate baselineを、固定snapshotのmembership期間と解決済みCore tracking periodの完全一致でteam/competition seasonへ割り当てる
+- 対象JFW product seasonと同じcompetition seasonだけを集計する
+- baseline更新後の公式戦recordは、fact parityが`passed`かつactive tracking period内の公開canonical appearance/statだけを加算する
+- `season`、`competition`、`club`、`club_competition`の4粒度をcanonical ID単位で生成する
+- legacy入力から同じscopeへ再計算した期待値とcanonical値を比較し、全fieldの`0`、`null`、欠落状態が一致した場合だけ保存する
+
+baselineにないfieldまたは途中のrecordで欠落したfieldは`null`を維持し、0補完しない。canonical側にlegacy未比較のenrichmentが存在する場合もaggregate parityで検出し、自動採用しない。初回snapshot importが作ったseason baseline行だけは、固定snapshot由来のsource hashが一致する場合に限りcanonical aggregateへ置換する。再構築済み行のsource hash競合は`failed`として全scopeをplayer単位transactionで非上書きにする。
+
+全追跡player・全scopeが一致した場合だけ`aggregateParityGatePassed: true`になる。ただしendpoint shadow gateと切替前レビューが未完了なので、report全体の`productionReady`は`false`のまま維持する。
+
+### Phase 2 semantic shadow compare
+
+canonical bundle のJSON/R2経路とD1経路を同じfixture単位で比較する。2.0.0 bundleは2.1.0へ安全にupcastし、UTC表記、object key、集合として扱う`lineups` / `playerStats` / `teamStats`の順序を正規化する。一方、`events`の時系列順と`lineups[].startXI` / `substitutes`のentry順は意味を持つため正規化せず、順序差をparity failureとして残す。`null`、明示的な`0`、fieldの欠落、section presence、補正状態も同一視しない。reportの`comparisonCoverage`にordered/unordered arrayの境界を明記する。
+
+```bash
+node scripts/d1/compare-fixture-shadow.js \
+  --json /tmp/json-fixture.json \
+  --d1 /tmp/d1-fixture.json \
+  --report /tmp/jfw-d1-shadow-report.json
+```
+
+意味的同値なら終了コード`0`、差分があれば機械可読なJSON Pointer付きreportを出力して終了コード`1`とする。未対応contract versionは比較せずfail closedにする。
+
+複数fixtureをCIまたは管理ジョブで一括比較する場合は、plan fileにcanonical fixture IDと両artifactの相対pathを列挙する。
+
+```json
+{
+  "schemaVersion": "d1-fixture-shadow-plan/1",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "jsonPath": "json/9001.json",
+      "d1Path": "d1/9001.json"
+    }
+  ]
+}
+```
+
+```bash
+node scripts/d1/compare-fixture-shadow-batch.js \
+  --plan /tmp/shadow/plan.json \
+  --report /tmp/shadow/report.json
+```
+
+全件同値の場合だけbatch reportの`passed`が`true`になる。差分、読込失敗、planとartifactのfixture ID不一致はfixtureごとに収集し、1件でもあれば終了コード`1`とする。`passed`はplan内比較の結果であり、本番切替の`productionReady`を意味しない。
+
+### Phase 2 統合readiness gate
+
+fixture record、fresh D1 shadow、crosswalk、JFW Rating、aggregateを一つのread-only reportで再検証する。planには固定snapshotが参照する全canonical fixtureとJSON/R2正本bundleの相対pathを列挙する。
+
+```json
+{
+  "schemaVersion": "d1-phase2-readiness-plan/2",
+  "fixtures": [
+    {
+      "fixtureId": "af:fixture:9001",
+      "jsonPath": "json/9001.json",
+      "correctionsPath": "corrections/9001.json"
+    }
+  ],
+  "expectations": {
+    "fixtureRecordIds": ["record:verified"],
+    "trackedPlayerIds": ["jp:one"],
+    "ratingRecordIds": ["record:verified"],
+    "aggregatePlayerIds": ["jp:one"]
+  }
+}
+```
+
+`correctionsPath`は比較対象bundleとは独立したGit管理の補正定義で、次の形式を使う。補正がないfixtureも空配列の定義fileを明示する。
+
+```json
+{
+  "schemaVersion": "d1-fixture-correction-definitions/1",
+  "fixtureId": "af:fixture:9001",
+  "definitions": []
+}
+```
+
+```bash
+node scripts/d1/verify-phase2-readiness.js \
+  --snapshot /tmp/jfw-fixed-snapshot.json \
+  --coverage /tmp/jfw-d1-fixture-coverage-parity.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --plan /tmp/readiness/plan.json \
+  --report /tmp/jfw-d1-phase2-readiness-report.json
+```
+
+readiness evaluatorは保存済みのlink/parity reportをそのまま採用せず、固定snapshotと公開D1 revisionから1回だけ再計算し、その結果をfixture、crosswalk、Rating、aggregateの各gateで共有する。shadow比較もplan内の古いD1 artifactを読まず、実行時にD1 repositoryからbundleを再構築してJSON/R2正本と比較する。補正定義は比較対象JSONからD1 DTOへ注入せず、独立したGit定義、JSON bundle、D1保存状態の三者を照合する。
+
+`expectations`の4集合がD1 v1 migrationの期待分母である。snapshotに存在しても集合外のrecord/playerは`not_applicable`としてreportへ残し、`deferred`と混同しない。集合内の未採点record、provider identity不足、link/parity不足は`deferred`または`failed`としてgateを閉じる。Rating recordはfixture recordとtracked player、aggregate playerはtracked playerの期待集合に含まれなければplan validationで拒否する。これにより任意の除外でgateを通すことと、snapshot全120 record／64 playerを一律分母にして原理的に通らなくすることの両方を防ぐ。
+
+crosswalkは期待集合内の全membership期間についてprovider player/team/competition evidenceと現在のCore periodを完全照合する。Ratingとaggregateは各期待集合について固定snapshot由来のsource hash、公開revision、対象product season、`0`/`null`/欠落をread-onlyで再検証し、不足行や競合行を自動修復しない。`ratingVersion`を持たない未採点recordはRating migration非対象の`not_applicable`であり、期待集合へ宣言された場合だけ`expected_rating_not_authored`としてgateを閉じる。
+
+5 gateがすべて通った場合だけ`phase2TechnicalGatePassed: true`になる。CLIは未通過時に終了コード`1`を返す。ただしPhase 3の正式切替にはClaude formal reviewが別途必要なため、このreportでも`productionReady: false`、`phase3CutoverReady: false`を維持し、技術gate通過後の`remainingGates`は`claude_formal_review`だけとする。
+
+### Phase 2 canonical bundle import
+
+完全な2.1 canonical bundleを入手したfixtureは、明示的なCore catalog metadataと組にしてローカルD1へ取り込み、同じ実行内でD1読み戻しとのsemantic shadow compareを行う。
+
+```bash
+node scripts/d1/import-fixture-bundle.js \
+  --input /tmp/fixture-9001.json \
+  --catalog /tmp/fixture-9001-catalog.json \
+  --database /tmp/jfw-local-d1.sqlite3 \
+  --report /tmp/fixture-9001-import-report.json
+```
+
+catalogは最低限、既にD1へimport済みの`productSeasonId`、provider API version、competition種別、competition season statusを明示する。
+
+```json
+{
+  "productSeasonId": "jfw:season:2026-27",
+  "source": { "apiVersion": "v3" },
+  "competition": { "type": "League", "countryCode": "GB" },
+  "season": { "status": "active", "startsOn": "2026-08-01", "endsOn": "2027-05-31" }
+}
+```
+
+importerは完全bundleだけを受理し、canonical/provider ID整合、UTC時刻、provenance、section/field state、補正状態を検証する。書込みは1 transactionでstaging revisionを組み立て、検証後にpublished pointerを切り替える。同じcontent hashの再実行はno-opにし、revision飛び、未知player metadata、曖昧な時刻は書込み前またはtransaction rollbackで拒否する。27試合のlegacy enrichmentは完全bundleではないため、このコマンドへの入力に昇格させない。
+
+## 4. 回帰確認
+
+```bash
+node --test tests/d1-fixed-snapshot-importer.test.js
+node --test tests/d1-fixture-coverage.test.js
+node --test tests/d1-canonical-fixture-batch.test.js
+node --test tests/d1-fixture-record-linkage.test.js
+node --test tests/d1-fixture-shadow-compare.test.js
+node --test tests/d1-fixture-shadow-batch.test.js
+node --test tests/d1-fixture-bundle-importer.test.js
+node --test tests/*.test.js
+```
+
+Attention用3テーブル、`legacy.html`、現行Worker/R2経路はこの手順の対象外とする。
