@@ -2,7 +2,7 @@
 
 対象実装HEAD: `3f9fe90ffa5ccad8c21b478180619114c7702c61`
 
-反映commit: `613ed23131bb1b2733c555bd9d0d5428a1d21914`
+反映commit: `0e74f2c0e479b0fb7720c4d51f614d6b900027de`
 
 ## Verdict
 
@@ -30,7 +30,7 @@ Production cutover may start: NO
 | MINOR | tracking statusが自由文字列 | `tracked_players`と`tracking_periods`へ許可値CHECKを追加 |
 | MINOR | link+parityを3回全走査 | readiness evaluatorで1回だけ再計算し、Rating／aggregate verifierへ同じ結果を渡す |
 
-全findingの反映commitは `613ed23131bb1b2733c555bd9d0d5428a1d21914`。
+全findingの反映commitは `0e74f2c0e479b0fb7720c4d51f614d6b900027de`。
 
 ## 再検証
 
@@ -42,5 +42,4 @@ Production cutover may start: NO
 
 ## 再レビュー条件
 
-Claudeは`3f9fe90..613ed23`をdiff-focusedで再レビューする。コード修正がPASSしても、実データ用canonical bundle、D1、coverage、readiness plan v2による統合reportが未添付の間はProduction cutoverを許可しない。
-
+Claudeは`3f9fe90..0e74f2c`をdiff-focusedで再レビューする。コード修正がPASSしても、実データ用canonical bundle、D1、coverage、readiness plan v2による統合reportが未添付の間はProduction cutoverを許可しない。
