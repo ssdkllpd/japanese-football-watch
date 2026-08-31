@@ -89,9 +89,39 @@ jobs:
       - name: Publish summary fixture bundles and pointers
         shell: bash
         run: |
+          mkdir -p .tmp/v2/fixture-revisions
           jq -c '.r2Objects[] | select(.merge != "date_index")' .tmp/v2/date-feed/manifest.json | while IFS= read -r item; do
+            role=$(jq -r '.role' <<<"$item")
             key=$(jq -r '.key' <<<"$item")
             file=$(jq -r '.file' <<<"$item")
+            if [ "$role" = fixture ]; then
+              token=$(printf '%s' "$key" | sha256sum | cut -d' ' -f1)
+              current=".tmp/v2/fixture-revisions/current-$token.json"
+              reconciled=".tmp/v2/fixture-revisions/reconciled-$token.json"
+              get_log=".tmp/v2/fixture-revisions/get-$token.log"
+              rm -f "$current" "$reconciled" "$get_log"
+              if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/$key" \
+                --file "$current" --remote >"$get_log" 2>&1; then
+                if grep -Eqi 'not found|does not exist|404' "$get_log"; then
+                  rm -f "$current"
+                else
+                  cat "$get_log" >&2
+                  exit 1
+                fi
+              fi
+              if [ -e "$current" ] && [ ! -s "$current" ]; then
+                echo "R2 returned an empty fixture bundle for $key; refusing to overwrite it." >&2
+                exit 1
+              fi
+              if [ -s "$current" ]; then
+                node scripts/v2/reconcile-fixture-revision.js \
+                  "$current" ".tmp/v2/date-feed/$file" "$reconciled"
+              else
+                node scripts/v2/reconcile-fixture-revision.js \
+                  - ".tmp/v2/date-feed/$file" "$reconciled"
+              fi
+              mv "$reconciled" ".tmp/v2/date-feed/$file"
+            fi
             npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" --file ".tmp/v2/date-feed/$file" --content-type application/json --remote
           done
 

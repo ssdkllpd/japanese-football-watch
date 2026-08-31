@@ -90,6 +90,35 @@ jobs:
               "${{ steps.manifest.outputs.date_merge_mode }}"
           fi
 
+      - name: Reconcile canonical fixture revision
+        shell: bash
+        run: |
+          current=.tmp/v2/current-fixture.json
+          reconciled=.tmp/v2/reconciled-fixture.json
+          get_log=.tmp/v2/current-fixture-get.log
+          rm -f "$current" "$reconciled" "$get_log"
+          if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/${{ steps.manifest.outputs.fixture_key }}" \
+            --file "$current" --remote >"$get_log" 2>&1; then
+            if grep -Eqi 'not found|does not exist|404' "$get_log"; then
+              rm -f "$current"
+            else
+              cat "$get_log" >&2
+              exit 1
+            fi
+          fi
+          if [ -e "$current" ] && [ ! -s "$current" ]; then
+            echo 'R2 returned an empty fixture bundle; refusing to overwrite it.' >&2
+            exit 1
+          fi
+          if [ -s "$current" ]; then
+            node scripts/v2/reconcile-fixture-revision.js \
+              "$current" .tmp/v2/fixture/fixture.json "$reconciled"
+          else
+            node scripts/v2/reconcile-fixture-revision.js \
+              - .tmp/v2/fixture/fixture.json "$reconciled"
+          fi
+          mv "$reconciled" .tmp/v2/fixture/fixture.json
+
       - name: Publish canonical fixture bundle
         run: |
           npx --yes wrangler@4 r2 object put "$R2_BUCKET/${{ steps.manifest.outputs.fixture_key }}" \
