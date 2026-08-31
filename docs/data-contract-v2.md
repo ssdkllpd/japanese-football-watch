@@ -316,7 +316,11 @@ Competition-scoped JST date index:
 football/v2/indexes/competition/{competitionId}/date-jst/{YYYY-MM-DD}.json
 ```
 
-Date-index fixtureは`kickoffUtc`、同時刻では`fixtureId`のcode-point順で並べる。competition-scoped indexはroot `competition`を必須とし、merge後も保持する。publisher、D1 coverage importer、Worker degraded fallbackは`shared/date-index-contract.mjs`の同一validatorを使用する。
+Date-index fixtureは`kickoffUtc`、同時刻では`fixtureId`のcode-point順で並べる。competition-scoped indexはroot `competition`を必須とする。generic／competitionの期待scopeはpayload自身から導出せず、publisher、merge CLI、coverage plan、Worker routeが外部入力として必ず指定する。publisher、D1 coverage importer、Worker degraded fallbackは`shared/date-index-contract.mjs`のclosed-schema validatorを使用し、許可されていないroot／fixture／nested fieldを公開しない。
+
+R2 mergeは宛先scopeと更新方式を明示する。完全なdateまたはcompetition取得は`replace`、league限定generic取得は`replace-scope`として当該competitionの旧fixtureを除去してから置換する。単純`upsert`は削除を表現しないため、権威集合更新として暗黙には使用しない。
+
+D1 date-index coverageは件数だけでなく、fixture IDをcode-point順に並べた改行区切り列（末尾改行あり）のSHA-256を保持する。WorkerはD1 read結果だけから同じdigestを再計算し、件数保存型のidentity入替を拒否する。coverageの`generatedAt`はresponse内容全体の鮮度ではなく、fixture identity集合を検証した時刻を意味する。
 
 The pointer allows the Worker to resolve a fixture by `fixtureId` without making the UI know the R2 hierarchy.
 
