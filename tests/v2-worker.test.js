@@ -5,8 +5,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
+const { mergeDateIndex } = require('../scripts/v2/merge-date-index');
 
 const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const coverageMigration = fs.readFileSync(
+  path.join(__dirname, '..', 'migrations', '0002_d1_date_index_coverage.sql'),
+  'utf8',
+);
 
 async function loadWorker() {
   return import('../worker/index.mjs');
@@ -30,9 +35,10 @@ function localD1(database, onPrepare = () => {}) {
   };
 }
 
-function dateDatabase() {
+function dateDatabase(options = {}) {
   const database = new DatabaseSync(':memory:');
   database.exec(migration);
+  database.exec(coverageMigration);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
     INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
@@ -66,7 +72,62 @@ function dateDatabase() {
       (1, 'extratime', NULL, NULL),
       (1, 'penalty', NULL, NULL);
   `);
+  if (options.coverage !== false) {
+    database.exec(`
+      INSERT INTO date_index_coverages(
+        date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+      ) VALUES (
+        '2026-08-22', 1, '2026-08-21T22:00:00.000Z',
+        'football/v2/indexes/date-jst/2026-08-22.json', '${'a'.repeat(64)}'
+      );
+      INSERT INTO competition_date_index_coverages(
+        competition_id, date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+      ) VALUES (
+        1, '2026-08-22', 1, '2026-08-21T22:00:00.000Z',
+        'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
+        '${'b'.repeat(64)}'
+      );
+    `);
+  }
   return database;
+}
+
+function indexedFixture() {
+  return {
+    fixtureId: 'af:fixture:9001',
+    competitionId: 'af:competition:39',
+    seasonId: 'af:season:39:2026',
+    kickoffUtc: '2026-08-21T20:00:00.000Z',
+    dateJst: '2026-08-22',
+    status: { short: 'FT', long: 'Match Finished', elapsed: 90 },
+    ingestionState: 'finalized',
+    teams: {
+      home: { id: 'af:team:40', providerId: 40, name: 'Home FC',
+        logo: 'https://example.com/home.png', winner: false },
+      away: { id: 'af:team:50', providerId: 50, name: 'Away FC',
+        logo: 'https://example.com/away.png', winner: true },
+    },
+    score: {
+      goals: { home: 0, away: 2 },
+      halftime: { home: 0, away: 1 },
+      fulltime: { home: 0, away: 2 },
+      extratime: { home: null, away: null },
+      penalty: { home: null, away: null },
+    },
+    competition: {
+      id: 'af:competition:39', providerId: 39, name: 'Premier League', country: 'England',
+      logo: 'https://example.com/competition.png', flag: 'https://example.com/flag.png',
+    },
+    competitionName: 'Premier League',
+  };
+}
+
+function responseCache() {
+  const entries = new Map();
+  return {
+    async match(request) { return entries.get(request.url)?.clone() || null; },
+    async put(request, response) { entries.set(request.url, response.clone()); },
+  };
 }
 
 function r2Object(payload, customMetadata = {}) {
@@ -251,34 +312,8 @@ test('enabled date endpoint builds the response from bounded D1 queries', async 
   assert.match(queryPlan, /SEARCH fixture USING INDEX idx_fixtures_date_kickoff/);
   assert.doesNotMatch(queryPlan, /SCAN fixture(?:\s|$)/);
   assert.equal(response.headers.get('x-jfw-data-source'), 'd1');
-  assert.match(body.generatedAt, /^\d{4}-\d{2}-\d{2}T.*Z$/);
-  assert.deepEqual(body.fixtures, [{
-    fixtureId: 'af:fixture:9001',
-    competitionId: 'af:competition:39',
-    seasonId: 'af:season:39:2026',
-    kickoffUtc: '2026-08-21T20:00:00.000Z',
-    dateJst: '2026-08-22',
-    status: { short: 'FT', long: 'Match Finished', elapsed: 90 },
-    ingestionState: 'finalized',
-    teams: {
-      home: { id: 'af:team:40', providerId: 40, name: 'Home FC',
-        logo: 'https://example.com/home.png', winner: false },
-      away: { id: 'af:team:50', providerId: 50, name: 'Away FC',
-        logo: 'https://example.com/away.png', winner: true },
-    },
-    score: {
-      goals: { home: 0, away: 2 },
-      halftime: { home: 0, away: 1 },
-      fulltime: { home: 0, away: 2 },
-      extratime: { home: null, away: null },
-      penalty: { home: null, away: null },
-    },
-    competition: {
-      id: 'af:competition:39', providerId: 39, name: 'Premier League', country: 'England',
-      logo: 'https://example.com/competition.png', flag: 'https://example.com/flag.png',
-    },
-    competitionName: 'Premier League',
-  }]);
+  assert.equal(body.generatedAt, '2026-08-21T22:00:00.000Z');
+  assert.deepEqual(body.fixtures, [indexedFixture()]);
 });
 
 test('competition-date D1 flag is independent and preserves competition metadata', async t => {
@@ -319,8 +354,7 @@ test('D1 date failure returns the same verified R2 entity as an observable degra
   const requested = [];
   const payload = {
     contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date: '2026-08-22',
-    fixtures: [{ fixtureId: 'af:fixture:9001', competitionId: 'af:competition:39',
-      dateJst: '2026-08-22' }],
+    fixtures: [indexedFixture()],
     generatedAt: '2026-08-21T22:00:00.000Z',
   };
   const env = {
@@ -379,16 +413,56 @@ test('D1 date failure rejects an R2 snapshot for a different date', async () => 
   assert.match((await response.json()).error, /failed entity validation/);
 });
 
-test('competition-date D1 failure falls back only to its competition-scoped R2 entity', async () => {
-  const worker = await loadWorker();
-  const requested = [];
+test('D1 date failure rejects a scope-matching but incomplete R2 fixture DTO', async () => {
   const payload = {
     contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date: '2026-08-22',
-    competition: { id: 'af:competition:39', name: 'Premier League' },
     fixtures: [{ fixtureId: 'af:fixture:9001', competitionId: 'af:competition:39',
       dateJst: '2026-08-22' }],
     generatedAt: '2026-08-21T22:00:00.000Z',
   };
+  const worker = await loadWorker();
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: { prepare() { throw new Error('injected D1 failure'); } },
+    FOOTBALL_DATA: { async get() { return r2Object(payload); } },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+  assert.match((await response.json()).error, /failed entity validation/);
+});
+
+test('D1 date path fails closed instead of coercing a corrupt numeric value to null', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase();
+  t.after(() => database.close());
+  database.exec("UPDATE fixtures SET status_elapsed = 'invalid' WHERE id = 1");
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get() { return null; } },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+  assert.match((await response.json()).error, /no verified degraded snapshot/);
+});
+
+test('competition-date D1 failure accepts the real merged publisher artifact for only that entity', async () => {
+  const worker = await loadWorker();
+  const requested = [];
+  const payload = await mergeDateIndex(null, {
+    contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date: '2026-08-22',
+    competition: indexedFixture().competition,
+    fixtures: [indexedFixture()],
+    generatedAt: '2026-08-21T22:00:00.000Z',
+  });
   const env = {
     APP_ORIGINS: 'https://example.github.io',
     D1_COMPETITION_DATE_INDEX_ENABLED: 'true',
@@ -409,6 +483,117 @@ test('competition-date D1 failure falls back only to its competition-scoped R2 e
   assert.equal(body.degraded, true);
   assert.equal(body.lastSuccessfulAt, payload.generatedAt);
   assert.equal(body.competition.id, 'af:competition:39');
+});
+
+test('enabled D1 date path uses the edge response cache after one bounded read', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase();
+  t.after(() => database.close());
+  let queryCount = 0;
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database, () => { queryCount += 1; }),
+    FOOTBALL_DATA: { async get() { throw new Error('R2 must not be read'); } },
+    RESPONSE_CACHE: responseCache(),
+  };
+
+  const first = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+  const second = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get('x-jfw-cache'), 'miss');
+  assert.equal(second.status, 200);
+  assert.equal(second.headers.get('x-jfw-cache'), 'hit');
+  assert.equal(second.headers.get('access-control-expose-headers'), 'x-jfw-data-source, x-jfw-cache');
+  assert.equal(queryCount, 1);
+  assert.deepEqual(await second.json(), await first.json());
+});
+
+test('edge cache failure never turns a valid D1 response into degraded mode', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase();
+  t.after(() => database.close());
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get() { throw new Error('R2 must not be read'); } },
+    RESPONSE_CACHE: {
+      async match() { return null; },
+      put() { throw new Error('injected cache failure'); },
+    },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'd1');
+  assert.equal((await response.json()).fixtures.length, 1);
+});
+
+test('missing D1 coverage preserves the old R2 missing-versus-empty semantics', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase({ coverage: false });
+  t.after(() => database.close());
+  const requested = [];
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get(key) { requested.push(key); return null; } },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'r2-not-migrated');
+  assert.deepEqual(requested, ['football/v2/indexes/date-jst/2026-08-22.json']);
+});
+
+test('explicit generic and competition empty coverage returns a D1 200 instead of not-migrated', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase({ coverage: false });
+  t.after(() => database.close());
+  database.exec(`
+    INSERT INTO date_index_coverages(
+      date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+    ) VALUES (
+      '2026-08-23', 0, '2026-08-22T22:00:00.000Z',
+      'football/v2/indexes/date-jst/2026-08-23.json', '${'c'.repeat(64)}'
+    );
+    INSERT INTO competition_date_index_coverages(
+      competition_id, date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+    ) VALUES (
+      1, '2026-08-23', 0, '2026-08-22T22:00:00.000Z',
+      'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-23.json',
+      '${'d'.repeat(64)}'
+    );
+  `);
+  let r2Reads = 0;
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    D1_COMPETITION_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get() { r2Reads += 1; return null; } },
+  };
+
+  const generic = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-23'), env);
+  const scoped = await worker.default.fetch(workerRequest(
+    '/api/v2/competitions/af%3Acompetition%3A39/dates/2026-08-23',
+  ), env);
+  const genericBody = await generic.json();
+  const scopedBody = await scoped.json();
+
+  assert.equal(generic.status, 200);
+  assert.equal(scoped.status, 200);
+  assert.equal(generic.headers.get('x-jfw-data-source'), 'd1');
+  assert.equal(scoped.headers.get('x-jfw-data-source'), 'd1');
+  assert.deepEqual(genericBody.fixtures, []);
+  assert.deepEqual(scopedBody.fixtures, []);
+  assert.equal(scopedBody.competition.id, 'af:competition:39');
+  assert.equal(r2Reads, 0);
 });
 
 test('unknown D1 competition is a 404 and does not trigger an unrelated R2 fallback', async t => {

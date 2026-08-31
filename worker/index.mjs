@@ -1,11 +1,14 @@
+import {
+  assertValidDateIndexPayload,
+} from '../shared/date-index-contract.mjs';
+
 const API_BASE = 'https://v3.football.api-sports.io';
 const LIVE_TTL_SECONDS = 60;
 const DATE_TTL_SECONDS = 300;
 const DEGRADED_TTL_SECONDS = 60;
 const memoryRate = new Map();
 
-const FIXTURE_INDEX_SELECT_SQL = `
-SELECT
+const FIXTURE_INDEX_COLUMNS_SQL = `
   fixture.canonical_id AS fixture_id,
   fixture.kickoff_utc,
   fixture.date_jst,
@@ -48,24 +51,47 @@ SELECT
     WHERE fixture_id = fixture.id AND score_kind = 'penalty') AS penalty_home,
   (SELECT away_value FROM fixture_score_parts
     WHERE fixture_id = fixture.id AND score_kind = 'penalty') AS penalty_away
-FROM fixtures fixture
-JOIN competition_seasons season ON season.id = fixture.competition_season_id
-JOIN competitions competition ON competition.id = season.competition_id
-JOIN teams home ON home.id = fixture.home_team_id
-JOIN teams away ON away.id = fixture.away_team_id`;
+`;
 
-const DATE_FIXTURES_SQL = `${FIXTURE_INDEX_SELECT_SQL}
-WHERE fixture.date_jst = ?1
+const FIXTURE_INDEX_JOINS_SQL = `
+LEFT JOIN competition_seasons season ON season.id = fixture.competition_season_id
+LEFT JOIN competitions competition ON competition.id = season.competition_id
+LEFT JOIN teams home ON home.id = fixture.home_team_id
+LEFT JOIN teams away ON away.id = fixture.away_team_id`;
+
+const DATE_FIXTURES_SQL = `
+WITH coverage AS (
+  SELECT date_jst, fixture_count, generated_at
+  FROM date_index_coverages
+  WHERE date_jst = ?1
+)
+SELECT
+  coverage.fixture_count AS coverage_fixture_count,
+  coverage.generated_at AS coverage_generated_at,
+  ${FIXTURE_INDEX_COLUMNS_SQL}
+FROM coverage
+LEFT JOIN fixtures fixture ON fixture.date_jst = coverage.date_jst
+${FIXTURE_INDEX_JOINS_SQL}
 ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
 
-const COMPETITION_DATE_FIXTURES_SQL = `${FIXTURE_INDEX_SELECT_SQL}
-WHERE fixture.competition_season_id IN (
-  SELECT scoped_season.id
-  FROM competition_seasons scoped_season
-  JOIN competitions scoped_competition ON scoped_competition.id = scoped_season.competition_id
-  WHERE scoped_competition.canonical_id = ?1
+const COMPETITION_DATE_FIXTURES_SQL = `
+WITH coverage AS (
+  SELECT item.date_jst, item.fixture_count, item.generated_at, item.competition_id
+  FROM competition_date_index_coverages item
+  JOIN competitions scoped_competition ON scoped_competition.id = item.competition_id
+  WHERE scoped_competition.canonical_id = ?1 AND item.date_jst = ?2
 )
-  AND fixture.date_jst = ?2
+SELECT
+  coverage.fixture_count AS coverage_fixture_count,
+  coverage.generated_at AS coverage_generated_at,
+  ${FIXTURE_INDEX_COLUMNS_SQL}
+FROM coverage
+LEFT JOIN competition_seasons scoped_season
+  ON scoped_season.competition_id = coverage.competition_id
+LEFT JOIN fixtures fixture
+  ON fixture.competition_season_id = scoped_season.id
+  AND fixture.date_jst = coverage.date_jst
+${FIXTURE_INDEX_JOINS_SQL}
 ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
 
 const COMPETITION_SQL = `
@@ -88,6 +114,14 @@ function numberOrNull(value) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function d1NonNegativeIntegerOrNull(value, label) {
+  if (value === null || value === undefined) return null;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`D1 ${label} is outside the non-negative integer domain.`);
+  }
+  return value;
 }
 
 function booleanOrNull(value) {
@@ -210,7 +244,10 @@ async function d1Rows(env, sql, ...params) {
 function competitionDto(row) {
   return {
     id: row.canonical_id ?? row.competition_id,
-    providerId: numberOrNull(row.provider_id ?? row.competition_provider_id),
+    providerId: d1NonNegativeIntegerOrNull(
+      row.provider_id ?? row.competition_provider_id,
+      'competition provider ID',
+    ),
     name: row.name ?? row.competition_name,
     country: row.country_name ?? row.competition_country ?? null,
     logo: row.logo_url ?? row.competition_logo ?? null,
@@ -219,7 +256,10 @@ function competitionDto(row) {
 }
 
 function scorePart(row, kind) {
-  return { home: numberOrNull(row[`${kind}_home`]), away: numberOrNull(row[`${kind}_away`]) };
+  return {
+    home: d1NonNegativeIntegerOrNull(row[`${kind}_home`], `${kind} home score`),
+    away: d1NonNegativeIntegerOrNull(row[`${kind}_away`], `${kind} away score`),
+  };
 }
 
 function fixtureIndexEntryFromD1(row) {
@@ -233,27 +273,30 @@ function fixtureIndexEntryFromD1(row) {
     status: {
       short: row.status_short,
       long: row.status_long ?? null,
-      elapsed: numberOrNull(row.status_elapsed),
+      elapsed: d1NonNegativeIntegerOrNull(row.status_elapsed, 'status elapsed'),
     },
     ingestionState: row.ingestion_state,
     teams: {
       home: {
         id: row.home_team_id,
-        providerId: numberOrNull(row.home_team_provider_id),
+        providerId: d1NonNegativeIntegerOrNull(row.home_team_provider_id, 'home team provider ID'),
         name: row.home_team_name,
         logo: row.home_team_logo ?? null,
         winner: booleanOrNull(row.home_winner),
       },
       away: {
         id: row.away_team_id,
-        providerId: numberOrNull(row.away_team_provider_id),
+        providerId: d1NonNegativeIntegerOrNull(row.away_team_provider_id, 'away team provider ID'),
         name: row.away_team_name,
         logo: row.away_team_logo ?? null,
         winner: booleanOrNull(row.away_winner),
       },
     },
     score: {
-      goals: { home: numberOrNull(row.home_goals), away: numberOrNull(row.away_goals) },
+      goals: {
+        home: d1NonNegativeIntegerOrNull(row.home_goals, 'home goals'),
+        away: d1NonNegativeIntegerOrNull(row.away_goals, 'away goals'),
+      },
       halftime: scorePart(row, 'halftime'),
       fulltime: scorePart(row, 'fulltime'),
       extratime: scorePart(row, 'extratime'),
@@ -268,20 +311,40 @@ export async function buildD1DateFeed(
   env,
   date,
   competitionId = null,
-  generatedAt = new Date().toISOString(),
 ) {
   let competition = null;
   if (competitionId !== null) {
     const competitionRows = await d1Rows(env, COMPETITION_SQL, competitionId);
-    if (competitionRows.length === 0) return null;
+    if (competitionRows.length === 0) {
+      const error = new Error('D1 competition is not stored.');
+      error.code = 'D1_COMPETITION_NOT_FOUND';
+      throw error;
+    }
     if (competitionRows.length !== 1) throw new Error('D1 competition identity is not unique.');
     competition = competitionDto(competitionRows[0]);
   }
   const fixtureRows = competitionId === null
     ? await d1Rows(env, DATE_FIXTURES_SQL, date)
     : await d1Rows(env, COMPETITION_DATE_FIXTURES_SQL, competitionId, date);
+  if (fixtureRows.length === 0) return null;
+  const expectedCount = d1NonNegativeIntegerOrNull(
+    fixtureRows[0].coverage_fixture_count,
+    'date coverage fixture count',
+  );
+  const generatedAt = fixtureRows[0].coverage_generated_at;
+  if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+    throw new Error('D1 date coverage fixture count is invalid.');
+  }
+  if (fixtureRows.some(row => row.coverage_fixture_count !== expectedCount
+      || row.coverage_generated_at !== generatedAt)) {
+    throw new Error('D1 date coverage metadata is inconsistent.');
+  }
   const fixtures = fixtureRows
+    .filter(row => row.fixture_id !== null)
     .map(fixtureIndexEntryFromD1);
+  if (fixtures.length !== expectedCount || new Set(fixtures.map(fixture => fixture.fixtureId)).size !== expectedCount) {
+    throw new Error('D1 date coverage fixture count does not match stored fixtures.');
+  }
   const result = {
     contractVersion: '2.0.0',
     timeZone: 'Asia/Tokyo',
@@ -290,6 +353,10 @@ export async function buildD1DateFeed(
   if (competition) result.competition = competition;
   result.fixtures = fixtures;
   result.generatedAt = generatedAt;
+  assertValidDateIndexPayload(result, {
+    expectedDate: date,
+    expectedCompetitionId: competitionId,
+  });
   return result;
 }
 
@@ -306,7 +373,44 @@ function withCors(response, origin) {
   headers.set('vary', 'Origin');
   headers.set('access-control-allow-methods', 'GET,OPTIONS');
   headers.set('access-control-allow-headers', 'content-type');
+  headers.set('access-control-expose-headers', 'x-jfw-data-source, x-jfw-cache');
   return new Response(response.body, { status: response.status, headers });
+}
+
+function withHeader(response, name, value) {
+  const headers = new Headers(response.headers);
+  headers.set(name, value);
+  return new Response(response.body, { status: response.status, headers });
+}
+
+function dateResponseCache(env) {
+  return env.RESPONSE_CACHE || globalThis.caches?.default || null;
+}
+
+function dateResponseCacheKey(date, competitionId) {
+  const scope = competitionId === null ? 'all' : `competition/${encodeURIComponent(competitionId)}`;
+  return new Request(`https://jfw.internal/cache/date-index/${scope}/${date}`);
+}
+
+async function cacheMatch(cache, key) {
+  if (!cache || typeof cache.match !== 'function') return null;
+  try {
+    return await cache.match(key) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function cachePut(cache, key, response, context) {
+  if (!cache || typeof cache.put !== 'function' || response.status !== 200) return;
+  let operation;
+  try {
+    operation = Promise.resolve(cache.put(key, response.clone())).catch(() => {});
+  } catch {
+    return;
+  }
+  if (typeof context?.waitUntil === 'function') context.waitUntil(operation);
+  else await operation;
 }
 
 function softRateLimit(request, env) {
@@ -345,27 +449,17 @@ async function providerLive(env) {
   return result;
 }
 
-async function r2JsonObject(env, key) {
-  if (!env.FOOTBALL_DATA) return json({ error: 'FOOTBALL_DATA R2 binding is not configured.' }, 503);
+async function r2JsonObject(env, key, extraHeaders = {}) {
+  if (!env.FOOTBALL_DATA) {
+    return json({ error: 'FOOTBALL_DATA R2 binding is not configured.' }, 503, extraHeaders);
+  }
   const object = await env.FOOTBALL_DATA.get(key);
-  if (!object) return json({ error: 'Not found' }, 404);
-  const headers = new Headers();
+  if (!object) return json({ error: 'Not found' }, 404, extraHeaders);
+  const headers = new Headers(extraHeaders);
   headers.set('content-type', object.httpMetadata?.contentType || 'application/json; charset=utf-8');
   headers.set('cache-control', 'public, max-age=300');
   if (object.etag) headers.set('etag', object.etag);
   return new Response(object.body, { status: 200, headers });
-}
-
-function validDegradedDatePayload(payload, date, competitionId) {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
-  if (payload.contractVersion !== '2.0.0' || payload.timeZone !== 'Asia/Tokyo') return false;
-  if (payload.date !== date || !Array.isArray(payload.fixtures)) return false;
-  if (typeof payload.generatedAt !== 'string'
-      || Number.isNaN(new Date(payload.generatedAt).getTime())) return false;
-  if (competitionId !== null && payload.competition?.id !== competitionId) return false;
-  return payload.fixtures.every(fixture => fixture
-    && fixture.dateJst === date
-    && (competitionId === null || fixture.competitionId === competitionId));
 }
 
 async function degradedR2DateJsonObject(env, key, date, competitionId) {
@@ -385,7 +479,12 @@ async function degradedR2DateJsonObject(env, key, date, competitionId) {
     return json({ error: 'D1 read failed and the degraded snapshot is invalid.' }, 503,
       { 'x-jfw-data-source': 'unavailable' });
   }
-  if (!validDegradedDatePayload(payload, date, competitionId)) {
+  try {
+    assertValidDateIndexPayload(payload, {
+      expectedDate: date,
+      expectedCompetitionId: competitionId,
+    });
+  } catch {
     return json({ error: 'D1 read failed and the degraded snapshot failed entity validation.' }, 503,
       { 'x-jfw-data-source': 'unavailable' });
   }
@@ -395,22 +494,36 @@ async function degradedR2DateJsonObject(env, key, date, competitionId) {
   });
 }
 
-async function dateIndexResponse(env, date, competitionId = null) {
+async function dateIndexResponse(env, date, competitionId = null, context = null) {
   const flag = competitionId === null
     ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
   const r2Key = competitionId === null
     ? dateIndexKey(date) : competitionDateIndexKey(competitionId, date);
   if (!enabled(env, flag)) return r2JsonObject(env, r2Key);
+  const cache = dateResponseCache(env);
+  const cacheKey = dateResponseCacheKey(date, competitionId);
+  const cached = await cacheMatch(cache, cacheKey);
+  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
   try {
     const feed = await buildD1DateFeed(env, date, competitionId);
-    if (feed === null) return json({ error: 'Competition not found' }, 404,
-      { 'x-jfw-data-source': 'd1' });
-    return json(feed, 200, {
+    if (feed === null) {
+      return r2JsonObject(env, r2Key, { 'x-jfw-data-source': 'r2-not-migrated' });
+    }
+    const response = json(feed, 200, {
       'cache-control': `public, max-age=${DATE_TTL_SECONDS}`,
       'x-jfw-data-source': 'd1',
+      'x-jfw-cache': 'miss',
     });
-  } catch {
-    return degradedR2DateJsonObject(env, r2Key, date, competitionId);
+    await cachePut(cache, cacheKey, response, context);
+    return response;
+  } catch (error) {
+    if (error?.code === 'D1_COMPETITION_NOT_FOUND') {
+      return json({ error: 'Competition not found' }, 404,
+        { 'x-jfw-data-source': 'd1' });
+    }
+    const response = await degradedR2DateJsonObject(env, r2Key, date, competitionId);
+    await cachePut(cache, cacheKey, response, context);
+    return withHeader(response, 'x-jfw-cache', 'miss');
   }
 }
 
@@ -427,7 +540,7 @@ async function fixtureFromR2(env, fixtureId) {
   return r2JsonObject(env, pointer.key);
 }
 
-async function handle(request, env) {
+async function handle(request, env, context) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
@@ -438,7 +551,7 @@ async function handle(request, env) {
   if (fixtureMatch) return fixtureFromR2(env, decodeURIComponent(fixtureMatch[1]));
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
-  if (dateMatch) return dateIndexResponse(env, dateMatch[1]);
+  if (dateMatch) return dateIndexResponse(env, dateMatch[1], null, context);
 
   const competitionDateMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (competitionDateMatch) {
@@ -446,6 +559,7 @@ async function handle(request, env) {
       env,
       competitionDateMatch[2],
       decodeURIComponent(competitionDateMatch[1]),
+      context,
     );
   }
 
@@ -464,11 +578,11 @@ async function handle(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, context) {
     const origin = request.headers.get('origin');
     if (!isAllowedOrigin(origin, env)) return json({ error: 'Origin not allowed' }, 403);
     if (!softRateLimit(request, env)) return withCors(json({ error: 'Rate limit exceeded' }, 429), origin);
-    const response = await handle(request, env);
+    const response = await handle(request, env, context);
     return withCors(response, origin);
   },
 };

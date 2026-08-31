@@ -70,6 +70,23 @@ test('date feed ignores provider rows that do not belong to the requested JST da
   assert.equal(feed.competitionIndexes[0].fixtures.length, 1);
 });
 
+test('date feed uses fixture ID as the deterministic tie-breaker for equal kickoffs', () => {
+  const feed = buildDateFeed([
+    fixture({ id: 302, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+    fixture({ id: 301, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+  ], {
+    date: '2026-08-22',
+    fetchedAt: '2026-08-21T22:00:00Z',
+  });
+
+  assert.deepEqual(feed.dateIndex.fixtures.map(row => row.fixtureId), [
+    'af:fixture:301', 'af:fixture:302',
+  ]);
+  assert.deepEqual(feed.competitionIndexes[0].fixtures.map(row => row.fixtureId), [
+    'af:fixture:301', 'af:fixture:302',
+  ]);
+});
+
 test('competition date index key is explicit about competition and JST date', () => {
   assert.equal(
     competitionDateIndexKey('af:competition:39', '2026-08-22'),

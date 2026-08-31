@@ -4,30 +4,95 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { mergeDateIndex } = require('../scripts/v2/merge-date-index');
 
-test('date index merge upserts fixture IDs and keeps kickoff order', () => {
+function fixture(id, kickoffUtc, statusShort = 'NS') {
+  const providerId = Number(id.split(':').at(-1));
+  return {
+    fixtureId: id,
+    competitionId: 'af:competition:39',
+    seasonId: 'af:season:39:2026',
+    kickoffUtc,
+    dateJst: '2026-08-22',
+    status: {
+      short: statusShort,
+      long: statusShort === 'FT' ? 'Match Finished' : 'Not Started',
+      elapsed: statusShort === 'FT' ? 90 : null,
+    },
+    ingestionState: statusShort === 'FT' ? 'provisional_final' : 'scheduled',
+    teams: {
+      home: { id: `af:team:${providerId + 100}`, providerId: providerId + 100, name: 'Home', logo: null, winner: null },
+      away: { id: `af:team:${providerId + 200}`, providerId: providerId + 200, name: 'Away', logo: null, winner: null },
+    },
+    score: {
+      goals: { home: null, away: null },
+      halftime: { home: null, away: null },
+      fulltime: { home: null, away: null },
+      extratime: { home: null, away: null },
+      penalty: { home: null, away: null },
+    },
+  };
+}
+
+function competition() {
+  return {
+    id: 'af:competition:39',
+    providerId: 39,
+    name: 'Premier League',
+    country: 'England',
+    logo: null,
+    flag: null,
+  };
+}
+
+test('date index merge upserts fixture IDs and keeps deterministic kickoff order', async () => {
   const current = {
     contractVersion: '2.0.0',
     timeZone: 'Asia/Tokyo',
     date: '2026-08-22',
     fixtures: [
-      { fixtureId: 'af:fixture:2', kickoffUtc: '2026-08-21T21:00:00.000Z', status: { short: 'NS' } },
-      { fixtureId: 'af:fixture:1', kickoffUtc: '2026-08-21T19:00:00.000Z', status: { short: 'NS' } },
+      fixture('af:fixture:1', '2026-08-21T19:00:00.000Z'),
+      fixture('af:fixture:2', '2026-08-21T21:00:00.000Z'),
     ],
+    generatedAt: '2026-08-21T23:00:00.000Z',
   };
   const incoming = {
     contractVersion: '2.0.0',
     timeZone: 'Asia/Tokyo',
     date: '2026-08-22',
     fixtures: [
-      { fixtureId: 'af:fixture:2', kickoffUtc: '2026-08-21T21:00:00.000Z', status: { short: 'FT' } },
-      { fixtureId: 'af:fixture:3', kickoffUtc: '2026-08-21T20:00:00.000Z', status: { short: 'FT' } },
+      fixture('af:fixture:2', '2026-08-21T21:00:00.000Z', 'FT'),
+      fixture('af:fixture:3', '2026-08-21T21:00:00.000Z', 'FT'),
     ],
-    generatedAt: '2026-08-22T01:00:00Z',
+    generatedAt: '2026-08-22T01:00:00.000Z',
   };
 
-  const merged = mergeDateIndex(current, incoming);
+  const merged = await mergeDateIndex(current, incoming);
   assert.deepEqual(merged.fixtures.map(row => row.fixtureId), [
-    'af:fixture:1', 'af:fixture:3', 'af:fixture:2',
+    'af:fixture:1', 'af:fixture:2', 'af:fixture:3',
   ]);
   assert.equal(merged.fixtures.find(row => row.fixtureId === 'af:fixture:2').status.short, 'FT');
+});
+
+test('competition date merge repairs a legacy publisher artifact without root competition', async () => {
+  const current = {
+    contractVersion: '2.0.0',
+    timeZone: 'Asia/Tokyo',
+    date: '2026-08-22',
+    fixtures: [fixture('af:fixture:1', '2026-08-21T19:00:00.000Z')],
+    generatedAt: '2026-08-21T23:00:00.000Z',
+  };
+  const incoming = {
+    contractVersion: '2.0.0',
+    timeZone: 'Asia/Tokyo',
+    date: '2026-08-22',
+    competition: competition(),
+    fixtures: [fixture('af:fixture:2', '2026-08-21T21:00:00.000Z')],
+    generatedAt: '2026-08-22T01:00:00.000Z',
+  };
+
+  const merged = await mergeDateIndex(current, incoming);
+
+  assert.deepEqual(merged.competition, competition());
+  assert.deepEqual(merged.fixtures.map(row => row.fixtureId), [
+    'af:fixture:1', 'af:fixture:2',
+  ]);
 });

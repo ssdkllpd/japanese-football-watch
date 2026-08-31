@@ -40,6 +40,12 @@ function responseArray(result) {
   return Array.isArray(result?.data?.response) ? result.data.response : [];
 }
 
+function compareText(left, right) {
+  const a = String(left ?? '');
+  const b = String(right ?? '');
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 function competitionDateIndexKey(competitionId, dateJst) {
   if (!competitionId) throw new Error('Competition ID is required.');
   const date = assertDate(dateJst);
@@ -74,7 +80,8 @@ function buildDateFeed(providerFixtures, options = {}) {
     bundles.push(bundle);
   }
 
-  bundles.sort((a, b) => String(a.fixture.kickoffUtc || '').localeCompare(String(b.fixture.kickoffUtc || '')));
+  bundles.sort((a, b) => compareText(a.fixture.kickoffUtc, b.fixture.kickoffUtc)
+    || compareText(a.fixture.id, b.fixture.id));
   const entries = bundles.map(feedEntry);
   const dateIndex = {
     contractVersion: CONTRACT_VERSION,
@@ -192,6 +199,14 @@ async function main() {
   const client = createClientFromEnv(process.env);
   const result = await client.get('fixtures', query);
   const feed = buildDateFeed(responseArray(result), { date, fetchedAt: new Date().toISOString() });
+  const { assertValidDateIndexPayload } = await import('../../shared/date-index-contract.mjs');
+  assertValidDateIndexPayload(feed.dateIndex, { expectedDate: date, expectedCompetitionId: null });
+  for (const index of feed.competitionIndexes) {
+    assertValidDateIndexPayload(index, {
+      expectedDate: date,
+      expectedCompetitionId: index.competition.id,
+    });
+  }
   const manifest = writeDateFeed(outputDir, feed, { query, quota: result.quota });
   process.stdout.write(`${JSON.stringify({ outputDir, manifest }, null, 2)}\n`);
 }
