@@ -1,6 +1,78 @@
 const API_BASE = 'https://v3.football.api-sports.io';
 const LIVE_TTL_SECONDS = 60;
+const DATE_TTL_SECONDS = 300;
+const DEGRADED_TTL_SECONDS = 60;
 const memoryRate = new Map();
+
+const FIXTURE_INDEX_SELECT_SQL = `
+SELECT
+  fixture.canonical_id AS fixture_id,
+  fixture.kickoff_utc,
+  fixture.date_jst,
+  fixture.status_short,
+  fixture.status_long,
+  fixture.status_elapsed,
+  fixture.ingestion_state,
+  fixture.home_goals,
+  fixture.away_goals,
+  fixture.home_winner,
+  fixture.away_winner,
+  competition.canonical_id AS competition_id,
+  competition.provider_id AS competition_provider_id,
+  competition.name AS competition_name,
+  competition.country_name AS competition_country,
+  competition.logo_url AS competition_logo,
+  competition.flag_url AS competition_flag,
+  season.canonical_id AS season_id,
+  home.canonical_id AS home_team_id,
+  home.provider_id AS home_team_provider_id,
+  home.name AS home_team_name,
+  home.logo_url AS home_team_logo,
+  away.canonical_id AS away_team_id,
+  away.provider_id AS away_team_provider_id,
+  away.name AS away_team_name,
+  away.logo_url AS away_team_logo,
+  (SELECT home_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'halftime') AS halftime_home,
+  (SELECT away_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'halftime') AS halftime_away,
+  (SELECT home_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'fulltime') AS fulltime_home,
+  (SELECT away_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'fulltime') AS fulltime_away,
+  (SELECT home_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'extratime') AS extratime_home,
+  (SELECT away_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'extratime') AS extratime_away,
+  (SELECT home_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'penalty') AS penalty_home,
+  (SELECT away_value FROM fixture_score_parts
+    WHERE fixture_id = fixture.id AND score_kind = 'penalty') AS penalty_away
+FROM fixtures fixture
+JOIN competition_seasons season ON season.id = fixture.competition_season_id
+JOIN competitions competition ON competition.id = season.competition_id
+JOIN teams home ON home.id = fixture.home_team_id
+JOIN teams away ON away.id = fixture.away_team_id`;
+
+const DATE_FIXTURES_SQL = `${FIXTURE_INDEX_SELECT_SQL}
+WHERE fixture.date_jst = ?1
+ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
+
+const COMPETITION_DATE_FIXTURES_SQL = `${FIXTURE_INDEX_SELECT_SQL}
+WHERE fixture.competition_season_id IN (
+  SELECT scoped_season.id
+  FROM competition_seasons scoped_season
+  JOIN competitions scoped_competition ON scoped_competition.id = scoped_season.competition_id
+  WHERE scoped_competition.canonical_id = ?1
+)
+  AND fixture.date_jst = ?2
+ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
+
+const COMPETITION_SQL = `
+SELECT canonical_id, provider_id, name, country_name, logo_url, flag_url
+FROM competitions
+WHERE canonical_id = ?1
+LIMIT 1`;
 
 function afId(kind, providerId) {
   if (providerId === null || providerId === undefined || providerId === '') return null;
@@ -16,6 +88,17 @@ function numberOrNull(value) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function booleanOrNull(value) {
+  if (value === null || value === undefined) return null;
+  if (value === true || value === 1 || value === '1') return true;
+  if (value === false || value === 0 || value === '0') return false;
+  throw new Error('D1 boolean value is outside the supported 0/1 domain.');
+}
+
+function enabled(env, name) {
+  return String(env[name] || '').trim().toLowerCase() === 'true';
 }
 
 function toUtcIso(value) {
@@ -113,6 +196,103 @@ export function standingsLatestKey(competitionId, seasonId) {
   return `football/v2/competitions/${competitionId}/seasons/${seasonId}/standings/latest.json`;
 }
 
+async function d1Rows(env, sql, ...params) {
+  if (!env.FOOTBALL_DB || typeof env.FOOTBALL_DB.prepare !== 'function') {
+    throw new Error('FOOTBALL_DB D1 binding is not configured.');
+  }
+  const result = await env.FOOTBALL_DB.prepare(sql).bind(...params).all();
+  if (result?.success === false || !Array.isArray(result?.results)) {
+    throw new Error('D1 query did not return a successful row set.');
+  }
+  return result.results;
+}
+
+function competitionDto(row) {
+  return {
+    id: row.canonical_id ?? row.competition_id,
+    providerId: numberOrNull(row.provider_id ?? row.competition_provider_id),
+    name: row.name ?? row.competition_name,
+    country: row.country_name ?? row.competition_country ?? null,
+    logo: row.logo_url ?? row.competition_logo ?? null,
+    flag: row.flag_url ?? row.competition_flag ?? null,
+  };
+}
+
+function scorePart(row, kind) {
+  return { home: numberOrNull(row[`${kind}_home`]), away: numberOrNull(row[`${kind}_away`]) };
+}
+
+function fixtureIndexEntryFromD1(row) {
+  const competition = competitionDto(row);
+  return {
+    fixtureId: row.fixture_id,
+    competitionId: competition.id,
+    seasonId: row.season_id,
+    kickoffUtc: row.kickoff_utc,
+    dateJst: row.date_jst,
+    status: {
+      short: row.status_short,
+      long: row.status_long ?? null,
+      elapsed: numberOrNull(row.status_elapsed),
+    },
+    ingestionState: row.ingestion_state,
+    teams: {
+      home: {
+        id: row.home_team_id,
+        providerId: numberOrNull(row.home_team_provider_id),
+        name: row.home_team_name,
+        logo: row.home_team_logo ?? null,
+        winner: booleanOrNull(row.home_winner),
+      },
+      away: {
+        id: row.away_team_id,
+        providerId: numberOrNull(row.away_team_provider_id),
+        name: row.away_team_name,
+        logo: row.away_team_logo ?? null,
+        winner: booleanOrNull(row.away_winner),
+      },
+    },
+    score: {
+      goals: { home: numberOrNull(row.home_goals), away: numberOrNull(row.away_goals) },
+      halftime: scorePart(row, 'halftime'),
+      fulltime: scorePart(row, 'fulltime'),
+      extratime: scorePart(row, 'extratime'),
+      penalty: scorePart(row, 'penalty'),
+    },
+    competition,
+    competitionName: competition.name,
+  };
+}
+
+export async function buildD1DateFeed(
+  env,
+  date,
+  competitionId = null,
+  generatedAt = new Date().toISOString(),
+) {
+  let competition = null;
+  if (competitionId !== null) {
+    const competitionRows = await d1Rows(env, COMPETITION_SQL, competitionId);
+    if (competitionRows.length === 0) return null;
+    if (competitionRows.length !== 1) throw new Error('D1 competition identity is not unique.');
+    competition = competitionDto(competitionRows[0]);
+  }
+  const fixtureRows = competitionId === null
+    ? await d1Rows(env, DATE_FIXTURES_SQL, date)
+    : await d1Rows(env, COMPETITION_DATE_FIXTURES_SQL, competitionId, date);
+  const fixtures = fixtureRows
+    .map(fixtureIndexEntryFromD1);
+  const result = {
+    contractVersion: '2.0.0',
+    timeZone: 'Asia/Tokyo',
+    date,
+  };
+  if (competition) result.competition = competition;
+  result.fixtures = fixtures;
+  result.generatedAt = generatedAt;
+  return result;
+}
+
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -176,6 +356,64 @@ async function r2JsonObject(env, key) {
   return new Response(object.body, { status: 200, headers });
 }
 
+function validDegradedDatePayload(payload, date, competitionId) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+  if (payload.contractVersion !== '2.0.0' || payload.timeZone !== 'Asia/Tokyo') return false;
+  if (payload.date !== date || !Array.isArray(payload.fixtures)) return false;
+  if (typeof payload.generatedAt !== 'string'
+      || Number.isNaN(new Date(payload.generatedAt).getTime())) return false;
+  if (competitionId !== null && payload.competition?.id !== competitionId) return false;
+  return payload.fixtures.every(fixture => fixture
+    && fixture.dateJst === date
+    && (competitionId === null || fixture.competitionId === competitionId));
+}
+
+async function degradedR2DateJsonObject(env, key, date, competitionId) {
+  if (!env.FOOTBALL_DATA) {
+    return json({ error: 'D1 read failed and FOOTBALL_DATA fallback is not configured.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  const object = await env.FOOTBALL_DATA.get(key);
+  if (!object) {
+    return json({ error: 'D1 read failed and no verified degraded snapshot exists.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  let payload;
+  try {
+    payload = JSON.parse(await object.text());
+  } catch {
+    return json({ error: 'D1 read failed and the degraded snapshot is invalid.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  if (!validDegradedDatePayload(payload, date, competitionId)) {
+    return json({ error: 'D1 read failed and the degraded snapshot failed entity validation.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  return json({ ...payload, degraded: true, lastSuccessfulAt: payload.generatedAt }, 200, {
+    'cache-control': `public, max-age=${DEGRADED_TTL_SECONDS}`,
+    'x-jfw-data-source': 'r2-degraded',
+  });
+}
+
+async function dateIndexResponse(env, date, competitionId = null) {
+  const flag = competitionId === null
+    ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
+  const r2Key = competitionId === null
+    ? dateIndexKey(date) : competitionDateIndexKey(competitionId, date);
+  if (!enabled(env, flag)) return r2JsonObject(env, r2Key);
+  try {
+    const feed = await buildD1DateFeed(env, date, competitionId);
+    if (feed === null) return json({ error: 'Competition not found' }, 404,
+      { 'x-jfw-data-source': 'd1' });
+    return json(feed, 200, {
+      'cache-control': `public, max-age=${DATE_TTL_SECONDS}`,
+      'x-jfw-data-source': 'd1',
+    });
+  } catch {
+    return degradedR2DateJsonObject(env, r2Key, date, competitionId);
+  }
+}
+
 async function fixtureFromR2(env, fixtureId) {
   const pointerObject = await env.FOOTBALL_DATA?.get(fixturePointerKey(fixtureId));
   if (!pointerObject) return json({ error: 'Fixture not found' }, 404);
@@ -200,13 +438,14 @@ async function handle(request, env) {
   if (fixtureMatch) return fixtureFromR2(env, decodeURIComponent(fixtureMatch[1]));
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
-  if (dateMatch) return r2JsonObject(env, dateIndexKey(dateMatch[1]));
+  if (dateMatch) return dateIndexResponse(env, dateMatch[1]);
 
   const competitionDateMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (competitionDateMatch) {
-    return r2JsonObject(
+    return dateIndexResponse(
       env,
-      competitionDateIndexKey(decodeURIComponent(competitionDateMatch[1]), competitionDateMatch[2]),
+      competitionDateMatch[2],
+      decodeURIComponent(competitionDateMatch[1]),
     );
   }
 

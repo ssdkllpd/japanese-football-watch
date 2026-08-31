@@ -10,9 +10,18 @@ compatibility_date = "2026-08-21"
 binding = "FOOTBALL_DATA"
 bucket_name = "REPLACE_WITH_R2_BUCKET"
 
+[[d1_databases]]
+binding = "FOOTBALL_DB"
+database_name = "REPLACE_WITH_D1_DATABASE"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
 [vars]
 APP_ORIGINS = "https://REPLACE_WITH_PAGES_ORIGIN"
 ALLOW_NO_ORIGIN = "false"
 SOFT_RATE_LIMIT_PER_MINUTE = "120"
 # Comma-separated API-Football competition IDs. Empty means all live fixtures.
 LIVE_COMPETITION_IDS = ""
+# Phase 3 endpoint flags stay off until the corresponding shadow and
+# failure-injection evidence has passed formal review.
+D1_DATE_INDEX_ENABLED = "false"
+D1_COMPETITION_DATE_INDEX_ENABLED = "false"
