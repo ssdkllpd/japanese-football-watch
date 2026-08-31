@@ -16,8 +16,13 @@ function ensureSchema(database, rootDirectory) {
   const exists = database.prepare(`SELECT 1 FROM sqlite_master
     WHERE type = 'table' AND name = 'provider_sources'`).get();
   if (exists) return;
-  const migration = fs.readFileSync(path.join(rootDirectory, 'migrations', '0001_d1_core.sql'), 'utf8');
-  database.exec(migration);
+  for (const file of [
+    '0001_d1_core.sql',
+    '0002_d1_date_index_coverage.sql',
+    '0003_d1_standings_publication.sql',
+  ]) {
+    database.exec(fs.readFileSync(path.join(rootDirectory, 'migrations', file), 'utf8'));
+  }
 }
 
 function databaseCounts(database) {

@@ -2,10 +2,19 @@ import {
   assertValidDateIndexPayload,
   fixtureIdDigestInput,
 } from '../shared/date-index-contract.mjs';
+import {
+  assertValidStandingsPayload,
+  standingsIdentityDigestInput,
+} from '../shared/standings-contract.mjs';
+import fixtureRepositoryModule from '../scripts/d1/fixture-repository.js';
+
+const { FixtureRepository } = fixtureRepositoryModule;
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const LIVE_TTL_SECONDS = 60;
 const DATE_TTL_SECONDS = 300;
+const STANDINGS_TTL_SECONDS = 300;
+const FIXTURE_DETAIL_TTL_SECONDS = 300;
 const DEGRADED_TTL_SECONDS = 60;
 const memoryRate = new Map();
 
@@ -104,6 +113,90 @@ FROM competitions
 WHERE canonical_id = ?1
 LIMIT 1`;
 
+const STANDINGS_IDENTITY_SQL = `
+SELECT
+  competition.canonical_id AS competition_id,
+  competition.provider_id AS competition_provider_id,
+  competition.name AS competition_name,
+  competition.country_name AS competition_country,
+  competition.logo_url AS competition_logo,
+  competition.flag_url AS competition_flag,
+  season.id AS season_row_id,
+  season.canonical_id AS season_id,
+  season.provider_season,
+  season.label AS season_label
+FROM competitions competition
+LEFT JOIN competition_seasons season
+  ON season.competition_id = competition.id AND season.canonical_id = ?2
+WHERE competition.canonical_id = ?1
+LIMIT 1`;
+
+const STANDINGS_ROWS_SQL = `
+WITH publication AS (
+  SELECT publication.snapshot_id, publication.row_count,
+    publication.identity_digest, publication.generated_at
+  FROM standings_publications publication
+  JOIN competition_seasons season
+    ON season.id = publication.competition_season_id
+  JOIN competitions competition ON competition.id = season.competition_id
+  WHERE competition.canonical_id = ?1 AND season.canonical_id = ?2
+)
+SELECT
+  publication.row_count AS publication_row_count,
+  publication.identity_digest AS publication_identity_digest,
+  publication.generated_at AS publication_generated_at,
+  snapshot.contract_version,
+  snapshot.section_presence,
+  snapshot.provenance_source AS snapshot_provenance_source,
+  snapshot.provenance_fetched_at AS snapshot_provenance_fetched_at,
+  snapshot.provenance_verification AS snapshot_provenance_verification,
+  snapshot.provenance_issues_json AS snapshot_provenance_issues_json,
+  group_row.group_id,
+  group_row.group_name,
+  group_row.group_order,
+  standing.row_order,
+  standing.rank,
+  standing.points,
+  standing.played AS overall_played,
+  standing.wins AS overall_wins,
+  standing.draws AS overall_draws,
+  standing.losses AS overall_losses,
+  standing.goals_for AS overall_goals_for,
+  standing.goals_against AS overall_goals_against,
+  standing.home_played,
+  standing.home_wins,
+  standing.home_draws,
+  standing.home_losses,
+  standing.home_goals_for,
+  standing.home_goals_against,
+  standing.away_played,
+  standing.away_wins,
+  standing.away_draws,
+  standing.away_losses,
+  standing.away_goals_for,
+  standing.away_goals_against,
+  standing.goal_difference,
+  standing.form,
+  standing.status,
+  standing.description,
+  standing.updated_at,
+  standing.provenance_source AS row_provenance_source,
+  standing.provenance_fetched_at AS row_provenance_fetched_at,
+  standing.provenance_verification AS row_provenance_verification,
+  standing.provenance_issues_json AS row_provenance_issues_json,
+  team.canonical_id AS team_id,
+  team.provider_id AS team_provider_id,
+  team.name AS team_name,
+  team.logo_url AS team_logo
+FROM publication
+JOIN standings_snapshots snapshot ON snapshot.id = publication.snapshot_id
+LEFT JOIN standings_groups group_row ON group_row.snapshot_id = snapshot.id
+LEFT JOIN standings_rows standing
+  ON standing.snapshot_id = group_row.snapshot_id
+  AND standing.group_id = group_row.group_id
+LEFT JOIN teams team ON team.id = standing.team_id
+ORDER BY group_row.group_order, standing.row_order`;
+
 function afId(kind, providerId) {
   if (providerId === null || providerId === undefined || providerId === '') return null;
   return `af:${kind}:${String(providerId)}`;
@@ -128,6 +221,32 @@ function d1NonNegativeIntegerOrNull(value, label) {
   return value;
 }
 
+function d1IntegerOrNull(value, label) {
+  if (value === null || value === undefined) return null;
+  if (!Number.isInteger(value)) throw new Error(`D1 ${label} is outside the integer domain.`);
+  return value;
+}
+
+function d1PositiveIntegerOrNull(value, label) {
+  const parsed = d1IntegerOrNull(value, label);
+  if (parsed !== null && parsed < 1) throw new Error(`D1 ${label} must be positive.`);
+  return parsed;
+}
+
+function jsonStringArray(value, label) {
+  if (typeof value !== 'string') throw new Error(`D1 ${label} is not stored JSON.`);
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`D1 ${label} is invalid JSON.`);
+  }
+  if (!Array.isArray(parsed) || parsed.some(item => typeof item !== 'string')) {
+    throw new Error(`D1 ${label} is not an array of strings.`);
+  }
+  return parsed;
+}
+
 function booleanOrNull(value) {
   if (value === null || value === undefined) return null;
   if (value === true || value === 1 || value === '1') return true;
@@ -137,6 +256,13 @@ function booleanOrNull(value) {
 
 async function sha256Hex(value) {
   const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function sha256BytesHex(bytes) {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)]
     .map(byte => byte.toString(16).padStart(2, '0'))
@@ -378,6 +504,112 @@ export async function buildD1DateFeed(
   return result;
 }
 
+function standingsScope(row, prefix) {
+  return {
+    played: d1NonNegativeIntegerOrNull(row[`${prefix}_played`], `${prefix} played`),
+    wins: d1NonNegativeIntegerOrNull(row[`${prefix}_wins`], `${prefix} wins`),
+    draws: d1NonNegativeIntegerOrNull(row[`${prefix}_draws`], `${prefix} draws`),
+    losses: d1NonNegativeIntegerOrNull(row[`${prefix}_losses`], `${prefix} losses`),
+    goalsFor: d1NonNegativeIntegerOrNull(row[`${prefix}_goals_for`], `${prefix} goals for`),
+    goalsAgainst: d1NonNegativeIntegerOrNull(row[`${prefix}_goals_against`], `${prefix} goals against`),
+  };
+}
+
+function standingsProvenance(row, prefix) {
+  return {
+    source: row[`${prefix}_provenance_source`],
+    fetchedAt: row[`${prefix}_provenance_fetched_at`],
+    verification: row[`${prefix}_provenance_verification`],
+    issues: jsonStringArray(row[`${prefix}_provenance_issues_json`], `${prefix} provenance issues`),
+  };
+}
+
+export async function buildD1Standings(env, competitionId, requestedSeasonId) {
+  const identityRows = await d1Rows(env, STANDINGS_IDENTITY_SQL, competitionId, requestedSeasonId);
+  if (identityRows.length === 0) {
+    const error = new Error('D1 competition is not stored.');
+    error.code = 'D1_COMPETITION_NOT_FOUND';
+    throw error;
+  }
+  if (identityRows.length !== 1) throw new Error('D1 competition-season identity is not unique.');
+  const identity = identityRows[0];
+  if (identity.season_row_id === null || identity.season_row_id === undefined) {
+    const error = new Error('D1 competition season is not stored.');
+    error.code = 'D1_SEASON_NOT_FOUND';
+    throw error;
+  }
+  const rows = await d1Rows(env, STANDINGS_ROWS_SQL, competitionId, requestedSeasonId);
+  if (rows.length === 0) return null;
+  const expectedCount = d1NonNegativeIntegerOrNull(rows[0].publication_row_count, 'standings row count');
+  const expectedDigest = rows[0].publication_identity_digest;
+  const generatedAt = rows[0].publication_generated_at;
+  if (rows.some(row => row.publication_row_count !== expectedCount
+    || row.publication_identity_digest !== expectedDigest
+    || row.publication_generated_at !== generatedAt)) {
+    throw new Error('D1 standings publication metadata is inconsistent.');
+  }
+  const groups = [];
+  let currentGroup = null;
+  let actualCount = 0;
+  for (const row of rows) {
+    if (row.group_id === null) continue;
+    if (!currentGroup || currentGroup.id !== row.group_id) {
+      currentGroup = { id: row.group_id, name: row.group_name, table: [] };
+      groups.push(currentGroup);
+    }
+    if (row.team_id === null) continue;
+    currentGroup.table.push({
+      rank: d1PositiveIntegerOrNull(row.rank, 'standings rank'),
+      team: {
+        id: row.team_id,
+        providerId: d1NonNegativeIntegerOrNull(row.team_provider_id, 'standings team provider ID'),
+        name: row.team_name,
+        logo: row.team_logo ?? null,
+      },
+      points: d1NonNegativeIntegerOrNull(row.points, 'standings points'),
+      goalDifference: d1IntegerOrNull(row.goal_difference, 'standings goal difference'),
+      form: row.form ?? null,
+      status: row.status ?? null,
+      description: row.description ?? null,
+      overall: standingsScope(row, 'overall'),
+      home: standingsScope(row, 'home'),
+      away: standingsScope(row, 'away'),
+      updatedAt: row.updated_at ?? null,
+      provenance: standingsProvenance(row, 'row'),
+    });
+    actualCount += 1;
+  }
+  if (actualCount !== expectedCount) throw new Error('D1 standings row count does not match its publication.');
+  const actualDigest = await sha256Hex(standingsIdentityDigestInput(groups));
+  if (actualDigest !== expectedDigest) throw new Error('D1 standings identity digest does not match its publication.');
+  const payload = {
+    contractVersion: rows[0].contract_version,
+    competition: {
+      id: identity.competition_id,
+      providerId: d1NonNegativeIntegerOrNull(identity.competition_provider_id, 'competition provider ID'),
+      name: identity.competition_name,
+      country: identity.competition_country ?? null,
+      logo: identity.competition_logo ?? null,
+      flag: identity.competition_flag ?? null,
+    },
+    season: {
+      id: identity.season_id,
+      competitionId: identity.competition_id,
+      providerSeason: d1NonNegativeIntegerOrNull(identity.provider_season, 'provider season'),
+      label: identity.season_label ?? null,
+    },
+    groups,
+    sectionStates: { standings: { presence: rows[0].section_presence } },
+    generatedAt,
+    provenance: standingsProvenance(rows[0], 'snapshot'),
+  };
+  assertValidStandingsPayload(payload, {
+    expectedCompetitionId: competitionId,
+    expectedSeasonId: requestedSeasonId,
+  });
+  return payload;
+}
+
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -408,6 +640,14 @@ function dateResponseCache(env) {
 function dateResponseCacheKey(date, competitionId) {
   const scope = competitionId === null ? 'all' : `competition/${encodeURIComponent(competitionId)}`;
   return new Request(`https://jfw.internal/cache/date-index/${scope}/${date}`);
+}
+
+function standingsResponseCacheKey(competitionId, requestedSeasonId) {
+  return new Request(`https://jfw.internal/cache/standings/${encodeURIComponent(competitionId)}/${encodeURIComponent(requestedSeasonId)}`);
+}
+
+function fixtureDetailResponseCacheKey(fixtureId) {
+  return new Request(`https://jfw.internal/cache/fixture-detail/${encodeURIComponent(fixtureId)}`);
 }
 
 async function cacheMatch(cache, key) {
@@ -512,6 +752,33 @@ async function degradedR2DateJsonObject(env, key, date, competitionId) {
   });
 }
 
+async function degradedR2StandingsObject(env, key, competitionId, requestedSeasonId) {
+  if (!env.FOOTBALL_DATA) {
+    return json({ error: 'D1 read failed and FOOTBALL_DATA fallback is not configured.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  const object = await env.FOOTBALL_DATA.get(key);
+  if (!object) {
+    return json({ error: 'D1 read failed and no verified degraded snapshot exists.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  let payload;
+  try {
+    payload = JSON.parse(await object.text());
+    assertValidStandingsPayload(payload, {
+      expectedCompetitionId: competitionId,
+      expectedSeasonId: requestedSeasonId,
+    });
+  } catch {
+    return json({ error: 'D1 read failed and the degraded standings snapshot is invalid.' }, 503,
+      { 'x-jfw-data-source': 'unavailable' });
+  }
+  return json({ ...payload, degraded: true, lastSuccessfulAt: payload.generatedAt }, 200, {
+    'cache-control': `public, max-age=${DEGRADED_TTL_SECONDS}`,
+    'x-jfw-data-source': 'r2-degraded',
+  });
+}
+
 async function dateIndexResponse(env, date, competitionId = null, context = null) {
   const flag = competitionId === null
     ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
@@ -545,6 +812,35 @@ async function dateIndexResponse(env, date, competitionId = null, context = null
   }
 }
 
+async function standingsResponse(env, competitionId, requestedSeasonId, context = null) {
+  const key = standingsLatestKey(competitionId, requestedSeasonId);
+  if (!enabled(env, 'D1_STANDINGS_ENABLED')) return r2JsonObject(env, key);
+  const cache = dateResponseCache(env);
+  const cacheKey = standingsResponseCacheKey(competitionId, requestedSeasonId);
+  const cached = await cacheMatch(cache, cacheKey);
+  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
+  try {
+    const payload = await buildD1Standings(env, competitionId, requestedSeasonId);
+    if (payload === null) return r2JsonObject(env, key, { 'x-jfw-data-source': 'r2-not-migrated' });
+    const response = json(payload, 200, {
+      'cache-control': `public, max-age=${STANDINGS_TTL_SECONDS}`,
+      'x-jfw-data-source': 'd1',
+      'x-jfw-cache': 'miss',
+    });
+    await cachePut(cache, cacheKey, response, context);
+    return response;
+  } catch (error) {
+    if (error?.code === 'D1_COMPETITION_NOT_FOUND' || error?.code === 'D1_SEASON_NOT_FOUND') {
+      return json({ error: error.code === 'D1_COMPETITION_NOT_FOUND'
+        ? 'Competition not found' : 'Competition season not found' }, 404,
+      { 'x-jfw-data-source': 'd1' });
+    }
+    const response = await degradedR2StandingsObject(env, key, competitionId, requestedSeasonId);
+    await cachePut(cache, cacheKey, response, context);
+    return withHeader(response, 'x-jfw-cache', 'miss');
+  }
+}
+
 async function fixtureFromR2(env, fixtureId) {
   const pointerObject = await env.FOOTBALL_DATA?.get(fixturePointerKey(fixtureId));
   if (!pointerObject) return json({ error: 'Fixture not found' }, 404);
@@ -558,6 +854,137 @@ async function fixtureFromR2(env, fixtureId) {
   return r2JsonObject(env, pointer.key);
 }
 
+function assertFixtureDetailPayload(payload, fixtureId) {
+  const fixture = payload?.fixture;
+  if (!payload || (payload.contractVersion !== '2.0.0' && payload.contractVersion !== '2.1.0')) {
+    throw new Error('Fixture detail contract version is unsupported.');
+  }
+  if (!fixture || fixture.id !== fixtureId) throw new Error('Fixture detail identity does not match the requested fixture.');
+  if (!fixture.competitionId?.startsWith('af:competition:')) throw new Error('Fixture detail competition identity is invalid.');
+  if (!fixture.seasonId?.startsWith('af:season:')) throw new Error('Fixture detail season identity is invalid.');
+  if (!fixture.kickoffUtc || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(fixture.kickoffUtc)) {
+    throw new Error('Fixture detail kickoffUtc is not canonical.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fixture.dateJst || ''))) {
+    throw new Error('Fixture detail dateJst is invalid.');
+  }
+  if (!payload.competition || payload.competition.id !== fixture.competitionId) {
+    throw new Error('Fixture detail competition scope is inconsistent.');
+  }
+  if (!payload.season || payload.season.id !== fixture.seasonId
+      || payload.season.competitionId !== fixture.competitionId) {
+    throw new Error('Fixture detail season scope is inconsistent.');
+  }
+  if (payload.detailAvailability !== undefined
+      && payload.detailAvailability !== 'available'
+      && payload.detailAvailability !== 'unavailable') {
+    throw new Error('Fixture detail availability is invalid.');
+  }
+  for (const key of ['lineups', 'events', 'teamStats', 'playerStats']) {
+    if (!Array.isArray(payload[key])) throw new Error(`Fixture detail ${key} is not an array.`);
+  }
+  if (!payload.sectionStates || typeof payload.sectionStates !== 'object' || Array.isArray(payload.sectionStates)) {
+    throw new Error('Fixture detail sectionStates is invalid.');
+  }
+  return payload;
+}
+
+async function r2FixturePayload(env, fixtureId, { degraded = false } = {}) {
+  if (!env.FOOTBALL_DATA) {
+    return json({ error: degraded
+      ? 'D1 read failed and FOOTBALL_DATA fallback is not configured.'
+      : 'FOOTBALL_DATA R2 binding is not configured.' }, degraded ? 503 : 503, {
+      'x-jfw-data-source': 'unavailable',
+    });
+  }
+  const pointerObject = await env.FOOTBALL_DATA.get(fixturePointerKey(fixtureId));
+  if (!pointerObject) return json({ error: degraded ? 'D1 read failed and no verified fixture snapshot exists.' : 'Fixture not found' }, degraded ? 503 : 404,
+    degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  let pointer;
+  try {
+    pointer = JSON.parse(await pointerObject.text());
+  } catch {
+    return json({ error: degraded ? 'D1 read failed and the fixture pointer is invalid.' : 'Fixture pointer is invalid' }, degraded ? 503 : 500,
+      degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  }
+  if (pointer?.fixtureId && pointer.fixtureId !== fixtureId) {
+    return json({ error: degraded ? 'D1 read failed and the fixture pointer has the wrong identity.' : 'Fixture pointer identity is invalid' }, degraded ? 503 : 500,
+      degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  }
+  if (!pointer?.key) return json({ error: degraded ? 'D1 read failed and the fixture pointer is missing its canonical key.' : 'Fixture pointer is missing canonical key' }, degraded ? 503 : 500,
+    degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  const object = await env.FOOTBALL_DATA.get(pointer.key);
+  if (!object) return json({ error: degraded ? 'D1 read failed and the fixture snapshot is missing.' : 'Not found' }, degraded ? 503 : 404,
+    degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  let payload;
+  try {
+    payload = JSON.parse(await object.text());
+    assertFixtureDetailPayload(payload, fixtureId);
+  } catch {
+    return json({ error: degraded ? 'D1 read failed and the fixture snapshot failed entity validation.' : 'Fixture snapshot is invalid' }, degraded ? 503 : 500,
+      degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
+  }
+  const result = degraded ? { ...payload, degraded: true, lastSuccessfulAt: payload.generatedAt } : payload;
+  return json(result, 200, {
+    'cache-control': `public, max-age=${degraded ? DEGRADED_TTL_SECONDS : FIXTURE_DETAIL_TTL_SECONDS}`,
+    'x-jfw-data-source': degraded ? 'r2-degraded' : 'r2',
+  });
+}
+
+async function r2FixtureArchivePayload(env, archive, fixtureId) {
+  if (!env.FOOTBALL_DATA || !archive?.key) throw new Error('Fixture archive is not available.');
+  const object = await env.FOOTBALL_DATA.get(archive.key);
+  if (!object) throw new Error('Fixture archive object is missing.');
+  const text = await object.text();
+  if (archive.contentSha256) {
+    const actual = await sha256BytesHex(new TextEncoder().encode(text));
+    if (actual !== archive.contentSha256) throw new Error('Fixture archive content hash does not match D1 metadata.');
+  }
+  let payload;
+  try { payload = JSON.parse(text); } catch { throw new Error('Fixture archive JSON is invalid.'); }
+  return assertFixtureDetailPayload(payload, fixtureId);
+}
+
+async function fixtureDetailResponse(env, fixtureId, context = null) {
+  if (!enabled(env, 'D1_FIXTURE_DETAIL_ENABLED')) return fixtureFromR2(env, fixtureId);
+  const cache = dateResponseCache(env);
+  const cacheKey = fixtureDetailResponseCacheKey(fixtureId);
+  const cached = await cacheMatch(cache, cacheKey);
+  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
+
+  let response;
+  try {
+    if (!env.FOOTBALL_DB || typeof env.FOOTBALL_DB.prepare !== 'function') {
+      throw new Error('FOOTBALL_DB D1 binding is not configured.');
+    }
+    const result = await new FixtureRepository(env.FOOTBALL_DB).resolveFixture(fixtureId);
+    if (!result) {
+      response = await r2FixturePayload(env, fixtureId);
+      if (response.status === 200) response = withHeader(response, 'x-jfw-data-source', 'r2-not-migrated');
+    } else if (result.source === 'r2') {
+      const payload = await r2FixtureArchivePayload(env, result.archive, fixtureId);
+      response = json(payload, 200, {
+        'cache-control': `public, max-age=${FIXTURE_DETAIL_TTL_SECONDS}`,
+        'x-jfw-data-source': 'd1',
+        'x-jfw-cache': 'miss',
+      });
+    } else {
+      assertFixtureDetailPayload(result.bundle, fixtureId);
+      response = json(result.bundle, 200, {
+        'cache-control': `public, max-age=${FIXTURE_DETAIL_TTL_SECONDS}`,
+        'x-jfw-data-source': 'd1',
+        'x-jfw-cache': 'miss',
+      });
+    }
+  } catch (error) {
+    response = await r2FixturePayload(env, fixtureId, { degraded: true });
+    if (response.status === 200) response = withHeader(response, 'x-jfw-cache', 'miss');
+    else if (error?.message) response = withHeader(response, 'x-jfw-error', 'unavailable');
+  }
+  await cachePut(cache, cacheKey, response, context);
+  return response;
+}
+
 async function handle(request, env, context) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
@@ -566,7 +993,7 @@ async function handle(request, env, context) {
   if (url.pathname === '/api/v2/live') return providerLive(env);
 
   const fixtureMatch = url.pathname.match(/^\/api\/v2\/fixtures\/(.+)$/);
-  if (fixtureMatch) return fixtureFromR2(env, decodeURIComponent(fixtureMatch[1]));
+  if (fixtureMatch) return fixtureDetailResponse(env, decodeURIComponent(fixtureMatch[1]), context);
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (dateMatch) return dateIndexResponse(env, dateMatch[1], null, context);
@@ -583,12 +1010,11 @@ async function handle(request, env, context) {
 
   const standingsMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/seasons\/([^/]+)\/standings$/);
   if (standingsMatch) {
-    return r2JsonObject(
+    return standingsResponse(
       env,
-      standingsLatestKey(
-        decodeURIComponent(standingsMatch[1]),
-        decodeURIComponent(standingsMatch[2]),
-      ),
+      decodeURIComponent(standingsMatch[1]),
+      decodeURIComponent(standingsMatch[2]),
+      context,
     );
   }
 

@@ -4,7 +4,7 @@
 
 ## 状態
 
-Phase 2 R5の正式レビューPASSに基づき、Phase 3の最初の単位である日付別／大会別日付一覧のD1 read pathを実装した。Claude R1の`MAJOR 2 / MINOR 5`を修正したcode HEADは`a173d44`である。これは実装とローカル検証までであり、productionのflag変更、Worker deploy、正本切替は行っていない。
+Phase 2 R5の正式レビューPASSに基づき、Phase 3のCore Read（standings、fixture detailを含む）を段階導入している。日付一覧の修正済みcode HEADは`a173d44`、追加実装は`feat/d1-phase3-core-reads`である。これは実装とローカル検証までであり、productionのflag変更、Worker deploy、正本切替は行っていない。
 
 ```text
 Implementation: COMPLETE
@@ -20,8 +20,10 @@ Production cutover: NOT AUTHORIZED
 |---|---|---:|---|
 | `GET /api/v2/dates/{date}` | `D1_DATE_INDEX_ENABLED` | `false` | flagを`false`へ戻す |
 | `GET /api/v2/competitions/{competitionId}/dates/{date}` | `D1_COMPETITION_DATE_INDEX_ENABLED` | `false` | flagを`false`へ戻す |
+| `GET /api/v2/competitions/{competitionId}/seasons/{seasonId}/standings` | `D1_STANDINGS_ENABLED` | `false` | flagを`false`へ戻す |
+| `GET /api/v2/fixtures/{fixtureId}` | `D1_FIXTURE_DETAIL_ENABLED` | `false` | flagを`false`へ戻す |
 
-2つのflagは独立している。flag未設定または`false`では既存R2 keyとresponse pathをそのまま使い、D1 bindingを読まない。standings、fixture detail、LIVE、tracking aggregatesには変更を加えていない。
+各endpointのflagは独立している。flag未設定または`false`では既存R2 keyとresponse pathをそのまま使い、D1 bindingを読まない。LIVE、tracking aggregatesは引き続き未移行である。
 
 ## response-ready coverage
 

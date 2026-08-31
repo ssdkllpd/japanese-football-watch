@@ -118,7 +118,13 @@ function normalizeStandings(providerRows, options = {}) {
   const groups = rawGroups.map((rawGroup, groupIndex) => {
     const rows = (Array.isArray(rawGroup) ? rawGroup : [])
       .map(row => normalizeStandingRow(row, fetchedAt))
-      .sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER));
+      .sort((left, right) => {
+        const rankDifference = (left.rank ?? Number.MAX_SAFE_INTEGER)
+          - (right.rank ?? Number.MAX_SAFE_INTEGER);
+        if (rankDifference !== 0) return rankDifference;
+        return String(left.team.id) < String(right.team.id) ? -1
+          : String(left.team.id) > String(right.team.id) ? 1 : 0;
+      });
     return {
       id: `group:${groupIndex + 1}`,
       name: text(rawGroup?.[0]?.group) || (rawGroups.length > 1 ? `Group ${groupIndex + 1}` : 'Table'),
