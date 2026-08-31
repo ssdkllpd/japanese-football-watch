@@ -1,3 +1,7 @@
+94918fd^{tree}
+fatal: ambiguous argument '94918fd^{tree}': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
 name: V2 Fixture Vertical Slice
 
 on:
@@ -54,22 +58,40 @@ jobs:
           echo "pointer_key=$(jq -r '.r2Objects[] | select(.role=="fixture_pointer") | .key' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
           echo "date_key=$(jq -r '.r2Objects[] | select(.role=="date_index") | .key' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
           echo "ingestion_state=$(jq -r '.ingestionState' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "date_merge_scope=$(jq -r '.r2Objects[] | select(.role==\"date_index\") | .mergeScope' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "date_merge_mode=$(jq -r '.r2Objects[] | select(.role==\"date_index\") | .mergeMode' .tmp/v2/fixture/manifest.json)" >> "$GITHUB_OUTPUT"
 
       - name: Merge existing JST date index when present
         run: |
           rm -f .tmp/v2/current-date-index.json .tmp/v2/merged-date-index.json
-          npx --yes wrangler@4 r2 object get "$R2_BUCKET/${{ steps.manifest.outputs.date_key }}" \
-            --file .tmp/v2/current-date-index.json --remote || true
+          get_log=.tmp/v2/current-date-index-get.log
+          if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/${{ steps.manifest.outputs.date_key }}" \
+            --file .tmp/v2/current-date-index.json --remote >"$get_log" 2>&1; then
+            if grep -Eqi 'not found|does not exist|404' "$get_log"; then
+              rm -f .tmp/v2/current-date-index.json
+            else
+              cat "$get_log" >&2
+              exit 1
+            fi
+          fi
+          if [ -e .tmp/v2/current-date-index.json ] && [ ! -s .tmp/v2/current-date-index.json ]; then
+            echo 'R2 returned an empty date index; refusing to overwrite it.' >&2
+            exit 1
+          fi
           if [ -s .tmp/v2/current-date-index.json ]; then
             node scripts/v2/merge-date-index.js \
               .tmp/v2/current-date-index.json \
               .tmp/v2/fixture/date-index.json \
-              .tmp/v2/merged-date-index.json
+              .tmp/v2/merged-date-index.json \
+              "${{ steps.manifest.outputs.date_merge_scope }}" \
+              "${{ steps.manifest.outputs.date_merge_mode }}"
           else
             node scripts/v2/merge-date-index.js \
               - \
               .tmp/v2/fixture/date-index.json \
-              .tmp/v2/merged-date-index.json
+              .tmp/v2/merged-date-index.json \
+              "${{ steps.manifest.outputs.date_merge_scope }}" \
+              "${{ steps.manifest.outputs.date_merge_mode }}"
           fi
 
       - name: Publish canonical fixture bundle
