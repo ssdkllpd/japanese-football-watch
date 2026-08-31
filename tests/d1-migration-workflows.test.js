@@ -79,3 +79,13 @@ test('staging data migration executes a repository plan only through the admin e
   assert.equal(workflow.includes('d1 execute'), false);
   assert.equal(workflow.includes('production'), false);
 });
+
+test('standings publisher mirrors to D1 only behind an explicit disabled-by-default admin gate', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'v2-standings.yml'), 'utf8',
+  );
+  assert.match(workflow, /D1_ADMIN_PUBLISH_ENABLED/);
+  assert.match(workflow, /if: env\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+  assert.match(workflow, /request-admin-ingest\.mjs/);
+  assert.equal(workflow.includes('d1 execute'), false);
+});

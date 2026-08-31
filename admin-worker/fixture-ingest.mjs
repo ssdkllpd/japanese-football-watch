@@ -51,7 +51,7 @@ export function assertFixtureRequest(input) {
   requireObject(input, 'Admin fixture ingest request');
   const allowed = new Set([
     'schemaVersion', 'operation', 'fixtureId', 'competitionId', 'seasonId',
-    'catalog', 'correctionDefinitions',
+    'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
   ]);
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin fixture ingest request contains unknown fields: ${unknown.join(', ')}.`);
@@ -61,9 +61,37 @@ export function assertFixtureRequest(input) {
     || !/^af:season:\d+:\d+$/.test(String(input.seasonId || ''))) {
     throw new Error('Admin fixture ingest scope is invalid.');
   }
-  requireObject(input.catalog, 'Admin fixture catalog');
+  if (input.reuseStoredCatalog === true) {
+    if (input.catalog !== undefined) throw new Error('Stored catalog reuse must not include a catalog.');
+  } else {
+    requireObject(input.catalog, 'Admin fixture catalog');
+  }
   requireObject(input.correctionDefinitions, 'Admin fixture correctionDefinitions');
   return input;
+}
+
+async function storedCatalog(database, input) {
+  const row = await first(database, `
+    SELECT product.canonical_id AS product_season_id,
+      source.api_version, competition.type AS competition_type,
+      competition.country_code, season.status, season.starts_on,
+      season.ends_on, season.finalized_on
+    FROM competition_seasons season
+    JOIN competitions competition ON competition.id = season.competition_id
+    JOIN provider_sources source ON source.id = competition.source_id
+    JOIN product_seasons product ON product.id = season.product_season_id
+    WHERE competition.canonical_id = ? AND season.canonical_id = ?
+  `, [input.competitionId, input.seasonId]);
+  if (!row) throw new Error('Stored fixture catalog scope is unavailable.');
+  return {
+    productSeasonId: row.product_season_id,
+    source: { apiVersion: row.api_version },
+    competition: { type: row.competition_type, countryCode: row.country_code },
+    season: {
+      status: row.status, startsOn: row.starts_on, endsOn: row.ends_on,
+      finalizedOn: row.finalized_on,
+    },
+  };
 }
 
 function expectedFixtureKey(input) {
@@ -633,7 +661,9 @@ export async function publishFixtureFromR2(env, input) {
     || payload?.fixture?.seasonId !== input.seasonId) {
     throw new Error('Fixture R2 object does not match the externally declared scope.');
   }
-  const context = validateBundle(payload, input.catalog);
+  const catalog = input.reuseStoredCatalog === true
+    ? await storedCatalog(env.FOOTBALL_DB, input) : input.catalog;
+  const context = validateBundle(payload, catalog);
   assertCorrectionDefinitions(context.normalized, input.correctionDefinitions);
   const boundedAppearances = assertFixtureCardinality(context);
   await assertExistingIdentities(env.FOOTBALL_DB, context.source, context);
@@ -648,7 +678,7 @@ export async function publishFixtureFromR2(env, input) {
     };
   }
   const statements = [];
-  addMasterStatements(env.FOOTBALL_DB, statements, context, input.catalog);
+  addMasterStatements(env.FOOTBALL_DB, statements, context, catalog);
   addFixtureHeaderStatements(env.FOOTBALL_DB, statements, context, contentSha256, checked.previousRevisionId);
   addLineupStatements(env.FOOTBALL_DB, statements, context);
   addAppearanceStatements(env.FOOTBALL_DB, statements, context);

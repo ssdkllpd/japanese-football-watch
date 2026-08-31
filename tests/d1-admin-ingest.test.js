@@ -262,6 +262,13 @@ test('admin fixture ingest publishes one complete revision and is content-idempo
   body = await response.json();
   assert.equal(body.report.imported, false);
   assert.equal(body.report.reason, 'already_published');
+  const storedCatalogBody = fixtureIngestBody(bundle);
+  delete storedCatalogBody.catalog;
+  storedCatalogBody.reuseStoredCatalog = true;
+  response = await admin.default.fetch(request(storedCatalogBody), fixtureEnv(db, bundle));
+  assert.equal(response.status, 200);
+  body = await response.json();
+  assert.equal(body.report.reason, 'already_published');
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 1);
 });
 

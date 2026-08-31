@@ -145,6 +145,26 @@ test('admin ingest client sends externally declared date coverage after fixture 
   });
 });
 
+test('admin ingest client can reuse an existing stored competition-season catalog', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const refresh = plan();
+  refresh.standings = [];
+  delete refresh.fixtures[0].catalogPath;
+  refresh.fixtures[0].reuseStoredCatalog = true;
+  const sent = [];
+  const report = await executeAdminIngestPlan(refresh, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      sent.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true, report: {} }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.equal(sent[0].reuseStoredCatalog, true);
+  assert.equal(Object.hasOwn(sent[0], 'catalog'), false);
+});
+
 test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS remote endpoints', async t => {
   const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
   const directory = fixtureFiles(t);

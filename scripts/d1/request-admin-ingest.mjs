@@ -92,14 +92,21 @@ function validatePlan(plan, directory) {
     canonical(item?.fixtureId, /^af:fixture:\d+$/, `fixtures[${index}].fixtureId`);
     canonical(item?.competitionId, /^af:competition:\d+$/, `fixtures[${index}].competitionId`);
     canonical(item?.seasonId, /^af:season:\d+:\d+$/, `fixtures[${index}].seasonId`);
-    requests.push({
+    if (item.reuseStoredCatalog !== undefined && item.reuseStoredCatalog !== true) {
+      throw new Error(`fixtures[${index}].reuseStoredCatalog must be true when supplied.`);
+    }
+    const request = {
       schemaVersion: REQUEST_VERSION, operation: 'fixture_publish',
       fixtureId: item.fixtureId, competitionId: item.competitionId, seasonId: item.seasonId,
-      catalog: resolveArtifact(directory, item.catalogPath, `fixtures[${index}].catalogPath`),
       correctionDefinitions: resolveArtifact(
         directory, item.correctionsPath, `fixtures[${index}].correctionsPath`,
       ),
-    });
+    };
+    if (item.reuseStoredCatalog === true) request.reuseStoredCatalog = true;
+    else request.catalog = resolveArtifact(
+      directory, item.catalogPath, `fixtures[${index}].catalogPath`,
+    );
+    requests.push(request);
   }
   for (const [index, item] of plan.standings.entries()) {
     canonical(item?.competitionId, /^af:competition:\d+$/, `standings[${index}].competitionId`);
