@@ -58,15 +58,30 @@ jobs:
           jq -c '.r2Objects[] | select(.merge == "date_index")' .tmp/v2/date-feed/manifest.json | while IFS= read -r item; do
             key=$(jq -r '.key' <<<"$item")
             file=$(jq -r '.file' <<<"$item")
+            scope=$(jq -r '.mergeScope' <<<"$item")
+            mode=$(jq -r '.mergeMode' <<<"$item")
+            replace_competition=$(jq -r '.mergeReplaceCompetitionId // "-"' <<<"$item")
             token=$(printf '%s' "$key" | sha256sum | cut -d' ' -f1)
             current=".tmp/v2/r2-merge/current-$token.json"
             merged=".tmp/v2/r2-merge/merged-$token.json"
-            rm -f "$current" "$merged"
-            npx --yes wrangler@4 r2 object get "$R2_BUCKET/$key" --file "$current" --remote || true
+            get_log=".tmp/v2/r2-merge/get-$token.log"
+            rm -f "$current" "$merged" "$get_log"
+            if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/$key" --file "$current" --remote >"$get_log" 2>&1; then
+              if grep -Eqi 'not found|does not exist|404' "$get_log"; then
+                rm -f "$current"
+              else
+                cat "$get_log" >&2
+                exit 1
+              fi
+            fi
+            if [ -e "$current" ] && [ ! -s "$current" ]; then
+              echo "R2 returned an empty object for $key; refusing to publish over it." >&2
+              exit 1
+            fi
             if [ -s "$current" ]; then
-              node scripts/v2/merge-date-index.js "$current" ".tmp/v2/date-feed/$file" "$merged"
+              node scripts/v2/merge-date-index.js "$current" ".tmp/v2/date-feed/$file" "$merged" "$scope" "$mode" "$replace_competition"
             else
-              node scripts/v2/merge-date-index.js - ".tmp/v2/date-feed/$file" "$merged"
+              node scripts/v2/merge-date-index.js - ".tmp/v2/date-feed/$file" "$merged" "$scope" "$mode" "$replace_competition"
             fi
             npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" --file "$merged" --content-type application/json --remote
           done

@@ -5,6 +5,19 @@ const INGESTION_STATES = new Set([
   'scheduled', 'live', 'provisional_final', 'finalized', 'needs_review',
 ]);
 const SCORE_PARTS = ['goals', 'halftime', 'fulltime', 'extratime', 'penalty'];
+const ROOT_FIELDS = new Set([
+  'contractVersion', 'timeZone', 'date', 'competition', 'fixtures', 'generatedAt',
+]);
+const COMPETITION_FIELDS = new Set(['id', 'providerId', 'name', 'country', 'logo', 'flag']);
+const FIXTURE_FIELDS = new Set([
+  'fixtureId', 'competitionId', 'seasonId', 'kickoffUtc', 'dateJst', 'status',
+  'ingestionState', 'teams', 'score', 'competition', 'competitionName',
+]);
+const STATUS_FIELDS = new Set(['short', 'long', 'elapsed']);
+const TEAMS_FIELDS = new Set(['home', 'away']);
+const TEAM_FIELDS = new Set(['id', 'providerId', 'name', 'logo', 'winner']);
+const SCORE_FIELDS = new Set(SCORE_PARTS);
+const SCORE_PAIR_FIELDS = new Set(['home', 'away']);
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -30,6 +43,13 @@ function isDateKey(value) {
   return !Number.isNaN(instant.getTime()) && instant.toISOString().slice(0, 10) === value;
 }
 
+function validateKeys(value, allowed, path, errors) {
+  if (!isObject(value)) return;
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) errors.push(`${path}.${key} is not allowed.`);
+  }
+}
+
 export function compareCodePoint(left, right) {
   const a = String(left ?? '');
   const b = String(right ?? '');
@@ -46,6 +66,7 @@ function validateCompetition(value, path, errors, expectedId = null) {
     errors.push(`${path} must be an object.`);
     return;
   }
+  validateKeys(value, COMPETITION_FIELDS, path, errors);
   if (!/^af:competition:\d+$/.test(String(value.id || ''))) {
     errors.push(`${path}.id must be a canonical competition ID.`);
   }
@@ -68,6 +89,7 @@ function validateTeam(value, path, errors) {
     errors.push(`${path} must be an object.`);
     return;
   }
+  validateKeys(value, TEAM_FIELDS, path, errors);
   if (!/^af:team:\d+$/.test(String(value.id || ''))) {
     errors.push(`${path}.id must be a canonical team ID.`);
   }
@@ -86,6 +108,7 @@ function validateScorePair(value, path, errors) {
     errors.push(`${path} must be an object.`);
     return;
   }
+  validateKeys(value, SCORE_PAIR_FIELDS, path, errors);
   for (const side of ['home', 'away']) {
     if (!isNullableNonNegativeInteger(value[side])) {
       errors.push(`${path}.${side} must be a non-negative integer or null.`);
@@ -99,6 +122,7 @@ function validateFixture(value, index, payload, expectedCompetitionId, errors) {
     errors.push(`${path} must be an object.`);
     return;
   }
+  validateKeys(value, FIXTURE_FIELDS, path, errors);
   if (!/^af:fixture:\d+$/.test(String(value.fixtureId || ''))) {
     errors.push(`${path}.fixtureId must be a canonical fixture ID.`);
   }
@@ -116,6 +140,7 @@ function validateFixture(value, index, payload, expectedCompetitionId, errors) {
 
   if (!isObject(value.status)) errors.push(`${path}.status must be an object.`);
   else {
+    validateKeys(value.status, STATUS_FIELDS, `${path}.status`, errors);
     if (!isNullableText(value.status.short)) errors.push(`${path}.status.short must be string or null.`);
     if (!isNullableText(value.status.long)) errors.push(`${path}.status.long must be string or null.`);
     if (!isNullableNonNegativeInteger(value.status.elapsed)) {
@@ -128,11 +153,15 @@ function validateFixture(value, index, payload, expectedCompetitionId, errors) {
   }
   if (!isObject(value.teams)) errors.push(`${path}.teams must be an object.`);
   else {
+    validateKeys(value.teams, TEAMS_FIELDS, `${path}.teams`, errors);
     validateTeam(value.teams.home, `${path}.teams.home`, errors);
     validateTeam(value.teams.away, `${path}.teams.away`, errors);
   }
   if (!isObject(value.score)) errors.push(`${path}.score must be an object.`);
-  else for (const part of SCORE_PARTS) validateScorePair(value.score[part], `${path}.score.${part}`, errors);
+  else {
+    validateKeys(value.score, SCORE_FIELDS, `${path}.score`, errors);
+    for (const part of SCORE_PARTS) validateScorePair(value.score[part], `${path}.score.${part}`, errors);
+  }
 
   if (value.competition !== undefined) {
     validateCompetition(value.competition, `${path}.competition`, errors, value.competitionId);
@@ -149,11 +178,17 @@ function validateFixture(value, index, payload, expectedCompetitionId, errors) {
 export function validateDateIndexPayload(payload, options = {}) {
   const errors = [];
   const expectedDate = options.expectedDate ?? null;
-  const expectedCompetitionId = options.expectedCompetitionId === undefined
-    ? (payload?.competition?.id ?? null)
-    : options.expectedCompetitionId;
+  if (!Object.hasOwn(options, 'expectedCompetitionId')) {
+    return ['expectedCompetitionId must explicitly declare generic (null) or a canonical competition ID.'];
+  }
+  const expectedCompetitionId = options.expectedCompetitionId;
+  if (expectedCompetitionId !== null
+      && !/^af:competition:\d+$/.test(String(expectedCompetitionId || ''))) {
+    errors.push('expectedCompetitionId must be null or a canonical competition ID.');
+  }
 
   if (!isObject(payload)) return ['date index must be an object.'];
+  validateKeys(payload, ROOT_FIELDS, 'date index', errors);
   if (payload.contractVersion !== DATE_INDEX_CONTRACT_VERSION) {
     errors.push(`contractVersion must be ${DATE_INDEX_CONTRACT_VERSION}.`);
   }
@@ -195,20 +230,55 @@ export function assertValidDateIndexPayload(payload, options = {}) {
   return payload;
 }
 
-export function mergeDateIndexes(current, incoming) {
-  const incomingCompetitionId = incoming?.competition?.id ?? null;
+export function canonicalFixtureIds(fixtures) {
+  return (fixtures || []).map(fixture => fixture?.fixtureId).sort(compareCodePoint);
+}
+
+export function fixtureIdDigestInput(fixtures) {
+  return `${canonicalFixtureIds(fixtures).join('\n')}\n`;
+}
+
+export function mergeDateIndexes(current, incoming, options = {}) {
+  if (!Object.hasOwn(options, 'expectedCompetitionId')) {
+    throw new Error('Date index merge requires an explicit expectedCompetitionId.');
+  }
+  if (!['upsert', 'replace', 'replace-scope'].includes(options.mode)) {
+    throw new Error('Date index merge mode must be upsert, replace, or replace-scope.');
+  }
+  const expectedCompetitionId = options.expectedCompetitionId;
+  if (options.mode === 'replace-scope') {
+    if (expectedCompetitionId !== null) {
+      throw new Error('replace-scope is only valid for a generic date index.');
+    }
+    if (!/^af:competition:\d+$/.test(String(options.replaceCompetitionId || ''))) {
+      throw new Error('replace-scope requires a canonical replaceCompetitionId.');
+    }
+    if (incoming?.fixtures?.some(fixture => fixture?.competitionId !== options.replaceCompetitionId)) {
+      throw new Error('replace-scope incoming fixtures must match replaceCompetitionId.');
+    }
+  }
   assertValidDateIndexPayload(incoming, {
-    expectedCompetitionId: incomingCompetitionId,
+    expectedCompetitionId,
   });
   if (current?.date && current.date !== incoming.date) {
     throw new Error('Cannot merge different JST dates.');
   }
-  if (current?.competition?.id && current.competition.id !== incomingCompetitionId) {
-    throw new Error('Cannot merge different competition indexes.');
+  if (options.mode !== 'replace' && current !== null && current !== undefined) {
+    assertValidDateIndexPayload(current, {
+      expectedDate: incoming.date,
+      expectedCompetitionId,
+    });
   }
 
   const byId = new Map();
-  for (const row of current?.fixtures || []) if (row?.fixtureId) byId.set(row.fixtureId, row);
+  if (options.mode !== 'replace') {
+    for (const row of current?.fixtures || []) {
+      if (!row?.fixtureId) continue;
+      if (options.mode === 'replace-scope'
+          && row.competitionId === options.replaceCompetitionId) continue;
+      byId.set(row.fixtureId, row);
+    }
+  }
   for (const row of incoming.fixtures) byId.set(row.fixtureId, row);
   const merged = {
     contractVersion: incoming.contractVersion,
@@ -217,9 +287,9 @@ export function mergeDateIndexes(current, incoming) {
     fixtures: [...byId.values()].sort(compareDateIndexFixtures),
     generatedAt: incoming.generatedAt,
   };
-  if (incomingCompetitionId !== null) merged.competition = { ...incoming.competition };
+  if (expectedCompetitionId !== null) merged.competition = { ...incoming.competition };
   assertValidDateIndexPayload(merged, {
-    expectedCompetitionId: incomingCompetitionId,
+    expectedCompetitionId,
   });
   return merged;
 }

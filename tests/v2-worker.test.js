@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { mergeDateIndex } = require('../scripts/v2/merge-date-index');
 
@@ -15,6 +16,10 @@ const coverageMigration = fs.readFileSync(
 
 async function loadWorker() {
   return import('../worker/index.mjs');
+}
+
+function fixtureIdDigest(ids) {
+  return crypto.createHash('sha256').update(`${[...ids].sort().join('\n')}\n`).digest('hex');
 }
 
 function localD1(database, onPrepare = () => {}) {
@@ -75,15 +80,18 @@ function dateDatabase(options = {}) {
   if (options.coverage !== false) {
     database.exec(`
       INSERT INTO date_index_coverages(
-        date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+        date_jst, fixture_count, fixture_id_digest, generated_at, source_r2_key, source_sha256
       ) VALUES (
-        '2026-08-22', 1, '2026-08-21T22:00:00.000Z',
+        '2026-08-22', 1, '${fixtureIdDigest(['af:fixture:9001'])}',
+        '2026-08-21T22:00:00.000Z',
         'football/v2/indexes/date-jst/2026-08-22.json', '${'a'.repeat(64)}'
       );
       INSERT INTO competition_date_index_coverages(
-        competition_id, date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+        competition_id, date_jst, fixture_count, fixture_id_digest,
+        generated_at, source_r2_key, source_sha256
       ) VALUES (
-        1, '2026-08-22', 1, '2026-08-21T22:00:00.000Z',
+        1, '2026-08-22', 1, '${fixtureIdDigest(['af:fixture:9001'])}',
+        '2026-08-21T22:00:00.000Z',
         'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
         '${'b'.repeat(64)}'
       );
@@ -435,6 +443,28 @@ test('D1 date failure rejects a scope-matching but incomplete R2 fixture DTO', a
   assert.match((await response.json()).error, /failed entity validation/);
 });
 
+test('degraded R2 validation rejects unknown root and fixture fields', async () => {
+  const worker = await loadWorker();
+  const payload = {
+    contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date: '2026-08-22',
+    fixtures: [{ ...indexedFixture(), referee: 'must not leak' }],
+    generatedAt: '2026-08-21T22:00:00.000Z',
+    evil: 'must not leak',
+  };
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: { prepare() { throw new Error('injected D1 failure'); } },
+    FOOTBALL_DATA: { async get() { return r2Object(payload); } },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+  assert.match((await response.json()).error, /failed entity validation/);
+});
+
 test('D1 date path fails closed instead of coercing a corrupt numeric value to null', async t => {
   const worker = await loadWorker();
   const database = dateDatabase();
@@ -454,6 +484,27 @@ test('D1 date path fails closed instead of coercing a corrupt numeric value to n
   assert.match((await response.json()).error, /no verified degraded snapshot/);
 });
 
+test('D1 date path compares the stored fixture ID digest even when row count is unchanged', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase();
+  t.after(() => database.close());
+  database.exec(`
+    DROP TRIGGER date_index_coverage_invalidate_fixture_scope_update;
+    UPDATE fixtures SET canonical_id = 'af:fixture:9002' WHERE id = 1;
+  `);
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get() { return null; } },
+  };
+
+  const response = await worker.default.fetch(workerRequest('/api/v2/dates/2026-08-22'), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+});
+
 test('competition-date D1 failure accepts the real merged publisher artifact for only that entity', async () => {
   const worker = await loadWorker();
   const requested = [];
@@ -462,7 +513,7 @@ test('competition-date D1 failure accepts the real merged publisher artifact for
     competition: indexedFixture().competition,
     fixtures: [indexedFixture()],
     generatedAt: '2026-08-21T22:00:00.000Z',
-  });
+  }, { expectedCompetitionId: 'af:competition:39', mode: 'replace' });
   const env = {
     APP_ORIGINS: 'https://example.github.io',
     D1_COMPETITION_DATE_INDEX_ENABLED: 'true',
@@ -508,6 +559,42 @@ test('enabled D1 date path uses the edge response cache after one bounded read',
   assert.equal(second.headers.get('access-control-expose-headers'), 'x-jfw-data-source, x-jfw-cache');
   assert.equal(queryCount, 1);
   assert.deepEqual(await second.json(), await first.json());
+});
+
+test('origin, rate limit, and disabled flags are evaluated before the D1 response cache', async t => {
+  const worker = await loadWorker();
+  const database = dateDatabase();
+  t.after(() => database.close());
+  const cache = responseCache();
+  let r2Reads = 0;
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    D1_DATE_INDEX_ENABLED: 'true',
+    SOFT_RATE_LIMIT_PER_MINUTE: '1',
+    FOOTBALL_DB: localD1(database),
+    FOOTBALL_DATA: { async get() { r2Reads += 1; return r2Object({ fixtures: [] }); } },
+    RESPONSE_CACHE: cache,
+  };
+  const request = new Request('https://worker.example/api/v2/dates/2026-08-22', {
+    headers: { origin: 'https://example.github.io', 'cf-connecting-ip': '203.0.113.91' },
+  });
+
+  assert.equal((await worker.default.fetch(request, env)).status, 200);
+  assert.equal((await worker.default.fetch(request, env)).status, 429);
+  const denied = new Request(request.url, {
+    headers: { origin: 'https://denied.example', 'cf-connecting-ip': '203.0.113.92' },
+  });
+  assert.equal((await worker.default.fetch(denied, env)).status, 403);
+
+  env.D1_DATE_INDEX_ENABLED = 'false';
+  env.SOFT_RATE_LIMIT_PER_MINUTE = '10';
+  const offRequest = new Request(request.url, {
+    headers: { origin: 'https://example.github.io', 'cf-connecting-ip': '203.0.113.93' },
+  });
+  const offResponse = await worker.default.fetch(offRequest, env);
+  assert.equal(offResponse.status, 200);
+  assert.equal(offResponse.headers.get('x-jfw-cache'), null);
+  assert.equal(r2Reads, 1);
 });
 
 test('edge cache failure never turns a valid D1 response into degraded mode', async t => {
@@ -557,15 +644,16 @@ test('explicit generic and competition empty coverage returns a D1 200 instead o
   t.after(() => database.close());
   database.exec(`
     INSERT INTO date_index_coverages(
-      date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+      date_jst, fixture_count, fixture_id_digest, generated_at, source_r2_key, source_sha256
     ) VALUES (
-      '2026-08-23', 0, '2026-08-22T22:00:00.000Z',
+      '2026-08-23', 0, '${fixtureIdDigest([])}', '2026-08-22T22:00:00.000Z',
       'football/v2/indexes/date-jst/2026-08-23.json', '${'c'.repeat(64)}'
     );
     INSERT INTO competition_date_index_coverages(
-      competition_id, date_jst, fixture_count, generated_at, source_r2_key, source_sha256
+      competition_id, date_jst, fixture_count, fixture_id_digest,
+      generated_at, source_r2_key, source_sha256
     ) VALUES (
-      1, '2026-08-23', 0, '2026-08-22T22:00:00.000Z',
+      1, '2026-08-23', 0, '${fixtureIdDigest([])}', '2026-08-22T22:00:00.000Z',
       'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-23.json',
       '${'d'.repeat(64)}'
     );

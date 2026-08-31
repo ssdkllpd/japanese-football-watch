@@ -2,9 +2,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const {
   buildDateFeed,
   competitionDateIndexKey,
+  writeDateFeed,
 } = require('../scripts/v2/fetch-date-feed');
 
 function fixture({ id, leagueId, leagueName, kickoff, status = 'NS', homeScore = null, awayScore = null }) {
@@ -92,4 +96,31 @@ test('competition date index key is explicit about competition and JST date', ()
     competitionDateIndexKey('af:competition:39', '2026-08-22'),
     'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
   );
+});
+
+test('publisher manifest declares authoritative replacement scope for every date index', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-date-feed-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const feed = buildDateFeed([
+    fixture({ id: 401, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+  ], { date: '2026-08-22', fetchedAt: '2026-08-21T22:00:00Z' });
+
+  const scoped = writeDateFeed(path.join(directory, 'scoped'), feed, {
+    query: { date: '2026-08-22', league: '39' },
+  });
+  const scopedIndexes = scoped.r2Objects.filter(item => item.merge === 'date_index');
+  assert.deepEqual(scopedIndexes.map(item => ({
+    scope: item.mergeScope,
+    mode: item.mergeMode,
+    replace: item.mergeReplaceCompetitionId ?? null,
+  })), [
+    { scope: 'generic', mode: 'replace-scope', replace: 'af:competition:39' },
+    { scope: 'af:competition:39', mode: 'replace', replace: null },
+  ]);
+
+  const complete = writeDateFeed(path.join(directory, 'complete'), feed, {
+    query: { date: '2026-08-22' },
+  });
+  assert.equal(complete.r2Objects[0].mergeMode, 'replace');
+  assert.equal(complete.r2Objects[0].mergeReplaceCompetitionId, null);
 });

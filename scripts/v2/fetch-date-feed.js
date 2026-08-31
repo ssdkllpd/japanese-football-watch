@@ -137,6 +137,10 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
     key: r2DateIndexKey(feed.date),
     file: 'date-index.json',
     merge: 'date_index',
+    mergeScope: 'generic',
+    mergeMode: metadata.query?.league ? 'replace-scope' : 'replace',
+    mergeReplaceCompetitionId: metadata.query?.league
+      ? `af:competition:${metadata.query.league}` : null,
   });
 
   for (const index of feed.competitionIndexes) {
@@ -149,6 +153,8 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
       key: competitionDateIndexKey(competitionId, feed.date),
       file,
       merge: 'date_index',
+      mergeScope: competitionId,
+      mergeMode: 'replace',
     });
   }
 

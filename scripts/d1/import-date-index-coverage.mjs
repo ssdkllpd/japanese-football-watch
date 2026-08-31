@@ -5,9 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { assertValidDateIndexPayload, compareCodePoint } from '../../shared/date-index-contract.mjs';
+import {
+  assertValidDateIndexPayload,
+  compareCodePoint,
+  fixtureIdDigestInput,
+} from '../../shared/date-index-contract.mjs';
 
-const PLAN_VERSION = 'd1-date-index-coverage-plan/1';
+const PLAN_VERSION = 'd1-date-index-coverage-plan/2';
 
 function parseArgs(argv) {
   const result = {};
@@ -64,6 +68,32 @@ function assertSameIds(expected, stored, label) {
   }
 }
 
+function fixtureIdDigest(ids) {
+  return crypto.createHash('sha256')
+    .update(fixtureIdDigestInput(ids.map(fixtureId => ({ fixtureId }))))
+    .digest('hex');
+}
+
+function expectedDateKey(date) {
+  return `football/v2/indexes/date-jst/${date}.json`;
+}
+
+function expectedCompetitionDateKey(competitionId, date) {
+  return `football/v2/indexes/competition/${competitionId}/date-jst/${date}.json`;
+}
+
+function validateArtifactDeclaration(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+  if (typeof value.path !== 'string' || value.path.length === 0) {
+    throw new Error(`${label}.path must be a non-empty string.`);
+  }
+  if (typeof value.sourceR2Key !== 'string' || value.sourceR2Key.length === 0) {
+    throw new Error(`${label}.sourceR2Key must be a non-empty string.`);
+  }
+}
+
 function fixtureIdsForDate(database, date) {
   return database.prepare(`
     SELECT canonical_id
@@ -88,30 +118,64 @@ function fixtureIdsForCompetitionDate(database, competitionInternalId, date) {
     ORDER BY fixture.canonical_id`).all(competitionInternalId, date).map(row => row.canonical_id);
 }
 
+function competitionIdsWithFixturesForDate(database, date) {
+  return database.prepare(`
+    SELECT DISTINCT competition.canonical_id
+    FROM fixtures fixture
+    JOIN competition_seasons season ON season.id = fixture.competition_season_id
+    JOIN competitions competition ON competition.id = season.competition_id
+    WHERE fixture.date_jst = ?1
+    ORDER BY competition.canonical_id`).all(date).map(row => row.canonical_id);
+}
+
 export function importDateIndexCoverage(database, plan, planDirectory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
+  if (typeof plan.date !== 'string') throw new Error('date must be declared in the coverage plan.');
   if (!Array.isArray(plan.competitionIndexes)) throw new Error('competitionIndexes must be an array.');
 
-  const generic = readJsonArtifact(planDirectory, plan.dateIndex);
-  assertValidDateIndexPayload(generic.payload, { expectedCompetitionId: null });
-  const date = generic.payload.date;
-  const competitionArtifacts = plan.competitionIndexes.map(relativePath => {
-    const artifact = readJsonArtifact(planDirectory, relativePath);
-    const competitionId = artifact.payload?.competition?.id;
+  validateArtifactDeclaration(plan.dateIndex, 'dateIndex');
+  const date = plan.date;
+  if (plan.dateIndex.sourceR2Key !== expectedDateKey(date)) {
+    throw new Error(`dateIndex.sourceR2Key must match the declared date: ${expectedDateKey(date)}`);
+  }
+  const generic = readJsonArtifact(planDirectory, plan.dateIndex.path);
+  assertValidDateIndexPayload(generic.payload, {
+    expectedDate: date,
+    expectedCompetitionId: null,
+  });
+  const competitionArtifacts = plan.competitionIndexes.map((declaration, index) => {
+    validateArtifactDeclaration(declaration, `competitionIndexes[${index}]`);
+    const competitionId = declaration.competitionId;
+    if (!/^af:competition:\d+$/.test(String(competitionId || ''))) {
+      throw new Error(`competitionIndexes[${index}].competitionId must be canonical.`);
+    }
+    const expectedKey = expectedCompetitionDateKey(competitionId, date);
+    if (declaration.sourceR2Key !== expectedKey) {
+      throw new Error(`competitionIndexes[${index}].sourceR2Key must be ${expectedKey}.`);
+    }
+    const artifact = readJsonArtifact(planDirectory, declaration.path);
     assertValidDateIndexPayload(artifact.payload, {
       expectedDate: date,
       expectedCompetitionId: competitionId,
     });
-    return { artifact, competitionId };
+    return { artifact, competitionId, sourceR2Key: declaration.sourceR2Key };
   }).sort((left, right) => compareCodePoint(left.competitionId, right.competitionId));
   sortedUnique(competitionArtifacts.map(item => item.competitionId), 'competitionIndexes');
 
   database.exec('BEGIN IMMEDIATE');
   let competitions;
   try {
+    const declaredCompetitionIds = competitionArtifacts.map(item => item.competitionId);
+    const requiredCompetitionIds = competitionIdsWithFixturesForDate(database, date);
+    const undeclaredCompetitions = requiredCompetitionIds
+      .filter(competitionId => !declaredCompetitionIds.includes(competitionId));
+    if (undeclaredCompetitions.length > 0) {
+      throw new Error(`Coverage plan omits competitions with fixtures on ${date}: ${undeclaredCompetitions.join(', ')}`);
+    }
+    const genericStoredIds = fixtureIdsForDate(database, date);
     assertSameIds(
       generic.payload.fixtures.map(fixture => fixture.fixtureId),
-      fixtureIdsForDate(database, date),
+      genericStoredIds,
       `generic date ${date}`,
     );
     competitions = competitionArtifacts.map(item => {
@@ -122,36 +186,41 @@ export function importDateIndexCoverage(database, plan, planDirectory) {
         fixtureIdsForCompetitionDate(database, competition.id, date),
         `competition date ${item.competitionId}/${date}`,
       );
-      return { artifact: item.artifact, competition };
+      return { artifact: item.artifact, competition, sourceR2Key: item.sourceR2Key };
     });
     database.prepare(`
       INSERT INTO date_index_coverages(
-        date_jst, fixture_count, generated_at, source_r2_key, source_sha256
-      ) VALUES (?1, ?2, ?3, ?4, ?5)
+        date_jst, fixture_count, fixture_id_digest, generated_at, source_r2_key, source_sha256
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
       ON CONFLICT(date_jst) DO UPDATE SET
         fixture_count = excluded.fixture_count,
+        fixture_id_digest = excluded.fixture_id_digest,
         generated_at = excluded.generated_at,
         source_r2_key = excluded.source_r2_key,
         source_sha256 = excluded.source_sha256`).run(
       date,
       generic.payload.fixtures.length,
+      fixtureIdDigest(genericStoredIds),
       generic.payload.generatedAt,
-      `football/v2/indexes/date-jst/${date}.json`,
+      plan.dateIndex.sourceR2Key,
       generic.sha256,
     );
     database.prepare('DELETE FROM competition_date_index_coverages WHERE date_jst = ?1').run(date);
     const insertCompetition = database.prepare(`
       INSERT INTO competition_date_index_coverages(
-        competition_id, date_jst, fixture_count, generated_at, source_r2_key, source_sha256
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`);
+        competition_id, date_jst, fixture_count, fixture_id_digest,
+        generated_at, source_r2_key, source_sha256
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`);
     for (const item of competitions) {
       const competitionId = item.competition.canonical_id;
+      const storedIds = fixtureIdsForCompetitionDate(database, item.competition.id, date);
       insertCompetition.run(
         item.competition.id,
         date,
         item.artifact.payload.fixtures.length,
+        fixtureIdDigest(storedIds),
         item.artifact.payload.generatedAt,
-        `football/v2/indexes/competition/${competitionId}/date-jst/${date}.json`,
+        item.sourceR2Key,
         item.artifact.sha256,
       );
     }
@@ -162,17 +231,22 @@ export function importDateIndexCoverage(database, plan, planDirectory) {
   }
 
   return {
-    schemaVersion: 'd1-date-index-coverage-report/1',
+    schemaVersion: 'd1-date-index-coverage-report/2',
     date,
     generic: {
       fixtureCount: generic.payload.fixtures.length,
-      sourceSha256: generic.sha256,
+      fixtureIdDigest: fixtureIdDigest(generic.payload.fixtures.map(fixture => fixture.fixtureId)),
+      sourceR2Key: plan.dateIndex.sourceR2Key,
+      artifactSha256: generic.sha256,
     },
     competitions: competitions.map(item => ({
       competitionId: item.competition.canonical_id,
       fixtureCount: item.artifact.payload.fixtures.length,
-      sourceSha256: item.artifact.sha256,
+      fixtureIdDigest: fixtureIdDigest(item.artifact.payload.fixtures.map(fixture => fixture.fixtureId)),
+      sourceR2Key: item.sourceR2Key,
+      artifactSha256: item.artifact.sha256,
     })),
+    undeclaredCompetitions: [],
     passed: true,
     productionReady: false,
   };

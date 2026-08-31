@@ -1,5 +1,6 @@
 import {
   assertValidDateIndexPayload,
+  fixtureIdDigestInput,
 } from '../shared/date-index-contract.mjs';
 
 const API_BASE = 'https://v3.football.api-sports.io';
@@ -61,12 +62,13 @@ LEFT JOIN teams away ON away.id = fixture.away_team_id`;
 
 const DATE_FIXTURES_SQL = `
 WITH coverage AS (
-  SELECT date_jst, fixture_count, generated_at
+  SELECT date_jst, fixture_count, fixture_id_digest, generated_at
   FROM date_index_coverages
   WHERE date_jst = ?1
 )
 SELECT
   coverage.fixture_count AS coverage_fixture_count,
+  coverage.fixture_id_digest AS coverage_fixture_id_digest,
   coverage.generated_at AS coverage_generated_at,
   ${FIXTURE_INDEX_COLUMNS_SQL}
 FROM coverage
@@ -76,13 +78,15 @@ ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
 
 const COMPETITION_DATE_FIXTURES_SQL = `
 WITH coverage AS (
-  SELECT item.date_jst, item.fixture_count, item.generated_at, item.competition_id
+  SELECT item.date_jst, item.fixture_count, item.fixture_id_digest,
+    item.generated_at, item.competition_id
   FROM competition_date_index_coverages item
   JOIN competitions scoped_competition ON scoped_competition.id = item.competition_id
   WHERE scoped_competition.canonical_id = ?1 AND item.date_jst = ?2
 )
 SELECT
   coverage.fixture_count AS coverage_fixture_count,
+  coverage.fixture_id_digest AS coverage_fixture_id_digest,
   coverage.generated_at AS coverage_generated_at,
   ${FIXTURE_INDEX_COLUMNS_SQL}
 FROM coverage
@@ -129,6 +133,14 @@ function booleanOrNull(value) {
   if (value === true || value === 1 || value === '1') return true;
   if (value === false || value === 0 || value === '0') return false;
   throw new Error('D1 boolean value is outside the supported 0/1 domain.');
+}
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function enabled(env, name) {
@@ -332,10 +344,12 @@ export async function buildD1DateFeed(
     'date coverage fixture count',
   );
   const generatedAt = fixtureRows[0].coverage_generated_at;
+  const expectedDigest = fixtureRows[0].coverage_fixture_id_digest;
   if (!Number.isInteger(expectedCount) || expectedCount < 0) {
     throw new Error('D1 date coverage fixture count is invalid.');
   }
   if (fixtureRows.some(row => row.coverage_fixture_count !== expectedCount
+      || row.coverage_fixture_id_digest !== expectedDigest
       || row.coverage_generated_at !== generatedAt)) {
     throw new Error('D1 date coverage metadata is inconsistent.');
   }
@@ -344,6 +358,10 @@ export async function buildD1DateFeed(
     .map(fixtureIndexEntryFromD1);
   if (fixtures.length !== expectedCount || new Set(fixtures.map(fixture => fixture.fixtureId)).size !== expectedCount) {
     throw new Error('D1 date coverage fixture count does not match stored fixtures.');
+  }
+  const actualDigest = await sha256Hex(fixtureIdDigestInput(fixtures));
+  if (actualDigest !== expectedDigest) {
+    throw new Error('D1 date coverage fixture identity digest does not match stored fixtures.');
   }
   const result = {
     contractVersion: '2.0.0',
