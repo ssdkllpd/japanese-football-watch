@@ -45,5 +45,6 @@ jobs:
           node --check shared/date-index-contract.mjs
           node --check worker/index.mjs
           node --check admin-worker/index.mjs
+          node --check admin-worker/fixture-ingest.mjs
       - name: Run tests
         run: node --test tests/*.test.js

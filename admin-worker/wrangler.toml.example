@@ -1,6 +1,7 @@
 name = "jfw-football-admin-ingest"
 main = "index.mjs"
 compatibility_date = "2026-08-31"
+compatibility_flags = ["nodejs_compat"]
 
 # Deploy this Worker separately from worker/index.mjs. It is the only
 # application component permitted to write through FOOTBALL_DB.

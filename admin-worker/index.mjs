@@ -2,6 +2,11 @@ import {
   assertValidStandingsPayload,
   standingsIdentityDigestInput,
 } from '../shared/standings-contract.mjs';
+import {
+  FIXTURE_OPERATION,
+  assertFixtureRequest,
+  publishFixtureFromR2,
+} from './fixture-ingest.mjs';
 
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const STANDINGS_OPERATION = 'standings_publish';
@@ -17,10 +22,26 @@ function expectedStandingsKey(competitionId, seasonId) {
   return `football/v2/competitions/${competitionId}/seasons/${seasonId}/standings/latest.json`;
 }
 
-function requireAdminToken(request, env) {
+async function tokenDigest(value) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+}
+
+async function requireAdminToken(request, env) {
   const token = env.ADMIN_INGEST_TOKEN;
-  if (typeof token !== 'string' || !token) throw new Error('Admin ingest is not configured.');
-  if (request.headers.get('authorization') !== `Bearer ${token}`) {
+  if (typeof token !== 'string' || !token) {
+    const error = new Error('Admin ingest is not configured.');
+    error.status = 503;
+    throw error;
+  }
+  const [provided, expected] = await Promise.all([
+    tokenDigest(request.headers.get('authorization') || ''),
+    tokenDigest(`Bearer ${token}`),
+  ]);
+  let difference = provided.length ^ expected.length;
+  for (let index = 0; index < Math.max(provided.length, expected.length); index += 1) {
+    difference |= (provided[index] || 0) ^ (expected[index] || 0);
+  }
+  if (difference !== 0) {
     const error = new Error('Unauthorized admin ingest request.');
     error.status = 401;
     throw error;
@@ -29,10 +50,12 @@ function requireAdminToken(request, env) {
 
 function assertRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Admin ingest request must be an object.');
+  if (value.schemaVersion !== REQUEST_SCHEMA) throw new Error(`schemaVersion must be ${REQUEST_SCHEMA}.`);
+  if (value.operation === FIXTURE_OPERATION) return assertFixtureRequest(value);
   const allowed = new Set(['schemaVersion', 'operation', 'competitionId', 'seasonId']);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest request contains unknown fields: ${unknown.join(', ')}.`);
-  if (value.schemaVersion !== REQUEST_SCHEMA || value.operation !== STANDINGS_OPERATION
+  if (value.operation !== STANDINGS_OPERATION
     || !/^af:competition:\d+$/.test(String(value.competitionId || ''))
     || !/^af:season:\d+:\d+$/.test(String(value.seasonId || ''))) {
     throw new Error('Admin ingest request is invalid.');
@@ -225,10 +248,13 @@ export async function publishStandingsFromR2(env, competitionId, seasonId) {
 
 export async function handleAdminIngest(request, env) {
   try {
+    if (new URL(request.url).pathname !== '/admin/v1/ingest') return json({ error: 'Not found' }, 404);
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-    requireAdminToken(request, env);
+    await requireAdminToken(request, env);
     const input = assertRequest(await request.json());
-    const report = await publishStandingsFromR2(env, input.competitionId, input.seasonId);
+    const report = input.operation === FIXTURE_OPERATION
+      ? await publishFixtureFromR2(env, input)
+      : await publishStandingsFromR2(env, input.competitionId, input.seasonId);
     return json({ ok: true, report }, 200);
   } catch (error) {
     const status = error?.status || 422;
