@@ -47,7 +47,8 @@ test('admin ingest client sends externally declared requests and keeps its token
     'https://admin.example/admin/v1/ingest', 'https://admin.example/admin/v1/ingest',
   ]);
   assert.equal(calls.every(item => item.options.redirect === 'error'), true);
-  assert.equal(calls[1].body.catalog.productSeasonId, 'jfw:season:2026-27');
+  assert.deepEqual(calls.map(item => item.body.operation), ['fixture_publish', 'standings_publish']);
+  assert.equal(calls[0].body.catalog.productSeasonId, 'jfw:season:2026-27');
   assert.equal(JSON.stringify(report).includes('secret-token'), false);
 });
 
@@ -98,6 +99,35 @@ test('admin ingest client sends a hash-scoped fixed snapshot bootstrap without e
   assert.match(report.results[0].identity, /^jfw:season:2026-27\/b{64}$/);
 });
 
+test('admin ingest client sends externally declared date coverage after fixture requests', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const coverage = plan();
+  coverage.standings = [];
+  coverage.dateIndexCoverages = [{
+    date: '2026-08-31',
+    competitionIds: ['af:competition:140', 'af:competition:39'],
+  }];
+  const operations = [];
+  const report = await executeAdminIngestPlan(coverage, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      operations.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true, report: {} }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.deepEqual(operations.map(item => item.operation), [
+    'fixture_publish', 'date_index_coverage_publish',
+  ]);
+  assert.deepEqual(operations[1], {
+    schemaVersion: 'jfw-d1-admin-ingest/1',
+    operation: 'date_index_coverage_publish',
+    date: '2026-08-31',
+    competitionIds: ['af:competition:140', 'af:competition:39'],
+  });
+});
+
 test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS remote endpoints', async t => {
   const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
   const directory = fixtureFiles(t);
@@ -120,4 +150,13 @@ test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS 
   await assert.rejects(() => executeAdminIngestPlan(plan(), {
     url: 'https://user:password@admin.example', token: 'token', planDirectory: directory,
   }), /must not contain credentials/);
+
+  const duplicateDates = plan();
+  duplicateDates.dateIndexCoverages = [
+    { date: '2026-08-31', competitionIds: [] },
+    { date: '2026-08-31', competitionIds: [] },
+  ];
+  await assert.rejects(() => executeAdminIngestPlan(duplicateDates, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /duplicate scopes/);
 });

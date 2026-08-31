@@ -12,6 +12,11 @@ import {
   assertFixedSnapshotRequest,
   publishFixedSnapshotFromR2,
 } from './fixed-snapshot-ingest.mjs';
+import {
+  DATE_INDEX_COVERAGE_OPERATION,
+  assertDateIndexCoverageRequest,
+  publishDateIndexCoverageFromR2,
+} from './date-index-coverage-ingest.mjs';
 
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const STANDINGS_OPERATION = 'standings_publish';
@@ -59,6 +64,7 @@ function assertRequest(value) {
   if (value.schemaVersion !== REQUEST_SCHEMA) throw new Error(`schemaVersion must be ${REQUEST_SCHEMA}.`);
   if (value.operation === FIXTURE_OPERATION) return assertFixtureRequest(value);
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
+  if (value.operation === DATE_INDEX_COVERAGE_OPERATION) return assertDateIndexCoverageRequest(value);
   const allowed = new Set(['schemaVersion', 'operation', 'competitionId', 'seasonId']);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest request contains unknown fields: ${unknown.join(', ')}.`);
@@ -271,11 +277,16 @@ export async function handleAdminIngest(request, env) {
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
     await requireAdminToken(request, env);
     const input = assertRequest(await requestJson(request));
-    const report = input.operation === FIXTURE_OPERATION
-      ? await publishFixtureFromR2(env, input)
-      : input.operation === FIXED_SNAPSHOT_OPERATION
-        ? await publishFixedSnapshotFromR2(env, input)
-        : await publishStandingsFromR2(env, input.competitionId, input.seasonId);
+    let report;
+    if (input.operation === FIXTURE_OPERATION) {
+      report = await publishFixtureFromR2(env, input);
+    } else if (input.operation === FIXED_SNAPSHOT_OPERATION) {
+      report = await publishFixedSnapshotFromR2(env, input);
+    } else if (input.operation === DATE_INDEX_COVERAGE_OPERATION) {
+      report = await publishDateIndexCoverageFromR2(env, input);
+    } else {
+      report = await publishStandingsFromR2(env, input.competitionId, input.seasonId);
+    }
     return json({ ok: true, report }, 200);
   } catch (error) {
     const status = error?.status || 422;

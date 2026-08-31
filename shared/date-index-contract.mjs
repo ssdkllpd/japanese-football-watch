@@ -1,6 +1,14 @@
 export const DATE_INDEX_CONTRACT_VERSION = '2.0.0';
 export const DATE_INDEX_TIME_ZONE = 'Asia/Tokyo';
 
+export function dateIndexR2Key(date) {
+  return `football/v2/indexes/date-jst/${date}.json`;
+}
+
+export function competitionDateIndexR2Key(competitionId, date) {
+  return `football/v2/indexes/competition/${competitionId}/date-jst/${date}.json`;
+}
+
 const INGESTION_STATES = new Set([
   'scheduled', 'live', 'provisional_final', 'finalized', 'needs_review',
 ]);

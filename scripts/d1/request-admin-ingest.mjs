@@ -26,6 +26,14 @@ function canonical(value, expression, label) {
   if (typeof value !== 'string' || !expression.test(value)) throw new Error(`${label} is invalid.`);
 }
 
+function realDate(value, label) {
+  canonical(value, /^\d{4}-\d{2}-\d{2}$/, label);
+  const instant = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(instant.getTime()) || instant.toISOString().slice(0, 10) !== value) {
+    throw new Error(`${label} is not a real date.`);
+  }
+}
+
 function resolveArtifact(root, relativePath, label) {
   if (typeof relativePath !== 'string' || !relativePath || path.isAbsolute(relativePath)) {
     throw new Error(`${label} must be a relative path.`);
@@ -44,17 +52,24 @@ function resolveArtifact(root, relativePath, label) {
 
 function validatePlan(plan, directory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
-  const allowed = new Set(['schemaVersion', 'fixedSnapshot', 'standings', 'fixtures']);
+  const allowed = new Set([
+    'schemaVersion', 'fixedSnapshot', 'standings', 'fixtures', 'dateIndexCoverages',
+  ]);
   const unknown = Object.keys(plan || {}).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest plan contains unknown fields: ${unknown.join(', ')}.`);
   if (!Array.isArray(plan.standings) || !Array.isArray(plan.fixtures)) {
     throw new Error('standings and fixtures must be arrays.');
   }
+  if (plan.dateIndexCoverages !== undefined && !Array.isArray(plan.dateIndexCoverages)) {
+    throw new Error('dateIndexCoverages must be an array when supplied.');
+  }
+  const dateIndexCoverages = plan.dateIndexCoverages || [];
   if (plan.fixedSnapshot !== undefined && (!plan.fixedSnapshot
     || typeof plan.fixedSnapshot !== 'object' || Array.isArray(plan.fixedSnapshot))) {
     throw new Error('fixedSnapshot must be an object when supplied.');
   }
-  if (!plan.fixedSnapshot && plan.standings.length + plan.fixtures.length === 0) {
+  if (!plan.fixedSnapshot
+    && plan.standings.length + plan.fixtures.length + dateIndexCoverages.length === 0) {
     throw new Error('Admin ingest plan is empty.');
   }
   const requests = [];
@@ -67,14 +82,6 @@ function validatePlan(plan, directory) {
       schemaVersion: REQUEST_VERSION, operation: 'fixed_snapshot_publish',
       artifactSha256: plan.fixedSnapshot.artifactSha256,
       productSeasonId: plan.fixedSnapshot.productSeasonId,
-    });
-  }
-  for (const [index, item] of plan.standings.entries()) {
-    canonical(item?.competitionId, /^af:competition:\d+$/, `standings[${index}].competitionId`);
-    canonical(item?.seasonId, /^af:season:\d+:\d+$/, `standings[${index}].seasonId`);
-    requests.push({
-      schemaVersion: REQUEST_VERSION, operation: 'standings_publish',
-      competitionId: item.competitionId, seasonId: item.seasonId,
     });
   }
   for (const [index, item] of plan.fixtures.entries()) {
@@ -90,11 +97,40 @@ function validatePlan(plan, directory) {
       ),
     });
   }
+  for (const [index, item] of plan.standings.entries()) {
+    canonical(item?.competitionId, /^af:competition:\d+$/, `standings[${index}].competitionId`);
+    canonical(item?.seasonId, /^af:season:\d+:\d+$/, `standings[${index}].seasonId`);
+    requests.push({
+      schemaVersion: REQUEST_VERSION, operation: 'standings_publish',
+      competitionId: item.competitionId, seasonId: item.seasonId,
+    });
+  }
+  for (const [index, item] of dateIndexCoverages.entries()) {
+    realDate(item?.date, `dateIndexCoverages[${index}].date`);
+    if (!Array.isArray(item?.competitionIds)) {
+      throw new Error(`dateIndexCoverages[${index}].competitionIds must be an array.`);
+    }
+    const competitionIds = [...item.competitionIds].sort();
+    for (const competitionId of competitionIds) {
+      canonical(competitionId, /^af:competition:\d+$/,
+        `dateIndexCoverages[${index}].competitionIds`);
+    }
+    if (new Set(competitionIds).size !== competitionIds.length) {
+      throw new Error(`dateIndexCoverages[${index}].competitionIds contains duplicates.`);
+    }
+    requests.push({
+      schemaVersion: REQUEST_VERSION,
+      operation: 'date_index_coverage_publish',
+      date: item.date,
+      competitionIds,
+    });
+  }
   const identities = requests.map(item => {
     if (item.operation === 'fixture_publish') return `${item.operation}\t${item.fixtureId}`;
     if (item.operation === 'fixed_snapshot_publish') {
       return `${item.operation}\t${item.artifactSha256}\t${item.productSeasonId}`;
     }
+    if (item.operation === 'date_index_coverage_publish') return `${item.operation}\t${item.date}`;
     return `${item.operation}\t${item.competitionId}\t${item.seasonId}`;
   });
   if (new Set(identities).size !== identities.length) throw new Error('Admin ingest plan contains duplicate scopes.');
@@ -125,6 +161,8 @@ export async function executeAdminIngestPlan(plan, options) {
       ? request.fixtureId
       : request.operation === 'fixed_snapshot_publish'
         ? `${request.productSeasonId}/${request.artifactSha256}`
+        : request.operation === 'date_index_coverage_publish'
+          ? request.date
         : `${request.competitionId}/${request.seasonId}`;
     try {
       const response = await fetchImpl(url, {

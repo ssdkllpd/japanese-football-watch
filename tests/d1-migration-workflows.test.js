@@ -65,3 +65,17 @@ test('staging bootstrap workflow rebuilds the reviewed bytes and writes D1 only 
   assert.equal(workflow.includes('d1 migrations apply'), false);
   assert.equal(workflow.includes('D1_FIXTURE_DETAIL_ENABLED'), false);
 });
+
+test('staging data migration executes a repository plan only through the admin endpoint', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-staging-data-migrate.yml'), 'utf8',
+  );
+  assert.match(workflow, /environment: d1-staging/);
+  assert.match(workflow, /plan_path:/);
+  assert.match(workflow, /plan_path escapes the repository/);
+  assert.match(workflow, /request-admin-ingest\.mjs/);
+  assert.equal(workflow.includes('CLOUDFLARE_API_TOKEN'), false);
+  assert.equal(workflow.includes('wrangler'), false);
+  assert.equal(workflow.includes('d1 execute'), false);
+  assert.equal(workflow.includes('production'), false);
+});
