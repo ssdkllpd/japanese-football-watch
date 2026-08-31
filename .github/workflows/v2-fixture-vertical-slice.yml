@@ -1,7 +1,3 @@
-94918fd^{tree}
-fatal: ambiguous argument '94918fd^{tree}': unknown revision or path not in the working tree.
-Use '--' to separate paths from revisions, like this:
-'git <command> [<revision>...] -- [<file>...]'
 name: V2 Fixture Vertical Slice
 
 on:
