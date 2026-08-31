@@ -310,6 +310,14 @@ JST date index:
 football/v2/indexes/date-jst/{YYYY-MM-DD}.json
 ```
 
+Competition-scoped JST date index:
+
+```text
+football/v2/indexes/competition/{competitionId}/date-jst/{YYYY-MM-DD}.json
+```
+
+Date-index fixtureは`kickoffUtc`、同時刻では`fixtureId`のcode-point順で並べる。competition-scoped indexはroot `competition`を必須とし、merge後も保持する。publisher、D1 coverage importer、Worker degraded fallbackは`shared/date-index-contract.mjs`の同一validatorを使用する。
+
 The pointer allows the Worker to resolve a fixture by `fixtureId` without making the UI know the R2 hierarchy.
 
 ## 12. Git / D1 / R2 / KV / Cache API ownership
