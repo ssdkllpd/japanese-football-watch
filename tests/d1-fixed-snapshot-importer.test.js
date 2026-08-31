@@ -69,6 +69,15 @@ function sampleBase() {
             updated: '2026-08-27 21:00 JST', statsAsOf: '開幕前',
           },
         },
+        statsScope: 'tracked_official_season_total',
+        statsStatus: 'unverified',
+        statsAsOf: '開幕前',
+        statsTrackingState: 'active',
+        _initialStats: { apps: 0, goals: 0, assists: null },
+        _initialClub: 'ブライトン',
+        _initialLeague: 'プレミアリーグ',
+        _initialStatsCaptured: true,
+        _initialStatsUpdated: '2026-08-27 21:00 JST',
       },
       {
         playerId: 'jp:ambiguous',
@@ -153,6 +162,24 @@ test('current backfill produces and idempotently imports one deterministic first
     WHERE jfw_player_id = 'jp-1vfimc3'`).get().stats_json);
   assert.deepEqual(stored.clubStats, sourcePlayer.clubStats);
   assert.deepEqual(stored.competitionStats, sourcePlayer.competitionStats);
+  for (const player of first.data.players) {
+    const payload = JSON.parse(database.prepare(`SELECT stats_json FROM tracked_player_aggregates
+      WHERE jfw_player_id = ?1`).get(player.playerId).stats_json);
+    assert.equal(payload.statsScope, player.statsScope || null, `${player.playerId}:statsScope`);
+    assert.equal(payload.statsStatus, player.statsStatus || null, `${player.playerId}:statsStatus`);
+    assert.equal(payload.statsAsOf, player.statsAsOf || null, `${player.playerId}:statsAsOf`);
+    assert.equal(payload.statsTrackingState, player.statsTrackingState || null,
+      `${player.playerId}:statsTrackingState`);
+    assert.deepEqual(payload._initialStats, player._initialStats || {},
+      `${player.playerId}:_initialStats`);
+    assert.equal(payload._initialClub, player._initialClub || null, `${player.playerId}:_initialClub`);
+    assert.equal(payload._initialLeague, player._initialLeague || null,
+      `${player.playerId}:_initialLeague`);
+    assert.equal(payload._initialStatsCaptured, player._initialStatsCaptured ?? null,
+      `${player.playerId}:_initialStatsCaptured`);
+    assert.equal(payload._initialStatsUpdated, player._initialStatsUpdated || null,
+      `${player.playerId}:_initialStatsUpdated`);
+  }
   assert.deepEqual(validateImportedSnapshot(database, first), []);
 });
 
@@ -211,6 +238,15 @@ test('import is atomic, preserves zero versus null, and is idempotent by input h
     .find(player => player.playerId === 'jp:unresolved');
   assert.deepEqual(unresolvedStats.clubCompetitionStats, unresolvedPlayer.clubCompetitionStats);
   assert.deepEqual(unresolvedStats._aggregateBaselines, unresolvedPlayer._aggregateBaselines);
+  assert.equal(unresolvedStats.statsScope, unresolvedPlayer.statsScope);
+  assert.equal(unresolvedStats.statsStatus, unresolvedPlayer.statsStatus);
+  assert.equal(unresolvedStats.statsAsOf, unresolvedPlayer.statsAsOf);
+  assert.equal(unresolvedStats.statsTrackingState, unresolvedPlayer.statsTrackingState);
+  assert.deepEqual(unresolvedStats._initialStats, unresolvedPlayer._initialStats);
+  assert.equal(unresolvedStats._initialClub, unresolvedPlayer._initialClub);
+  assert.equal(unresolvedStats._initialLeague, unresolvedPlayer._initialLeague);
+  assert.equal(unresolvedStats._initialStatsCaptured, unresolvedPlayer._initialStatsCaptured);
+  assert.equal(unresolvedStats._initialStatsUpdated, unresolvedPlayer._initialStatsUpdated);
   assert.deepEqual(validateImportedSnapshot(database, snapshot), []);
 });
 

@@ -43,6 +43,14 @@ function row(database, sql, ...params) {
   return database.prepare(sql).get(...params) || null;
 }
 
+function compareText(left, right) {
+  const leftText = String(left);
+  const rightText = String(right);
+  if (leftText < rightText) return -1;
+  if (leftText > rightText) return 1;
+  return 0;
+}
+
 function positiveProviderId(value) {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
@@ -234,7 +242,8 @@ function expectedResolvedState(database, snapshot, player, sourceRecords, covera
     });
   }
   if (periods.length === 0) return { state: 'deferred', reason: 'tracking_period_missing' };
-  periods.sort((left, right) => `${left.validFrom}:${left.validTo}`.localeCompare(`${right.validFrom}:${right.validTo}`));
+  periods.sort((left, right) => compareText(`${left.validFrom}:${left.validTo}`,
+    `${right.validFrom}:${right.validTo}`));
   return { state: 'ready', resolved: {
     playerCanonicalId: [...canonicalPlayers][0],
     method: CROSSWALK_METHOD,
@@ -288,7 +297,7 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage, expected
   }
   const coverageByRecord = new Map(verifiedCoverage.records.map(record => [record.recordId, record]));
   const players = [...snapshot.data.players]
-    .sort((left, right) => left.playerId.localeCompare(right.playerId))
+    .sort((left, right) => compareText(left.playerId, right.playerId))
     .map(player => {
       if (!expectedPlayerIds.has(player.playerId)) {
         return { jfwPlayerId: player.playerId, status: 'not_applicable',
@@ -304,8 +313,8 @@ function verifyResolvedCrosswalks(database, snapshot, verifiedCoverage, expected
         return { jfwPlayerId: player.playerId, status: 'deferred',
           reason: 'tracked_player_crosswalk_not_resolved' };
       }
-      actual.periods.sort((left, right) => `${left.validFrom}:${left.validTo}`
-        .localeCompare(`${right.validFrom}:${right.validTo}`));
+      actual.periods.sort((left, right) => compareText(`${left.validFrom}:${left.validTo}`,
+        `${right.validFrom}:${right.validTo}`));
       if (stableStringify(actual) !== stableStringify(expected.resolved)) {
         return { jfwPlayerId: player.playerId, status: 'failed',
           reason: 'resolved_crosswalk_does_not_match_current_evidence' };
@@ -367,6 +376,15 @@ function expectedLegacyAggregatePayload(player) {
     clubStats: player.clubStats || {},
     clubCompetitionStats: player.clubCompetitionStats || {},
     _aggregateBaselines: player._aggregateBaselines || {},
+    statsScope: player.statsScope || null,
+    statsStatus: player.statsStatus || null,
+    statsAsOf: player.statsAsOf || null,
+    statsTrackingState: player.statsTrackingState || null,
+    _initialStats: player._initialStats || {},
+    _initialClub: player._initialClub || null,
+    _initialLeague: player._initialLeague || null,
+    _initialStatsCaptured: player._initialStatsCaptured ?? null,
+    _initialStatsUpdated: player._initialStatsUpdated || null,
   };
 }
 
@@ -418,8 +436,8 @@ function unresolvedIdentityState(database, snapshot, player) {
       coreMembershipStored: false,
       competitionSeasonStored: false,
     }))
-    .sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)));
-  periods.sort((left, right) => stableStringify(left).localeCompare(stableStringify(right)));
+    .sort((left, right) => compareText(stableStringify(left), stableStringify(right)));
+  periods.sort((left, right) => compareText(stableStringify(left), stableStringify(right)));
   if (legacyRows !== expected.length || stableStringify(periods) !== stableStringify(expected)) {
     return { status: 'failed', reason: 'legacy_memberships_do_not_match_fixed_snapshot' };
   }
@@ -431,10 +449,11 @@ function unresolvedIdentityState(database, snapshot, player) {
     FROM tracked_player_aggregates aggregate
     JOIN product_seasons season ON season.id = aggregate.product_season_id
     WHERE aggregate.jfw_player_id = ?1
-      AND season.canonical_id = ?2
-    ORDER BY aggregate.aggregate_scope, aggregate.competition_season_id, aggregate.team_id`)
-    .all(player.playerId, productSeasonCanonicalId);
+    ORDER BY season.canonical_id, aggregate.aggregate_scope,
+      aggregate.competition_season_id, aggregate.team_id`)
+    .all(player.playerId);
   const aggregateScopeMatches = aggregateRows.length === 1
+    && aggregateRows[0].product_season_canonical_id === productSeasonCanonicalId
     && aggregateRows[0].aggregate_scope === 'season'
     && aggregateRows[0].competition_season_id === null
     && aggregateRows[0].team_id === null;
@@ -461,13 +480,15 @@ function unresolvedIdentityState(database, snapshot, player) {
   return { status: 'no_match_evidence', crosswalkState: tracked.crosswalk_state,
     membershipPeriods: periods.length, legacySeasonAggregateVerified: true,
     preservedAggregateFields: ['seasonStats', 'allCompetitionsStats', 'competitionStats',
-      'clubStats', 'clubCompetitionStats', '_aggregateBaselines'] };
+      'clubStats', 'clubCompetitionStats', '_aggregateBaselines', 'statsScope', 'statsStatus',
+      'statsAsOf', 'statsTrackingState', '_initialStats', '_initialClub', '_initialLeague',
+      '_initialStatsCaptured', '_initialStatsUpdated'] };
 }
 
 function verifyUnresolvedTrackedPlayerIdentities(database, snapshot, evidencePlayerIds) {
   const players = snapshot.data.players
     .filter(player => !evidencePlayerIds.has(player.playerId))
-    .sort((left, right) => left.playerId.localeCompare(right.playerId))
+    .sort((left, right) => compareText(left.playerId, right.playerId))
     .map(player => ({ jfwPlayerId: player.playerId,
       ...unresolvedIdentityState(database, snapshot, player) }));
   const failed = players.filter(player => player.status === 'failed').length;
@@ -497,7 +518,7 @@ async function verifyFixtureShadows(database, plan, verifiedCoverage, expectedRe
   const fixtures = [];
 
   for (const fixture of [...plan.fixtures]
-    .sort((left, right) => left.fixtureId.localeCompare(right.fixtureId))) {
+    .sort((left, right) => compareText(left.fixtureId, right.fixtureId))) {
     try {
       const jsonBundle = readJson(resolveArtifactPath(baseDirectory, fixture.jsonPath));
       const correctionDocument = readJson(resolveArtifactPath(baseDirectory, fixture.correctionsPath));
@@ -516,11 +537,11 @@ async function verifyFixtureShadows(database, plan, verifiedCoverage, expectedRe
       }
       const comparison = compareFixtureBundles(jsonBundle, resolved.bundle);
       const gitDefinitions = [...correctionDocument.definitions]
-        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+        .sort((left, right) => compareText(left.correctionKey, right.correctionKey));
       const jsonDefinitions = correctionDefinitions(jsonBundle)
-        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+        .sort((left, right) => compareText(left.correctionKey, right.correctionKey));
       const d1Definitions = correctionDefinitions(resolved.bundle)
-        .sort((left, right) => left.correctionKey.localeCompare(right.correctionKey));
+        .sort((left, right) => compareText(left.correctionKey, right.correctionKey));
       const correctionDefinitionParity = {
         passed: stableStringify(gitDefinitions) === stableStringify(jsonDefinitions)
           && stableStringify(gitDefinitions) === stableStringify(d1Definitions),

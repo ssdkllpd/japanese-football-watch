@@ -46,6 +46,15 @@ function aggregatePayload(player) {
     clubStats: player.clubStats || {},
     clubCompetitionStats: player.clubCompetitionStats || {},
     _aggregateBaselines: player._aggregateBaselines || {},
+    statsScope: player.statsScope || null,
+    statsStatus: player.statsStatus || null,
+    statsAsOf: player.statsAsOf || null,
+    statsTrackingState: player.statsTrackingState || null,
+    _initialStats: player._initialStats || {},
+    _initialClub: player._initialClub || null,
+    _initialLeague: player._initialLeague || null,
+    _initialStatsCaptured: player._initialStatsCaptured ?? null,
+    _initialStatsUpdated: player._initialStatsUpdated || null,
   };
 }
 

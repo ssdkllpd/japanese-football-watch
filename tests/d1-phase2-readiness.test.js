@@ -60,6 +60,15 @@ function fixedSnapshot({ mixed = false } = {}) {
         updated: '2026-08-20 00:00 JST', statsAsOf: 'scope exit',
       },
     },
+    statsScope: 'tracked_official_season_total',
+    statsStatus: 'unverified',
+    statsAsOf: 'scope exit',
+    statsTrackingState: 'frozen_out_of_scope',
+    _initialStats: { apps: 0, starts: 0, minutes: 0, goals: 0, assists: 0 },
+    _initialClub: 'Former FC',
+    _initialLeague: 'Former League',
+    _initialStatsCaptured: true,
+    _initialStatsUpdated: '2026-08-20 00:00 JST',
   }] : [];
   const extraMatches = mixed ? [{
     matchId: 'match:unscoped', ko: '2026-08-23 05:00 JST', league: 'Unknown League', round: '第1節',
@@ -182,6 +191,10 @@ function verifyIdentityOnlyPlayers(database, snapshot) {
     new Set(['jp:one', 'jp:unresolved']));
 }
 
+function identityResult(result, jfwPlayerId = 'jp:outside') {
+  return result.players.find(player => player.jfwPlayerId === jfwPlayerId);
+}
+
 async function readinessArtifacts(database, directory) {
   const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture('af:fixture:9001');
   const fixturePath = path.join(directory, 'fixture-9001.json');
@@ -291,11 +304,14 @@ test('snapshot-derived scope rejects omissions and reports migration gaps withou
     verifiedNoMatchPlayers: 1,
     failedPlayers: 0,
   });
-  assert.equal(blocked.trackedPlayerIdentities.players[0].status, 'no_match_evidence');
-  assert.equal(blocked.trackedPlayerIdentities.players[0].legacySeasonAggregateVerified, true);
-  assert.deepEqual(blocked.trackedPlayerIdentities.players[0].preservedAggregateFields,
+  const identity = identityResult(blocked.trackedPlayerIdentities);
+  assert.equal(identity.status, 'no_match_evidence');
+  assert.equal(identity.legacySeasonAggregateVerified, true);
+  assert.deepEqual(identity.preservedAggregateFields,
     ['seasonStats', 'allCompetitionsStats', 'competitionStats', 'clubStats',
-      'clubCompetitionStats', '_aggregateBaselines']);
+      'clubCompetitionStats', '_aggregateBaselines', 'statsScope', 'statsStatus', 'statsAsOf',
+      'statsTrackingState', '_initialStats', '_initialClub', '_initialLeague',
+      '_initialStatsCaptured', '_initialStatsUpdated']);
 });
 
 test('identity-only player membership drift closes the independent identity gate', async t => {
@@ -318,8 +334,8 @@ test('identity-only player membership drift closes the independent identity gate
   });
 
   assert.equal(report.gates.trackedPlayerIdentities, false);
-  assert.equal(report.trackedPlayerIdentities.players[0].status, 'failed');
-  assert.equal(report.trackedPlayerIdentities.players[0].reason,
+  assert.equal(identityResult(report.trackedPlayerIdentities).status, 'failed');
+  assert.equal(identityResult(report.trackedPlayerIdentities).reason,
     'legacy_memberships_do_not_match_fixed_snapshot');
   assert.equal(report.phase2TechnicalGatePassed, false);
 });
@@ -344,7 +360,7 @@ test('identity-only legacy aggregate drift closes the independent identity gate'
   });
 
   assert.equal(report.gates.trackedPlayerIdentities, false);
-  assert.equal(report.trackedPlayerIdentities.players[0].reason,
+  assert.equal(identityResult(report.trackedPlayerIdentities).reason,
     'legacy_season_aggregate_does_not_match_fixed_snapshot');
 });
 
@@ -363,7 +379,29 @@ test('identity-only aggregate scope drift closes the independent identity gate',
   const identities = verifyIdentityOnlyPlayers(database, snapshot);
 
   assert.equal(identities.passed, false);
-  assert.equal(identities.players[0].reason, 'legacy_aggregate_scope_set_mismatch');
+  assert.equal(identityResult(identities).reason, 'legacy_aggregate_scope_set_mismatch');
+});
+
+test('identity-only aggregate from another product season closes the independent identity gate', t => {
+  const snapshot = fixedSnapshot({ mixed: true });
+  const database = canonicalDatabase(snapshot);
+  t.after(() => database.close());
+  database.exec(`
+    INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
+      VALUES (2, 'jfw:season:2025-26', '2025-26', '2025-07-01', '2026-06-30');
+    INSERT INTO tracked_player_aggregates(
+      jfw_player_id, product_season_id, competition_season_id, team_id,
+      aggregate_scope, stats_json, source_hash, rebuilt_at
+    ) VALUES (
+      'jp:outside', 2, NULL, NULL, 'season', '{}', '${'9'.repeat(64)}',
+      '2026-08-27T12:00:00.000Z'
+    );
+  `);
+
+  const identities = verifyIdentityOnlyPlayers(database, snapshot);
+
+  assert.equal(identities.passed, false);
+  assert.equal(identityResult(identities).reason, 'legacy_aggregate_scope_set_mismatch');
 });
 
 test('identity-only missing tracked player closes the independent identity gate', t => {
@@ -380,7 +418,7 @@ test('identity-only missing tracked player closes the independent identity gate'
   const identities = verifyIdentityOnlyPlayers(database, snapshot);
 
   assert.equal(identities.passed, false);
-  assert.equal(identities.players[0].reason, 'tracked_player_not_stored');
+  assert.equal(identityResult(identities).reason, 'tracked_player_not_stored');
 });
 
 test('identity-only unsupported resolution closes the independent identity gate', t => {
@@ -397,7 +435,7 @@ test('identity-only unsupported resolution closes the independent identity gate'
   const identities = verifyIdentityOnlyPlayers(database, snapshot);
 
   assert.equal(identities.passed, false);
-  assert.equal(identities.players[0].reason,
+  assert.equal(identityResult(identities).reason,
     'unexpected_resolved_identity_without_match_evidence');
 });
 
@@ -411,7 +449,7 @@ test('identity-only tracked state drift closes the independent identity gate', t
   const identities = verifyIdentityOnlyPlayers(database, snapshot);
 
   assert.equal(identities.passed, false);
-  assert.equal(identities.players[0].reason,
+  assert.equal(identityResult(identities).reason,
     'tracked_player_state_does_not_match_fixed_snapshot');
 });
 
