@@ -42,13 +42,23 @@ test('admin ingest client sends externally declared requests and keeps its token
     },
   });
   assert.equal(report.passed, true);
-  assert.deepEqual(report.summary, { total: 2, passed: 2, failed: 0 });
+  assert.deepEqual(report.summary, { total: 3, passed: 3, failed: 0 });
   assert.deepEqual(calls.map(item => item.url), [
     'https://admin.example/admin/v1/ingest', 'https://admin.example/admin/v1/ingest',
+    'https://admin.example/admin/v1/ingest',
   ]);
   assert.equal(calls.every(item => item.options.redirect === 'error'), true);
-  assert.deepEqual(calls.map(item => item.body.operation), ['fixture_publish', 'standings_publish']);
+  assert.deepEqual(calls.map(item => item.body.operation), [
+    'fixture_publish', 'standings_publish', 'migration_verify',
+  ]);
   assert.equal(calls[0].body.catalog.productSeasonId, 'jfw:season:2026-27');
+  assert.deepEqual(calls[2].body, {
+    schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'migration_verify',
+    fixedSnapshot: null,
+    fixtureIds: ['af:fixture:9001'],
+    standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
+    dateIndexCoverages: [],
+  });
   assert.equal(JSON.stringify(report).includes('secret-token'), false);
 });
 
@@ -65,8 +75,8 @@ test('admin ingest client reports every independent failure without declaring pr
     },
   });
   assert.equal(report.passed, false);
-  assert.deepEqual(report.summary, { total: 2, passed: 0, failed: 2 });
-  assert.deepEqual(report.results.map(item => item.status), [422, null]);
+  assert.deepEqual(report.summary, { total: 3, passed: 0, failed: 3 });
+  assert.deepEqual(report.results.map(item => item.status), [422, null, null]);
   assert.equal(report.productionReady, false);
 });
 
@@ -80,22 +90,29 @@ test('admin ingest client sends a hash-scoped fixed snapshot bootstrap without e
     artifactSha256: 'b'.repeat(64),
     productSeasonId: 'jfw:season:2026-27',
   };
-  let sent;
+  const sent = [];
   const report = await executeAdminIngestPlan(bootstrap, {
     url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
     async fetchImpl(url, options) {
-      sent = JSON.parse(options.body);
+      sent.push(JSON.parse(options.body));
       return new Response(JSON.stringify({ ok: true, report: { status: 'imported' } }), { status: 200 });
     },
   });
   assert.equal(report.passed, true);
-  assert.deepEqual(sent, {
+  assert.deepEqual(sent[0], {
     schemaVersion: 'jfw-d1-admin-ingest/1',
     operation: 'fixed_snapshot_publish',
     artifactSha256: 'b'.repeat(64),
     productSeasonId: 'jfw:season:2026-27',
   });
-  assert.equal(Object.hasOwn(sent, 'snapshot'), false);
+  assert.equal(Object.hasOwn(sent[0], 'snapshot'), false);
+  assert.deepEqual(sent[1], {
+    schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'migration_verify',
+    fixedSnapshot: {
+      artifactSha256: 'b'.repeat(64), productSeasonId: 'jfw:season:2026-27',
+    },
+    fixtureIds: [], standings: [], dateIndexCoverages: [],
+  });
   assert.match(report.results[0].identity, /^jfw:season:2026-27\/b{64}$/);
 });
 
@@ -118,7 +135,7 @@ test('admin ingest client sends externally declared date coverage after fixture 
   });
   assert.equal(report.passed, true);
   assert.deepEqual(operations.map(item => item.operation), [
-    'fixture_publish', 'date_index_coverage_publish',
+    'fixture_publish', 'date_index_coverage_publish', 'migration_verify',
   ]);
   assert.deepEqual(operations[1], {
     schemaVersion: 'jfw-d1-admin-ingest/1',

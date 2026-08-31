@@ -64,6 +64,10 @@ function validatePlan(plan, directory) {
     throw new Error('dateIndexCoverages must be an array when supplied.');
   }
   const dateIndexCoverages = plan.dateIndexCoverages || [];
+  if (plan.fixtures.length > 500 || plan.standings.length > 100
+    || dateIndexCoverages.length > 64) {
+    throw new Error('Admin ingest plan exceeds the migration verification scope limits.');
+  }
   if (plan.fixedSnapshot !== undefined && (!plan.fixedSnapshot
     || typeof plan.fixedSnapshot !== 'object' || Array.isArray(plan.fixedSnapshot))) {
     throw new Error('fixedSnapshot must be an object when supplied.');
@@ -110,6 +114,9 @@ function validatePlan(plan, directory) {
     if (!Array.isArray(item?.competitionIds)) {
       throw new Error(`dateIndexCoverages[${index}].competitionIds must be an array.`);
     }
+    if (item.competitionIds.length > 24) {
+      throw new Error(`dateIndexCoverages[${index}].competitionIds exceeds the limit.`);
+    }
     const competitionIds = [...item.competitionIds].sort();
     for (const competitionId of competitionIds) {
       canonical(competitionId, /^af:competition:\d+$/,
@@ -134,6 +141,29 @@ function validatePlan(plan, directory) {
     return `${item.operation}\t${item.competitionId}\t${item.seasonId}`;
   });
   if (new Set(identities).size !== identities.length) throw new Error('Admin ingest plan contains duplicate scopes.');
+  const competitionScopeCount = dateIndexCoverages.reduce(
+    (count, item) => count + item.competitionIds.length, 0,
+  );
+  if (competitionScopeCount > 1_000) {
+    throw new Error('Admin ingest plan exceeds the competition coverage scope limit.');
+  }
+  requests.push({
+    schemaVersion: REQUEST_VERSION,
+    operation: 'migration_verify',
+    fixedSnapshot: plan.fixedSnapshot ? {
+      artifactSha256: plan.fixedSnapshot.artifactSha256,
+      productSeasonId: plan.fixedSnapshot.productSeasonId,
+    } : null,
+    fixtureIds: plan.fixtures.map(item => item.fixtureId),
+    standings: plan.standings.map(item => ({
+      competitionId: item.competitionId,
+      seasonId: item.seasonId,
+    })),
+    dateIndexCoverages: dateIndexCoverages.map(item => ({
+      date: item.date,
+      competitionIds: [...item.competitionIds].sort(),
+    })),
+  });
   return requests;
 }
 
@@ -150,6 +180,16 @@ function endpoint(value) {
   return parsed.toString();
 }
 
+function requestIdentity(request) {
+  if (request.operation === 'fixture_publish') return request.fixtureId;
+  if (request.operation === 'fixed_snapshot_publish') {
+    return `${request.productSeasonId}/${request.artifactSha256}`;
+  }
+  if (request.operation === 'date_index_coverage_publish') return request.date;
+  if (request.operation === 'migration_verify') return 'declared-plan';
+  return `${request.competitionId}/${request.seasonId}`;
+}
+
 export async function executeAdminIngestPlan(plan, options) {
   if (typeof options?.token !== 'string' || !options.token) throw new Error('Admin ingest token is required.');
   const requests = validatePlan(plan, options.planDirectory);
@@ -157,13 +197,7 @@ export async function executeAdminIngestPlan(plan, options) {
   const fetchImpl = options.fetchImpl || fetch;
   const results = [];
   for (const request of requests) {
-    const identity = request.operation === 'fixture_publish'
-      ? request.fixtureId
-      : request.operation === 'fixed_snapshot_publish'
-        ? `${request.productSeasonId}/${request.artifactSha256}`
-        : request.operation === 'date_index_coverage_publish'
-          ? request.date
-        : `${request.competitionId}/${request.seasonId}`;
+    const identity = requestIdentity(request);
     try {
       const response = await fetchImpl(url, {
         method: 'POST', redirect: 'error',
@@ -175,7 +209,8 @@ export async function executeAdminIngestPlan(plan, options) {
       });
       const body = await response.json().catch(() => null);
       if (!response.ok || body?.ok !== true) {
-        results.push({ operation: request.operation, identity, passed: false, status: response.status });
+        results.push({ operation: request.operation, identity, passed: false, status: response.status,
+          ...(body?.report ? { report: body.report } : {}) });
       } else {
         results.push({ operation: request.operation, identity, passed: true, status: response.status, report: body.report });
       }

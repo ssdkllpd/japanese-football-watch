@@ -17,6 +17,11 @@ import {
   assertDateIndexCoverageRequest,
   publishDateIndexCoverageFromR2,
 } from './date-index-coverage-ingest.mjs';
+import {
+  MIGRATION_VERIFY_OPERATION,
+  assertMigrationVerifyRequest,
+  verifyMigrationState,
+} from './migration-verify.mjs';
 
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const STANDINGS_OPERATION = 'standings_publish';
@@ -65,6 +70,7 @@ function assertRequest(value) {
   if (value.operation === FIXTURE_OPERATION) return assertFixtureRequest(value);
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
   if (value.operation === DATE_INDEX_COVERAGE_OPERATION) return assertDateIndexCoverageRequest(value);
+  if (value.operation === MIGRATION_VERIFY_OPERATION) return assertMigrationVerifyRequest(value);
   const allowed = new Set(['schemaVersion', 'operation', 'competitionId', 'seasonId']);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest request contains unknown fields: ${unknown.join(', ')}.`);
@@ -284,8 +290,13 @@ export async function handleAdminIngest(request, env) {
       report = await publishFixedSnapshotFromR2(env, input);
     } else if (input.operation === DATE_INDEX_COVERAGE_OPERATION) {
       report = await publishDateIndexCoverageFromR2(env, input);
+    } else if (input.operation === MIGRATION_VERIFY_OPERATION) {
+      report = await verifyMigrationState(env, input);
     } else {
       report = await publishStandingsFromR2(env, input.competitionId, input.seasonId);
+    }
+    if (input.operation === MIGRATION_VERIFY_OPERATION && report.passed !== true) {
+      return json({ ok: false, report }, 409);
     }
     return json({ ok: true, report }, 200);
   } catch (error) {
