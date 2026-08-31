@@ -1,0 +1,67 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+const root = path.join(__dirname, '..');
+
+test('admin wrangler renderer accepts only bounded resource identities and never emits secrets or public flags', async t => {
+  const { renderAdminWrangler } = await import('../scripts/d1/render-admin-wrangler.mjs');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-wrangler-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const output = path.join(directory, 'wrangler.toml');
+  const env = {
+    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest',
+    R2_BUCKET: 'jfw-football-data',
+    D1_DATABASE_NAME: 'jfw-football-staging',
+    D1_DATABASE_ID: '12345678-1234-1234-1234-123456789abc',
+    ADMIN_INGEST_TOKEN: 'must-not-appear',
+  };
+  const rendered = renderAdminWrangler(env, output);
+  assert.match(rendered, /name = "jfw-football-admin-ingest"/);
+  assert.match(rendered, /compatibility_flags = \["nodejs_compat"\]/);
+  assert.match(rendered, /migrations_dir = /);
+  assert.match(rendered, /binding = "FOOTBALL_DB"/);
+  assert.match(rendered, /binding = "FOOTBALL_DATA"/);
+  assert.equal(rendered.includes(env.ADMIN_INGEST_TOKEN), false);
+  assert.equal(rendered.includes('D1_DATE_INDEX_ENABLED'), false);
+
+  assert.throws(() => renderAdminWrangler({
+    ...env, ADMIN_WORKER_NAME: 'valid"\nD1_FIXTURE_DETAIL_ENABLED = "true',
+  }, output), /ADMIN_WORKER_NAME/);
+  assert.throws(() => renderAdminWrangler({
+    ...env, D1_DATABASE_ID: 'not-a-database-id',
+  }, output), /D1_DATABASE_ID/);
+});
+
+test('staging provision workflow applies migrations before deploying only the admin Worker', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-staging-provision.yml'), 'utf8',
+  );
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /environment: d1-staging/);
+  const migrate = workflow.indexOf('d1 migrations apply');
+  const deploy = workflow.indexOf('wrangler@4 deploy');
+  const secret = workflow.indexOf('secret put ADMIN_INGEST_TOKEN');
+  assert.equal(migrate > 0 && deploy > migrate && secret > deploy, true);
+  assert.equal(workflow.includes('d1 execute'), false);
+  assert.equal(workflow.includes('D1_DATE_INDEX_ENABLED = "true"'), false);
+  assert.equal(workflow.includes('--config worker/wrangler'), false);
+});
+
+test('staging bootstrap workflow rebuilds the reviewed bytes and writes D1 only through admin ingest', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-staging-bootstrap.yml'), 'utf8',
+  );
+  assert.match(workflow, /environment: d1-staging/);
+  assert.match(workflow, /bfda9fa6e3bfdc5abaf1e37ffe1dc9962b7a557756be08bc3d1c366c4ba1fe49/);
+  assert.match(workflow, /migration\/fixed-snapshots\/\$FIXED_SNAPSHOT_SHA256\.json/);
+  assert.match(workflow, /request-admin-ingest\.mjs/);
+  assert.match(workflow, /fixedSnapshot:/);
+  assert.equal(workflow.includes('d1 execute'), false);
+  assert.equal(workflow.includes('d1 migrations apply'), false);
+  assert.equal(workflow.includes('D1_FIXTURE_DETAIL_ENABLED'), false);
+});

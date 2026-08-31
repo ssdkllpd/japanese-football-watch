@@ -7,9 +7,15 @@ import {
   assertFixtureRequest,
   publishFixtureFromR2,
 } from './fixture-ingest.mjs';
+import {
+  FIXED_SNAPSHOT_OPERATION,
+  assertFixedSnapshotRequest,
+  publishFixedSnapshotFromR2,
+} from './fixed-snapshot-ingest.mjs';
 
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const STANDINGS_OPERATION = 'standings_publish';
+const MAX_ADMIN_REQUEST_BYTES = 256 * 1024;
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
@@ -52,6 +58,7 @@ function assertRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Admin ingest request must be an object.');
   if (value.schemaVersion !== REQUEST_SCHEMA) throw new Error(`schemaVersion must be ${REQUEST_SCHEMA}.`);
   if (value.operation === FIXTURE_OPERATION) return assertFixtureRequest(value);
+  if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
   const allowed = new Set(['schemaVersion', 'operation', 'competitionId', 'seasonId']);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest request contains unknown fields: ${unknown.join(', ')}.`);
@@ -61,6 +68,18 @@ function assertRequest(value) {
     throw new Error('Admin ingest request is invalid.');
   }
   return value;
+}
+
+async function requestJson(request) {
+  const declared = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_ADMIN_REQUEST_BYTES) {
+    throw new Error('Admin ingest request exceeds the body limit.');
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_ADMIN_REQUEST_BYTES) {
+    throw new Error('Admin ingest request exceeds the body limit.');
+  }
+  try { return JSON.parse(raw); } catch { throw new Error('Admin ingest request is not JSON.'); }
 }
 
 async function sha256(value) {
@@ -251,10 +270,12 @@ export async function handleAdminIngest(request, env) {
     if (new URL(request.url).pathname !== '/admin/v1/ingest') return json({ error: 'Not found' }, 404);
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
     await requireAdminToken(request, env);
-    const input = assertRequest(await request.json());
+    const input = assertRequest(await requestJson(request));
     const report = input.operation === FIXTURE_OPERATION
       ? await publishFixtureFromR2(env, input)
-      : await publishStandingsFromR2(env, input.competitionId, input.seasonId);
+      : input.operation === FIXED_SNAPSHOT_OPERATION
+        ? await publishFixedSnapshotFromR2(env, input)
+        : await publishStandingsFromR2(env, input.competitionId, input.seasonId);
     return json({ ok: true, report }, 200);
   } catch (error) {
     const status = error?.status || 422;

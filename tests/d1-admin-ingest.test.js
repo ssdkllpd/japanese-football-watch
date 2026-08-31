@@ -215,6 +215,20 @@ test('admin ingest rejects unauthenticated, wrong-scope, and unavailable source 
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM standings_publications').get().count, 0);
 });
 
+test('admin ingest rejects an oversized authenticated request before parsing or writing', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const oversized = new Request('https://admin.example/admin/v1/ingest', {
+    method: 'POST',
+    headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },
+    body: JSON.stringify({ schemaVersion: 'jfw-d1-admin-ingest/1', filler: 'x'.repeat(300 * 1024) }),
+  });
+  const response = await admin.default.fetch(oversized, env(db));
+  assert.equal(response.status, 422);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM standings_snapshots').get().count, 0);
+});
+
 test('a failed reimport preserves the previously published standings snapshot', async t => {
   const db = database();
   t.after(() => db.close());

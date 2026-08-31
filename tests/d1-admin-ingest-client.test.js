@@ -69,6 +69,35 @@ test('admin ingest client reports every independent failure without declaring pr
   assert.equal(report.productionReady, false);
 });
 
+test('admin ingest client sends a hash-scoped fixed snapshot bootstrap without embedding the artifact', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const bootstrap = plan();
+  bootstrap.standings = [];
+  bootstrap.fixtures = [];
+  bootstrap.fixedSnapshot = {
+    artifactSha256: 'b'.repeat(64),
+    productSeasonId: 'jfw:season:2026-27',
+  };
+  let sent;
+  const report = await executeAdminIngestPlan(bootstrap, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      sent = JSON.parse(options.body);
+      return new Response(JSON.stringify({ ok: true, report: { status: 'imported' } }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.deepEqual(sent, {
+    schemaVersion: 'jfw-d1-admin-ingest/1',
+    operation: 'fixed_snapshot_publish',
+    artifactSha256: 'b'.repeat(64),
+    productSeasonId: 'jfw:season:2026-27',
+  });
+  assert.equal(Object.hasOwn(sent, 'snapshot'), false);
+  assert.match(report.results[0].identity, /^jfw:season:2026-27\/b{64}$/);
+});
+
 test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS remote endpoints', async t => {
   const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
   const directory = fixtureFiles(t);

@@ -44,11 +44,31 @@ function resolveArtifact(root, relativePath, label) {
 
 function validatePlan(plan, directory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
+  const allowed = new Set(['schemaVersion', 'fixedSnapshot', 'standings', 'fixtures']);
+  const unknown = Object.keys(plan || {}).filter(key => !allowed.has(key));
+  if (unknown.length) throw new Error(`Admin ingest plan contains unknown fields: ${unknown.join(', ')}.`);
   if (!Array.isArray(plan.standings) || !Array.isArray(plan.fixtures)) {
     throw new Error('standings and fixtures must be arrays.');
   }
-  if (plan.standings.length + plan.fixtures.length === 0) throw new Error('Admin ingest plan is empty.');
+  if (plan.fixedSnapshot !== undefined && (!plan.fixedSnapshot
+    || typeof plan.fixedSnapshot !== 'object' || Array.isArray(plan.fixedSnapshot))) {
+    throw new Error('fixedSnapshot must be an object when supplied.');
+  }
+  if (!plan.fixedSnapshot && plan.standings.length + plan.fixtures.length === 0) {
+    throw new Error('Admin ingest plan is empty.');
+  }
   const requests = [];
+  if (plan.fixedSnapshot) {
+    canonical(plan.fixedSnapshot.artifactSha256, /^[0-9a-f]{64}$/,
+      'fixedSnapshot.artifactSha256');
+    canonical(plan.fixedSnapshot.productSeasonId, /^jfw:season:\d{4}-\d{2}$/,
+      'fixedSnapshot.productSeasonId');
+    requests.push({
+      schemaVersion: REQUEST_VERSION, operation: 'fixed_snapshot_publish',
+      artifactSha256: plan.fixedSnapshot.artifactSha256,
+      productSeasonId: plan.fixedSnapshot.productSeasonId,
+    });
+  }
   for (const [index, item] of plan.standings.entries()) {
     canonical(item?.competitionId, /^af:competition:\d+$/, `standings[${index}].competitionId`);
     canonical(item?.seasonId, /^af:season:\d+:\d+$/, `standings[${index}].seasonId`);
@@ -70,9 +90,13 @@ function validatePlan(plan, directory) {
       ),
     });
   }
-  const identities = requests.map(item => item.operation === 'fixture_publish'
-    ? `${item.operation}\t${item.fixtureId}`
-    : `${item.operation}\t${item.competitionId}\t${item.seasonId}`);
+  const identities = requests.map(item => {
+    if (item.operation === 'fixture_publish') return `${item.operation}\t${item.fixtureId}`;
+    if (item.operation === 'fixed_snapshot_publish') {
+      return `${item.operation}\t${item.artifactSha256}\t${item.productSeasonId}`;
+    }
+    return `${item.operation}\t${item.competitionId}\t${item.seasonId}`;
+  });
   if (new Set(identities).size !== identities.length) throw new Error('Admin ingest plan contains duplicate scopes.');
   return requests;
 }
@@ -98,7 +122,10 @@ export async function executeAdminIngestPlan(plan, options) {
   const results = [];
   for (const request of requests) {
     const identity = request.operation === 'fixture_publish'
-      ? request.fixtureId : `${request.competitionId}/${request.seasonId}`;
+      ? request.fixtureId
+      : request.operation === 'fixed_snapshot_publish'
+        ? `${request.productSeasonId}/${request.artifactSha256}`
+        : `${request.competitionId}/${request.seasonId}`;
     try {
       const response = await fetchImpl(url, {
         method: 'POST', redirect: 'error',
