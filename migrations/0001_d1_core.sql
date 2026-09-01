@@ -1,3 +1,8 @@
+-- D1 enforces foreign keys unconditionally and does not let a query or a
+-- migration change that; this line is a no-op there and is kept only so a
+-- local SQLite driver with foreign keys off cannot silently skip the
+-- constraints. It is NOT a way to disable them: a later table rebuild in D1
+-- still fires ON DELETE CASCADE. Use PRAGMA defer_foreign_keys instead.
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE provider_sources (

@@ -24,9 +24,23 @@ function tomlPath(fromDirectory, target) {
 }
 
 export function renderAdminWrangler(env, outputPath) {
+  // GitHub falls back to repository-level variables when an environment does
+  // not define its own, so `environment: d1-staging` alone does not prove which
+  // database the job resolved. D1_TARGET_ENVIRONMENT must be defined only at
+  // environment scope: its absence means the job resolved repository defaults.
+  const targetEnvironment = required(env, 'D1_TARGET_ENVIRONMENT', /^(staging|production)$/);
+  if (targetEnvironment !== 'staging') {
+    throw new Error('D1_TARGET_ENVIRONMENT must be staging until a production cutover is approved.');
+  }
   const workerName = required(env, 'ADMIN_WORKER_NAME', /^[a-z0-9][a-z0-9-]{0,62}$/);
   const bucketName = required(env, 'R2_BUCKET', /^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/);
   const databaseName = required(env, 'D1_DATABASE_NAME', /^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/);
+  if (!databaseName.includes(targetEnvironment)) {
+    throw new Error(`D1_DATABASE_NAME must name the declared target environment (${targetEnvironment}).`);
+  }
+  if (!workerName.includes(targetEnvironment)) {
+    throw new Error(`ADMIN_WORKER_NAME must name the declared target environment (${targetEnvironment}).`);
+  }
   const databaseId = required(env, 'D1_DATABASE_ID', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const outputDirectory = path.dirname(path.resolve(outputPath));

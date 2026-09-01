@@ -194,11 +194,14 @@ function writeStatements(database, season, payload, sourceKey, sourceSha256, ide
       ON CONFLICT(canonical_id) DO UPDATE SET name = excluded.name, logo_url = excluded.logo_url
     `, group.flatMap(team => [team.id, season.source_id, team.providerId, team.name, team.logo])));
   }
-  if (teams.length) {
+  // D1 allows at most 100 bound parameters per query. Two parameters per team
+  // means 50 teams per statement; an unchunked list aborts the whole publish
+  // batch once a competition reports 51 or more table rows.
+  for (const group of chunks(teams, 40)) {
     statements.push(statement(database, `
       INSERT OR IGNORE INTO competition_season_teams(competition_season_id, team_id)
-      VALUES ${teams.map(() => '(?, (SELECT id FROM teams WHERE canonical_id = ?))').join(', ')}
-    `, teams.flatMap(team => [season.id, team.id])));
+      VALUES ${group.map(() => '(?, (SELECT id FROM teams WHERE canonical_id = ?))').join(', ')}
+    `, group.flatMap(team => [season.id, team.id])));
   }
   const groups = payload.groups.map((group, groupOrder) => ({ ...group, groupOrder }));
   for (const group of chunks(groups, 20)) {

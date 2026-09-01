@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: d1-staging
     env:
+      D1_TARGET_ENVIRONMENT: ${{ vars.D1_TARGET_ENVIRONMENT }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
       ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
       PLAN_PATH: ${{ inputs.plan_path }}

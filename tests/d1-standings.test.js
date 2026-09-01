@@ -235,3 +235,75 @@ test('unknown competition-season does not fall back to an unrelated R2 object', 
   assert.equal(response.headers.get('x-jfw-data-source'), 'd1');
   assert.equal(r2Reads, 0);
 });
+
+test('a season re-parent invalidates the standings publication instead of serving another competition', async t => {
+  const { importStandingsPlan } = await loadImporter();
+  const worker = await loadWorker();
+  const db = database();
+  t.after(() => db.close());
+  db.exec(`
+    INSERT INTO competitions(id, canonical_id, source_id, provider_id, name, country_name, type)
+      VALUES (2, 'af:competition:140', 1, 140, 'La Liga', 'Spain', 'League');
+  `);
+  const input = artifact(t);
+  importStandingsPlan(db, input.plan, input.directory);
+
+  db.exec('UPDATE competition_seasons SET competition_id = 2 WHERE id = 1');
+
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM standings_publications').get().count, 0);
+  assert.equal(await worker.buildD1Standings(
+    { FOOTBALL_DB: createLocalD1(db) }, 'af:competition:140', 'af:season:39:2026'), null);
+});
+
+test('a competition identity change invalidates the standings publication', async t => {
+  const { importStandingsPlan } = await loadImporter();
+  const db = database();
+  t.after(() => db.close());
+  const input = artifact(t);
+  importStandingsPlan(db, input.plan, input.directory);
+
+  db.exec("UPDATE competitions SET canonical_id = 'af:competition:140' WHERE id = 1");
+
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM standings_publications').get().count, 0);
+});
+
+test('a publication may not point at a snapshot belonging to another season', async t => {
+  const { importStandingsPlan } = await loadImporter();
+  const db = database();
+  t.after(() => db.close());
+  db.exec(`
+    INSERT INTO competitions(id, canonical_id, source_id, provider_id, name, country_name, type)
+      VALUES (2, 'af:competition:140', 1, 140, 'La Liga', 'Spain', 'League');
+    INSERT INTO competition_seasons(
+      id, canonical_id, competition_id, product_season_id, provider_season, label, status
+    ) VALUES (2, 'af:season:140:2026', 2, 1, 2026, 'other', 'active');
+  `);
+  const input = artifact(t);
+  importStandingsPlan(db, input.plan, input.directory);
+  const snapshotId = db.prepare('SELECT snapshot_id AS id FROM standings_publications').get().id;
+
+  assert.throws(() => db.exec(`
+    INSERT INTO standings_publications(
+      competition_season_id, snapshot_id, row_count, identity_digest, generated_at,
+      source_r2_key, source_sha256
+    ) VALUES (2, ${snapshotId}, 2, '${'a'.repeat(64)}', '2026-08-31T06:00:00.000Z', 'k', '${'b'.repeat(64)}')
+  `), /does not match its snapshot season/);
+});
+
+test('date and instant columns reject values SQLite cannot resolve to a real calendar date', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const digest = 'a'.repeat(64);
+  for (const dateJst of ['2026-13-01', '2026-19-01', '2026-09-32', '2026-02-30']) {
+    assert.throws(() => db.exec(`
+      INSERT INTO date_index_coverages(
+        date_jst, fixture_count, fixture_id_digest, generated_at, source_r2_key, source_sha256
+      ) VALUES ('${dateJst}', 0, '${digest}', '2026-08-31T06:00:00.000Z', 'k', '${digest}')
+    `), /CHECK constraint failed/, dateJst);
+  }
+  assert.throws(() => db.exec(`
+    INSERT INTO date_index_coverages(
+      date_jst, fixture_count, fixture_id_digest, generated_at, source_r2_key, source_sha256
+    ) VALUES ('2026-09-01', 0, '${digest}', '2026-13-01T00:00:00.000Z', 'k', '${digest}')
+  `), /CHECK constraint failed/);
+});

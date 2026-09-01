@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: d1-staging
     env:
+      D1_TARGET_ENVIRONMENT: ${{ vars.D1_TARGET_ENVIRONMENT }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}

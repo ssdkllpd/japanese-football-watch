@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: d1-staging
     env:
+      D1_TARGET_ENVIRONMENT: ${{ vars.D1_TARGET_ENVIRONMENT }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
@@ -33,6 +34,10 @@ jobs:
 
       - name: Validate protected environment
         run: |
+          test -n "$D1_TARGET_ENVIRONMENT" || { echo 'D1_TARGET_ENVIRONMENT is required and must be defined at environment scope, not repository scope'; exit 1; }
+          echo "resolved target environment: $D1_TARGET_ENVIRONMENT"
+          echo "resolved database name:      $D1_DATABASE_NAME"
+          echo "resolved admin worker name:  $ADMIN_WORKER_NAME"
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
           test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }

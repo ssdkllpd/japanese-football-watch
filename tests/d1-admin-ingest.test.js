@@ -402,3 +402,36 @@ test('fixture integrity assertion rolls back when a detail write silently stores
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixtures').get().count, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 0);
 });
+
+test('standings publish stays inside the D1 bound parameter limit for a large table', async t => {
+  const worker = await import('../admin-worker/index.mjs');
+  const db = database();
+  t.after(() => db.close());
+  // D1 accepts at most 100 bound parameters per query.
+  const D1_MAX_BOUND_PARAMS = 100;
+  const large = payload();
+  large.groups[0].table = Array.from({ length: 60 }, (_, index) =>
+    row(index + 1, 1000 + index, `Club ${index}`, 60 - index, 0));
+  const counted = [];
+  const inner = createLocalD1(db);
+  const counting = {
+    prepare(sql) {
+      const prepared = inner.prepare(sql);
+      return {
+        ...prepared,
+        bind(...params) {
+          counted.push(params.length);
+          return prepared.bind(...params);
+        },
+      };
+    },
+    batch(statements) { return inner.batch(statements); },
+  };
+  const context = { ...env(db, large), FOOTBALL_DB: counting };
+  const response = await worker.default.fetch(request(ingestBody()), context);
+
+  assert.equal(response.status, 200);
+  assert.equal(Math.max(...counted) <= D1_MAX_BOUND_PARAMS, true,
+    `a statement bound ${Math.max(...counted)} parameters`);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM competition_season_teams').get().count, 60);
+});

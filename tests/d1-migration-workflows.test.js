@@ -14,14 +14,15 @@ test('admin wrangler renderer accepts only bounded resource identities and never
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const output = path.join(directory, 'wrangler.toml');
   const env = {
-    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest',
+    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest-staging',
     R2_BUCKET: 'jfw-football-data',
     D1_DATABASE_NAME: 'jfw-football-staging',
     D1_DATABASE_ID: '12345678-1234-1234-1234-123456789abc',
+    D1_TARGET_ENVIRONMENT: 'staging',
     ADMIN_INGEST_TOKEN: 'must-not-appear',
   };
   const rendered = renderAdminWrangler(env, output);
-  assert.match(rendered, /name = "jfw-football-admin-ingest"/);
+  assert.match(rendered, /name = "jfw-football-admin-ingest-staging"/);
   assert.match(rendered, /compatibility_flags = \["nodejs_compat"\]/);
   assert.match(rendered, /migrations_dir = /);
   assert.match(rendered, /binding = "FOOTBALL_DB"/);
@@ -111,4 +112,46 @@ test('fixture publishers mirror to D1 only after R2 publication from protected j
     assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false, name);
     assert.equal(workflow.includes('d1 execute'), false, name);
   }
+});
+
+test('admin wrangler renderer refuses a target it cannot prove came from the protected environment', async () => {
+  const { renderAdminWrangler } = await import('../scripts/d1/render-admin-wrangler.mjs');
+  const output = path.join(os.tmpdir(), 'wrangler.toml');
+  const base = {
+    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest-staging',
+    R2_BUCKET: 'jfw-football-data',
+    D1_DATABASE_NAME: 'jfw-football-staging',
+    D1_DATABASE_ID: '12345678-1234-1234-1234-123456789abc',
+    D1_TARGET_ENVIRONMENT: 'staging',
+  };
+  // A repository-level variable fallback leaves D1_TARGET_ENVIRONMENT undeclared.
+  assert.throws(() => renderAdminWrangler({ ...base, D1_TARGET_ENVIRONMENT: undefined }, output),
+    /D1_TARGET_ENVIRONMENT/);
+  assert.throws(() => renderAdminWrangler({ ...base, D1_TARGET_ENVIRONMENT: 'production' }, output),
+    /until a production cutover is approved/);
+  // A declared staging target may not resolve to resources named for another environment.
+  assert.throws(() => renderAdminWrangler({ ...base, D1_DATABASE_NAME: 'jfw-football-prod' }, output),
+    /D1_DATABASE_NAME must name the declared target environment/);
+  assert.throws(() => renderAdminWrangler({ ...base, ADMIN_WORKER_NAME: 'jfw-football-admin-ingest' }, output),
+    /ADMIN_WORKER_NAME must name the declared target environment/);
+});
+
+test('staging workflows carry the environment-scoped target declaration', () => {
+  for (const name of ['d1-staging-provision.yml', 'd1-staging-bootstrap.yml', 'd1-staging-data-migrate.yml']) {
+    const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
+    assert.match(workflow, /D1_TARGET_ENVIRONMENT: \$\{\{ vars\.D1_TARGET_ENVIRONMENT \}\}/, name);
+    assert.match(workflow, /environment: d1-staging/, name);
+  }
+});
+
+test('migrations keep foreign key enforcement active for local SQLite drivers', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const files = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql', '0003_d1_standings_publication.sql'];
+  const database = new DatabaseSync(':memory:');
+  for (const file of files) database.exec(fs.readFileSync(path.join(root, 'migrations', file), 'utf8'));
+  assert.equal(database.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+  assert.throws(() => database.exec(
+    "INSERT INTO competition_seasons(canonical_id, competition_id, provider_season, label, status)"
+    + " VALUES ('af:season:9999:2026', 9999, 2026, 'x', 'active')"), /FOREIGN KEY/);
+  database.close();
 });
