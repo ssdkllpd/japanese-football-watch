@@ -180,3 +180,39 @@ test('the closed fixture detail root set matches what the D1 reader reconstructs
   }, [])).sort();
   assert.deepEqual(declared, reconstructed);
 });
+
+test('a contract 2.0.0 fixture artifact published before detailAvailability is still served', async t => {
+  const worker = await import('../worker/index.mjs');
+  const database = databaseWithFixture();
+  t.after(() => database.close());
+
+  // detailAvailability arrived with contract 2.1.0. Artifacts written before it
+  // are still live in R2, so the closed root set must allow them to be missing.
+  const legacy = fixtureBundle();
+  legacy.contractVersion = '2.0.0';
+  delete legacy.detailAvailability;
+  // Route through the D1-enabled path with D1 unavailable, so the legacy artifact
+  // is validated by the same closed contract the degraded path uses.
+  const environment = envWithR2(database, legacy);
+  environment.FOOTBALL_DB = {
+    prepare() {
+      return { bind() { return {
+        async first() { throw new Error('D1 unavailable'); },
+        async all() { throw new Error('D1 unavailable'); },
+      }; } };
+    },
+  };
+
+  const response = await worker.default.fetch(request(), environment);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'r2-degraded');
+  assert.equal((await response.json()).contractVersion, '2.0.0');
+
+  // A 2.1.0 artifact must still declare it.
+  const current = fixtureBundle();
+  delete current.detailAvailability;
+  const strictEnvironment = envWithR2(databaseWithFixture(), current);
+  strictEnvironment.FOOTBALL_DB = environment.FOOTBALL_DB;
+  const strict = await worker.default.fetch(request(), strictEnvironment);
+  assert.equal(strict.status, 503);
+});

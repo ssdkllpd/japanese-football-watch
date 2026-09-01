@@ -865,6 +865,10 @@ const FIXTURE_DETAIL_ROOT_FIELDS = [
   'competition', 'contractVersion', 'detailAvailability', 'events', 'fieldIssues',
   'fixture', 'lineups', 'overrides', 'playerStats', 'season', 'sectionStates', 'teamStats',
 ];
+// detailAvailability was added with contract 2.1.0. Artifacts published before it
+// are still valid in R2 and must not be rejected, so it is allowed but not
+// required. Everything else is required at both versions.
+const FIXTURE_DETAIL_OPTIONAL_ROOT_FIELDS = new Set(['detailAvailability']);
 
 function assertFixtureDetailPayload(payload, fixtureId) {
   const fixture = payload?.fixture;
@@ -877,6 +881,7 @@ function assertFixtureDetailPayload(payload, fixtureId) {
     throw new Error(`Fixture detail contains fields outside the closed contract: ${unknown.join(', ')}.`);
   }
   for (const key of FIXTURE_DETAIL_ROOT_FIELDS) {
+    if (FIXTURE_DETAIL_OPTIONAL_ROOT_FIELDS.has(key) && payload.contractVersion === '2.0.0') continue;
     if (!Object.hasOwn(payload, key)) throw new Error(`Fixture detail is missing ${key}.`);
   }
   if (!fixture || fixture.id !== fixtureId) throw new Error('Fixture detail identity does not match the requested fixture.');
