@@ -82,7 +82,7 @@ CREATE TABLE standings_publications (
   ),
   generated_at TEXT NOT NULL CHECK (
     generated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9].[0-9][0-9][0-9]Z'
-    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) = generated_at
+    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) IS generated_at
   ),
   source_r2_key TEXT NOT NULL,
   source_sha256 TEXT NOT NULL CHECK (
@@ -132,4 +132,43 @@ CREATE TRIGGER standings_publication_invalidate_snapshot_update
 AFTER UPDATE ON standings_snapshots
 BEGIN
   DELETE FROM standings_publications WHERE snapshot_id IN (OLD.id, NEW.id);
+END;
+
+-- A publication is evidence for one season. Pointing it at another season's
+-- snapshot keeps row_count and identity_digest self-consistent, so the read
+-- path cannot detect it; reject the write instead.
+CREATE TRIGGER standings_publication_season_match_insert
+BEFORE INSERT ON standings_publications
+WHEN (SELECT competition_season_id FROM standings_snapshots WHERE id = NEW.snapshot_id)
+  IS NOT NEW.competition_season_id
+BEGIN
+  SELECT RAISE(ABORT, 'standings publication season does not match its snapshot season');
+END;
+
+CREATE TRIGGER standings_publication_season_match_update
+BEFORE UPDATE ON standings_publications
+WHEN (SELECT competition_season_id FROM standings_snapshots WHERE id = NEW.snapshot_id)
+  IS NOT NEW.competition_season_id
+BEGIN
+  SELECT RAISE(ABORT, 'standings publication season does not match its snapshot season');
+END;
+
+-- Competition scope is indirect through competition_seasons. Re-parenting or
+-- renaming a season moves the publication under a different competition without
+-- touching any row the mutation triggers above watch.
+CREATE TRIGGER standings_publication_invalidate_season_scope_update
+AFTER UPDATE OF competition_id, canonical_id ON competition_seasons
+WHEN OLD.competition_id IS NOT NEW.competition_id
+  OR OLD.canonical_id IS NOT NEW.canonical_id
+BEGIN
+  DELETE FROM standings_publications WHERE competition_season_id = NEW.id;
+END;
+
+CREATE TRIGGER standings_publication_invalidate_competition_identity_update
+AFTER UPDATE OF canonical_id ON competitions
+WHEN OLD.canonical_id IS NOT NEW.canonical_id
+BEGIN
+  DELETE FROM standings_publications WHERE competition_season_id IN (
+    SELECT id FROM competition_seasons WHERE competition_id = NEW.id
+  );
 END;

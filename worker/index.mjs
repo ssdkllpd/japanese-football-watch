@@ -134,7 +134,8 @@ LIMIT 1`;
 const STANDINGS_ROWS_SQL = `
 WITH publication AS (
   SELECT publication.snapshot_id, publication.row_count,
-    publication.identity_digest, publication.generated_at
+    publication.identity_digest, publication.generated_at,
+    publication.competition_season_id
   FROM standings_publications publication
   JOIN competition_seasons season
     ON season.id = publication.competition_season_id
@@ -189,7 +190,9 @@ SELECT
   team.name AS team_name,
   team.logo_url AS team_logo
 FROM publication
-JOIN standings_snapshots snapshot ON snapshot.id = publication.snapshot_id
+JOIN standings_snapshots snapshot
+  ON snapshot.id = publication.snapshot_id
+  AND snapshot.competition_season_id = publication.competition_season_id
 LEFT JOIN standings_groups group_row ON group_row.snapshot_id = snapshot.id
 LEFT JOIN standings_rows standing
   ON standing.snapshot_id = group_row.snapshot_id

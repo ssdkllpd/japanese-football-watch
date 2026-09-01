@@ -6,7 +6,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE date_index_coverages (
   date_jst TEXT PRIMARY KEY NOT NULL CHECK (
     date_jst GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'
-    AND date(date_jst, '+0 days') = date_jst
+    AND date(date_jst, '+0 days') IS date_jst
   ),
   fixture_count INTEGER NOT NULL CHECK (fixture_count >= 0),
   fixture_id_digest TEXT NOT NULL CHECK (
@@ -14,7 +14,7 @@ CREATE TABLE date_index_coverages (
   ),
   generated_at TEXT NOT NULL CHECK (
     generated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9].[0-9][0-9][0-9]Z'
-    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) = generated_at
+    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) IS generated_at
   ),
   source_r2_key TEXT NOT NULL,
   source_sha256 TEXT NOT NULL CHECK (
@@ -31,7 +31,7 @@ CREATE TABLE competition_date_index_coverages (
   ),
   generated_at TEXT NOT NULL CHECK (
     generated_at GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9].[0-9][0-9][0-9]Z'
-    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) = generated_at
+    AND strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) IS generated_at
   ),
   source_r2_key TEXT NOT NULL,
   source_sha256 TEXT NOT NULL CHECK (
