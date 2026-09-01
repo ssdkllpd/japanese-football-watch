@@ -857,10 +857,27 @@ async function fixtureFromR2(env, fixtureId) {
   return r2JsonObject(env, pointer.key);
 }
 
+// The D1 read path reconstructs this DTO column by column, so its shape is
+// closed by construction. Any R2-sourced payload must be held to the same closed
+// set, or the r2 and r2-degraded paths would serve fields the d1 path cannot,
+// breaking parity and letting publisher-side fields reach clients verbatim.
+const FIXTURE_DETAIL_ROOT_FIELDS = [
+  'competition', 'contractVersion', 'detailAvailability', 'events', 'fieldIssues',
+  'fixture', 'lineups', 'overrides', 'playerStats', 'season', 'sectionStates', 'teamStats',
+];
+
 function assertFixtureDetailPayload(payload, fixtureId) {
   const fixture = payload?.fixture;
   if (!payload || (payload.contractVersion !== '2.0.0' && payload.contractVersion !== '2.1.0')) {
     throw new Error('Fixture detail contract version is unsupported.');
+  }
+  const allowed = new Set(FIXTURE_DETAIL_ROOT_FIELDS);
+  const unknown = Object.keys(payload).filter(key => !allowed.has(key));
+  if (unknown.length) {
+    throw new Error(`Fixture detail contains fields outside the closed contract: ${unknown.join(', ')}.`);
+  }
+  for (const key of FIXTURE_DETAIL_ROOT_FIELDS) {
+    if (!Object.hasOwn(payload, key)) throw new Error(`Fixture detail is missing ${key}.`);
   }
   if (!fixture || fixture.id !== fixtureId) throw new Error('Fixture detail identity does not match the requested fixture.');
   if (!fixture.competitionId?.startsWith('af:competition:')) throw new Error('Fixture detail competition identity is invalid.');

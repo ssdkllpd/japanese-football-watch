@@ -571,8 +571,15 @@ function addIntegrityStatement(database, statements, context, appearances) {
   ];
   const checks = expected.map(([table, where]) => `(SELECT COUNT(*) FROM ${table} WHERE ${where}) = ?`);
   const params = expected.flatMap(([, , values, count]) => [...values, count]);
+  // D1 batches are one transaction and plain SQL cannot RAISE, so an integrity
+  // failure aborts the batch by writing a value the schema rejects. The sentinel
+  // targets created_at, whose CHECK is a timestamp format that will never widen
+  // to accept arbitrary text. It deliberately does NOT target lifecycle_state:
+  // adding a state to that CHECK is a normal schema evolution, and it would make
+  // this gate a silent no-op because addPublishStatements overwrites the row with
+  // 'published' immediately afterwards. tests/d1-admin-ingest.test.js locks this.
   statements.push(statement(database, `
-    UPDATE fixture_revisions SET lifecycle_state = 'invalid'
+    UPDATE fixture_revisions SET created_at = 'fixture_integrity_failure'
     WHERE ${revisionSelector()} AND NOT (${checks.join(' AND ')})
   `, [...rev, ...params]));
 }

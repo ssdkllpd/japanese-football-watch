@@ -138,3 +138,45 @@ test('fixture detail flag off keeps the existing pointer response and bypasses D
   assert.equal(response.headers.get('x-jfw-data-source'), null);
   assert.equal((await response.json()).fixture.id, 'af:fixture:9001');
 });
+
+test('an R2 fixture detail carrying fields outside the closed contract is never served', async t => {
+  const worker = await import('../worker/index.mjs');
+  const database = databaseWithFixture();
+  t.after(() => database.close());
+
+  // The d1 path rebuilds this DTO column by column, so the r2 and r2-degraded
+  // paths must be held to the same closed root set or parity silently breaks.
+  const injected = fixtureBundle();
+  injected.internalOperatorNote = 'must not reach a client';
+  const environment = envWithR2(database, injected);
+  environment.D1_FIXTURE_DETAIL_ENABLED = 'true';
+  environment.FOOTBALL_DB = {
+    prepare() {
+      return { bind() { return {
+        async first() { throw new Error('D1 unavailable'); },
+        async all() { throw new Error('D1 unavailable'); },
+      }; } };
+    },
+  };
+
+  const response = await worker.default.fetch(request(), environment);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('the closed fixture detail root set matches what the D1 reader reconstructs', async () => {
+  const { buildUnavailableBundle } = require('../scripts/d1/fixture-dto');
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'worker', 'index.mjs'), 'utf8');
+  const declared = worker
+    .slice(worker.indexOf('const FIXTURE_DETAIL_ROOT_FIELDS'))
+    .match(/\[([^\]]+)\]/)[1]
+    .split(',')
+    .map(value => value.trim().replace(/^'|'$/g, ''))
+    .filter(Boolean)
+    .sort();
+  const reconstructed = Object.keys(buildUnavailableBundle({
+    fixture_id: 'af:fixture:9001', competition_id: 'af:competition:39', season_id: 'af:season:39:2026',
+  }, [])).sort();
+  assert.deepEqual(declared, reconstructed);
+});

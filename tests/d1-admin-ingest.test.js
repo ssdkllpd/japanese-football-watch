@@ -435,3 +435,44 @@ test('standings publish stays inside the D1 bound parameter limit for a large ta
     `a statement bound ${Math.max(...counted)} parameters`);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM competition_season_teams').get().count, 60);
 });
+
+test('the fixture integrity gate does not depend on lifecycle_state staying narrow', async t => {
+  // The gate aborts the batch by writing a schema-rejected sentinel. If that
+  // sentinel targeted lifecycle_state, widening its CHECK would silently turn the
+  // gate into a no-op, because the publish statement that follows overwrites the
+  // same row with 'published'. Lock the gate to a column whose CHECK is a
+  // timestamp format instead, and prove widening lifecycle_state cannot disarm it.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'admin-worker', 'fixture-ingest.mjs'), 'utf8');
+  assert.equal(/SET lifecycle_state = 'invalid'/.test(source), false);
+  assert.match(source, /SET created_at = 'fixture_integrity_failure'/);
+
+  const widened = migrations.map(migration => migration.replace(
+    "lifecycle_state IN ('staging', 'published', 'superseded')",
+    "lifecycle_state IN ('staging', 'published', 'superseded', 'invalid')",
+  ));
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  for (const migration of widened) db.exec(migration);
+  db.exec(`
+    INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
+    INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
+      VALUES (1, 'jfw:season:2026-27', '2026-27', '2026-07-01', '2027-06-30');
+    INSERT INTO competitions(id, canonical_id, source_id, provider_id, name, country_name, type)
+      VALUES (1, 'af:competition:39', 1, 39, 'Premier League', 'England', 'League');
+    INSERT INTO competition_seasons(id, canonical_id, competition_id, product_season_id, provider_season, label, status)
+      VALUES (1, 'af:season:39:2026', 1, 1, 2026, '2026', 'active');
+  `);
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fixturePayload();
+  const fixtureEnvironment = fixtureEnv(db, bundle);
+  const local = fixtureEnvironment.FOOTBALL_DB;
+  const prepare = local.prepare;
+  local.prepare = sql => {
+    if (!sql.includes('INSERT INTO fixture_events')) return prepare(sql);
+    return { bind() { return { async run() { return { success: true, meta: { changes: 0 } }; } }; } };
+  };
+  const response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnvironment);
+
+  assert.equal(response.status, 422);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 0);
+});

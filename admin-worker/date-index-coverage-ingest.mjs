@@ -194,11 +194,18 @@ export async function publishDateIndexCoverageFromR2(env, request) {
   const genericPromise = readArtifact(env.FOOTBALL_DATA, dateIndexR2Key(input.date), {
     expectedDate: input.date, expectedCompetitionId: null,
   });
-  const competitionPromises = input.competitionIds.map(competitionId => readArtifact(
-    env.FOOTBALL_DATA, competitionDateIndexR2Key(competitionId, input.date), {
-      expectedDate: input.date, expectedCompetitionId: competitionId,
-    },
-  ));
+  // Carry the externally declared competition ID alongside the artifact. Reading
+  // it back out of the payload would re-derive the scope from the same document
+  // the scope is meant to constrain, so a weakened payload validator would
+  // silently mis-attribute coverage instead of failing.
+  const competitionPromises = input.competitionIds.map(async competitionId => ({
+    declaredCompetitionId: competitionId,
+    ...await readArtifact(
+      env.FOOTBALL_DATA, competitionDateIndexR2Key(competitionId, input.date), {
+        expectedDate: input.date, expectedCompetitionId: competitionId,
+      },
+    ),
+  }));
   const [genericArtifact, competitionArtifacts] = await Promise.all([
     genericPromise, Promise.all(competitionPromises),
   ]);
@@ -218,7 +225,10 @@ export async function publishDateIndexCoverageFromR2(env, request) {
   };
   const competitions = [];
   for (const artifact of competitionArtifacts) {
-    const competitionId = artifact.payload.competition.id;
+    const competitionId = artifact.declaredCompetitionId;
+    if (artifact.payload.competition?.id !== competitionId) {
+      throw new Error(`Date index artifact competition differs from the declared scope: ${competitionId}.`);
+    }
     const storedIds = scope.fixtures
       .filter(row => row.competition_id === competitionId)
       .map(row => row.fixture_id);
