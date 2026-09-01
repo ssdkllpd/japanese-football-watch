@@ -50,7 +50,7 @@ node scripts/d1/import-standings.mjs \
 
 ## 検証済み範囲
 
-対象code commit: `ccb9512411e0c4b1624e80fbe9d7805ae563ae19`
+対象code commit: `11db9dc020557ecae477f25cc24771efc9518a1d`
 
 ```text
 node --test tests/*.test.js
