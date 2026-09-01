@@ -67,7 +67,8 @@ jobs:
               productSeasonId: "jfw:season:2026-27"
             },
             standings: [],
-            fixtures: []
+            fixtures: [],
+            expectedTotals: null
           }' > .tmp/d1-bootstrap/plan.json
 
       - name: Publish fixed snapshot through admin Worker

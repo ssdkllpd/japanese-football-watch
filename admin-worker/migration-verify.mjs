@@ -6,6 +6,10 @@ const MAX_FIXTURES = 500;
 const MAX_STANDINGS = 100;
 const MAX_DATES = 64;
 const MAX_COMPETITION_SCOPES = 1_000;
+const EXPECTED_TOTAL_KEYS = [
+  'fixedSnapshots', 'publishedFixtures', 'publishedStandings',
+  'dateIndexCoverages', 'competitionDateIndexCoverages',
+];
 
 function compareCodePoint(left, right) {
   const a = String(left ?? '');
@@ -34,12 +38,32 @@ function requireArray(value, label, limit) {
   if (value.length > limit) throw new Error(`${label} exceeds its limit (${value.length}/${limit}).`);
 }
 
+function normalizeExpectedTotals(value) {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expectedTotals must be an object or null.');
+  }
+  const keys = Object.keys(value).sort(compareCodePoint);
+  const expectedKeys = [...EXPECTED_TOTAL_KEYS].sort(compareCodePoint);
+  if (keys.length !== expectedKeys.length
+    || keys.some((key, index) => key !== expectedKeys[index])) {
+    throw new Error(`expectedTotals must declare exactly: ${EXPECTED_TOTAL_KEYS.join(', ')}.`);
+  }
+  for (const key of EXPECTED_TOTAL_KEYS) {
+    if (!Number.isSafeInteger(value[key]) || value[key] < 0) {
+      throw new Error(`expectedTotals.${key} must be a non-negative safe integer.`);
+    }
+  }
+  return Object.fromEntries(EXPECTED_TOTAL_KEYS.map(key => [key, value[key]]));
+}
+
 export function assertMigrationVerifyRequest(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Admin migration verification request must be an object.');
   }
   const allowed = new Set([
     'schemaVersion', 'operation', 'fixedSnapshot', 'fixtureIds', 'standings', 'dateIndexCoverages',
+    'expectedTotals',
   ]);
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin migration verification request contains unknown fields: ${unknown.join(', ')}.`);
@@ -47,6 +71,10 @@ export function assertMigrationVerifyRequest(input) {
   requireArray(input.fixtureIds, 'fixtureIds', MAX_FIXTURES);
   requireArray(input.standings, 'standings', MAX_STANDINGS);
   requireArray(input.dateIndexCoverages, 'dateIndexCoverages', MAX_DATES);
+  if (!Object.hasOwn(input, 'expectedTotals')) {
+    throw new Error('expectedTotals must be declared explicitly.');
+  }
+  const expectedTotals = normalizeExpectedTotals(input.expectedTotals);
 
   let fixedSnapshot = null;
   if (input.fixedSnapshot !== null) {
@@ -107,7 +135,7 @@ export function assertMigrationVerifyRequest(input) {
   if (!fixedSnapshot && fixtureIds.length + standings.length + dateIndexCoverages.length === 0) {
     throw new Error('Admin migration verification scope is empty.');
   }
-  return { ...input, fixedSnapshot, fixtureIds, standings, dateIndexCoverages };
+  return { ...input, fixedSnapshot, fixtureIds, standings, dateIndexCoverages, expectedTotals };
 }
 
 async function rows(database, sql, params = []) {
@@ -171,14 +199,43 @@ async function verifiedFixtureIds(database, fixtureIds) {
   return new Set(found);
 }
 
-async function verifiedStandings(database) {
-  const found = await rows(database, `
-    SELECT competition.canonical_id AS competition_id, season.canonical_id AS season_id
-    FROM standings_publications publication
-    JOIN competition_seasons season ON season.id = publication.competition_season_id
-    JOIN competitions competition ON competition.id = season.competition_id
-  `);
+async function verifiedStandings(database, declarations) {
+  const found = [];
+  for (const group of chunks(declarations, 40)) {
+    if (!group.length) continue;
+    const predicates = group.map(() => '(competition.canonical_id = ? AND season.canonical_id = ?)');
+    const result = await rows(database, `
+      SELECT competition.canonical_id AS competition_id, season.canonical_id AS season_id
+      FROM standings_publications publication
+      JOIN competition_seasons season ON season.id = publication.competition_season_id
+      JOIN competitions competition ON competition.id = season.competition_id
+      WHERE ${predicates.join(' OR ')}
+    `, group.flatMap(item => [item.competitionId, item.seasonId]));
+    found.push(...result);
+  }
   return new Set(found.map(item => `${item.competition_id}\t${item.season_id}`));
+}
+
+async function migrationTotals(database, expected) {
+  if (!expected) return { expected: null, actual: null, mismatches: [] };
+  const [actual = {}] = await rows(database, `
+    SELECT
+      (SELECT COUNT(*) FROM raw_snapshots
+        WHERE retention_class = 'migration-fixed-snapshot') AS fixedSnapshots,
+      (SELECT COUNT(*) FROM fixtures fixture
+        JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+          AND revision.fixture_id = fixture.id
+        WHERE revision.lifecycle_state = 'published' AND revision.published_at IS NOT NULL
+      ) AS publishedFixtures,
+      (SELECT COUNT(*) FROM standings_publications) AS publishedStandings,
+      (SELECT COUNT(*) FROM date_index_coverages) AS dateIndexCoverages,
+      (SELECT COUNT(*) FROM competition_date_index_coverages) AS competitionDateIndexCoverages
+  `);
+  const normalized = Object.fromEntries(EXPECTED_TOTAL_KEYS.map(key => [key, Number(actual[key])]));
+  const mismatches = EXPECTED_TOTAL_KEYS
+    .filter(key => expected[key] !== normalized[key])
+    .map(key => ({ key, expected: expected[key], actual: normalized[key] }));
+  return { expected, actual: normalized, mismatches };
 }
 
 async function verifiedDateCoverages(database, dates) {
@@ -205,8 +262,9 @@ export async function verifyMigrationState(env, request) {
   const input = assertMigrationVerifyRequest(request);
   const fixedSnapshot = await verifyFixedSnapshot(env.FOOTBALL_DB, input.fixedSnapshot);
   const fixtures = await verifiedFixtureIds(env.FOOTBALL_DB, input.fixtureIds);
-  const standings = await verifiedStandings(env.FOOTBALL_DB);
+  const standings = await verifiedStandings(env.FOOTBALL_DB, input.standings);
   const dateCoverages = await verifiedDateCoverages(env.FOOTBALL_DB, input.dateIndexCoverages);
+  const totals = await migrationTotals(env.FOOTBALL_DB, input.expectedTotals);
 
   const missingFixtureIds = input.fixtureIds.filter(fixtureId => !fixtures.has(fixtureId));
   const missingStandings = input.standings.filter(item => !standings.has(
@@ -224,7 +282,7 @@ export async function verifyMigrationState(env, request) {
   });
   const passed = fixedSnapshot.verified && missingFixtureIds.length === 0
     && missingStandings.length === 0 && missingDateIndexes.length === 0
-    && competitionScopeMismatches.length === 0;
+    && competitionScopeMismatches.length === 0 && totals.mismatches.length === 0;
   return {
     schemaVersion: 'jfw-d1-admin-ingest-report/1',
     operation: MIGRATION_VERIFY_OPERATION,
@@ -240,6 +298,9 @@ export async function verifyMigrationState(env, request) {
     missingStandings,
     missingDateIndexes,
     competitionScopeMismatches,
+    expectedTotals: totals.expected,
+    actualTotals: totals.actual,
+    totalMismatches: totals.mismatches,
     productionReady: false,
   };
 }

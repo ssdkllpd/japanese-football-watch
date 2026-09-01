@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { reconcileFixtureRevision } = require('../scripts/v2/reconcile-fixture-revision');
+const { reconcileFixtureRevision, revisionContent } = require('../scripts/v2/reconcile-fixture-revision');
 
 function bundle(overrides = {}) {
   return {
@@ -28,20 +28,35 @@ test('fixture revision reconciliation starts at one and ignores an untrusted inc
 });
 
 test('fixture revision reconciliation preserves the revision only for identical canonical content', () => {
-  const current = bundle({ revision: 7 });
+  const current = bundle({
+    revision: 7, reconciledAt: '2026-08-21T22:00:00.000Z',
+    provenance: { source: 'api-football', fetchedAt: '2026-08-21T22:00:00.000Z' },
+  });
   const incoming = JSON.parse(JSON.stringify(current));
   incoming.fixture.revision = 1;
+  incoming.fixture.reconciledAt = '2026-08-21T22:05:00.000Z';
+  incoming.fixture.provenance.fetchedAt = '2026-08-21T22:05:00.000Z';
   const result = reconcileFixtureRevision(current, incoming);
   assert.equal(result.bundle.fixture.revision, 7);
   assert.equal(result.changed, false);
+  assert.deepEqual(result.bundle, current);
 });
 
 test('fixture revision reconciliation increments after any stored contract content change', () => {
-  const current = bundle({ revision: 7, reconciledAt: '2026-08-21T22:00:00.000Z' });
-  const incoming = bundle({ revision: 1, reconciledAt: '2026-08-21T22:05:00.000Z' });
+  const current = bundle({ revision: 7, statusShort: 'NS' });
+  const incoming = bundle({ revision: 1, statusShort: '1H' });
   const result = reconcileFixtureRevision(current, incoming);
   assert.equal(result.bundle.fixture.revision, 8);
   assert.equal(result.reason, 'content_changed');
+});
+
+test('fixture revision comparison removes only recursive fetch and reconciliation timestamps', () => {
+  assert.deepEqual(revisionContent({
+    fetchedAt: 'outer', reconciledAt: 'outer', verifiedAt: 'keep',
+    nested: [{ fetchedAt: 'inner', value: 1 }],
+  }), {
+    verifiedAt: 'keep', nested: [{ value: 1 }],
+  });
 });
 
 test('fixture revision reconciliation rejects another fixture or a pre-2.1 current object', () => {

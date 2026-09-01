@@ -6,6 +6,10 @@ import { pathToFileURL } from 'node:url';
 
 const PLAN_VERSION = 'jfw-d1-admin-ingest-plan/1';
 const REQUEST_VERSION = 'jfw-d1-admin-ingest/1';
+const EXPECTED_TOTAL_KEYS = [
+  'fixedSnapshots', 'publishedFixtures', 'publishedStandings',
+  'dateIndexCoverages', 'competitionDateIndexCoverages',
+];
 
 function parseArgs(argv) {
   const result = {};
@@ -34,6 +38,24 @@ function realDate(value, label) {
   }
 }
 
+function expectedTotals(value) {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expectedTotals must be an object or null.');
+  }
+  const keys = Object.keys(value).sort();
+  const expectedKeys = [...EXPECTED_TOTAL_KEYS].sort();
+  if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) {
+    throw new Error(`expectedTotals must declare exactly: ${EXPECTED_TOTAL_KEYS.join(', ')}.`);
+  }
+  for (const key of EXPECTED_TOTAL_KEYS) {
+    if (!Number.isSafeInteger(value[key]) || value[key] < 0) {
+      throw new Error(`expectedTotals.${key} must be a non-negative safe integer.`);
+    }
+  }
+  return Object.fromEntries(EXPECTED_TOTAL_KEYS.map(key => [key, value[key]]));
+}
+
 function resolveArtifact(root, relativePath, label) {
   if (typeof relativePath !== 'string' || !relativePath || path.isAbsolute(relativePath)) {
     throw new Error(`${label} must be a relative path.`);
@@ -54,12 +76,17 @@ function validatePlan(plan, directory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
   const allowed = new Set([
     'schemaVersion', 'fixedSnapshot', 'standings', 'fixtures', 'dateIndexCoverages',
+    'expectedTotals',
   ]);
   const unknown = Object.keys(plan || {}).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest plan contains unknown fields: ${unknown.join(', ')}.`);
   if (!Array.isArray(plan.standings) || !Array.isArray(plan.fixtures)) {
     throw new Error('standings and fixtures must be arrays.');
   }
+  if (!Object.hasOwn(plan, 'expectedTotals')) {
+    throw new Error('expectedTotals must be declared explicitly.');
+  }
+  const declaredTotals = expectedTotals(plan.expectedTotals);
   if (plan.dateIndexCoverages !== undefined && !Array.isArray(plan.dateIndexCoverages)) {
     throw new Error('dateIndexCoverages must be an array when supplied.');
   }
@@ -170,6 +197,7 @@ function validatePlan(plan, directory) {
       date: item.date,
       competitionIds: [...item.competitionIds].sort(),
     })),
+    expectedTotals: declaredTotals,
   });
   return requests;
 }
@@ -203,8 +231,14 @@ export async function executeAdminIngestPlan(plan, options) {
   const url = endpoint(options.url);
   const fetchImpl = options.fetchImpl || fetch;
   const results = [];
+  let failed = false;
   for (const request of requests) {
     const identity = requestIdentity(request);
+    if (failed) {
+      results.push({ operation: request.operation, identity, passed: false, status: null,
+        error: 'skipped_after_failure' });
+      continue;
+    }
     try {
       const response = await fetchImpl(url, {
         method: 'POST', redirect: 'error',
@@ -218,12 +252,14 @@ export async function executeAdminIngestPlan(plan, options) {
       if (!response.ok || body?.ok !== true) {
         results.push({ operation: request.operation, identity, passed: false, status: response.status,
           ...(body?.report ? { report: body.report } : {}) });
+        failed = true;
       } else {
         results.push({ operation: request.operation, identity, passed: true, status: response.status, report: body.report });
       }
     } catch (error) {
       results.push({ operation: request.operation, identity, passed: false, status: null,
         error: error?.name || 'request_failed' });
+      failed = true;
     }
   }
   return {

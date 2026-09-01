@@ -152,6 +152,12 @@ test('admin coverage publish validates R2 against D1 and preserves verified empt
   `).get().fixture_count, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM sync_runs').get().count, 0);
 
+  const firstCoverage = coverageRows(db);
+  response = await admin.default.fetch(request(body()), environment(db, initialArtifacts));
+  assert.equal(response.status, 200);
+  assert.deepEqual(coverageRows(db), firstCoverage);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM sync_runs').get().count, 0);
+
   const reviewedLocal = database();
   t.after(() => reviewedLocal.close());
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-admin-coverage-'));

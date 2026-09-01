@@ -85,7 +85,30 @@ test('standings publisher mirrors to D1 only behind an explicit disabled-by-defa
     path.join(root, '.github', 'workflows', 'v2-standings.yml'), 'utf8',
   );
   assert.match(workflow, /D1_ADMIN_PUBLISH_ENABLED/);
-  assert.match(workflow, /if: env\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+  assert.match(workflow, /mirror-standings-to-d1:[\s\S]*if: vars\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+  assert.match(workflow, /environment: d1-staging/);
+  const r2Job = workflow.slice(
+    workflow.indexOf('ingest-standings:'), workflow.indexOf('mirror-standings-to-d1:'),
+  );
+  assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false);
   assert.match(workflow, /request-admin-ingest\.mjs/);
   assert.equal(workflow.includes('d1 execute'), false);
+});
+
+test('fixture publishers mirror to D1 only after R2 publication from protected jobs', () => {
+  for (const [name, sourceJob, mirrorJob] of [
+    ['v2-fixture-vertical-slice.yml', 'export-and-publish:', 'mirror-fixture-to-d1:'],
+    ['v2-date-feed.yml', 'ingest-date:', 'mirror-date-feed-to-d1:'],
+  ]) {
+    const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
+    const lastR2Put = workflow.lastIndexOf('r2 object put');
+    const plan = workflow.indexOf('create-v2-admin-plan.js');
+    const publish = workflow.indexOf('request-admin-ingest.mjs');
+    assert.equal(lastR2Put > 0 && plan > lastR2Put && publish > plan, true, name);
+    assert.match(workflow, /if: vars\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+    assert.match(workflow, /environment: d1-staging/);
+    const r2Job = workflow.slice(workflow.indexOf(sourceJob), workflow.indexOf(mirrorJob));
+    assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false, name);
+    assert.equal(workflow.includes('d1 execute'), false, name);
+  }
 });

@@ -14,6 +14,14 @@ function stableStringify(value) {
   return JSON.stringify(canonicalize(value));
 }
 
+function revisionContent(value) {
+  if (Array.isArray(value)) return value.map(revisionContent);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== 'fetchedAt' && key !== 'reconciledAt')
+    .map(([key, item]) => [key, revisionContent(item)]));
+}
+
 function assertBundle(bundle, label) {
   const errors = validateFixtureBundle(bundle);
   if (errors.length) throw new Error(`${label} fixture bundle is invalid: ${errors.join('; ')}`);
@@ -40,8 +48,8 @@ function reconcileFixtureRevision(current, incoming) {
     }
   }
   next.fixture.revision = current.fixture.revision;
-  if (stableStringify(current) === stableStringify(next)) {
-    return { bundle: next, changed: false, reason: 'content_unchanged' };
+  if (stableStringify(revisionContent(current)) === stableStringify(revisionContent(next))) {
+    return { bundle: structuredClone(current), changed: false, reason: 'content_unchanged' };
   }
   if (current.fixture.revision === Number.MAX_SAFE_INTEGER) {
     throw new Error('Fixture revision cannot be incremented safely.');
@@ -87,4 +95,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { canonicalize, reconcileFixtureRevision, stableStringify };
+module.exports = { canonicalize, reconcileFixtureRevision, revisionContent, stableStringify };

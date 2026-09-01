@@ -272,6 +272,21 @@ test('admin fixture ingest publishes one complete revision and is content-idempo
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 1);
 });
 
+test('admin fixture ingest preserves an R2-authoritative revision across an empty D1 history', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fixturePayload();
+  bundle.fixture.revision = 3;
+  const response = await admin.default.fetch(
+    request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle),
+  );
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.report.revision, 3);
+  assert.equal(db.prepare('SELECT revision_no FROM fixture_revisions').get().revision_no, 3);
+});
+
 test('admin fixture ingest rejects external scope and correction drift before D1 writes', async t => {
   const db = database();
   t.after(() => db.close());

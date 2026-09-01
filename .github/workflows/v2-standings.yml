@@ -23,9 +23,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
-      D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
-      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
-      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,8 +60,37 @@ jobs:
         run: |
           jq '{competitionId, seasonId, groupCount, rowCount, quota}' .tmp/v2/standings/manifest.json
 
-      - name: Mirror standings to D1 through admin ingest
-        if: env.D1_ADMIN_PUBLISH_ENABLED == 'true'
+      - name: Upload normalized standings artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
+          path: .tmp/v2/standings
+          if-no-files-found: error
+
+  mirror-standings-to-d1:
+    needs: ingest-standings
+    if: vars.D1_ADMIN_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    env:
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download normalized standings artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
+          path: .tmp/v2/standings
+
+      - name: Mirror standings through protected admin ingest
         shell: bash
         run: |
           test -n "$ADMIN_INGEST_URL" || { echo 'ADMIN_INGEST_URL is required'; exit 1; }
@@ -73,16 +99,18 @@ jobs:
             schemaVersion: "jfw-d1-admin-ingest-plan/1",
             fixtures: [],
             standings: [{competitionId, seasonId}],
-            dateIndexCoverages: []
+            dateIndexCoverages: [],
+            expectedTotals: null
           }' .tmp/v2/standings/manifest.json > .tmp/v2/standings/d1-admin-plan.json
           node scripts/d1/request-admin-ingest.mjs \
             --url "$ADMIN_INGEST_URL" \
             --plan .tmp/v2/standings/d1-admin-plan.json \
             --report .tmp/v2/standings/d1-admin-report.json
 
-      - name: Upload normalized standings artifact
+      - name: Upload D1 mirror evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
-          path: .tmp/v2/standings
+          name: d1-standings-${{ inputs.league }}-${{ inputs.season }}-${{ github.sha }}
+          path: .tmp/v2/standings/d1-admin-*.json
           if-no-files-found: error

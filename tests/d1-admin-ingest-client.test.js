@@ -25,6 +25,7 @@ function plan() {
       seasonId: 'af:season:39:2026', catalogPath: 'catalog.json',
       correctionsPath: 'corrections.json',
     }],
+    expectedTotals: null,
   };
 }
 
@@ -58,11 +59,12 @@ test('admin ingest client sends externally declared requests and keeps its token
     fixtureIds: ['af:fixture:9001'],
     standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
     dateIndexCoverages: [],
+    expectedTotals: null,
   });
   assert.equal(JSON.stringify(report).includes('secret-token'), false);
 });
 
-test('admin ingest client reports every independent failure without declaring production readiness', async t => {
+test('admin ingest client stops dependent requests after the first failure', async t => {
   const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
   const directory = fixtureFiles(t);
   let call = 0;
@@ -70,13 +72,15 @@ test('admin ingest client reports every independent failure without declaring pr
     url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
     async fetchImpl() {
       call += 1;
-      if (call === 1) return new Response(JSON.stringify({ error: 'rejected' }), { status: 422 });
-      throw new TypeError('simulated network failure');
+      return new Response(JSON.stringify({ error: 'rejected' }), { status: 422 });
     },
   });
   assert.equal(report.passed, false);
   assert.deepEqual(report.summary, { total: 3, passed: 0, failed: 3 });
   assert.deepEqual(report.results.map(item => item.status), [422, null, null]);
+  assert.deepEqual(report.results.map(item => item.error || null), [null,
+    'skipped_after_failure', 'skipped_after_failure']);
+  assert.equal(call, 1);
   assert.equal(report.productionReady, false);
 });
 
@@ -112,6 +116,7 @@ test('admin ingest client sends a hash-scoped fixed snapshot bootstrap without e
       artifactSha256: 'b'.repeat(64), productSeasonId: 'jfw:season:2026-27',
     },
     fixtureIds: [], standings: [], dateIndexCoverages: [],
+    expectedTotals: null,
   });
   assert.match(report.results[0].identity, /^jfw:season:2026-27\/b{64}$/);
 });
@@ -196,4 +201,10 @@ test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS 
   await assert.rejects(() => executeAdminIngestPlan(duplicateDates, {
     url: 'https://admin.example', token: 'token', planDirectory: directory,
   }), /duplicate scopes/);
+
+  const undeclaredTotals = plan();
+  delete undeclaredTotals.expectedTotals;
+  await assert.rejects(() => executeAdminIngestPlan(undeclaredTotals, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /expectedTotals must be declared explicitly/);
 });

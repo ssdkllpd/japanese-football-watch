@@ -61,6 +61,9 @@ export function assertFixtureRequest(input) {
     || !/^af:season:\d+:\d+$/.test(String(input.seasonId || ''))) {
     throw new Error('Admin fixture ingest scope is invalid.');
   }
+  if (input.reuseStoredCatalog !== undefined && input.reuseStoredCatalog !== true) {
+    throw new Error('reuseStoredCatalog must be true when supplied.');
+  }
   if (input.reuseStoredCatalog === true) {
     if (input.catalog !== undefined) throw new Error('Stored catalog reuse must not include a catalog.');
   } else {
@@ -616,15 +619,15 @@ async function preflight(database, context, contentSha256) {
     }
     return { noOp: true, previousRevisionId: current.published_revision || null };
   }
-  const next = await first(database, `
-    SELECT COALESCE(MAX(revision.revision_no), 0) + 1 AS revision_no
+  const latest = await first(database, `
+    SELECT COALESCE(MAX(revision.revision_no), 0) AS revision_no
     FROM fixture_revisions revision
     JOIN fixtures fixture ON fixture.id = revision.fixture_id
     WHERE fixture.canonical_id = ?
   `, [context.fixture.id]);
-  const nextRevision = Number(next?.revision_no || 1);
-  if (context.fixture.revision !== nextRevision) {
-    throw new Error(`fixture.revision must be the next revision (${nextRevision}).`);
+  const latestRevision = Number(latest?.revision_no || 0);
+  if (context.fixture.revision <= latestRevision) {
+    throw new Error(`fixture.revision must be greater than the latest D1 revision (${latestRevision}).`);
   }
   const records = await database.prepare(`
     SELECT player.canonical_id AS player_id, team.canonical_id AS team_id

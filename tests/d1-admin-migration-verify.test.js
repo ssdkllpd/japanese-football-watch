@@ -114,6 +114,10 @@ function body() {
     fixtureIds: ['af:fixture:9001'],
     standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
     dateIndexCoverages: [{ date: '2026-08-22', competitionIds: ['af:competition:39'] }],
+    expectedTotals: {
+      fixedSnapshots: 1, publishedFixtures: 1, publishedStandings: 1,
+      dateIndexCoverages: 1, competitionDateIndexCoverages: 1,
+    },
   };
 }
 
@@ -146,7 +150,16 @@ test('admin migration verification proves every externally declared publication 
     fixtureCount: 1, standingsCount: 1, dateIndexCoverageCount: 1,
     competitionDateCoverageCount: 1,
     missingFixtureIds: [], missingStandings: [], missingDateIndexes: [],
-    competitionScopeMismatches: [], productionReady: false,
+    competitionScopeMismatches: [],
+    expectedTotals: {
+      fixedSnapshots: 1, publishedFixtures: 1, publishedStandings: 1,
+      dateIndexCoverages: 1, competitionDateIndexCoverages: 1,
+    },
+    actualTotals: {
+      fixedSnapshots: 1, publishedFixtures: 1, publishedStandings: 1,
+      dateIndexCoverages: 1, competitionDateIndexCoverages: 1,
+    },
+    totalMismatches: [], productionReady: false,
   });
 });
 
@@ -187,4 +200,27 @@ test('admin migration verification rejects duplicate and impossible scopes befor
     ADMIN_INGEST_TOKEN: 'test-token', FOOTBALL_DB: { prepare() { throw new Error('not reached'); } },
   });
   assert.equal(response.status, 422);
+
+  const undeclared = body();
+  delete undeclared.expectedTotals;
+  response = await admin.default.fetch(request(undeclared), {
+    ADMIN_INGEST_TOKEN: 'test-token', FOOTBALL_DB: { prepare() { throw new Error('not reached'); } },
+  });
+  assert.equal(response.status, 422);
+});
+
+test('admin migration verification catches externally declared total mismatch outside item scopes', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const incomplete = body();
+  incomplete.expectedTotals.publishedFixtures = 2;
+  const response = await admin.default.fetch(request(incomplete), environment(db));
+  assert.equal(response.status, 409);
+  const result = await response.json();
+  assert.deepEqual(result.report.missingFixtureIds, []);
+  assert.deepEqual(result.report.missingStandings, []);
+  assert.deepEqual(result.report.totalMismatches, [
+    { key: 'publishedFixtures', expected: 2, actual: 1 },
+  ]);
 });
