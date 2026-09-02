@@ -132,6 +132,15 @@ The D1/R2 read-path migration introduces one backward-compatible top-level field
 
 The 2.0.0 -> 2.1.0 upcaster supplies `detailAvailability: "available"` because every valid 2.0.0 bundle was produced as a complete fixture artifact. Before the D1 endpoint is enabled, `CONTRACT_VERSION`, `normalizeFixtureBundle`, `validateFixtureBundle`, Worker DTO builders and their tests must move to 2.1.0 in one implementation commit. A 2.1.0 validator rejects values outside `available` / `unavailable`; it does not require the field when validating a 2.0.0 archive through the upcaster. Until that Phase 1 commit, the current 2.0.0 runtime remains unchanged.
 
+### Closed objects and extension maps
+
+The fixture bundle is closed at the root and at every fixed DTO object. R2-backed normal, not-migrated and degraded responses must reject unknown fixed fields before serving a payload. Four maps are intentionally open by key because their keys are data rather than DTO field names:
+
+- `teamStats[].values` and `playerStats[].values` preserve provider-defined statistic names.
+- root `overrides` and `fieldIssues` use canonical field paths as correction keys.
+
+These extension maps do not permit arbitrary enclosing DTO fields. Their values remain constrained by the generated fixture-detail schema where a structured value schema exists. D1 reconstructs the same four maps, so this openness is part of the shared D1/R2 public contract rather than a fallback exception.
+
 ## 5. Competition and Season
 
 Season identity is scoped to a competition.

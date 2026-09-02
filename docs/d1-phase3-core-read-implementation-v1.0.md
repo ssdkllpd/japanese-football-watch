@@ -13,9 +13,11 @@
 
 standingsは`migrations/0003_d1_standings_publication.sql`と`import-standings.mjs`で、snapshot/group/row/publicationを1 transactionで登録する。publicationはrows/groups/snapshotの変更triggerで失効し、Workerは件数・identity digest・closed contractを再検証する。
 
-fixture detailは既存`FixtureRepository`をWorkerから利用する。公開revisionがD1にあれば2.1 DTOを再構築し、detail archiveがR2に残るfixtureはD1のarchive metadata（key・sha256）を検証して読む。未知fixture、別fixtureのR2、壊れたJSONは誤entityへfallbackせずfail closedする。R2の通常・degraded経路は、`fixture-dto.js`の実生成形状から生成した`shared/fixture-detail-contract.mjs`でrootとnestedの未知fieldを拒否する。2.0 artifactだけは、当時存在しなかったroot `detailAvailability`をoptionalとして維持する。
+fixture detailは既存`FixtureRepository`をWorkerから利用する。公開revisionがD1にあれば2.1 DTOを再構築し、detail archiveがR2に残るfixtureはD1のarchive metadata（key・sha256）を検証して読む。未知fixture、別fixtureのR2、壊れたJSONは誤entityへfallbackせずfail closedする。flag OFFを含むR2の通常・not-migrated・degraded経路は、`fixture-dto.js`の実生成形状から生成した`shared/fixture-detail-contract.mjs`でrootとnestedの未知fieldを拒否する。2.0 artifactだけは、当時存在しなかったroot `detailAvailability`をoptionalとして維持する。
 
-fixture degraded応答の`lastSuccessfulAt`は`fixture.reconciledAt`を使用する。date index / standingsの`generatedAt`が集合またはsnapshotを生成した時刻であるのに対し、これは**同一fixture revisionを最後に照合・公開した時刻**を意味する。
+固定DTO objectはclosed contractとする一方、`teamStats[].values` / `playerStats[].values`はprovider stat名、root `overrides` / `fieldIssues`はfield pathをkeyとする公開extension mapとして、4箇所のkeyを意図的に開く。構造化された値は生成schemaで制約し、D1とR2で同じ開放性を維持する。
+
+fixture degraded応答の`lastSuccessfulAt`は、`fixture.reconciledAt`がミリ秒付きUTC ISO-8601の場合だけ使用する。date index / standingsの`generatedAt`が集合またはsnapshotを生成した時刻であるのに対し、これは**同一fixture revisionを最後に照合・公開した時刻**を意味する。欠落または不正な場合は`lastSuccessfulAt`だけを省略し、D1障害時のdegraded配信は継続する。
 
 ## 継続移行経路
 
@@ -62,6 +64,17 @@ node --test tests/*.test.js
 ```
 
 standingsは完全DTO parity、publication失効、transaction rollback、scope違いのR2拒否を固定した。fixture detailはD1 compact、R2 degraded、同一fixture identity検証、flag OFF時のD1バイパスを固定した。加えて、R2-authoritative revisionの欠番移行、取得時刻だけのrevision不変、外部宣言totalの不一致、admin clientのfail-fast、3 publisherのsecret分離、fixed snapshotとdate coverageのrollback・retryを固定した。残るTODOはPhase 2から継続するbackfill idempotency 2件で、本単位の回帰ではない。
+
+R5では実R2 fixture artifactをflag OFF経路へ通す専用probeを追加した。Cloudflareから取得したbytesを加工せず、contract 2.0.0、2.1.0、root `overrides`と`fieldIssues`がともに非空の2.1.0を次の順で指定する。3番目は2番目と同じfileでもよい。
+
+```bash
+node scripts/d1/probe-r2-fixture-artifacts.mjs \
+  --contract-2.0 path/to/r2-contract-2.0.json \
+  --contract-2.1 path/to/r2-contract-2.1.json \
+  --corrections path/to/r2-contract-2.1-with-corrections.json
+```
+
+probeは各artifactのversion、closed contract、fixture identity、flag OFF時のD1非参照、入力と公開responseのsemantic同一性を検査し、file名・fixture ID・SHA-256・correction件数だけをreportする。
 
 ## 次の実作業
 

@@ -151,7 +151,30 @@ test('fixture detail falls back only to a validated same-fixture R2 snapshot', a
   assert.equal((await rejected.json()).error.includes('failed'), true);
 });
 
-test('fixture detail flag off keeps the existing pointer response and bypasses D1', async t => {
+test('fixture detail degraded response omits lastSuccessfulAt when reconciledAt is not canonical', async t => {
+  for (const [name, mutate] of [
+    ['missing', payload => { delete payload.fixture.reconciledAt; }],
+    ['malformed', payload => { payload.fixture.reconciledAt = '2026-08-21T19:00:00Z'; }],
+  ]) {
+    await t.test(name, async subtest => {
+      const database = databaseWithFixture();
+      subtest.after(() => database.close());
+      const payload = fixtureBundle();
+      mutate(payload);
+      const environment = envWithR2(database, payload);
+      environment.FOOTBALL_DB = { prepare() { throw new Error('simulated D1 outage'); } };
+      const worker = await import('../worker/index.mjs');
+      const response = await worker.default.fetch(request(), environment, { waitUntil() {} });
+      const body = await response.json();
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('x-jfw-data-source'), 'r2-degraded');
+      assert.equal(body.degraded, true);
+      assert.equal(Object.hasOwn(body, 'lastSuccessfulAt'), false);
+    });
+  }
+});
+
+test('fixture detail flag off validates the R2 snapshot and bypasses D1', async t => {
   const database = new DatabaseSync(':memory:');
   database.exec(migration);
   t.after(() => database.close());
@@ -161,8 +184,93 @@ test('fixture detail flag off keeps the existing pointer response and bypasses D
   env.FOOTBALL_DB = { prepare() { throw new Error('D1 must not be read when flag is off'); } };
   const response = await worker.default.fetch(request(), env, { waitUntil() {} });
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('x-jfw-data-source'), null);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'r2');
   assert.equal((await response.json()).fixture.id, 'af:fixture:9001');
+});
+
+async function responseForFlagOffPayload(t, payload) {
+  const worker = await import('../worker/index.mjs');
+  const database = new DatabaseSync(':memory:');
+  database.exec(migration);
+  t.after(() => database.close());
+  const environment = envWithR2(database, payload);
+  environment.D1_FIXTURE_DETAIL_ENABLED = 'false';
+  environment.FOOTBALL_DB = { prepare() { throw new Error('flag off must not read D1'); } };
+  return worker.default.fetch(request(), environment);
+}
+
+test('fixture detail flag off rejects an unknown root field', async t => {
+  const injected = fixtureBundle();
+  injected.internalOperatorNote = 'must not reach a client';
+  const response = await responseForFlagOffPayload(t, injected);
+  assert.equal(response.status, 500);
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('fixture detail flag off rejects an unknown nested field', async t => {
+  const injected = fixtureBundle();
+  injected.fixture.internalOperatorNote = 'must not reach a client';
+  const response = await responseForFlagOffPayload(t, injected);
+  assert.equal(response.status, 500);
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('fixture detail flag off preserves validated dynamic correction maps', async t => {
+  const { contractSamples } = require('../scripts/d1/generate-fixture-detail-contract');
+  const payload = structuredClone(contractSamples()[0]);
+  const response = await responseForFlagOffPayload(t, payload);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'r2');
+  assert.equal(body.overrides['fixture.referee'].status, 'review_required');
+  assert.deepEqual(body.playerStats[0].fieldIssues.rating, ['conflict']);
+});
+
+function fixedFixtureObjectPaths(value, schema, objectPath = [], result = []) {
+  if (!schema || schema.type === 'any') return result;
+  if (schema.type === 'array') {
+    if (Array.isArray(value) && value.length) {
+      fixedFixtureObjectPaths(value[0], schema.items, [...objectPath, 0], result);
+    }
+    return result;
+  }
+  if (schema.type !== 'object' || value === null || !value || typeof value !== 'object') return result;
+  if (schema.additionalProperties) return result;
+  result.push(objectPath);
+  for (const [key, childSchema] of Object.entries(schema.properties || {})) {
+    if (Object.hasOwn(value, key)) {
+      fixedFixtureObjectPaths(value[key], childSchema, [...objectPath, key], result);
+    }
+  }
+  return result;
+}
+
+function fixtureValueAtPath(payload, objectPath) {
+  return objectPath.reduce((value, key) => value[key], payload);
+}
+
+function fixturePathName(objectPath) {
+  if (!objectPath.length) return 'root';
+  return objectPath.reduce((name, key) => (
+    typeof key === 'number' ? `${name}[]` : `${name}${name ? '.' : ''}${key}`
+  ), '');
+}
+
+test('fixture detail flag off closes every generated fixed DTO object path', async t => {
+  const { contractSamples, fixtureDetailSchema } = require('../scripts/d1/generate-fixture-detail-contract');
+  const sample = contractSamples()[0];
+  const paths = fixedFixtureObjectPaths(sample, fixtureDetailSchema());
+  assert.equal(paths.length, 27);
+
+  for (const objectPath of paths) {
+    await t.test(fixturePathName(objectPath), async subtest => {
+      const injected = structuredClone(sample);
+      fixtureValueAtPath(injected, objectPath).internalOperatorNote = 'must not reach a client';
+      const response = await responseForFlagOffPayload(subtest, injected);
+      assert.equal(response.status, 500);
+      assert.equal((await response.text()).includes('must not reach a client'), false);
+    });
+  }
 });
 
 async function responseForInvalidR2Payload(t, injected, degraded) {
@@ -290,4 +398,19 @@ test('a contract 2.0.0 fixture artifact published before detailAvailability is s
   strictEnvironment.FOOTBALL_DB = environment.FOOTBALL_DB;
   const strict = await worker.default.fetch(request(), strictEnvironment);
   assert.equal(strict.status, 503);
+});
+
+test('fixture detail flag off accepts validated contract 2.0.0 and 2.1.0 shapes', async t => {
+  const legacy = fixtureBundle();
+  legacy.contractVersion = '2.0.0';
+  delete legacy.detailAvailability;
+  const legacyResponse = await responseForFlagOffPayload(t, legacy);
+  assert.equal(legacyResponse.status, 200);
+  assert.equal((await legacyResponse.json()).contractVersion, '2.0.0');
+
+  const currentResponse = await responseForFlagOffPayload(t, fixtureBundle());
+  const current = await currentResponse.json();
+  assert.equal(currentResponse.status, 200);
+  assert.equal(current.contractVersion, '2.1.0');
+  assert.equal(current.detailAvailability, 'unavailable');
 });

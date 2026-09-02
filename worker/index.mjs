@@ -845,19 +845,6 @@ async function standingsResponse(env, competitionId, requestedSeasonId, context 
   }
 }
 
-async function fixtureFromR2(env, fixtureId) {
-  const pointerObject = await env.FOOTBALL_DATA?.get(fixturePointerKey(fixtureId));
-  if (!pointerObject) return json({ error: 'Fixture not found' }, 404);
-  let pointer;
-  try {
-    pointer = JSON.parse(await pointerObject.text());
-  } catch {
-    return json({ error: 'Fixture pointer is invalid' }, 500);
-  }
-  if (!pointer?.key) return json({ error: 'Fixture pointer is missing canonical key' }, 500);
-  return r2JsonObject(env, pointer.key);
-}
-
 // The D1 read path reconstructs this DTO column by column, so its shape is
 // closed by construction. Any R2-sourced payload must be held to the same closed
 // set, or the r2 and r2-degraded paths would serve fields the d1 path cannot,
@@ -866,12 +853,15 @@ async function fixtureFromR2(env, fixtureId) {
 // are still valid in R2 and must not be rejected, so it is allowed but not
 // required. Everything else is required at both versions.
 const FIXTURE_DETAIL_OPTIONAL_ROOT_FIELDS = new Set(['detailAvailability']);
+const FIXTURE_DETAIL_DEGRADED_OPTIONAL_FIELDS = new Set(['fixture.reconciledAt']);
 
-function assertClosedFixtureDetailValue(value, schema, pathName, contractVersion) {
+function assertClosedFixtureDetailValue(value, schema, pathName, contractVersion, optionalFields) {
   if (!schema || schema.type === 'any') return;
   if (schema.type === 'array') {
     if (!Array.isArray(value)) throw new Error(`Fixture detail ${pathName} is not an array.`);
-    for (const item of value) assertClosedFixtureDetailValue(item, schema.items, `${pathName}[]`, contractVersion);
+    for (const item of value) {
+      assertClosedFixtureDetailValue(item, schema.items, `${pathName}[]`, contractVersion, optionalFields);
+    }
     return;
   }
   if (schema.type !== 'object') return;
@@ -883,7 +873,9 @@ function assertClosedFixtureDetailValue(value, schema, pathName, contractVersion
   }
   if (schema.additionalProperties) {
     for (const [key, item] of Object.entries(value)) {
-      assertClosedFixtureDetailValue(item, schema.additionalProperties, `${pathName}.${key}`, contractVersion);
+      assertClosedFixtureDetailValue(
+        item, schema.additionalProperties, `${pathName}.${key}`, contractVersion, optionalFields,
+      );
     }
     return;
   }
@@ -893,22 +885,29 @@ function assertClosedFixtureDetailValue(value, schema, pathName, contractVersion
     throw new Error(`Fixture detail ${pathName || 'root'} contains fields outside the closed contract: ${unknown.join(', ')}.`);
   }
   for (const [key, childSchema] of Object.entries(schema.properties)) {
+    const fieldPath = pathName ? `${pathName}.${key}` : key;
     const legacyOptional = !pathName && contractVersion === '2.0.0'
       && FIXTURE_DETAIL_OPTIONAL_ROOT_FIELDS.has(key);
     if (!Object.hasOwn(value, key)) {
-      if (legacyOptional) continue;
-      throw new Error(`Fixture detail is missing ${pathName ? `${pathName}.` : ''}${key}.`);
+      if (legacyOptional || optionalFields.has(fieldPath)) continue;
+      throw new Error(`Fixture detail is missing ${fieldPath}.`);
     }
-    assertClosedFixtureDetailValue(value[key], childSchema, pathName ? `${pathName}.${key}` : key, contractVersion);
+    assertClosedFixtureDetailValue(value[key], childSchema, fieldPath, contractVersion, optionalFields);
   }
 }
 
-function assertFixtureDetailPayload(payload, fixtureId) {
+function assertFixtureDetailPayload(payload, fixtureId, { degraded = false } = {}) {
   const fixture = payload?.fixture;
   if (!payload || (payload.contractVersion !== '2.0.0' && payload.contractVersion !== '2.1.0')) {
     throw new Error('Fixture detail contract version is unsupported.');
   }
-  assertClosedFixtureDetailValue(payload, FIXTURE_DETAIL_SCHEMA, '', payload.contractVersion);
+  assertClosedFixtureDetailValue(
+    payload,
+    FIXTURE_DETAIL_SCHEMA,
+    '',
+    payload.contractVersion,
+    degraded ? FIXTURE_DETAIL_DEGRADED_OPTIONAL_FIELDS : new Set(),
+  );
   if (!fixture || fixture.id !== fixtureId) throw new Error('Fixture detail identity does not match the requested fixture.');
   if (!fixture.competitionId?.startsWith('af:competition:')) throw new Error('Fixture detail competition identity is invalid.');
   if (!fixture.seasonId?.startsWith('af:season:')) throw new Error('Fixture detail season identity is invalid.');
@@ -969,11 +968,7 @@ async function r2FixturePayload(env, fixtureId, { degraded = false } = {}) {
   let payload;
   try {
     payload = JSON.parse(await object.text());
-    assertFixtureDetailPayload(payload, fixtureId);
-    if (degraded
-        && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(String(payload.fixture.reconciledAt || ''))) {
-      throw new Error('Fixture detail degraded timestamp is not canonical.');
-    }
+    assertFixtureDetailPayload(payload, fixtureId, { degraded });
   } catch {
     return json({ error: degraded ? 'D1 read failed and the fixture snapshot failed entity validation.' : 'Fixture snapshot is invalid' }, degraded ? 503 : 500,
       degraded ? { 'x-jfw-data-source': 'unavailable' } : {});
@@ -981,8 +976,16 @@ async function r2FixturePayload(env, fixtureId, { degraded = false } = {}) {
   // Fixture snapshots do not have the root generatedAt used by date/standings.
   // reconciledAt is the time this exact fixture revision was last reconciled and
   // published, so it is the fixture endpoint's last successful snapshot time.
+  const reconciledAt = payload.fixture.reconciledAt;
+  const hasCanonicalReconciledAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(
+    String(reconciledAt || ''),
+  );
   const result = degraded
-    ? { ...payload, degraded: true, lastSuccessfulAt: payload.fixture.reconciledAt }
+    ? {
+      ...payload,
+      degraded: true,
+      ...(hasCanonicalReconciledAt ? { lastSuccessfulAt: reconciledAt } : {}),
+    }
     : payload;
   return json(result, 200, {
     'cache-control': `public, max-age=${degraded ? DEGRADED_TTL_SECONDS : FIXTURE_DETAIL_TTL_SECONDS}`,
@@ -1005,7 +1008,7 @@ async function r2FixtureArchivePayload(env, archive, fixtureId) {
 }
 
 async function fixtureDetailResponse(env, fixtureId, context = null) {
-  if (!enabled(env, 'D1_FIXTURE_DETAIL_ENABLED')) return fixtureFromR2(env, fixtureId);
+  if (!enabled(env, 'D1_FIXTURE_DETAIL_ENABLED')) return r2FixturePayload(env, fixtureId);
   const cache = dateResponseCache(env);
   const cacheKey = fixtureDetailResponseCacheKey(fixtureId);
   const cached = await cacheMatch(cache, cacheKey);
