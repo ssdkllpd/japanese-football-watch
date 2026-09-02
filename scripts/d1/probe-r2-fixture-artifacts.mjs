@@ -7,10 +7,19 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import worker from '../../worker/index.mjs';
 
-function requiredArgument(argv, name) {
+function optionalArgument(argv, name) {
   const index = argv.indexOf(name);
-  if (index === -1 || !argv[index + 1]) throw new Error(`${name} is required.`);
+  if (index === -1) return null;
+  if (!argv[index + 1] || argv[index + 1].startsWith('--')) {
+    throw new Error(`${name} requires a value.`);
+  }
   return path.resolve(argv[index + 1]);
+}
+
+function requiredArgument(argv, name) {
+  const value = optionalArgument(argv, name);
+  if (!value) throw new Error(`${name} is required.`);
+  return value;
 }
 
 function r2Object(payload) {
@@ -71,17 +80,39 @@ export async function probeR2FixtureArtifact(filePath, expectedContractVersion) 
 }
 
 export async function run(argv = process.argv.slice(2)) {
-  const contract20 = requiredArgument(argv, '--contract-2.0');
+  const contract20 = optionalArgument(argv, '--contract-2.0');
   const contract21 = requiredArgument(argv, '--contract-2.1');
   const corrections = requiredArgument(argv, '--corrections');
-  const results = [
-    await probeR2FixtureArtifact(contract20, '2.0.0'),
-    await probeR2FixtureArtifact(contract21, '2.1.0'),
-    await probeR2FixtureArtifact(corrections, '2.1.0'),
-  ];
-  assert.ok(results[2].overrides > 0, 'The correction artifact must have non-empty overrides.');
-  assert.ok(results[2].fieldIssues > 0, 'The correction artifact must have non-empty fieldIssues.');
-  return { verdict: 'PASS', artifacts: results };
+  const contract20Result = contract20
+    ? await probeR2FixtureArtifact(contract20, '2.0.0')
+    : null;
+  const contract21Result = await probeR2FixtureArtifact(contract21, '2.1.0');
+  const correctionsResult = await probeR2FixtureArtifact(corrections, '2.1.0');
+  assert.ok(correctionsResult.overrides > 0, 'The correction artifact must have non-empty overrides.');
+  assert.ok(correctionsResult.fieldIssues > 0, 'The correction artifact must have non-empty fieldIssues.');
+
+  return {
+    verdict: 'PASS',
+    contractVersions: {
+      '2.0.0': contract20Result
+        ? {
+            status: 'verified',
+            verified: true,
+            artifacts: [contract20Result.file],
+          }
+        : {
+            status: 'not_provided',
+            verified: false,
+            note: 'No real contract 2.0.0 R2 artifact was provided; this version was not verified.',
+          },
+      '2.1.0': {
+        status: 'verified',
+        verified: true,
+        artifacts: [contract21Result.file, correctionsResult.file],
+      },
+    },
+    artifacts: [contract20Result, contract21Result, correctionsResult].filter(Boolean),
+  };
 }
 
 const isMain = process.argv[1]

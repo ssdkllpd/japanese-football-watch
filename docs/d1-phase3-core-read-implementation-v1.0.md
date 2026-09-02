@@ -65,16 +65,21 @@ node --test tests/*.test.js
 
 standingsは完全DTO parity、publication失効、transaction rollback、scope違いのR2拒否を固定した。fixture detailはD1 compact、R2 degraded、同一fixture identity検証、flag OFF時のD1バイパスを固定した。加えて、R2-authoritative revisionの欠番移行、取得時刻だけのrevision不変、外部宣言totalの不一致、admin clientのfail-fast、3 publisherのsecret分離、fixed snapshotとdate coverageのrollback・retryを固定した。残るTODOはPhase 2から継続するbackfill idempotency 2件で、本単位の回帰ではない。
 
-R5では実R2 fixture artifactをflag OFF経路へ通す専用probeを追加した。Cloudflareから取得したbytesを加工せず、contract 2.0.0、2.1.0、root `overrides`と`fieldIssues`がともに非空の2.1.0を次の順で指定する。3番目は2番目と同じfileでもよい。
+R5では実R2 fixture artifactをflag OFF経路へ通す専用probeを追加した。Cloudflareから取得したbytesを加工せず、contract 2.1.0と、root `overrides`と`fieldIssues`がともに非空の2.1.0を指定する。後者は前者と同じfileでもよい。実在するcontract 2.0.0 objectがある場合に限り、任意の`--contract-2.0`で追加する。
 
 ```bash
+node scripts/d1/probe-r2-fixture-artifacts.mjs \
+  --contract-2.1 path/to/r2-contract-2.1.json \
+  --corrections path/to/r2-contract-2.1-with-corrections.json
+
+# 実在する2.0.0 objectがある場合のみ追加する
 node scripts/d1/probe-r2-fixture-artifacts.mjs \
   --contract-2.0 path/to/r2-contract-2.0.json \
   --contract-2.1 path/to/r2-contract-2.1.json \
   --corrections path/to/r2-contract-2.1-with-corrections.json
 ```
 
-probeは各artifactのversion、closed contract、fixture identity、flag OFF時のD1非参照、入力と公開responseのsemantic同一性を検査し、file名・fixture ID・SHA-256・correction件数だけをreportする。
+probeは各artifactのversion、closed contract、fixture identity、flag OFF時のD1非参照、入力と公開responseのsemantic同一性を検査し、file名・fixture ID・SHA-256・correction件数をreportする。`--contract-2.0`を指定しない場合、reportの`contractVersions["2.0.0"]`は`status: "not_provided"`かつ`verified: false`となり、2.0.0を検証済みとして扱わない。
 
 2026-09-02のCloudflare APIによるread-only inventoryでは、account `59969eeed913d6376bd956856718c622` のbucket `jfw-football-data`は0 objects、account全体も0 objects / 0 bytesだった。HTTP 200で取得し、書込み・削除・変更は行っていない。したがって既存artifact互換性の実測はpre-stagingでは対象なしとし、上記probeは初回R2投入後、production cutoverまたはproduction fixture-detail flag変更前の必須gateへ移す。実在2.0.0 objectがない場合、存在しない履歴bytesを作って実データと称してはならない。
 
