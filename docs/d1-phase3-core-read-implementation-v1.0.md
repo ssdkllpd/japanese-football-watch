@@ -76,10 +76,13 @@ node scripts/d1/probe-r2-fixture-artifacts.mjs \
 
 probeは各artifactのversion、closed contract、fixture identity、flag OFF時のD1非参照、入力と公開responseのsemantic同一性を検査し、file名・fixture ID・SHA-256・correction件数だけをreportする。
 
+2026-09-02のCloudflare APIによるread-only inventoryでは、account `59969eeed913d6376bd956856718c622` のbucket `jfw-football-data`は0 objects、account全体も0 objects / 0 bytesだった。HTTP 200で取得し、書込み・削除・変更は行っていない。したがって既存artifact互換性の実測はpre-stagingでは対象なしとし、上記probeは初回R2投入後、production cutoverまたはproduction fixture-detail flag変更前の必須gateへ移す。実在2.0.0 objectがない場合、存在しない履歴bytesを作って実データと称してはならない。
+
 ## 次の実作業
 
-1. ここまでのCore Read、admin ingest、継続publisherを1回のまとめレビューで確認する。
+1. R5の残り4項目だけを独立レビューで確認する。R3-005など解消済み項目は再レビューしない。
 2. レビューPASS後にCloudflare staging環境を作成し、`0001`〜`0003`を適用する。
 3. 実R2 artifactをadmin ingestへ渡し、完全件数宣言、identity、semantic parity reportを保存する。
-4. stagingで4 endpointのfailure injectionとrows readを計測する。
-5. 明示承認後にのみstaging flagを変更する。production flagは別途承認されるまで変更しない。
+4. 初回R2投入後に実在artifact probeを実行し、存在するcontract versionのSHA-256 reportを保存する。
+5. stagingで4 endpointのfailure injectionとrows readを計測する。
+6. 明示承認後にのみstaging flagを変更する。production flagは別途承認されるまで変更しない。
