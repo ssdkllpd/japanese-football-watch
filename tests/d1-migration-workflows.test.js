@@ -18,7 +18,6 @@ test('admin wrangler renderer accepts only bounded resource identities and never
     R2_BUCKET: 'jfw-football-data',
     D1_DATABASE_NAME: 'jfw-football-staging',
     D1_DATABASE_ID: '12345678-1234-1234-1234-123456789abc',
-    D1_TARGET_ENVIRONMENT: 'staging',
     ADMIN_INGEST_TOKEN: 'must-not-appear',
   };
   const rendered = renderAdminWrangler(env, output);
@@ -86,7 +85,8 @@ test('standings publisher mirrors to D1 only behind an explicit disabled-by-defa
     path.join(root, '.github', 'workflows', 'v2-standings.yml'), 'utf8',
   );
   assert.match(workflow, /D1_ADMIN_PUBLISH_ENABLED/);
-  assert.match(workflow, /mirror-standings-to-d1:[\s\S]*if: vars\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+  assert.match(workflow, /mirror-standings-to-d1:[\s\S]*id: target/);
+  assert.match(workflow, /if: steps\.target\.outputs\.enabled == 'true'/);
   assert.match(workflow, /environment: d1-staging/);
   const r2Job = workflow.slice(
     workflow.indexOf('ingest-standings:'), workflow.indexOf('mirror-standings-to-d1:'),
@@ -106,7 +106,8 @@ test('fixture publishers mirror to D1 only after R2 publication from protected j
     const plan = workflow.indexOf('create-v2-admin-plan.js');
     const publish = workflow.indexOf('request-admin-ingest.mjs');
     assert.equal(lastR2Put > 0 && plan > lastR2Put && publish > plan, true, name);
-    assert.match(workflow, /if: vars\.D1_ADMIN_PUBLISH_ENABLED == 'true'/);
+    assert.match(workflow, /id: target/);
+    assert.match(workflow, /if: steps\.target\.outputs\.enabled == 'true'/);
     assert.match(workflow, /environment: d1-staging/);
     const r2Job = workflow.slice(workflow.indexOf(sourceJob), workflow.indexOf(mirrorJob));
     assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false, name);
@@ -114,34 +115,78 @@ test('fixture publishers mirror to D1 only after R2 publication from protected j
   }
 });
 
-test('admin wrangler renderer refuses a target it cannot prove came from the protected environment', async () => {
-  const { renderAdminWrangler } = await import('../scripts/d1/render-admin-wrangler.mjs');
-  const output = path.join(os.tmpdir(), 'wrangler.toml');
-  const base = {
-    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest-staging',
-    R2_BUCKET: 'jfw-football-data',
-    D1_DATABASE_NAME: 'jfw-football-staging',
+test('target verifier requires exact reviewed resource identities and endpoint origin', async t => {
+  const { verifyD1Target } = await import('../scripts/d1/verify-d1-target.mjs');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-target-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const manifestPath = path.join(directory, 'targets.json');
+  fs.writeFileSync(manifestPath, JSON.stringify({
+    schemaVersion: 'jfw-d1-targets/1',
+    targets: {
+      staging: {
+        environment: 'd1-staging',
+        d1DatabaseName: 'reviewed-database-name',
+        d1DatabaseId: '12345678-1234-1234-1234-123456789abc',
+        adminWorkerName: 'reviewed-worker-name',
+        r2BucketName: 'reviewed-r2-bucket',
+        adminEndpointOrigin: 'https://reviewed-admin.example.test',
+      },
+    },
+  }));
+  const env = {
+    D1_DATABASE_NAME: 'reviewed-database-name',
     D1_DATABASE_ID: '12345678-1234-1234-1234-123456789abc',
-    D1_TARGET_ENVIRONMENT: 'staging',
+    ADMIN_WORKER_NAME: 'reviewed-worker-name',
+    R2_BUCKET: 'reviewed-r2-bucket',
+    ADMIN_INGEST_URL: 'https://reviewed-admin.example.test/admin/ingest',
   };
-  // A repository-level variable fallback leaves D1_TARGET_ENVIRONMENT undeclared.
-  assert.throws(() => renderAdminWrangler({ ...base, D1_TARGET_ENVIRONMENT: undefined }, output),
-    /D1_TARGET_ENVIRONMENT/);
-  assert.throws(() => renderAdminWrangler({ ...base, D1_TARGET_ENVIRONMENT: 'production' }, output),
-    /until a production cutover is approved/);
-  // A declared staging target may not resolve to resources named for another environment.
-  assert.throws(() => renderAdminWrangler({ ...base, D1_DATABASE_NAME: 'jfw-football-prod' }, output),
-    /D1_DATABASE_NAME must name the declared target environment/);
-  assert.throws(() => renderAdminWrangler({ ...base, ADMIN_WORKER_NAME: 'jfw-football-admin-ingest' }, output),
-    /ADMIN_WORKER_NAME must name the declared target environment/);
+  assert.equal(verifyD1Target({ env, manifestPath }).adminWorkerName, 'reviewed-worker-name');
+  for (const [key, value] of [
+    ['D1_DATABASE_NAME', 'other-database'],
+    ['D1_DATABASE_ID', 'ffffffff-ffff-ffff-ffff-ffffffffffff'],
+    ['ADMIN_WORKER_NAME', 'other-worker'],
+    ['R2_BUCKET', 'other-bucket'],
+    ['ADMIN_INGEST_URL', 'https://other.example.test/admin/ingest'],
+  ]) {
+    assert.throws(() => verifyD1Target({ env: { ...env, [key]: value }, manifestPath }),
+      /does not exactly match/, key);
+  }
 });
 
-test('staging workflows carry the environment-scoped target declaration', () => {
-  for (const name of ['d1-staging-provision.yml', 'd1-staging-bootstrap.yml', 'd1-staging-data-migrate.yml']) {
+test('the committed target manifest locks the independently reviewed staging identities', async () => {
+  const { loadD1Target } = await import('../scripts/d1/verify-d1-target.mjs');
+  assert.deepEqual(loadD1Target(path.join(root, 'config', 'd1-targets.json')), {
+    environment: 'd1-staging',
+    d1DatabaseName: 'jfw-football-staging',
+    d1DatabaseId: 'fdfd74e4-2702-4aa2-ab20-c062e952fe25',
+    adminWorkerName: 'jfw-football-admin-ingest-staging',
+    r2BucketName: 'jfw-football-data',
+    adminEndpointOrigin: 'https://jfw-football-admin-ingest-staging.ssdkllpd.workers.dev',
+  });
+});
+
+test('all six staging write workflows prove the same exact target before their first D1 write', () => {
+  const workflows = [
+    ['d1-staging-provision.yml', 'd1 migrations apply'],
+    ['d1-staging-bootstrap.yml', 'r2 object put'],
+    ['d1-staging-data-migrate.yml', 'request-admin-ingest.mjs'],
+    ['v2-standings.yml', 'request-admin-ingest.mjs'],
+    ['v2-fixture-vertical-slice.yml', 'request-admin-ingest.mjs'],
+    ['v2-date-feed.yml', 'request-admin-ingest.mjs'],
+  ];
+  for (const [name, firstWrite] of workflows) {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
-    assert.match(workflow, /D1_TARGET_ENVIRONMENT: \$\{\{ vars\.D1_TARGET_ENVIRONMENT \}\}/, name);
+    const proof = workflow.indexOf('verify-d1-target.mjs --manifest config/d1-targets.json --target staging');
+    const write = workflow.indexOf(firstWrite);
+    assert.equal(proof > 0 && write > proof, true, name);
     assert.match(workflow, /environment: d1-staging/, name);
+    for (const key of [
+      'ADMIN_WORKER_NAME', 'D1_DATABASE_NAME', 'D1_DATABASE_ID', 'R2_BUCKET', 'ADMIN_INGEST_URL',
+    ]) assert.match(workflow, new RegExp(`${key}: \\$\\{\\{ vars\\.${key} \\}\\}`), `${name}:${key}`);
+    assert.equal(workflow.includes('D1_TARGET_ENVIRONMENT'), false, name);
   }
+  const renderer = fs.readFileSync(path.join(root, 'scripts', 'd1', 'render-admin-wrangler.mjs'), 'utf8');
+  assert.equal(renderer.includes('.includes(targetEnvironment)'), false);
 });
 
 test('migrations keep foreign key enforcement active for local SQLite drivers', () => {

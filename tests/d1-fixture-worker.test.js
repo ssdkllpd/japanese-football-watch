@@ -55,12 +55,37 @@ function fixtureBundle(fixtureId = 'af:fixture:9001') {
     fixture: {
       id: fixtureId, providerId: 9001, competitionId: 'af:competition:39',
       seasonId: 'af:season:39:2026', kickoffUtc: '2026-08-21T20:00:00.000Z',
-      dateJst: '2026-08-22', status: { short: 'NS', long: 'Not Started', elapsed: null },
-      teams: { home: { id: 'af:team:40' }, away: { id: 'af:team:50' } },
+      dateJst: '2026-08-22', productTimeZone: 'Asia/Tokyo', round: null, referee: null,
+      venue: { id: null, providerId: null, name: null, city: null },
+      status: { short: 'NS', long: 'Not Started', elapsed: null }, ingestionState: 'scheduled',
+      teams: {
+        home: { id: 'af:team:40', providerId: 40, name: 'Home FC', logo: null, winner: null },
+        away: { id: 'af:team:50', providerId: 50, name: 'Away FC', logo: null, winner: null },
+      },
+      score: {
+        goals: { home: null, away: null }, halftime: { home: null, away: null },
+        fulltime: { home: null, away: null }, extratime: { home: null, away: null },
+        penalty: { home: null, away: null },
+      },
+      revision: 1, reconciledAt: '2026-08-21T19:00:00.000Z',
+      provenance: {
+        source: 'api-football', fetchedAt: '2026-08-21T19:00:00.000Z',
+        verification: 'provider', issues: [],
+      },
     },
-    competition: { id: 'af:competition:39', providerId: 39, name: 'Premier League' },
-    season: { id: 'af:season:39:2026', competitionId: 'af:competition:39', providerSeason: 2026 },
-    lineups: [], events: [], teamStats: [], playerStats: [], sectionStates: {},
+    competition: {
+      id: 'af:competition:39', providerId: 39, name: 'Premier League',
+      country: 'England', logo: null, flag: null,
+    },
+    season: {
+      id: 'af:season:39:2026', competitionId: 'af:competition:39',
+      providerSeason: 2026, label: '2026',
+    },
+    lineups: [], events: [], teamStats: [], playerStats: [],
+    sectionStates: {
+      events: { presence: 'not_fetched' }, lineups: { presence: 'not_fetched' },
+      teamStats: { presence: 'not_fetched' }, playerStats: { presence: 'not_fetched' },
+    },
     overrides: {}, fieldIssues: {},
   };
 }
@@ -117,6 +142,7 @@ test('fixture detail falls back only to a validated same-fixture R2 snapshot', a
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-jfw-data-source'), 'r2-degraded');
   assert.equal(body.degraded, true);
+  assert.equal(body.lastSuccessfulAt, body.fixture.reconciledAt);
 
   const wrong = envWithR2(database, fixtureBundle('af:fixture:9999'));
   wrong.FOOTBALL_DB = { prepare() { throw new Error('simulated D1 outage'); } };
@@ -139,46 +165,95 @@ test('fixture detail flag off keeps the existing pointer response and bypasses D
   assert.equal((await response.json()).fixture.id, 'af:fixture:9001');
 });
 
-test('an R2 fixture detail carrying fields outside the closed contract is never served', async t => {
+async function responseForInvalidR2Payload(t, injected, degraded) {
   const worker = await import('../worker/index.mjs');
-  const database = databaseWithFixture();
+  const database = degraded ? databaseWithFixture() : new DatabaseSync(':memory:');
+  if (!degraded) database.exec(migration);
   t.after(() => database.close());
-
-  // The d1 path rebuilds this DTO column by column, so the r2 and r2-degraded
-  // paths must be held to the same closed root set or parity silently breaks.
-  const injected = fixtureBundle();
-  injected.internalOperatorNote = 'must not reach a client';
   const environment = envWithR2(database, injected);
   environment.D1_FIXTURE_DETAIL_ENABLED = 'true';
-  environment.FOOTBALL_DB = {
-    prepare() {
-      return { bind() { return {
-        async first() { throw new Error('D1 unavailable'); },
-        async all() { throw new Error('D1 unavailable'); },
-      }; } };
-    },
-  };
+  if (degraded) {
+    environment.FOOTBALL_DB = {
+      prepare() {
+        return { bind() { return {
+          async first() { throw new Error('D1 unavailable'); },
+          async all() { throw new Error('D1 unavailable'); },
+        }; } };
+      },
+    };
+  }
 
-  const response = await worker.default.fetch(request(), environment);
+  return worker.default.fetch(request(), environment);
+}
+
+test('an R2-not-migrated fixture with an unknown root field is never served', async t => {
+  const injected = fixtureBundle();
+  injected.internalOperatorNote = 'must not reach a client';
+  const response = await responseForInvalidR2Payload(t, injected, false);
+  assert.notEqual(response.status, 200);
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('an R2-not-migrated fixture with an unknown nested field is never served', async t => {
+  const injected = fixtureBundle();
+  injected.fixture.internalOperatorNote = 'must not reach a client';
+  const response = await responseForInvalidR2Payload(t, injected, false);
+  assert.notEqual(response.status, 200);
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('a degraded R2 fixture with an unknown root field is never served', async t => {
+  const injected = fixtureBundle();
+  injected.internalOperatorNote = 'must not reach a client';
+  const response = await responseForInvalidR2Payload(t, injected, true);
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
   assert.equal((await response.text()).includes('must not reach a client'), false);
 });
 
-test('the closed fixture detail root set matches what the D1 reader reconstructs', async () => {
-  const { buildUnavailableBundle } = require('../scripts/d1/fixture-dto');
-  const worker = fs.readFileSync(path.join(__dirname, '..', 'worker', 'index.mjs'), 'utf8');
-  const declared = worker
-    .slice(worker.indexOf('const FIXTURE_DETAIL_ROOT_FIELDS'))
-    .match(/\[([^\]]+)\]/)[1]
-    .split(',')
-    .map(value => value.trim().replace(/^'|'$/g, ''))
-    .filter(Boolean)
-    .sort();
-  const reconstructed = Object.keys(buildUnavailableBundle({
-    fixture_id: 'af:fixture:9001', competition_id: 'af:competition:39', season_id: 'af:season:39:2026',
-  }, [])).sort();
-  assert.deepEqual(declared, reconstructed);
+test('a degraded R2 fixture with an unknown nested field is never served', async t => {
+  const injected = fixtureBundle();
+  injected.fixture.internalOperatorNote = 'must not reach a client';
+  const response = await responseForInvalidR2Payload(t, injected, true);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+  assert.equal((await response.text()).includes('must not reach a client'), false);
+});
+
+test('every fixed nested fixture DTO rejects unknown fields', async t => {
+  const { contractSamples } = require('../scripts/d1/generate-fixture-detail-contract');
+  const cases = [
+    ['fixture.status', payload => { payload.fixture.status.internal = true; }],
+    ['fixture.teams.home', payload => { payload.fixture.teams.home.internal = true; }],
+    ['fixture.venue', payload => { payload.fixture.venue.internal = true; }],
+    ['fixture.score.goals', payload => { payload.fixture.score.goals.internal = true; }],
+    ['competition', payload => { payload.competition.internal = true; }],
+    ['season', payload => { payload.season.internal = true; }],
+    ['lineups[]', payload => { payload.lineups[0].internal = true; }],
+    ['lineups[].coach', payload => { payload.lineups[0].coach.internal = true; }],
+    ['lineups[].startXI[]', payload => { payload.lineups[0].startXI[0].internal = true; }],
+    ['events[]', payload => { payload.events[0].internal = true; }],
+    ['teamStats[]', payload => { payload.teamStats[0].internal = true; }],
+    ['playerStats[]', payload => { payload.playerStats[0].internal = true; }],
+  ];
+  for (const [name, inject] of cases) {
+    await t.test(name, async subtest => {
+      const payload = structuredClone(contractSamples()[0]);
+      inject(payload);
+      const response = await responseForInvalidR2Payload(subtest, payload, true);
+      assert.equal(response.status, 503);
+      assert.equal(response.headers.get('x-jfw-data-source'), 'unavailable');
+      assert.equal((await response.text()).includes('"internal"'), false);
+    });
+  }
+});
+
+test('the generated closed fixture detail contract matches the D1 DTO builders', () => {
+  const { renderFixtureDetailContractModule } = require('../scripts/d1/generate-fixture-detail-contract');
+  const generated = fs.readFileSync(
+    path.join(__dirname, '..', 'shared', 'fixture-detail-contract.mjs'), 'utf8',
+  );
+  assert.equal(generated, renderFixtureDetailContractModule());
 });
 
 test('a contract 2.0.0 fixture artifact published before detailAvailability is still served', async t => {

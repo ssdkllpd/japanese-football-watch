@@ -15,14 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: d1-staging
     env:
-      D1_TARGET_ENVIRONMENT: ${{ vars.D1_TARGET_ENVIRONMENT }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
-      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
-      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
-      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-      R2_BUCKET: ${{ vars.R2_BUCKET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,12 +27,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate protected environment
+      - name: Verify exact reviewed staging target
+        env:
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
         run: |
-          test -n "$D1_TARGET_ENVIRONMENT" || { echo 'D1_TARGET_ENVIRONMENT is required and must be defined at environment scope, not repository scope'; exit 1; }
-          echo "resolved target environment: $D1_TARGET_ENVIRONMENT"
-          echo "resolved database name:      $D1_DATABASE_NAME"
-          echo "resolved admin worker name:  $ADMIN_WORKER_NAME"
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          {
+            echo "ADMIN_WORKER_NAME=$ADMIN_WORKER_NAME"
+            echo "D1_DATABASE_NAME=$D1_DATABASE_NAME"
+            echo "D1_DATABASE_ID=$D1_DATABASE_ID"
+            echo "R2_BUCKET=$R2_BUCKET"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate protected credentials and render configuration
+        run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
           test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }

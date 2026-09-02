@@ -1,6 +1,6 @@
 # D1 Phase 3 Core Read implementation v1.0
 
-更新日: 2026-09-01
+更新日: 2026-09-02
 
 この単位では、アプリの既存API contractを変えずに、standingsとfixture detailをD1から読める実装を追加した。既定flagはすべてOFFで、R2が即時rollback pathである。production D1への適用・flag変更・Worker deployはこの実装では行わない。
 
@@ -13,11 +13,15 @@
 
 standingsは`migrations/0003_d1_standings_publication.sql`と`import-standings.mjs`で、snapshot/group/row/publicationを1 transactionで登録する。publicationはrows/groups/snapshotの変更triggerで失効し、Workerは件数・identity digest・closed contractを再検証する。
 
-fixture detailは既存`FixtureRepository`をWorkerから利用する。公開revisionがD1にあれば2.1 DTOを再構築し、detail archiveがR2に残るfixtureはD1のarchive metadata（key・sha256）を検証して読む。未知fixture、別fixtureのR2、壊れたJSONは誤entityへfallbackせずfail closedする。
+fixture detailは既存`FixtureRepository`をWorkerから利用する。公開revisionがD1にあれば2.1 DTOを再構築し、detail archiveがR2に残るfixtureはD1のarchive metadata（key・sha256）を検証して読む。未知fixture、別fixtureのR2、壊れたJSONは誤entityへfallbackせずfail closedする。R2の通常・degraded経路は、`fixture-dto.js`の実生成形状から生成した`shared/fixture-detail-contract.mjs`でrootとnestedの未知fieldを拒否する。2.0 artifactだけは、当時存在しなかったroot `detailAvailability`をoptionalとして維持する。
+
+fixture degraded応答の`lastSuccessfulAt`は`fixture.reconciledAt`を使用する。date index / standingsの`generatedAt`が集合またはsnapshotを生成した時刻であるのに対し、これは**同一fixture revisionを最後に照合・公開した時刻**を意味する。
 
 ## 継続移行経路
 
-standings、単一fixture、日付feedの各publisherは、R2公開完了後にのみD1 admin ingestを呼び出せる。D1 mirrorは`D1_ADMIN_PUBLISH_ENABLED == 'true'`に加えて`d1-staging` environmentを要求する別jobであり、R2/API取得jobへadmin tokenを渡さない。Cloudflare resource、secret、environment、flagは本実装では作成・変更していない。
+standings、単一fixture、日付feedの各publisherは、R2公開完了後にのみD1 admin ingestを呼び出せる。D1 mirrorは`D1_ADMIN_PUBLISH_ENABLED == 'true'`に加えて`d1-staging` environmentを要求する別jobであり、R2/API取得jobへadmin tokenを渡さない。
+
+6本のstaging書込みworkflowは、job開始後に解決されたD1 database name/UUID、admin Worker名、R2 bucket名、admin URL originを`config/d1-targets.json`のreview済み値とexact matchしてから書き込む。命名規則や`staging`部分一致をidentity proofには使わない。manifestにはCloudflare Dashboardで確認したD1 database name/UUID、R2 bucket名、Workers account subdomainと、staging provisionが作成するadmin Worker名および決定論的な`workers.dev` originを固定している。`verify-d1-target.mjs`は1項目でも不一致なら書込み前にhard failする。admin Workerの配備、secret、GitHub environment、flagは本実装では作成・変更していない。
 
 fixture revisionはR2を権威とする。取得時刻だけの差はrevisionを増やさず保存済みR2 bytesを維持し、実内容が変わった場合だけ増分する。D1初回移行時はR2 revisionが1より大きくても保持し、既存D1最大revision以下の巻き戻しだけを拒否する。
 
