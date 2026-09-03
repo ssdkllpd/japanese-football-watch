@@ -4,11 +4,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createClientFromEnv } = require('../api-football/client');
 const {
-  CONTRACT_VERSION,
   PROVIDER,
   afId,
   seasonId,
 } = require('./fixture-contract');
+
+const STANDINGS_CONTRACT_VERSION = '2.0.0';
 
 function parseArgs(argv) {
   const result = {};
@@ -133,7 +134,7 @@ function normalizeStandings(providerRows, options = {}) {
   });
 
   return {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: STANDINGS_CONTRACT_VERSION,
     competition: {
       id: afId('competition', competitionProviderId),
       providerId: competitionProviderId,
@@ -159,7 +160,9 @@ function normalizeStandings(providerRows, options = {}) {
 
 function validateStandings(snapshot) {
   const errors = [];
-  if (snapshot?.contractVersion !== CONTRACT_VERSION) errors.push(`contractVersion must be ${CONTRACT_VERSION}`);
+  if (snapshot?.contractVersion !== STANDINGS_CONTRACT_VERSION) {
+    errors.push(`contractVersion must be ${STANDINGS_CONTRACT_VERSION}`);
+  }
   if (!snapshot?.competition?.id?.startsWith('af:competition:')) errors.push('competition.id is required.');
   if (!snapshot?.season?.id?.startsWith('af:season:')) errors.push('season.id is required.');
   for (const group of snapshot?.groups || []) {
@@ -196,7 +199,7 @@ function writeStandings(outputDir, snapshot, metadata = {}) {
   const latestKey = standingsLatestKey(snapshot.competition.id, snapshot.season.id);
   const snapshotKey = standingsSnapshotKey(snapshot.competition.id, snapshot.season.id, snapshot.generatedAt);
   const manifest = {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: STANDINGS_CONTRACT_VERSION,
     competitionId: snapshot.competition.id,
     seasonId: snapshot.season.id,
     fetchedAt: snapshot.generatedAt,
@@ -237,6 +240,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  STANDINGS_CONTRACT_VERSION,
   normalizeRecordScope,
   normalizeStandingRow,
   normalizeStandings,

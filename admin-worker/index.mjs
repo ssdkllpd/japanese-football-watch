@@ -215,21 +215,21 @@ function writeStatements(database, season, payload, sourceKey, sourceSha256, ide
     const rowValues = `(
       (SELECT id FROM standings_snapshots WHERE competition_season_id = ? AND observed_at = ?),
       (SELECT id FROM teams WHERE canonical_id = ?),
-      ${Array.from({ length: 33 }, () => '?').join(', ')}
+      ${Array.from({ length: 31 }, () => '?').join(', ')}
     )`;
     statements.push(statement(database, `
       INSERT INTO standings_rows(
-        snapshot_id, team_id, group_name, rank, points, played, goal_difference, form,
-        group_id, group_order, row_order, wins, draws, losses, goals_for, goals_against,
+        snapshot_id, team_id, rank, points, played, goal_difference, form,
+        group_id, row_order, wins, draws, losses, goals_for, goals_against,
         home_played, home_wins, home_draws, home_losses, home_goals_for, home_goals_against,
         away_played, away_wins, away_draws, away_losses, away_goals_for, away_goals_against,
         status, description, updated_at, provenance_source, provenance_fetched_at,
         provenance_verification, provenance_issues_json
       ) VALUES ${group.map(() => rowValues).join(', ')}
     `, group.flatMap(({ row, group: standingsGroup, rowOrder }) => [
-      ...snapshotParams, row.team.id, standingsGroup.name, row.rank, row.points,
-      row.overall.played, row.goalDifference, row.form, standingsGroup.id, standingsGroup.groupOrder,
-      rowOrder, row.overall.wins, row.overall.draws, row.overall.losses,
+      ...snapshotParams, row.team.id, row.rank, row.points,
+      row.overall.played, row.goalDifference, row.form, standingsGroup.id, rowOrder,
+      row.overall.wins, row.overall.draws, row.overall.losses,
       row.overall.goalsFor, row.overall.goalsAgainst, ...scopes(row.home), ...scopes(row.away),
       row.status, row.description, row.updatedAt, row.provenance.source, row.provenance.fetchedAt,
       row.provenance.verification, JSON.stringify(row.provenance.issues),

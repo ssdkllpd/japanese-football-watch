@@ -191,7 +191,8 @@ test('all six staging write workflows prove the same exact target before their f
 
 test('migrations keep foreign key enforcement active for local SQLite drivers', () => {
   const { DatabaseSync } = require('node:sqlite');
-  const files = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql', '0003_d1_standings_publication.sql'];
+  const files = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql',
+    '0003_d1_standings_publication.sql', '0004_d1_standings_order_and_fixture_date.sql'];
   const database = new DatabaseSync(':memory:');
   for (const file of files) database.exec(fs.readFileSync(path.join(root, 'migrations', file), 'utf8'));
   assert.equal(database.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);

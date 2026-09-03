@@ -14,6 +14,8 @@ const {
   validateFixtureBundle,
 } = require('./fixture-contract');
 
+const DATE_INDEX_CONTRACT_VERSION = '2.0.0';
+
 function parseArgs(argv) {
   const result = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -84,7 +86,7 @@ function buildDateFeed(providerFixtures, options = {}) {
     || compareText(a.fixture.id, b.fixture.id));
   const entries = bundles.map(feedEntry);
   const dateIndex = {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: DATE_INDEX_CONTRACT_VERSION,
     timeZone: PRODUCT_TIME_ZONE,
     date,
     fixtures: entries,
@@ -98,7 +100,7 @@ function buildDateFeed(providerFixtures, options = {}) {
     const competitionId = bundle.competition.id;
     if (!byCompetition.has(competitionId)) {
       byCompetition.set(competitionId, {
-        contractVersion: CONTRACT_VERSION,
+        contractVersion: DATE_INDEX_CONTRACT_VERSION,
         timeZone: PRODUCT_TIME_ZONE,
         date,
         competition: { ...entry.competition },
@@ -181,7 +183,7 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
   }
 
   const manifest = {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: DATE_INDEX_CONTRACT_VERSION,
     date: feed.date,
     fetchedAt: feed.fetchedAt,
     query: metadata.query || null,
@@ -225,6 +227,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  DATE_INDEX_CONTRACT_VERSION,
   assertDate,
   buildDateFeed,
   competitionDateIndexKey,

@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const {
+  STANDINGS_CONTRACT_VERSION,
   normalizeStandings,
   standingsLatestKey,
   standingsSnapshotKey,
@@ -58,6 +59,8 @@ test('standings normalization keeps provider-native identity and explicit zero v
     fetchedAt: '2026-08-22T02:00:00Z',
   });
 
+  assert.equal(STANDINGS_CONTRACT_VERSION, '2.0.0');
+  assert.equal(snapshot.contractVersion, '2.0.0');
   assert.equal(snapshot.competition.id, 'af:competition:39');
   assert.equal(snapshot.season.id, 'af:season:39:2026');
   assert.equal(snapshot.groups[0].table[0].team.id, 'af:team:40');
