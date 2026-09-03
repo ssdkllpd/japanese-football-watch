@@ -285,6 +285,13 @@ test('legacy enrichment with no canonical UTC kickoff fails closed before any wr
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM fixtures').get().count, 0);
 });
 
+test('the importer rejects a JST date that does not match the UTC kickoff', () => {
+  const bundle = fixtureBundle();
+  bundle.fixture.dateJst = '2026-08-21';
+
+  assert.throws(() => validateBundle(bundle, catalog()), /Asia\/Tokyo calendar date/);
+});
+
 test('the importer rejects pre-2.1 bundles instead of silently upcasting persisted data', () => {
   const oldBundle = fixtureBundle();
   oldBundle.contractVersion = '2.0.0';

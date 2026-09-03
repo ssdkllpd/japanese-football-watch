@@ -125,6 +125,10 @@ function validateRawUtcTimes(bundle) {
   }
 }
 
+function dateJstFromKickoffUtc(kickoffUtc) {
+  return new Date(Date.parse(kickoffUtc) + (9 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+}
+
 function validateBundle(bundle, catalog = {}) {
   validateRawUtcTimes(bundle);
   if (bundle?.contractVersion !== '2.1.0') throw new Error('Fixture bundle contractVersion must be 2.1.0.');
@@ -140,6 +144,9 @@ function validateBundle(bundle, catalog = {}) {
   const publishedAt = requireUtc(fixture.reconciledAt, 'fixture.reconciledAt');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fixture.dateJst || '')) throw new Error('fixture.dateJst must be YYYY-MM-DD.');
   if (fixture.productTimeZone !== 'Asia/Tokyo') throw new Error('fixture.productTimeZone must be Asia/Tokyo.');
+  if (fixture.dateJst !== dateJstFromKickoffUtc(kickoffUtc)) {
+    throw new Error('fixture.dateJst must be the Asia/Tokyo calendar date of fixture.kickoffUtc.');
+  }
   if (!INGESTION_STATES.has(fixture.ingestionState)) throw new Error('fixture.ingestionState is invalid.');
   requireValue(fixture.status?.short, 'fixture.status.short');
   const source = requireValue(fixture.provenance?.source, 'fixture.provenance.source');

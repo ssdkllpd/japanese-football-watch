@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {
+  DATE_INDEX_CONTRACT_VERSION,
   buildDateFeed,
   competitionDateIndexKey,
   writeDateFeed,
@@ -51,6 +52,9 @@ test('generic date feed groups fixtures by competition and keeps competition pre
     fetchedAt: '2026-08-21T22:00:00Z',
   });
 
+  assert.equal(DATE_INDEX_CONTRACT_VERSION, '2.0.0');
+  assert.equal(feed.dateIndex.contractVersion, '2.0.0');
+  assert.equal(feed.bundles[0].contractVersion, '2.1.0');
   assert.equal(feed.dateIndex.fixtures.length, 2);
   assert.deepEqual(feed.dateIndex.fixtures.map(row => row.competition.name), ['Premier League', 'Bundesliga']);
   assert.equal(feed.competitionIndexes.length, 2);

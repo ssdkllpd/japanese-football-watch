@@ -171,8 +171,8 @@ function writeArtifact(database, declaration, artifact) {
   `);
   const insertRow = database.prepare(`
     INSERT INTO standings_rows(
-      snapshot_id, team_id, group_name, rank, points, played, goal_difference, form,
-      group_id, group_order, row_order, wins, draws, losses, goals_for, goals_against,
+      snapshot_id, team_id, rank, points, played, goal_difference, form,
+      group_id, row_order, wins, draws, losses, goals_for, goals_against,
       home_played, home_wins, home_draws, home_losses, home_goals_for, home_goals_against,
       away_played, away_wins, away_draws, away_losses, away_goals_for, away_goals_against,
       status, description, updated_at, provenance_source, provenance_fetched_at,
@@ -180,7 +180,7 @@ function writeArtifact(database, declaration, artifact) {
     ) VALUES (
       ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16,
       ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30,
-      ?31, ?32, ?33, ?34, ?35
+      ?31, ?32, ?33
     )
   `);
   let rowCount = 0;
@@ -195,9 +195,9 @@ function writeArtifact(database, declaration, artifact) {
         VALUES (?1, ?2)
       `).run(season.id, teamId);
       insertRow.run(
-        snapshot.id, teamId, group.name, row.rank, row.points,
+        snapshot.id, teamId, row.rank, row.points,
         row.overall.played, row.goalDifference, row.form,
-        group.id, groupOrder, rowOrder,
+        group.id, rowOrder,
         ...scopeValues(row.overall).slice(1),
         ...scopeValues(row.home),
         ...scopeValues(row.away),

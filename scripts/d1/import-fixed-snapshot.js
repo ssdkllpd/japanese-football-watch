@@ -20,6 +20,7 @@ function ensureSchema(database, rootDirectory) {
     '0001_d1_core.sql',
     '0002_d1_date_index_coverage.sql',
     '0003_d1_standings_publication.sql',
+    '0004_d1_standings_order_and_fixture_date.sql',
   ]) {
     database.exec(fs.readFileSync(path.join(rootDirectory, 'migrations', file), 'utf8'));
   }
