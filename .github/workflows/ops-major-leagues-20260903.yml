@@ -1,0 +1,88 @@
+name: One-time Major League Data Fetch 2026-09-03
+
+on:
+  push:
+    branches:
+      - ops/major-leagues-20260903
+    paths:
+      - .github/workflows/ops-major-leagues-20260903.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-major-leagues:
+    runs-on: ubuntu-latest
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - name: Checkout isolated operations branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate API-Football secret
+        shell: bash
+        run: |
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY secret is required'; exit 1; }
+
+      - name: Fetch standings and September 3 fixtures for tracked major leagues
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tmp/major-leagues-20260903
+          mkdir -p "$root/standings" "$root/date-feeds"
+          leagues=(
+            "39:Premier-League"
+            "40:EFL-Championship"
+            "78:Bundesliga"
+            "144:Belgian-Pro-League"
+            "88:Eredivisie"
+            "140:La-Liga"
+            "61:Ligue-1"
+            "135:Serie-A"
+            "179:Scottish-Premiership"
+            "94:Primeira-Liga"
+          )
+          for item in "${leagues[@]}"; do
+            league="${item%%:*}"
+            slug="${item#*:}"
+            node scripts/v2/fetch-standings.js               --league "$league"               --season 2026               --out "$root/standings/$league-$slug"
+            node scripts/v2/fetch-date-feed.js               --date 2026-09-03               --league "$league"               --season 2026               --out "$root/date-feeds/$league-$slug"
+          done
+
+      - name: Write fetch summary
+        shell: bash
+        run: |
+          root=.tmp/major-leagues-20260903
+          jq -s '{
+            season: 2026,
+            date: "2026-09-03",
+            standings: map({
+              competitionId,
+              seasonId,
+              groupCount,
+              rowCount,
+              quota
+            })
+          }' "$root"/standings/*/manifest.json > "$root/summary.json"
+          jq -s 'map({
+            date,
+            query,
+            fixtureCount,
+            competitionCount,
+            quota
+          })' "$root"/date-feeds/*/manifest.json > "$root/date-feed-summary.json"
+          jq '{season, date, standingsCount: (.standings | length), totalStandingRows: ([.standings[].rowCount] | add)}' "$root/summary.json"
+
+      - name: Upload normalized major-league data
+        uses: actions/upload-artifact@v4
+        with:
+          name: major-leagues-20260903
+          path: .tmp/major-leagues-20260903
+          if-no-files-found: error
+          retention-days: 7
