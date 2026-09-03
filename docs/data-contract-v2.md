@@ -132,6 +132,15 @@ The D1/R2 read-path migration introduces one backward-compatible top-level field
 
 The 2.0.0 -> 2.1.0 upcaster supplies `detailAvailability: "available"` because every valid 2.0.0 bundle was produced as a complete fixture artifact. Before the D1 endpoint is enabled, `CONTRACT_VERSION`, `normalizeFixtureBundle`, `validateFixtureBundle`, Worker DTO builders and their tests must move to 2.1.0 in one implementation commit. A 2.1.0 validator rejects values outside `available` / `unavailable`; it does not require the field when validating a 2.0.0 archive through the upcaster. Until that Phase 1 commit, the current 2.0.0 runtime remains unchanged.
 
+### Closed objects and extension maps
+
+The fixture bundle is closed at the root and at every fixed DTO object. R2-backed normal, not-migrated and degraded responses must reject unknown fixed fields before serving a payload. Four maps are intentionally open by key because their keys are data rather than DTO field names:
+
+- `teamStats[].values` and `playerStats[].values` preserve provider-defined statistic names.
+- root `overrides` and `fieldIssues` use canonical field paths as correction keys.
+
+These extension maps do not permit arbitrary enclosing DTO fields. Their values remain constrained by the generated fixture-detail schema where a structured value schema exists. D1 reconstructs the same four maps, so this openness is part of the shared D1/R2 public contract rather than a fallback exception.
+
 ## 5. Competition and Season
 
 Season identity is scoped to a competition.
@@ -317,6 +326,8 @@ football/v2/indexes/competition/{competitionId}/date-jst/{YYYY-MM-DD}.json
 ```
 
 Date-index fixtureは`kickoffUtc`、同時刻では`fixtureId`のcode-point順で並べる。competition-scoped indexはroot `competition`を必須とする。generic／competitionの期待scopeはpayload自身から導出せず、publisher、merge CLI、coverage plan、Worker routeが外部入力として必ず指定する。publisher、D1 coverage importer、Worker degraded fallbackは`shared/date-index-contract.mjs`のclosed-schema validatorを使用し、許可されていないroot／fixture／nested fieldを公開しない。
+
+Fixture detailの通常R2／R2 degraded fallbackもclosed schemaで検証し、rootだけでなくfixture、status、teams、venue、score、competition、season、lineup、event、team/player statsの未知fieldを公開しない。schemaは`fixture-dto.js`のavailable/unavailable生成形状から生成し、手書きallowlistとの差分を許さない。2.0.0 artifactではroot `detailAvailability`のみ後方互換のためoptionalとする。degraded応答の`lastSuccessfulAt`は同一fixture revisionを最後に照合・公開した`fixture.reconciledAt`であり、date/standingsの集合生成時刻とは意味が異なる。
 
 R2 mergeは宛先scopeと更新方式を明示する。完全なdateまたはcompetition取得は`replace`、league限定generic取得は`replace-scope`として当該competitionの旧fixtureを除去してから置換する。単純`upsert`は削除を表現しないため、権威集合更新として暗黙には使用しない。
 

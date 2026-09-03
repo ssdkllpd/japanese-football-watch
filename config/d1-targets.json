@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "jfw-d1-targets/1",
+  "targets": {
+    "staging": {
+      "environment": "d1-staging",
+      "d1DatabaseName": "jfw-football-staging",
+      "d1DatabaseId": "fdfd74e4-2702-4aa2-ab20-c062e952fe25",
+      "adminWorkerName": "jfw-football-admin-ingest-staging",
+      "r2BucketName": "jfw-football-data",
+      "adminEndpointOrigin": "https://jfw-football-admin-ingest-staging.ssdkllpd.workers.dev"
+    }
+  }
+}

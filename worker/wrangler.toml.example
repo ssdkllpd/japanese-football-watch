@@ -25,5 +25,7 @@ LIVE_COMPETITION_IDS = ""
 # failure-injection evidence has passed formal review.
 D1_DATE_INDEX_ENABLED = "false"
 D1_COMPETITION_DATE_INDEX_ENABLED = "false"
+D1_STANDINGS_ENABLED = "false"
+D1_FIXTURE_DETAIL_ENABLED = "false"
 # Date-index responses use the Worker's built-in caches.default. No KV/cache
 # binding is required; keep both flags false until coverage and review pass.

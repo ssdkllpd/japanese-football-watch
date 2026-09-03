@@ -66,3 +66,69 @@ jobs:
           name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
           path: .tmp/v2/standings
           if-no-files-found: error
+
+  mirror-standings-to-d1:
+    needs: ingest-standings
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify exact reviewed staging target
+        id: target
+        env:
+          D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+        run: |
+          if [ "$D1_ADMIN_PUBLISH_ENABLED" != 'true' ]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          echo "ADMIN_INGEST_URL=$ADMIN_INGEST_URL" >> "$GITHUB_ENV"
+
+      - name: Download normalized standings artifact
+        if: steps.target.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-standings-${{ inputs.league }}-${{ inputs.season }}
+          path: .tmp/v2/standings
+
+      - name: Mirror standings through protected admin ingest
+        if: steps.target.outputs.enabled == 'true'
+        shell: bash
+        env:
+          ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+        run: |
+          test -n "$ADMIN_INGEST_URL" || { echo 'ADMIN_INGEST_URL is required'; exit 1; }
+          test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }
+          jq '{
+            schemaVersion: "jfw-d1-admin-ingest-plan/1",
+            fixtures: [],
+            standings: [{competitionId, seasonId}],
+            dateIndexCoverages: [],
+            expectedTotals: null
+          }' .tmp/v2/standings/manifest.json > .tmp/v2/standings/d1-admin-plan.json
+          node scripts/d1/request-admin-ingest.mjs \
+            --url "$ADMIN_INGEST_URL" \
+            --plan .tmp/v2/standings/d1-admin-plan.json \
+            --report .tmp/v2/standings/d1-admin-report.json
+
+      - name: Upload D1 mirror evidence
+        if: always() && steps.target.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-standings-${{ inputs.league }}-${{ inputs.season }}-${{ github.sha }}
+          path: .tmp/v2/standings/d1-admin-*.json
+          if-no-files-found: error

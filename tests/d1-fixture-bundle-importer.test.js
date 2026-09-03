@@ -244,23 +244,35 @@ test('identical published content is a no-op with no new revision', t => {
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 1);
 });
 
-test('invalid next revision rolls the attempted replacement back to the published snapshot', async t => {
+test('non-monotonic revision rolls the attempted replacement back to the published snapshot', async t => {
   const database = createDatabase();
   t.after(() => database.close());
   const original = fixtureBundle();
   importFixtureBundle(database, original, catalog(), corrections(original));
   const invalid = fixtureBundle();
-  invalid.fixture.revision = 3;
+  invalid.fixture.revision = 1;
   invalid.fixture.score.goals.home = 4;
 
   assert.throws(() => importFixtureBundle(database, invalid, catalog(), corrections(invalid)),
-    /next revision \(2\)/);
+    /greater than the latest D1 revision \(1\)/);
   const resolved = await new FixtureRepository(createLocalD1(database))
     .resolveFixture(original.fixture.id);
 
   assert.equal(compareFixtureBundles(original, resolved.bundle).equal, true);
   assert.equal(database.prepare(`SELECT COUNT(*) AS count FROM fixture_revisions
     WHERE lifecycle_state = 'published'`).get().count, 1);
+});
+
+test('R2-authoritative revision may advance across a D1 history gap', t => {
+  const database = createDatabase();
+  t.after(() => database.close());
+  const bundle = fixtureBundle();
+  bundle.fixture.revision = 3;
+
+  const result = importFixtureBundle(database, bundle, catalog(), corrections(bundle));
+
+  assert.equal(result.imported, true);
+  assert.equal(database.prepare('SELECT revision_no FROM fixture_revisions').get().revision_no, 3);
 });
 
 test('legacy enrichment with no canonical UTC kickoff fails closed before any writes', t => {
@@ -271,6 +283,13 @@ test('legacy enrichment with no canonical UTC kickoff fails closed before any wr
 
   assert.throws(() => validateBundle(incomplete, catalog()), /UTC ISO timestamp/);
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM fixtures').get().count, 0);
+});
+
+test('the importer rejects a JST date that does not match the UTC kickoff', () => {
+  const bundle = fixtureBundle();
+  bundle.fixture.dateJst = '2026-08-21';
+
+  assert.throws(() => validateBundle(bundle, catalog()), /Asia\/Tokyo calendar date/);
 });
 
 test('the importer rejects pre-2.1 bundles instead of silently upcasting persisted data', () => {

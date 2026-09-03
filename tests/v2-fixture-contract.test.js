@@ -89,7 +89,17 @@ test('general fixture contract uses provider-native IDs, UTC canonical time and 
   assert.equal(bundle.fixture.dateJst, '2026-08-22');
   assert.equal(bundle.fixture.productTimeZone, 'Asia/Tokyo');
   assert.equal(bundle.fixture.ingestionState, 'finalized');
+  assert.equal(bundle.contractVersion, '2.1.0');
+  assert.equal(bundle.detailAvailability, 'available');
   assert.deepEqual(contract.validateFixtureBundle(bundle), []);
+});
+
+test('2.1 fixture publisher rejects a bundle with missing or invalid detail availability', () => {
+  const missing = contract.normalizeFixtureBundle(sampleFixture());
+  delete missing.detailAvailability;
+  assert.deepEqual(contract.validateFixtureBundle(missing), ['detailAvailability must be available or unavailable']);
+  missing.detailAvailability = 'partial';
+  assert.deepEqual(contract.validateFixtureBundle(missing), ['detailAvailability must be available or unavailable']);
 });
 
 test('all players are normalized as general football facts without a Japanese registry gate', () => {

@@ -1,0 +1,74 @@
+name: D1 Staging Data Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_path:
+        description: Repository-relative jfw-d1-admin-ingest-plan/1 JSON file
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-staging-data-migrate
+  cancel-in-progress: false
+
+jobs:
+  publish-declared-data:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    env:
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      PLAN_PATH: ${{ inputs.plan_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify exact reviewed staging target
+        env:
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+        run: |
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          echo "ADMIN_INGEST_URL=$ADMIN_INGEST_URL" >> "$GITHUB_ENV"
+
+      - name: Validate protected plan and endpoint
+        shell: bash
+        run: |
+          test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }
+          test -n "$ADMIN_INGEST_URL" || { echo 'ADMIN_INGEST_URL is required'; exit 1; }
+          case "$PLAN_PATH" in
+            /*) echo 'plan_path must be repository-relative'; exit 1 ;;
+          esac
+          plan_real=$(realpath "$PLAN_PATH")
+          workspace_real=$(realpath "$GITHUB_WORKSPACE")
+          case "$plan_real" in
+            "$workspace_real"/*) ;;
+            *) echo 'plan_path escapes the repository'; exit 1 ;;
+          esac
+
+      - name: Publish externally declared migration plan
+        run: |
+          mkdir -p .tmp/d1-data-migrate
+          node scripts/d1/request-admin-ingest.mjs \
+            --url "$ADMIN_INGEST_URL" \
+            --plan "$PLAN_PATH" \
+            --report .tmp/d1-data-migrate/report.json
+
+      - name: Upload migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-staging-data-migrate-${{ github.sha }}
+          path: .tmp/d1-data-migrate
+          if-no-files-found: error
