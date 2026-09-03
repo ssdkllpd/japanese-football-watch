@@ -6,6 +6,7 @@ on:
       - ops/major-leagues-20260903
     paths:
       - .github/workflows/ops-major-leagues-20260903.yml
+      - scripts/v2/fetch-standings.js
   workflow_dispatch:
 
 permissions:
