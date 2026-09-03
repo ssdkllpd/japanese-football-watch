@@ -108,6 +108,33 @@ test('v4 standings schema makes served order and group identity structural invar
   assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
+test('v4 preserves an existing publication and uses a D1-safe canonical timestamp check', t => {
+  const database = open(3);
+  t.after(() => database.close());
+  seedStandings(database);
+  database.exec(`
+    INSERT INTO standings_rows(
+      snapshot_id, team_id, group_name, group_id, group_order, row_order
+    ) VALUES (1, 1, 'Overall', 'group:overall', 0, 0);
+    INSERT INTO standings_publications(
+      competition_season_id, snapshot_id, row_count, identity_digest,
+      generated_at, source_r2_key, source_sha256
+    ) VALUES (
+      1, 1, 1, '${'a'.repeat(64)}', '2026-09-03T00:00:00.000Z', 'key', '${'b'.repeat(64)}'
+    );
+  `);
+
+  database.exec(migrationSql[3]);
+
+  assert.equal(database.prepare('SELECT count(*) AS count FROM standings_publications').get().count, 1);
+  const publicationSql = database.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'standings_publications'`).get().sql;
+  assert.equal(publicationSql.includes("generated_at GLOB '[0-9]"), false);
+  assert.match(publicationSql, /strftime\('%Y-%m-%dT%H:%M:%fZ', generated_at\) IS generated_at/);
+  assert.throws(() => database.exec(`UPDATE standings_publications
+    SET generated_at = '2026-09-03T00:00:00Z'`), /CHECK constraint failed/);
+});
+
 test('v4 rejects fixture dates that are not derived from the UTC kickoff', t => {
   const database = open();
   t.after(() => database.close());

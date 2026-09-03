@@ -1,5 +1,69 @@
 PRAGMA foreign_keys = ON;
 
+-- standings_publications is referenced by triggers owned by several other
+-- tables. Drop and recreate those triggers around the leaf-table rebuild so
+-- SQLite never retains a trigger body bound to the removed table object.
+DROP TRIGGER standings_publication_invalidate_group_insert;
+DROP TRIGGER standings_publication_invalidate_group_update;
+DROP TRIGGER standings_publication_invalidate_group_delete;
+DROP TRIGGER standings_publication_invalidate_row_insert;
+DROP TRIGGER standings_publication_invalidate_row_update;
+DROP TRIGGER standings_publication_invalidate_row_delete;
+DROP TRIGGER standings_publication_invalidate_snapshot_update;
+DROP TRIGGER standings_publication_season_match_insert;
+DROP TRIGGER standings_publication_season_match_update;
+DROP TRIGGER standings_publication_invalidate_season_scope_update;
+DROP TRIGGER standings_publication_invalidate_competition_identity_update;
+
+-- D1 rejects the long timestamp GLOB from migration 0003 as a pattern that is
+-- too complex. Rebuild only this leaf table and retain the stricter canonical
+-- strftime check, which covers both shape and calendar validity.
+CREATE TABLE standings_publications_v4 (
+  competition_season_id INTEGER PRIMARY KEY
+    REFERENCES competition_seasons(id) ON DELETE CASCADE,
+  snapshot_id INTEGER NOT NULL UNIQUE
+    REFERENCES standings_snapshots(id) ON DELETE CASCADE,
+  row_count INTEGER NOT NULL CHECK (row_count >= 0),
+  identity_digest TEXT NOT NULL CHECK (
+    length(identity_digest) = 64 AND identity_digest NOT GLOB '*[^0-9a-f]*'
+  ),
+  generated_at TEXT NOT NULL CHECK (
+    strftime('%Y-%m-%dT%H:%M:%fZ', generated_at) IS generated_at
+  ),
+  source_r2_key TEXT NOT NULL,
+  source_sha256 TEXT NOT NULL CHECK (
+    length(source_sha256) = 64 AND source_sha256 NOT GLOB '*[^0-9a-f]*'
+  )
+) WITHOUT ROWID;
+
+INSERT INTO standings_publications_v4(
+  competition_season_id, snapshot_id, row_count, identity_digest,
+  generated_at, source_r2_key, source_sha256
+)
+SELECT competition_season_id, snapshot_id, row_count, identity_digest,
+  generated_at, source_r2_key, source_sha256
+FROM standings_publications;
+
+DROP TABLE standings_publications;
+ALTER TABLE standings_publications_v4 RENAME TO standings_publications;
+
+-- The two table-owned scope guards are removed with the old leaf table.
+CREATE TRIGGER standings_publication_season_match_insert
+BEFORE INSERT ON standings_publications
+WHEN (SELECT competition_season_id FROM standings_snapshots WHERE id = NEW.snapshot_id)
+  IS NOT NEW.competition_season_id
+BEGIN
+  SELECT RAISE(ABORT, 'standings publication season does not match its snapshot season');
+END;
+
+CREATE TRIGGER standings_publication_season_match_update
+BEFORE UPDATE ON standings_publications
+WHEN (SELECT competition_season_id FROM standings_snapshots WHERE id = NEW.snapshot_id)
+  IS NOT NEW.competition_season_id
+BEGIN
+  SELECT RAISE(ABORT, 'standings publication season does not match its snapshot season');
+END;
+
 -- Keep one source of truth for standings group identity and display order.
 -- Preflight must prove group_id and row_order contain no NULL values before
 -- this migration is applied to a populated database.
@@ -80,6 +144,47 @@ CREATE TRIGGER standings_publication_invalidate_row_delete
 AFTER DELETE ON standings_rows
 BEGIN
   DELETE FROM standings_publications WHERE snapshot_id = OLD.snapshot_id;
+END;
+
+CREATE TRIGGER standings_publication_invalidate_group_insert
+AFTER INSERT ON standings_groups
+BEGIN
+  DELETE FROM standings_publications WHERE snapshot_id = NEW.snapshot_id;
+END;
+
+CREATE TRIGGER standings_publication_invalidate_group_update
+AFTER UPDATE ON standings_groups
+BEGIN
+  DELETE FROM standings_publications WHERE snapshot_id IN (OLD.snapshot_id, NEW.snapshot_id);
+END;
+
+CREATE TRIGGER standings_publication_invalidate_group_delete
+AFTER DELETE ON standings_groups
+BEGIN
+  DELETE FROM standings_publications WHERE snapshot_id = OLD.snapshot_id;
+END;
+
+CREATE TRIGGER standings_publication_invalidate_snapshot_update
+AFTER UPDATE ON standings_snapshots
+BEGIN
+  DELETE FROM standings_publications WHERE snapshot_id IN (OLD.id, NEW.id);
+END;
+
+CREATE TRIGGER standings_publication_invalidate_season_scope_update
+AFTER UPDATE OF competition_id, canonical_id ON competition_seasons
+WHEN OLD.competition_id IS NOT NEW.competition_id
+  OR OLD.canonical_id IS NOT NEW.canonical_id
+BEGIN
+  DELETE FROM standings_publications WHERE competition_season_id = NEW.id;
+END;
+
+CREATE TRIGGER standings_publication_invalidate_competition_identity_update
+AFTER UPDATE OF canonical_id ON competitions
+WHEN OLD.canonical_id IS NOT NEW.canonical_id
+BEGIN
+  DELETE FROM standings_publications WHERE competition_season_id IN (
+    SELECT id FROM competition_seasons WHERE competition_id = NEW.id
+  );
 END;
 
 -- fixtures is deliberately not rebuilt: its child graph contains cascading
