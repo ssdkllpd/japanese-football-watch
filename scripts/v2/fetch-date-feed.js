@@ -14,6 +14,8 @@ const {
   validateFixtureBundle,
 } = require('./fixture-contract');
 
+const DATE_INDEX_CONTRACT_VERSION = '2.0.0';
+
 function parseArgs(argv) {
   const result = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -38,6 +40,12 @@ function assertDate(value) {
 
 function responseArray(result) {
   return Array.isArray(result?.data?.response) ? result.data.response : [];
+}
+
+function compareText(left, right) {
+  const a = String(left ?? '');
+  const b = String(right ?? '');
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function competitionDateIndexKey(competitionId, dateJst) {
@@ -74,10 +82,11 @@ function buildDateFeed(providerFixtures, options = {}) {
     bundles.push(bundle);
   }
 
-  bundles.sort((a, b) => String(a.fixture.kickoffUtc || '').localeCompare(String(b.fixture.kickoffUtc || '')));
+  bundles.sort((a, b) => compareText(a.fixture.kickoffUtc, b.fixture.kickoffUtc)
+    || compareText(a.fixture.id, b.fixture.id));
   const entries = bundles.map(feedEntry);
   const dateIndex = {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: DATE_INDEX_CONTRACT_VERSION,
     timeZone: PRODUCT_TIME_ZONE,
     date,
     fixtures: entries,
@@ -91,7 +100,7 @@ function buildDateFeed(providerFixtures, options = {}) {
     const competitionId = bundle.competition.id;
     if (!byCompetition.has(competitionId)) {
       byCompetition.set(competitionId, {
-        contractVersion: CONTRACT_VERSION,
+        contractVersion: DATE_INDEX_CONTRACT_VERSION,
         timeZone: PRODUCT_TIME_ZONE,
         date,
         competition: { ...entry.competition },
@@ -130,6 +139,10 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
     key: r2DateIndexKey(feed.date),
     file: 'date-index.json',
     merge: 'date_index',
+    mergeScope: 'generic',
+    mergeMode: metadata.query?.league ? 'replace-scope' : 'replace',
+    mergeReplaceCompetitionId: metadata.query?.league
+      ? `af:competition:${metadata.query.league}` : null,
   });
 
   for (const index of feed.competitionIndexes) {
@@ -142,6 +155,8 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
       key: competitionDateIndexKey(competitionId, feed.date),
       file,
       merge: 'date_index',
+      mergeScope: competitionId,
+      mergeMode: 'replace',
     });
   }
 
@@ -168,7 +183,7 @@ function writeDateFeed(outputDir, feed, metadata = {}) {
   }
 
   const manifest = {
-    contractVersion: CONTRACT_VERSION,
+    contractVersion: DATE_INDEX_CONTRACT_VERSION,
     date: feed.date,
     fetchedAt: feed.fetchedAt,
     query: metadata.query || null,
@@ -192,6 +207,14 @@ async function main() {
   const client = createClientFromEnv(process.env);
   const result = await client.get('fixtures', query);
   const feed = buildDateFeed(responseArray(result), { date, fetchedAt: new Date().toISOString() });
+  const { assertValidDateIndexPayload } = await import('../../shared/date-index-contract.mjs');
+  assertValidDateIndexPayload(feed.dateIndex, { expectedDate: date, expectedCompetitionId: null });
+  for (const index of feed.competitionIndexes) {
+    assertValidDateIndexPayload(index, {
+      expectedDate: date,
+      expectedCompetitionId: index.competition.id,
+    });
+  }
   const manifest = writeDateFeed(outputDir, feed, { query, quota: result.quota });
   process.stdout.write(`${JSON.stringify({ outputDir, manifest }, null, 2)}\n`);
 }
@@ -204,6 +227,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  DATE_INDEX_CONTRACT_VERSION,
   assertDate,
   buildDateFeed,
   competitionDateIndexKey,

@@ -1,6 +1,6 @@
 'use strict';
 
-const CONTRACT_VERSION = '2.0.0';
+const CONTRACT_VERSION = '2.1.0';
 const PROVIDER = 'api-football';
 const PRODUCT_TIME_ZONE = 'Asia/Tokyo';
 const FINAL_STATUSES = new Set(['FT', 'AET', 'PEN']);
@@ -276,6 +276,7 @@ function normalizeFixtureBundle(fixture, options = {}) {
 
   const bundle = {
     contractVersion: CONTRACT_VERSION,
+    detailAvailability: 'available',
     fixture: {
       id: afId('fixture', fixtureProviderId),
       providerId: numeric(fixtureProviderId) ?? fixtureProviderId,
@@ -432,6 +433,9 @@ function fixtureIndexEntry(bundle) {
 function validateFixtureBundle(bundle) {
   const errors = [];
   if (bundle?.contractVersion !== CONTRACT_VERSION) errors.push(`contractVersion must be ${CONTRACT_VERSION}`);
+  if (bundle?.detailAvailability !== 'available' && bundle?.detailAvailability !== 'unavailable') {
+    errors.push('detailAvailability must be available or unavailable');
+  }
   if (!bundle?.fixture?.id?.startsWith('af:fixture:')) errors.push('fixture.id must be an API-Football fixture ID.');
   if (!bundle?.fixture?.competitionId?.startsWith('af:competition:')) errors.push('fixture.competitionId is required.');
   if (!bundle?.fixture?.seasonId?.startsWith('af:season:')) errors.push('fixture.seasonId is required.');

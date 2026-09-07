@@ -2,9 +2,14 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const {
+  DATE_INDEX_CONTRACT_VERSION,
   buildDateFeed,
   competitionDateIndexKey,
+  writeDateFeed,
 } = require('../scripts/v2/fetch-date-feed');
 
 function fixture({ id, leagueId, leagueName, kickoff, status = 'NS', homeScore = null, awayScore = null }) {
@@ -47,6 +52,9 @@ test('generic date feed groups fixtures by competition and keeps competition pre
     fetchedAt: '2026-08-21T22:00:00Z',
   });
 
+  assert.equal(DATE_INDEX_CONTRACT_VERSION, '2.0.0');
+  assert.equal(feed.dateIndex.contractVersion, '2.0.0');
+  assert.equal(feed.bundles[0].contractVersion, '2.1.0');
   assert.equal(feed.dateIndex.fixtures.length, 2);
   assert.deepEqual(feed.dateIndex.fixtures.map(row => row.competition.name), ['Premier League', 'Bundesliga']);
   assert.equal(feed.competitionIndexes.length, 2);
@@ -70,9 +78,53 @@ test('date feed ignores provider rows that do not belong to the requested JST da
   assert.equal(feed.competitionIndexes[0].fixtures.length, 1);
 });
 
+test('date feed uses fixture ID as the deterministic tie-breaker for equal kickoffs', () => {
+  const feed = buildDateFeed([
+    fixture({ id: 302, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+    fixture({ id: 301, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+  ], {
+    date: '2026-08-22',
+    fetchedAt: '2026-08-21T22:00:00Z',
+  });
+
+  assert.deepEqual(feed.dateIndex.fixtures.map(row => row.fixtureId), [
+    'af:fixture:301', 'af:fixture:302',
+  ]);
+  assert.deepEqual(feed.competitionIndexes[0].fixtures.map(row => row.fixtureId), [
+    'af:fixture:301', 'af:fixture:302',
+  ]);
+});
+
 test('competition date index key is explicit about competition and JST date', () => {
   assert.equal(
     competitionDateIndexKey('af:competition:39', '2026-08-22'),
     'football/v2/indexes/competition/af:competition:39/date-jst/2026-08-22.json',
   );
+});
+
+test('publisher manifest declares authoritative replacement scope for every date index', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-date-feed-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const feed = buildDateFeed([
+    fixture({ id: 401, leagueId: 39, leagueName: 'Premier League', kickoff: '2026-08-21T20:00:00Z' }),
+  ], { date: '2026-08-22', fetchedAt: '2026-08-21T22:00:00Z' });
+
+  const scoped = writeDateFeed(path.join(directory, 'scoped'), feed, {
+    query: { date: '2026-08-22', league: '39' },
+  });
+  const scopedIndexes = scoped.r2Objects.filter(item => item.merge === 'date_index');
+  assert.deepEqual(scopedIndexes.map(item => ({
+    scope: item.mergeScope,
+    mode: item.mergeMode,
+    replace: item.mergeReplaceCompetitionId ?? null,
+  })), [
+    { scope: 'generic', mode: 'replace-scope', replace: 'af:competition:39' },
+    { scope: 'af:competition:39', mode: 'replace', replace: null },
+  ]);
+
+  const complete = writeDateFeed(path.join(directory, 'complete'), feed, {
+    query: { date: '2026-08-22' },
+  });
+  assert.equal(complete.r2Objects[0].mergeMode, 'replace');
+  assert.equal(complete.r2Objects[0].mergeReplaceCompetitionId, null);
 });

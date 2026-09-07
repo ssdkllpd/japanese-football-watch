@@ -18,6 +18,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install UI test dependencies
+        run: npm ci --ignore-scripts
       - name: Syntax check runtime scripts
         run: |
           node --check app-v2.js
@@ -41,6 +43,18 @@ jobs:
           node --check scripts/v2/fetch-date-feed.js
           node --check scripts/v2/fetch-standings.js
           node --check scripts/v2/merge-date-index.js
+          node --check scripts/d1/import-date-index-coverage.mjs
+          node --check scripts/d1/request-admin-ingest.mjs
+          node --check scripts/d1/create-v2-admin-plan.js
+          node --check scripts/v2/reconcile-fixture-revision.js
+          node --check scripts/d1/render-admin-wrangler.mjs
+          node --check shared/date-index-contract.mjs
+          node --check shared/fixed-snapshot-contract.mjs
           node --check worker/index.mjs
+          node --check admin-worker/index.mjs
+          node --check admin-worker/date-index-coverage-ingest.mjs
+          node --check admin-worker/migration-verify.mjs
+          node --check admin-worker/fixture-ingest.mjs
+          node --check admin-worker/fixed-snapshot-ingest.mjs
       - name: Run tests
         run: node --test tests/*.test.js

@@ -1,0 +1,210 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+function fixtureFiles(t) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-admin-client-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, 'catalog.json'), JSON.stringify({ productSeasonId: 'jfw:season:2026-27' }));
+  fs.writeFileSync(path.join(directory, 'corrections.json'), JSON.stringify({
+    schemaVersion: 'd1-fixture-correction-definitions/1', fixtureId: 'af:fixture:9001', definitions: [],
+  }));
+  return directory;
+}
+
+function plan() {
+  return {
+    schemaVersion: 'jfw-d1-admin-ingest-plan/1',
+    standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
+    fixtures: [{
+      fixtureId: 'af:fixture:9001', competitionId: 'af:competition:39',
+      seasonId: 'af:season:39:2026', catalogPath: 'catalog.json',
+      correctionsPath: 'corrections.json',
+    }],
+    expectedTotals: null,
+  };
+}
+
+test('admin ingest client sends externally declared requests and keeps its token out of the report', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const calls = [];
+  const report = await executeAdminIngestPlan(plan(), {
+    url: 'https://admin.example/original/path?unsafe=1', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      calls.push({ url, options, body: JSON.parse(options.body) });
+      return new Response(JSON.stringify({ ok: true, report: { operation: calls.at(-1).body.operation } }), {
+        status: 200, headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.deepEqual(report.summary, { total: 3, passed: 3, failed: 0 });
+  assert.deepEqual(calls.map(item => item.url), [
+    'https://admin.example/admin/v1/ingest', 'https://admin.example/admin/v1/ingest',
+    'https://admin.example/admin/v1/ingest',
+  ]);
+  assert.equal(calls.every(item => item.options.redirect === 'error'), true);
+  assert.deepEqual(calls.map(item => item.body.operation), [
+    'fixture_publish', 'standings_publish', 'migration_verify',
+  ]);
+  assert.equal(calls[0].body.catalog.productSeasonId, 'jfw:season:2026-27');
+  assert.deepEqual(calls[2].body, {
+    schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'migration_verify',
+    fixedSnapshot: null,
+    fixtureIds: ['af:fixture:9001'],
+    standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
+    dateIndexCoverages: [],
+    expectedTotals: null,
+  });
+  assert.equal(JSON.stringify(report).includes('secret-token'), false);
+});
+
+test('admin ingest client stops dependent requests after the first failure', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  let call = 0;
+  const report = await executeAdminIngestPlan(plan(), {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl() {
+      call += 1;
+      return new Response(JSON.stringify({ error: 'rejected' }), { status: 422 });
+    },
+  });
+  assert.equal(report.passed, false);
+  assert.deepEqual(report.summary, { total: 3, passed: 0, failed: 3 });
+  assert.deepEqual(report.results.map(item => item.status), [422, null, null]);
+  assert.deepEqual(report.results.map(item => item.error || null), [null,
+    'skipped_after_failure', 'skipped_after_failure']);
+  assert.equal(call, 1);
+  assert.equal(report.productionReady, false);
+});
+
+test('admin ingest client sends a hash-scoped fixed snapshot bootstrap without embedding the artifact', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const bootstrap = plan();
+  bootstrap.standings = [];
+  bootstrap.fixtures = [];
+  bootstrap.fixedSnapshot = {
+    artifactSha256: 'b'.repeat(64),
+    productSeasonId: 'jfw:season:2026-27',
+  };
+  const sent = [];
+  const report = await executeAdminIngestPlan(bootstrap, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      sent.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true, report: { status: 'imported' } }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.deepEqual(sent[0], {
+    schemaVersion: 'jfw-d1-admin-ingest/1',
+    operation: 'fixed_snapshot_publish',
+    artifactSha256: 'b'.repeat(64),
+    productSeasonId: 'jfw:season:2026-27',
+  });
+  assert.equal(Object.hasOwn(sent[0], 'snapshot'), false);
+  assert.deepEqual(sent[1], {
+    schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'migration_verify',
+    fixedSnapshot: {
+      artifactSha256: 'b'.repeat(64), productSeasonId: 'jfw:season:2026-27',
+    },
+    fixtureIds: [], standings: [], dateIndexCoverages: [],
+    expectedTotals: null,
+  });
+  assert.match(report.results[0].identity, /^jfw:season:2026-27\/b{64}$/);
+});
+
+test('admin ingest client sends externally declared date coverage after fixture requests', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const coverage = plan();
+  coverage.standings = [];
+  coverage.dateIndexCoverages = [{
+    date: '2026-08-31',
+    competitionIds: ['af:competition:140', 'af:competition:39'],
+  }];
+  const operations = [];
+  const report = await executeAdminIngestPlan(coverage, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      operations.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true, report: {} }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.deepEqual(operations.map(item => item.operation), [
+    'fixture_publish', 'date_index_coverage_publish', 'migration_verify',
+  ]);
+  assert.deepEqual(operations[1], {
+    schemaVersion: 'jfw-d1-admin-ingest/1',
+    operation: 'date_index_coverage_publish',
+    date: '2026-08-31',
+    competitionIds: ['af:competition:140', 'af:competition:39'],
+  });
+});
+
+test('admin ingest client can reuse an existing stored competition-season catalog', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const refresh = plan();
+  refresh.standings = [];
+  delete refresh.fixtures[0].catalogPath;
+  refresh.fixtures[0].reuseStoredCatalog = true;
+  const sent = [];
+  const report = await executeAdminIngestPlan(refresh, {
+    url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
+    async fetchImpl(url, options) {
+      sent.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true, report: {} }), { status: 200 });
+    },
+  });
+  assert.equal(report.passed, true);
+  assert.equal(sent[0].reuseStoredCatalog, true);
+  assert.equal(Object.hasOwn(sent[0], 'catalog'), false);
+});
+
+test('admin ingest client rejects duplicate scopes, unsafe paths, and non-HTTPS remote endpoints', async t => {
+  const { executeAdminIngestPlan } = await import('../scripts/d1/request-admin-ingest.mjs');
+  const directory = fixtureFiles(t);
+  const duplicate = plan();
+  duplicate.standings.push({ ...duplicate.standings[0] });
+  await assert.rejects(() => executeAdminIngestPlan(duplicate, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /duplicate scopes/);
+
+  const escaped = plan();
+  escaped.fixtures[0].catalogPath = '../catalog.json';
+  await assert.rejects(() => executeAdminIngestPlan(escaped, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /escapes the plan directory/);
+
+  await assert.rejects(() => executeAdminIngestPlan(plan(), {
+    url: 'http://admin.example', token: 'token', planDirectory: directory,
+  }), /must use HTTPS/);
+
+  await assert.rejects(() => executeAdminIngestPlan(plan(), {
+    url: 'https://user:password@admin.example', token: 'token', planDirectory: directory,
+  }), /must not contain credentials/);
+
+  const duplicateDates = plan();
+  duplicateDates.dateIndexCoverages = [
+    { date: '2026-08-31', competitionIds: [] },
+    { date: '2026-08-31', competitionIds: [] },
+  ];
+  await assert.rejects(() => executeAdminIngestPlan(duplicateDates, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /duplicate scopes/);
+
+  const undeclaredTotals = plan();
+  delete undeclaredTotals.expectedTotals;
+  await assert.rejects(() => executeAdminIngestPlan(undeclaredTotals, {
+    url: 'https://admin.example', token: 'token', planDirectory: directory,
+  }), /expectedTotals must be declared explicitly/);
+});

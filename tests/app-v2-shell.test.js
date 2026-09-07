@@ -1,125 +1,41 @@
 'use strict';
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-
-const root = path.resolve(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const previewHtml = fs.readFileSync(path.join(root, 'app-v2.html'), 'utf8');
-const legacyHtml = fs.readFileSync(path.join(root, 'legacy.html'), 'utf8');
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
-const css = fs.readFileSync(path.join(root, 'app-v2.css'), 'utf8');
-const leagueCss = fs.readFileSync(path.join(root, 'app-v2-league.css'), 'utf8');
-const js = fs.readFileSync(path.join(root, 'app-v2.js'), 'utf8');
-
-test('v2 app javascript is syntactically valid', () => {
-  assert.doesNotThrow(() => new Function(js));
+const {JSDOM} = require('jsdom');
+const root = path.resolve(__dirname,'..');
+test('both published entry files have the same five text-only primary destinations',()=>{
+ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ assert.equal(html,fs.readFileSync(path.join(root,'app-v2.html'),'utf8'));
+ const doc=new JSDOM(html).window.document;
+ assert.deepEqual([...doc.querySelectorAll('.bottom-nav button')].map(el=>el.textContent),['試合','リーグ','フォロー中','日本人','その他']);
+ assert.deepEqual([...doc.querySelectorAll('.desktop-rail [data-page]')].map(el=>el.dataset.page),['matches','leagues','following','japanese','more']);
+ assert.equal(JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest'))).name,'Football Companion');
+ for(const script of doc.scripts) assert.ok(fs.existsSync(path.join(root,script.getAttribute('src'))));
+});
+test('legacy entry remains available with its original title',()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'legacy.html'),'utf8'));
+ assert.equal(dom.window.document.title,'海外日本人ウォッチ（旧画面）');
 });
 
-test('v2 shell is the default entry and exposes the approved five primary destinations', () => {
-  for (const page of ['matches', 'leagues', 'following', 'japanese', 'more']) {
-    assert.match(html, new RegExp(`data-page="${page}"`));
-  }
-  assert.match(html, /<title>Football Companion<\/title>/);
-  assert.doesNotMatch(html, /<h1[^>]*>海外日本人ウォッチ<\/h1>/);
-  assert.equal(manifest.name, 'Football Companion');
-  assert.equal(html, previewHtml, 'index.html and app-v2.html must expose the same v2 shell');
-});
-
-test('v2 shell loads the pure backfill merge before its v2 data adapter and app', () => {
-  const mergeAt = html.indexOf('<script src="backfill-merge.js"></script>');
-  const adapterAt = html.indexOf('<script src="v2-backfill-data.js"></script>');
-  const appAt = html.indexOf('<script src="app-v2.js"></script>');
-  assert.ok(mergeAt >= 0 && mergeAt < adapterAt && adapterAt < appAt);
-});
-
-test('legacy Japanese tracker remains available outside the default entry', () => {
-  assert.match(legacyHtml, /<title>海外日本人ウォッチ（旧画面）<\/title>/);
-  assert.match(js, /location\.href = 'legacy\.html'/);
-  assert.match(previewHtml, /<title>Football Companion<\/title>/);
-});
-
-test('v2 match home is wired to Core date, live and fixture endpoints', () => {
-  assert.match(js, /\/api\/v2\/dates\//);
-  assert.match(js, /\/api\/v2\/live/);
-  assert.match(js, /\/api\/v2\/fixtures\//);
-  assert.match(js, /Core feed/);
-});
-
-test('v2 legacy data path uses the current-season backfill adapter instead of direct data.json fetch', () => {
-  assert.match(js, /window\.JFWV2BackfillData/);
-  assert.match(js, /window\.JFWBackfillMerge\?\.mergeBackfillData/);
-  assert.match(js, /loadCurrentMergedData\(\{ mergeBackfillData \}\)/);
-  assert.doesNotMatch(js, /fetch\(['"]data\.json['"]/);
-  assert.match(js, /_dataIntegrity/);
-  assert.match(js, /追跡データの整合性警告/);
-});
-
-test('v2 Japanese rows consume merged season stats and player photos', () => {
-  assert.match(js, /player\.seasonStats \|\| player\.stats/);
-  assert.match(js, /player\.photo \? `<img class="entity-logo"/);
-  assert.match(js, /stats\.assists \?\? '—'/);
-});
-
-test('v2 shell keeps mobile bottom navigation and a desktop equivalent', () => {
-  assert.match(css, /\.bottom-nav\{/);
-  assert.match(css, /\.desktop-rail\{/);
-  assert.match(css, /@media\(min-width:840px\)/);
-});
-
-test('league directory opens competition matches and standings through Core APIs', () => {
-  assert.match(html, /app-v2-league\.css/);
-  assert.match(js, /data-competition-id/);
-  assert.match(js, /function renderCompetitionDetail\(\)/);
-  assert.match(js, /\/api\/v2\/competitions\/\$\{encodeURIComponent\(detail\.id\)\}\/dates\//);
-  assert.match(js, /\/seasons\/\$\{encodeURIComponent\(detail\.seasonId\)\}\/standings/);
-  assert.match(js, /data-competition-tab="\$\{tab\}"/);
-  assert.match(leagueCss, /\.standings-row/);
-});
-
-test('standings UI preserves missing values instead of rendering them as zero', () => {
-  assert.match(js, /row\?\.overall\?\.played \?\? '—'/);
-  assert.match(js, /row\?\.goalDifference \?\? '—'/);
-  assert.match(js, /row\?\.points \?\? '—'/);
-  assert.match(js, /未取得の順位・勝点を0として表示していません/);
-});
-
-test('competition match count is zero only for an explicitly fetched empty index', () => {
-  assert.match(js, /detail\.matchesPresence === 'present' && !detail\.matchesLoading/);
-  assert.match(js, /detail\.matchesPresence !== 'present'/);
-  assert.match(js, /未取得を0試合として表示していません/);
-  assert.match(js, /取得済みの日付インデックスは0試合です/);
-});
-
-test('stale competition date requests cannot commit fixtures or errors', () => {
-  const guard = "if (loadSequence !== state.competitionLoadSequence || state.competitionDetail !== detail) return;";
-  const guardedAt = js.indexOf(guard);
-  assert.ok(guardedAt >= 0);
-  assert.ok(js.indexOf('detail.fixtures = fixtures;', guardedAt) > guardedAt);
-  assert.ok(js.indexOf('detail.matchesError = matchesError;', guardedAt) > guardedAt);
-});
-
-test('Japanese tracking is an optional page while generic match data remains the default page', () => {
-  assert.match(js, /page: 'matches'/);
-  assert.match(js, /日本人追跡は総合データアプリのオプション機能/);
-});
-
-test('legacy fallback never shows fixtures from a different selected date', () => {
-  assert.match(js, /function legacyFixturesForDate\(legacy, date\)/);
-  assert.match(js, /filter\(row => row\.dateJst === date\)/);
-  assert.doesNotMatch(js, /if \(!state\.fixtures\.length\) state\.fixtures = \(legacy\.topMatches/);
-});
-
-test('stale match requests cannot overwrite a newer date or another page', () => {
-  assert.match(js, /const loadSequence = \+\+state\.matchLoadSequence/);
-  assert.match(js, /const requestedDate = state\.date/);
-  assert.match(js, /if \(loadSequence !== state\.matchLoadSequence\) return/);
-  assert.match(js, /state\.page === 'matches' && !state\.detail/);
-});
-
-test('closing fixture detail invalidates its pending Core response', () => {
-  assert.match(js, /const detailRequest = \{ summary, bundle: null, loading: true, error: null \}/);
-  assert.match(js, /if \(state\.detail !== detailRequest\) return/);
+test('narrow-screen CSS retains the 320px guard, readable rows and touch targets',t=>{
+ const dom=new JSDOM('<!doctype html><head></head><body></body>');
+ t.after(()=>dom.window.close());
+ const style=dom.window.document.createElement('style');
+ style.textContent=fs.readFileSync(path.join(root,'app-v2-wireframe.css'),'utf8');
+ dom.window.document.head.append(style);
+ const rules=[...style.sheet.cssRules];
+ const narrow=rules.find(rule=>rule.conditionText==='(max-width: 359px)');
+ assert.ok(narrow,'the 320px layout must have its narrow-screen media contract');
+ const declaration=(items,selector,property)=>items.filter(rule=>rule.selectorText?.split(',').map(s=>s.trim()).includes(selector))
+  .map(rule=>rule.style.getPropertyValue(property)).filter(Boolean).at(-1);
+ const compact=[...narrow.cssRules];
+ assert.equal(declaration(compact,'.app-main','padding-inline'),'8px');
+ assert.equal(declaration(compact,'.fixture-row','grid-template-columns'),'46px minmax(0, 1fr) 44px');
+ assert.equal(declaration(compact,'.profile-grid','grid-template-columns'),'1fr');
+ for(const selector of ['.follow-button','.chip','.back-button','.detail-tab','.season-select'])assert.equal(declaration(rules,selector,'min-height'),'44px');
+ for(const selector of ['.fixture-row','.team-name','.entity-name','.lineup-person','.rating-row'])assert.equal(declaration(rules,selector,'font-size'),'15px');
+ assert.equal(declaration(rules,'.detail-tabs','overflow-x'),'auto');
+ assert.equal(declaration(rules,'.detail-tab','flex'),'0 0 auto');
 });

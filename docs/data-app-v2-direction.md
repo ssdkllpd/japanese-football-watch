@@ -8,7 +8,7 @@ The application is no longer presented primarily as a Japanese-player tracking a
 
 The primary product is a general football data application inspired by the information architecture and usability of FotMob: match discovery, competition browsing, standings, clubs, players, lineups, match events and statistics.
 
-Japanese-player tracking remains a first-class optional module layered on top of the general football data model. Existing Japanese tracking data, JFW Rating, watch history and tracking-specific analysis must not be deleted.
+Japanese-player tracking remains a first-class optional module layered on top of the general football data model. Existing Japanese tracking facts, JFW Rating, attention scores and tracking-specific analysis must not be deleted. Legacy per-device watch history is not migrated into v2; the UI replaces it with a deterministic, time-decayed attention ranking. The legacy application remains available during parity validation.
 
 ## 2. Data-domain split
 
@@ -170,6 +170,8 @@ Vertical placement is semantic-band based rather than max-row interpolation. GK 
 
 The application intentionally separates live delivery from finalized-data ingestion.
 
+This section describes the approved D1/R2 target. The previous demand-driven provider fetch and R2-canonical runtime remain only as rollback paths during the staged migration defined in `data-storage-d1-r2-design-v1.0.md`.
+
 ### Static UI
 
 GitHub Pages is used for development / personal-use / preview hosting. It is not the canonical machine-fact store.
@@ -179,8 +181,9 @@ GitHub Pages is used for development / personal-use / preview hosting. It is not
 ```text
 Browser
   -> Cloudflare Worker
-  -> caches.default (60 second TTL, demand driven)
-  -> API-Football /fixtures?live=all on cache miss
+  -> caches.default
+  -> D1 compact scheduled facts
+  -> validated R2 LIVE projection when detail is needed
 ```
 
 The Worker performs only:
@@ -189,9 +192,10 @@ The Worker performs only:
 - lightweight abuse / rate guard
 - Cache API access
 - LiveFixtureDTO projection
-- R2 read delivery
+- D1/R2 read delivery
 
 The Worker must not perform full normalization, reconciliation or JFW Rating calculation.
+Public requests must not call API-Football or determine provider polling frequency.
 
 The LiveFixtureDTO boundary prevents API-Football response schema from leaking directly into UI code.
 
@@ -200,24 +204,25 @@ The LiveFixtureDTO boundary prevents API-Football response schema from leaking d
 ```text
 API-Football detail endpoints
   -> GitHub Actions / Node normalization + reconciliation
-  -> Cloudflare R2 canonical fixture bundle
-  -> Worker read API
+  -> D1 structured facts and published revision
+  -> R2 raw/audit snapshots and old-detail archives
+  -> Worker D1 read with transparent R2 archive fallback
   -> UI
 ```
 
-R2 is the canonical machine-generated fact store. KV may later hold hot indexes / cache data, but anything placed in KV must be reconstructable from R2 or provider facts.
+After migration, D1 is the canonical structured machine-fact store. R2 owns provider raw/audit snapshots, validated short-lived LIVE projections, old-detail archives and reconstructable degraded-response snapshots. KV may hold optional cache data only; anything outside D1 canonical facts must be reconstructable from D1, R2 evidence/archive, or provider facts.
 
 R2 is not exposed to the browser through `r2.dev`; history is delivered through the Worker.
 
-## 11. Live demand vs finalization completeness
+## 11. Scheduled live vs finalization completeness
 
-Demand-driven live fetching must never determine whether historical data exists.
+Scheduled live fetching and final reconciliation must never depend on whether a user opened the fixture.
 
 A separate reconciliation job must periodically find fixtures where:
 - scheduled kickoff + 3 hours has passed; and
-- no finalized R2 fixture bundle exists.
+- no finalized D1 published revision exists.
 
-Initial target cadence: once every 6 hours. That job may run late without damaging live UX because it exists to close historical holes, not to provide minute-by-minute scores.
+Initial target cadence: once every 6 hours. When the D1 daily publish cap is reached, the job keeps a complete verified bundle in R2 and queues D1 publication for the next UTC day; it never publishes a partial D1 detail snapshot.
 
 Fixture ingestion states:
 - `scheduled`
@@ -230,7 +235,7 @@ Fixture ingestion states:
 
 Rule:
 
-> git = human-authored decisions. R2 = machine-acquired football facts.
+> git = human-authored decisions. D1 = canonical structured facts. R2 = raw/audit/LIVE projection/archive.
 
 ### Git
 - UI / application code
@@ -240,17 +245,19 @@ Rule:
 - manual corrections with reason / evidence
 - JFW Rating algorithm and rules
 
-### R2
-- canonical fixture bundles
-- lineups
-- events
-- team and player match statistics
-- provider ratings
-- standings snapshots
-- team / player master snapshots
-- indexes derived from machine facts
+### D1
+- competition / season / fixture compact facts
+- hot events / lineups / appearances / statistics
+- latest/final standings and structured tracking results
+- published revision and archive pointers
 
-A fixture is the basic canonical bundle and revision unit.
+### R2
+- provider raw responses and audit snapshots
+- validated response-ready LIVE projection before D1 final publication
+- old fixture detail archives and manifests
+- verified degraded-response snapshots
+
+A fixture remains the basic public bundle and revision unit even though its hot structured rows live in D1 and its old detail may live in R2.
 
 ## 13. Provenance and missing-state policy
 

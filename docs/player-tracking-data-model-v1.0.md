@@ -74,6 +74,17 @@
 
 クラブ×大会別集計。移籍元・移籍先が同じ大会に所属する場合でも成績を分離できるようにする。
 
+### legacy aggregateの検証metadata
+
+recordから再構築できない移行中の集計は、4層の値に加えて次のmetadataを保持する。
+
+- `statsScope`、`statsStatus`、`statsAsOf`、`statsTrackingState`
+- `_initialStats`、`_initialClub`、`_initialLeague`
+- `_initialStatsCaptured`、`_initialStatsUpdated`
+- `_aggregateBaselines`
+
+これらは未検証集計を検証済みと区別し、後続のCore再集計でbaselineの出所を証明するための移行事実である。表示用の`status`、`rank`、`priorityFields`等はaggregate contractに含めず、固定snapshotとR2 raw artifactに保持する。
+
 ## 4. missing の扱い
 
 - 不明値を0へ変換しない。

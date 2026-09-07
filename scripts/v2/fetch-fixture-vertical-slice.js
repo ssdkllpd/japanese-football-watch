@@ -111,7 +111,10 @@ async function main() {
     r2Objects: [
       { role: 'fixture', key: canonicalKey, file: 'fixture.json' },
       { role: 'fixture_pointer', key: pointerKey, file: 'fixture-pointer.json' },
-      { role: 'date_index', key: dateIndexKey, file: 'date-index.json' },
+      {
+        role: 'date_index', key: dateIndexKey, file: 'date-index.json',
+        merge: 'date_index', mergeScope: 'generic', mergeMode: 'upsert',
+      },
     ],
     quota: envelope.quota,
   };

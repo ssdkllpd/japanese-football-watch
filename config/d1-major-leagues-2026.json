@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "jfw-d1-admin-ingest-plan/1",
+  "fixtures": [],
+  "standings": [
+    {
+      "competitionId": "af:competition:39",
+      "seasonId": "af:season:39:2026"
+    },
+    {
+      "competitionId": "af:competition:40",
+      "seasonId": "af:season:40:2026"
+    },
+    {
+      "competitionId": "af:competition:61",
+      "seasonId": "af:season:61:2026"
+    },
+    {
+      "competitionId": "af:competition:78",
+      "seasonId": "af:season:78:2026"
+    },
+    {
+      "competitionId": "af:competition:88",
+      "seasonId": "af:season:88:2026"
+    },
+    {
+      "competitionId": "af:competition:94",
+      "seasonId": "af:season:94:2026"
+    },
+    {
+      "competitionId": "af:competition:135",
+      "seasonId": "af:season:135:2026"
+    },
+    {
+      "competitionId": "af:competition:140",
+      "seasonId": "af:season:140:2026"
+    },
+    {
+      "competitionId": "af:competition:144",
+      "seasonId": "af:season:144:2026"
+    },
+    {
+      "competitionId": "af:competition:179",
+      "seasonId": "af:season:179:2026"
+    }
+  ],
+  "dateIndexCoverages": [],
+  "expectedTotals": null
+}

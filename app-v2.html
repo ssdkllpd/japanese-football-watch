@@ -8,17 +8,18 @@
 <link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="app-v2.css">
 <link rel="stylesheet" href="app-v2-league.css">
+<link rel="stylesheet" href="app-v2-wireframe.css">
 <title>Football Companion</title>
 </head>
 <body>
 <div class="app-shell">
   <aside class="desktop-rail" aria-label="メインナビゲーション">
     <div class="brand-mark" aria-label="Football Companion">FC</div>
-    <button class="rail-item is-active" data-page="matches" type="button"><span>⚽</span><small>試合</small></button>
-    <button class="rail-item" data-page="leagues" type="button"><span>🏆</span><small>リーグ</small></button>
-    <button class="rail-item" data-page="following" type="button"><span>★</span><small>フォロー中</small></button>
-    <button class="rail-item" data-page="japanese" type="button"><span>🇯🇵</span><small>日本人</small></button>
-    <button class="rail-item" data-page="more" type="button"><span>•••</span><small>その他</small></button>
+    <button class="rail-item is-active" data-page="matches" type="button"><span>試合</span></button>
+    <button class="rail-item" data-page="leagues" type="button"><span>リーグ</span></button>
+    <button class="rail-item" data-page="following" type="button"><span>フォロー中</span></button>
+    <button class="rail-item" data-page="japanese" type="button"><span>日本人</span></button>
+    <button class="rail-item" data-page="more" type="button"><span>その他</span></button>
   </aside>
 
   <div class="app-column">
@@ -29,7 +30,8 @@
       </div>
       <div class="app-actions">
         <span id="dataMode" class="data-mode">準備中</span>
-        <button id="themeButton" class="icon-button" type="button" aria-label="テーマ切替">◐</button>
+        <button id="searchButton" class="icon-button" type="button" aria-label="検索を開く">検索</button>
+        <button id="themeButton" class="icon-button" type="button" aria-label="テーマ切替">テーマ</button>
       </div>
     </header>
 
@@ -37,16 +39,20 @@
   </div>
 
   <nav class="bottom-nav" aria-label="メインナビゲーション">
-    <button class="nav-item is-active" data-page="matches" type="button"><span>⚽</span><small>試合</small></button>
-    <button class="nav-item" data-page="leagues" type="button"><span>🏆</span><small>リーグ</small></button>
-    <button class="nav-item" data-page="following" type="button"><span>★</span><small>フォロー中</small></button>
-    <button class="nav-item" data-page="japanese" type="button"><span>🇯🇵</span><small>日本人</small></button>
-    <button class="nav-item" data-page="more" type="button"><span>•••</span><small>その他</small></button>
+    <button class="nav-item is-active" data-page="matches" type="button"><span>試合</span></button>
+    <button class="nav-item" data-page="leagues" type="button"><span>リーグ</span></button>
+    <button class="nav-item" data-page="following" type="button"><span>フォロー中</span></button>
+    <button class="nav-item" data-page="japanese" type="button"><span>日本人</span></button>
+    <button class="nav-item" data-page="more" type="button"><span>その他</span></button>
   </nav>
 </div>
 <script src="formation-view.js"></script>
 <script src="backfill-merge.js"></script>
 <script src="v2-backfill-data.js"></script>
+<script src="app-v2-config.js"></script>
+<script src="app-v2-data.js"></script>
+<script src="app-v2-history.js"></script>
+<script src="app-v2-router.js"></script>
 <script src="app-v2.js"></script>
 </body>
 </html>
