@@ -38,3 +38,21 @@ test('only documented legacy hashes migrate and unknown hashes become a 404 stat
   assert.equal(router.parseHash('#players').status, 404);
   assert.equal(router.parseHash('#made-up').status, 404);
 });
+
+test('invalid or missing dates and slash root normalize to an honest canonical date',()=>{
+ for(const hash of ['#/matches?date=2026-02-30','#/matches','#/']) {
+ const route=router.parseHash(hash,{date:'2026-09-01'});assert.equal(route.date,'2026-09-01');assert.equal(route.shouldReplace,true);assert.equal(route.canonicalHash,'#/matches?date=2026-09-01&filter=all');
+ }
+ assert.equal(router.pageHash('leagues'),'#/competitions');
+ assert.equal(router.parseHash('#matches?date=2026-09-01&live=1').filter,'live');
+});
+test('legacy names migrate once only with a unique exact canonical identity',()=>{
+ const input={players:[{name:'Player',id:'af:player:7'},{name:'Player Two',id:'af:player:8'}]};
+ const resolved=router.migrateLegacy('?player=Player&season=2026-27&source=share','#stats',input);
+ assert.equal(resolved.hash,'#/players/af%3Aplayer%3A7?productSeason=jfw%3Aseason%3A2026-27');assert.equal(resolved.search,'?source=share');
+ assert.equal(router.migrateLegacy(resolved.search,resolved.hash,input),null);
+ assert.equal(router.migrateLegacy('?player=Player','','').hash,'#/japanese');
+ assert.equal(router.migrateLegacy('?player=Player','', {players:[...input.players,{name:'Player',id:'af:player:9'}]}).hash,'#/japanese');
+ assert.equal(router.migrateLegacy('?club=Unknown&campaign=x','').hash,'#/competitions');
+ assert.equal(router.migrateLegacy('?player=Player','#players',input),null);
+});

@@ -367,7 +367,7 @@ summary:focus-visible,
 .season-select {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius:var(--radius-md);
   background: var(--panel);
   color: var(--text);
   padding: 8px 10px;
@@ -387,7 +387,7 @@ summary:focus-visible,
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius:var(--radius-md);
   background: var(--panel);
 }
 
@@ -403,7 +403,7 @@ summary:focus-visible,
   display: inline-flex;
   width: fit-content;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius:var(--radius-pill);
   padding: 3px 7px;
   color: var(--accent2);
   font-size: 12px;
@@ -434,7 +434,7 @@ summary:focus-visible,
   margin-bottom: 10px;
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius:var(--radius-lg);
   background: var(--panel);
 }
 
@@ -479,3 +479,30 @@ summary:focus-visible,
   .lineup-person { grid-template-columns: 34px 20px minmax(0, 1fr); }
   .lineup-person .substitution { grid-column: 3; }
 }
+
+:root { --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-pill:999px; }
+.team-name,.entity-name,.fixture-row,.lineup-person,.rating-row,.attention-row,.history-row { font-size:15px; }
+.ui-icon { width:24px; height:24px; flex:none; vertical-align:middle; }
+.follow-button { gap:5px; }
+.presence { display:inline-flex; align-items:center; border:1px dashed var(--line); border-radius:var(--radius-sm); padding:2px 6px; color:var(--muted); font-size:12px; white-space:nowrap; }
+.presence-not_fetched { animation:missing-pulse 2s ease-in-out infinite; }
+.presence-not_applicable { border-style:solid; animation:none; }
+.empty-result { padding:12px; color:var(--muted); }
+.status-pill.is-cancelled { text-decoration:line-through; background:repeating-linear-gradient(45deg, color-mix(in srgb,var(--line) 60%,transparent) 0 3px,transparent 3px 9px); }
+.pitch.confidence-none { background:var(--panel3); border-color:var(--line); }
+.pitch.confidence-none::before,.pitch.confidence-none::after { display:none; }
+.pitch-unavailable { position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); }
+.confidence-low { opacity:.7; }
+@keyframes missing-pulse { 50% { opacity:.45; } }
+@media(prefers-reduced-motion:reduce) { .presence-not_fetched { animation:none; } }
+.presence-provider_missing { border-style:solid; animation:none; }
+.nav-item,.rail-item { min-width:0; }
+.nav-item span,.rail-item span { font-size:12px; line-height:1.5; font-weight:850; overflow-wrap:anywhere; }
+#themeButton { font-size:11px; }
+.watch-label { display:block; font-size:11px; line-height:1.5; color:var(--muted); margin-top:3px; }
+.stat-inline { flex-wrap:wrap; }
+.pitch-title { flex-wrap:wrap; gap:6px; }
+.team-stat-row { grid-template-columns:minmax(0,1fr) minmax(80px,1.2fr) minmax(0,1fr); }
+.icon-follow { color:var(--warn); }
+.icon-tracked-mark { color:var(--accent2); }
+.icon-live-dot { color:var(--live); }

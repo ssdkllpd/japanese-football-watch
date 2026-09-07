@@ -13,3 +13,5 @@
 worker/wrangler.toml
 worker/.dev.vars
 .wrangler/
+
+node_modules/
