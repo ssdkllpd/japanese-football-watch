@@ -61,7 +61,7 @@
 .competition-summary span {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .standings-card {
@@ -80,7 +80,7 @@
   min-height: 42px;
   padding: 5px 8px;
   border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -92,7 +92,7 @@
   min-height: 30px;
   background: var(--panel2);
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 850;
 }
 

@@ -1,6 +1,6 @@
-# Data App v2 画面遷移 v1.1（再レビュー案）
+# Data App v2 画面遷移 v1.2（フィルタroute改訂案）
 
-状態: **Approved — Codex正式レビューPASS（2026-08-27）**
+状態: **再レビュー待ち — §2 試合一覧filter route改訂（2026-09-07）**
 対象: D1/R2 移行後の Data App v2
 作成日: 2026-08-26
 関連文書: `data-app-v2-direction.md`、`data-storage-d1-r2-design-v1.0.md`、`ui-wireframe-baseline-v1.0.md`
@@ -17,7 +17,7 @@
 
 | 画面 | Route | season namespace | 状態 |
 |---|---|---|---|
-| 試合一覧 | `#/matches?date=YYYY-MM-DD&live=0` | なし | 実装済み、route 化予定 |
+| 試合一覧 | `#/matches?date={YYYY-MM-DD}&filter={all\|live\|following\|japanese}` | なし | 実装済み、route 化予定 |
 | 試合詳細 | `#/fixtures/{fixtureId}?tab={tabId}` | なし（`tabId`: overview/lineup/events/stats/ratings） | 実装済み、route 化予定 |
 | リーグ一覧 | `#/competitions` | なし | 実装済み、route 化予定 |
 | リーグ詳細 | `#/competitions/{competitionId}?competitionSeason={competitionSeasonId}&tab=matches` | `af:season:*` | 一部実装済み |
@@ -29,6 +29,8 @@
 | その他 | `#/more` | なし | 実装済み |
 
 query parameter は選択状態を表し、データそのものを保持しない。path segment の canonical ID は `encodeURIComponent` 相当で符号化し、受信時に一度だけ decode する。不正または存在しない ID は空画面へ黙って落とさず、404 状態と戻り先を表示する。
+
+試合一覧の `filter` 省略時は `all` とする。既存の `live=1` は `filter=live` の別名として受け、一度だけ `replaceState` で正規化する。`following` と `japanese` は端末内のフォロー状態・追跡データに依存するため、URLを共有しても端末によって結果が変わりうる。フォロー情報をサーバへ送らない原則は維持する。
 
 `competitionSeason` と `productSeason` は交換可能な別名ではない。route parser は prefix で namespace を検証し、逆の ID が渡された場合は既定値へ黙って変換せず `400 invalid_season_namespace` 状態を表示する。
 

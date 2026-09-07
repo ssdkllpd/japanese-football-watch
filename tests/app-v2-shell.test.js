@@ -12,7 +12,9 @@ const legacyHtml = fs.readFileSync(path.join(root, 'legacy.html'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
 const css = fs.readFileSync(path.join(root, 'app-v2.css'), 'utf8');
 const leagueCss = fs.readFileSync(path.join(root, 'app-v2-league.css'), 'utf8');
+const wireframeCss = fs.readFileSync(path.join(root, 'app-v2-wireframe.css'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'app-v2.js'), 'utf8');
+const routerJs = fs.readFileSync(path.join(root, 'app-v2-router.js'), 'utf8');
 
 test('v2 app javascript is syntactically valid', () => {
   assert.doesNotThrow(() => new Function(js));
@@ -122,4 +124,41 @@ test('stale match requests cannot overwrite a newer date or another page', () =>
 test('closing fixture detail invalidates its pending Core response', () => {
   assert.match(js, /const detailRequest = \{ summary, bundle: null, loading: true, error: null \}/);
   assert.match(js, /if \(state\.detail !== detailRequest\) return/);
+});
+
+test('v2 shell loads the canonical hash router and shared search affordance', () => {
+  assert.match(html, /app-v2-router\.js/);
+  assert.match(html, /app-v2-wireframe\.css/);
+  assert.match(html, /id="searchButton"/);
+  assert.match(js, /function applyCurrentRoute\(\)/);
+  assert.match(routerJs, /legacyLive \? 'live' : 'all'/);
+  assert.match(js, /\['competition', 'team'\]\.includes\(state\.fixtureReturn\) \? 'leagues' : 'matches'/);
+  assert.match(js, /if \(route\.kind === 'team'\) \{\s+state\.page = 'leagues';\s+syncNav\(\);/);
+  assert.match(js, /if \(route\.kind === 'player'\) \{\s+state\.page = 'japanese';\s+syncNav\(\);/);
+});
+
+test('fixture detail exposes five tabs, both lineup lists, coach and rating modes', () => {
+  for (const value of ["['overview', '概要']", "['lineup', 'ラインナップ']", "['events', 'イベント']", "['stats', 'スタッツ']", "['ratings', '選手評価']"]) {
+    assert.match(js, new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(js, /ベンチ \$\{substitutes\.length\}/);
+  assert.match(js, /監督未取得/);
+  assert.match(js, /API-Football 評価/);
+  assert.match(js, /JFW 独自評価/);
+});
+
+test('production UI does not expose Worker base editing or internal identifiers', () => {
+  assert.doesNotMatch(js, /id="workerInput"/);
+  assert.doesNotMatch(js, /id="saveWorker"/);
+  assert.match(js, /API keyやD1\/R2の内部識別子は表示しません/);
+  assert.match(js, /\['localhost', '127\.0\.0\.1', '\[::1\]'\]/);
+});
+
+test('wireframe CSS enforces narrow-screen, readable type and tap target contracts', () => {
+  const allCss = `${css}\n${leagueCss}\n${wireframeCss}`;
+  assert.doesNotMatch(allCss, /font-size\s*:\s*(?:[0-9]|10)px\b/);
+  assert.match(wireframeCss, /overflow-x:\s*hidden/);
+  assert.match(wireframeCss, /min-height:\s*44px/);
+  assert.match(wireframeCss, /\.detail-tab\s*\{[\s\S]*?flex:\s*0 0 auto/);
+  assert.match(wireframeCss, /@media \(max-width:\s*359px\)/);
 });
