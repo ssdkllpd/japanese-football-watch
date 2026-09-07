@@ -503,6 +503,8 @@ summary:focus-visible,
 .stat-inline { flex-wrap:wrap; }
 .pitch-title { flex-wrap:wrap; gap:6px; }
 .team-stat-row { grid-template-columns:minmax(0,1fr) minmax(80px,1.2fr) minmax(0,1fr); }
-.icon-follow { color:var(--warn); }
+.follow-button { color:var(--muted); }
+.follow-button.is-following { color:var(--accent2); }
+.icon-follow { color:inherit; }
 .icon-tracked-mark { color:var(--accent2); }
 .icon-live-dot { color:var(--live); }
