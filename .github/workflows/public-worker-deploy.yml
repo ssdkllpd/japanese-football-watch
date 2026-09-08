@@ -59,7 +59,7 @@ jobs:
           mkdir -p .tmp/public-worker/evidence
           worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
           app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
             --header "Origin: $app_origin" \
             --dump-header .tmp/public-worker/evidence/headers.txt \
             --output .tmp/public-worker/evidence/health.json \
