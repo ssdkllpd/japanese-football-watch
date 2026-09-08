@@ -96,6 +96,22 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   assert.equal(report.findings[0].counts.projectedAfterCandidates, 1);
 });
 
+test('includes saved catalog evidence for unresolved endpoint identities', () => {
+  const raw = fixture();
+  raw.lineups[0].startXI[0].player.name = 'Unmatched Lineup Name';
+  const inspected = require('../scripts/d1/report-player-identity-variance').inspectFixture(
+    raw, '2026-09-08T02:15:09.068Z', new Map(), {
+      season: new Map([[330982, { names: new Set(['Jimmy Morgan']), teamIds: new Set(['af:team:60']) }]]),
+      squad: new Map(),
+    },
+  );
+  assert.deepEqual(
+    inspected.teams[1].unresolvedStatsOnly[0].identityEvidence.seasonNames,
+    ['Jimmy Morgan'],
+  );
+  assert.equal(inspected.teams[1].unresolvedStatsOnly[0].identityEvidence.seasonListsFixtureTeam, true);
+});
+
 test('recognizes a reviewed alias regardless of which endpoint identity is canonical', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-identity-report-reversed-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

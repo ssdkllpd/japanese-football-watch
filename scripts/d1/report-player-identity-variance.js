@@ -225,8 +225,16 @@ function inspectTeam(bundle, teamId, scope, aliases, identityIndex) {
     lineupCount: lineup.length,
     playerStatsCount: stats.length,
     candidates: accepted,
-    unresolvedLineupOnly: lineupOnly.filter(item => !acceptedLineupIds.has(item.id)),
-    unresolvedStatsOnly: statsOnly.filter(item => !acceptedStatIds.has(item.id)),
+    unresolvedLineupOnly: lineupOnly.filter(item => !acceptedLineupIds.has(item.id)).map(item => ({
+      ...item,
+      identityEvidence: identityEvidence(identityIndex, teamId, item.id),
+      eventReferences: eventReferenceCount(bundle, teamId, item.id),
+    })),
+    unresolvedStatsOnly: statsOnly.filter(item => !acceptedStatIds.has(item.id)).map(item => ({
+      ...item,
+      identityEvidence: identityEvidence(identityIndex, teamId, item.id),
+      eventReferences: eventReferenceCount(bundle, teamId, item.id),
+    })),
   };
 }
 
