@@ -33,6 +33,17 @@ test('public Worker target and rendered configuration lock the reviewed origins 
   assert.equal(rendered.includes('API_FOOTBALL_KEY'), false);
 });
 
+test('committed Web UI configuration points at the reviewed public Worker origin', async () => {
+  const vm = require('node:vm');
+  const { loadPublicWorkerTarget } = await import('../scripts/v2/render-public-wrangler.mjs');
+  const target = loadPublicWorkerTarget(manifestPath);
+  const context = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'app-v2-config.js'), 'utf8'), context);
+  assert.equal(context.window.FOOTBALL_V2_CONFIG.apiBase, target.workerOrigin);
+  assert.equal(context.window.FOOTBALL_V2_CONFIG.trackingEnabled, false);
+  assert.equal(context.window.FOOTBALL_V2_CONFIG.attentionEnabled, false);
+});
+
 test('public Worker renderer rejects origin drift and enabling an unreviewed D1 read flag', async () => {
   const { loadPublicWorkerTarget } = await import('../scripts/v2/render-public-wrangler.mjs');
   const target = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -65,6 +76,7 @@ test('deployment runs only for main, installs the secret after deploy, and verif
   const health = workflow.indexOf('Verify allowed-origin health and CORS');
   assert.equal(render > 0 && deploy > render && secret > deploy && health > secret, true);
   assert.match(workflow, /access-control-allow-origin/);
+  assert.match(workflow, /--retry-all-errors/);
   assert.match(workflow, /test "\$status" = '403'/);
   assert.equal(workflow.includes('d1 execute'), false);
   assert.equal(workflow.includes('d1 migrations apply'), false);
