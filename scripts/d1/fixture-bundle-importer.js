@@ -122,6 +122,35 @@ function reconcileReviewedPlayerAliases(bundle) {
   return { bundle: nextBundle, applications };
 }
 
+function reconcileMissingPlayerPositions(bundle) {
+  const nextBundle = structuredClone(bundle);
+  const lineupPlayers = new Map();
+  const duplicates = new Set();
+
+  for (const lineup of nextBundle.lineups || []) {
+    for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) {
+      if (!player?.id) continue;
+      if (lineupPlayers.has(player.id)) {
+        duplicates.add(player.id);
+        continue;
+      }
+      lineupPlayers.set(player.id, { player, teamId: lineup.teamId });
+    }
+  }
+
+  for (const stat of nextBundle.playerStats || []) {
+    if (!stat?.playerId || duplicates.has(stat.playerId)) continue;
+    const lineup = lineupPlayers.get(stat.playerId);
+    if (!lineup || lineup.teamId !== stat.teamId) continue;
+    const lineupPosition = lineup.player.position ?? null;
+    const statPosition = stat.position ?? null;
+    if (lineupPosition === null && statPosition !== null) lineup.player.position = statPosition;
+    else if (lineupPosition !== null && statPosition === null) stat.position = lineupPosition;
+  }
+
+  return nextBundle;
+}
+
 function reconcilePlayerDisplayNames(bundle, catalog = {}) {
   const nextBundle = structuredClone(bundle);
   const nextCatalog = structuredClone(catalog || {});
@@ -169,7 +198,8 @@ function omitNullTeamStatValues(bundle) {
 
 function reconcileProviderVariants(bundle, catalog = {}) {
   const identities = reconcileReviewedPlayerAliases(bundle);
-  const names = reconcilePlayerDisplayNames(identities.bundle, catalog);
+  const positions = reconcileMissingPlayerPositions(identities.bundle);
+  const names = reconcilePlayerDisplayNames(positions, catalog);
   return {
     bundle: omitNullTeamStatValues(names.bundle),
     catalog: names.catalog,
@@ -199,6 +229,7 @@ function importFixtureBundle(database, bundle, catalog = {}, correctionDocument)
 module.exports = {
   ...core,
   importFixtureBundle,
+  reconcileMissingPlayerPositions,
   reconcileReviewedPlayerAliases,
   reviewedPlayerAliasRules,
   validateBundle,

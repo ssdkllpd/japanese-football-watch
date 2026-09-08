@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 const {
+  reconcileMissingPlayerPositions,
   reconcileReviewedPlayerAliases,
   validateBundle,
 } = require('../scripts/d1/fixture-bundle-importer');
@@ -112,7 +113,7 @@ function metcalfeBundle(fetchedAt = '2026-09-08T02:15:09.068Z') {
       team: { id: 58, name: 'Millwall' },
       formation: '4-2-3-1',
       coach: null,
-      startXI: [{ player: { id: 531386, name: 'J. Metcalfe', number: 10, pos: 'M', grid: '3:2' } }],
+      startXI: [{ player: { id: 531386, name: 'J. Metcalfe', number: 10, pos: null, grid: '3:2' } }],
       substitutes: [],
     }],
     players: [{
@@ -167,7 +168,38 @@ test('applies the reviewed Millwall player alias across lineup and event referen
   const context = validateBundle(metcalfeBundle(), catalog());
   assert.equal(context.players.has('af:player:531386'), false);
   assert.equal(context.players.get('af:player:297641').name, 'Jenson Metcalfe');
+  assert.equal(context.normalized.lineups[0].startXI[0].position, 'M');
+  assert.equal(context.normalized.playerStats[0].position, 'M');
   assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
+});
+
+test('fills a missing lineup position from matching player stats', () => {
+  const bundle = hincapieBundle();
+  bundle.lineups[0].startXI[0].position = null;
+  const reconciled = reconcileMissingPlayerPositions(bundle);
+  assert.equal(reconciled.lineups[0].startXI[0].position, 'D');
+  assert.equal(reconciled.playerStats[0].position, 'D');
+  const context = validateBundle(bundle, catalog());
+  assert.equal(context.normalized.lineups[0].startXI[0].position, 'D');
+});
+
+test('fills a missing player-stats position from the matching lineup', () => {
+  const bundle = hincapieBundle();
+  bundle.playerStats[0].position = null;
+  const reconciled = reconcileMissingPlayerPositions(bundle);
+  assert.equal(reconciled.lineups[0].startXI[0].position, 'D');
+  assert.equal(reconciled.playerStats[0].position, 'D');
+  const context = validateBundle(bundle, catalog());
+  assert.equal(context.normalized.playerStats[0].position, 'D');
+});
+
+test('still fails closed when lineup and player stats provide conflicting positions', () => {
+  const bundle = hincapieBundle();
+  bundle.playerStats[0].position = 'M';
+  assert.throws(
+    () => validateBundle(bundle, catalog()),
+    /playerStats\[0\] conflicts with lineup team or position/,
+  );
 });
 
 test('does not apply the reviewed alias outside the pinned snapshot observation', () => {
