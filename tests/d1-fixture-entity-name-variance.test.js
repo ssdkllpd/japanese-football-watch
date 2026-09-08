@@ -126,6 +126,40 @@ function metcalfeBundle(fetchedAt = '2026-09-08T02:15:09.068Z') {
   }, { fetchedAt, revision: 1 });
 }
 
+function campbellBundle() {
+  const bundle = metcalfeBundle();
+  bundle.fixture.id = 'af:fixture:1563086';
+  bundle.fixture.providerId = 1563086;
+  bundle.fixture.teams.home = {
+    id: 'af:team:1335', providerId: 1335, name: 'Charlton', logo: null, winner: true,
+  };
+  bundle.lineups[0].teamId = 'af:team:1335';
+  bundle.lineups[0].startXI[0] = {
+    id: 'af:player:356419', providerId: 356419, name: 'T. Campbell',
+    number: 7, position: null, grid: '4:3', role: 'starter',
+  };
+  bundle.playerStats[0] = {
+    ...bundle.playerStats[0],
+    fixtureId: 'af:fixture:1563086',
+    playerId: 'af:player:394294',
+    playerProviderId: 394294,
+    playerName: 'Tyreece Campbell',
+    teamId: 'af:team:1335',
+    position: 'M',
+    starter: true,
+    values: { minutes: 90, rating: 7.9, goals: 1 },
+  };
+  bundle.events = [{
+    ...bundle.events[0],
+    id: 'af:event:1563086:7',
+    teamId: 'af:team:1335',
+    playerId: 'af:player:356419',
+    relatedPlayerId: null,
+    elapsed: 80,
+  }];
+  return bundle;
+}
+
 test('accepts provider display-name variants for the same canonical player identity', () => {
   const context = validateBundle(hincapieBundle(), catalog());
   const player = context.players.get('af:player:127817');
@@ -170,6 +204,22 @@ test('applies the reviewed Millwall player alias across lineup and event referen
   assert.equal(context.players.get('af:player:297641').name, 'Jenson Metcalfe');
   assert.equal(context.normalized.lineups[0].startXI[0].position, 'M');
   assert.equal(context.normalized.playerStats[0].position, 'M');
+  assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
+});
+
+test('reconciles Tyreece Campbell lineup and goal references with his player statistics identity', () => {
+  const result = reconcileReviewedPlayerAliases(campbellBundle());
+  assert.equal(result.applications.length, 1);
+  assert.equal(result.applications[0].aliasPlayerId, 'af:player:356419');
+  assert.equal(result.applications[0].canonicalPlayerId, 'af:player:394294');
+  assert.equal(result.bundle.lineups[0].startXI[0].id, 'af:player:394294');
+  assert.equal(result.bundle.lineups[0].startXI[0].providerId, 394294);
+  assert.equal(result.bundle.events[0].playerId, 'af:player:394294');
+
+  const context = validateBundle(campbellBundle(), catalog());
+  assert.equal(context.players.has('af:player:356419'), false);
+  assert.equal(context.players.get('af:player:394294').name, 'Tyreece Campbell');
+  assert.equal(context.normalized.lineups[0].startXI[0].position, 'M');
   assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
 });
 

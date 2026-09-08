@@ -16,6 +16,19 @@
       "canonicalPlayerId": "af:player:297641",
       "canonicalProviderId": 297641,
       "reason": "API-Football endpoint identity variance for Jenson Metcalfe confirmed across five Millwall fixtures in the pinned snapshot"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 40,
+      "season": 2026,
+      "teamId": "af:team:1335",
+      "aliasPlayerId": "af:player:356419",
+      "aliasProviderId": 356419,
+      "canonicalPlayerId": "af:player:394294",
+      "canonicalProviderId": 394294,
+      "reason": "API-Football lineup and goal-event identity variance for Tyreece Campbell confirmed against the player statistics in fixture 1563086 of the pinned snapshot"
     }
   ],
   "leagues": [
