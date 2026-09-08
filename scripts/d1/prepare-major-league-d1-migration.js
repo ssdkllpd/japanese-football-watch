@@ -132,12 +132,12 @@ function exactNumericParameter(payload, key, expected, label) {
 }
 
 function listNumericFiles(directory, expression, label) {
-  const names = fs.readdirSync(directory).sort();
+  const names = fs.readdirSync(directory);
   return names.map(name => {
     const match = expression.exec(name);
     if (!match) fail(`${label} contains unexpected file ${name}.`);
     return { id: Number(match[1]), name, path: path.join(directory, name) };
-  });
+  }).sort((left, right) => left.id - right.id);
 }
 
 function validateLeagueSeason(leaguePayload, target) {
