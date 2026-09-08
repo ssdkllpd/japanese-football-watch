@@ -83,6 +83,12 @@ function realDate(value, label) {
   return value;
 }
 
+function shiftDate(value, days) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function integer(value, label) {
   if (!Number.isSafeInteger(value)) fail(`${label} must be a safe integer.`);
   return value;
@@ -275,6 +281,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     fail(`League ${target.league} fixture count is inconsistent.`);
   }
 
+  const fixtureBoundaryAdjustments = [];
   const coreFixtures = rawFixtures.map((fixture, index) => {
     if (Number(fixture?.league?.id) !== target.league || Number(fixture?.league?.season) !== target.season) {
       fail(`League ${target.league} fixture ${index} is outside the declared competition-season.`);
@@ -288,7 +295,18 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     const errors = validateFixtureBundle(bundle);
     if (errors.length) fail(`Fixture ${fixture?.fixture?.id} failed normalization: ${errors.join('; ')}`);
     if (bundle.fixture.dateJst < metadata.start || bundle.fixture.dateJst > metadata.end) {
-      fail(`Fixture ${bundle.fixture.id} date ${bundle.fixture.dateJst} is outside ${metadata.start}..${metadata.end}.`);
+      const earliestJst = shiftDate(metadata.start, -1);
+      const latestJst = shiftDate(metadata.end, 1);
+      if (bundle.fixture.dateJst < earliestJst || bundle.fixture.dateJst > latestJst) {
+        fail(`Fixture ${bundle.fixture.id} date ${bundle.fixture.dateJst} is outside the one-day timezone boundary around ${metadata.start}..${metadata.end}.`);
+      }
+      fixtureBoundaryAdjustments.push({
+        fixtureId: bundle.fixture.id,
+        dateJst: bundle.fixture.dateJst,
+        seasonStartsOn: metadata.start,
+        seasonEndsOn: metadata.end,
+        reason: 'provider-season-date-to-jst-boundary',
+      });
     }
     if (bundle.fixture.venue.id && !venueById.has(bundle.fixture.venue.providerId)) {
       venueById.set(bundle.fixture.venue.providerId, {
@@ -410,6 +428,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     venueCount: coreArtifact.venues.length,
     fixtureCount: coreFixtures.length,
     completedFixtureCount: finalIds.size,
+    fixtureBoundaryAdjustments,
     standingsRowCount: standingRows,
     playerRows: players.rows,
     uniquePlayers: players.uniquePlayers,
@@ -507,6 +526,7 @@ function prepare(options) {
       providerSeason: item.season,
       startsOn: item.startsOn,
       endsOn: item.endsOn,
+      fixtureBoundaryAdjustmentCount: item.fixtureBoundaryAdjustments.length,
       passed: item.startsOn.startsWith(`${item.season}-`)
         && item.endsOn.startsWith(`${item.season + 1}-`),
     })),

@@ -162,6 +162,7 @@ test('prepares hash-scoped D1 artifacts only after the season boundary gate pass
     providerSeason: 2026,
     startsOn: '2026-08-01',
     endsOn: '2027-05-31',
+    fixtureBoundaryAdjustmentCount: 0,
     passed: true,
   });
   assert.equal(result.migrationManifest.publicR2ObjectsWritten, false);
