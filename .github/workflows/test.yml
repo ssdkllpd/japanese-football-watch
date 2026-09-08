@@ -49,6 +49,7 @@ jobs:
           node --check scripts/v2/reconcile-fixture-revision.js
           node --check scripts/v2/render-public-wrangler.mjs
           node --check scripts/d1/render-admin-wrangler.mjs
+          node --check scripts/d1/prepare-major-league-d1-migration.js
           node --check shared/date-index-contract.mjs
           node --check shared/fixed-snapshot-contract.mjs
           node --check worker/index.mjs
