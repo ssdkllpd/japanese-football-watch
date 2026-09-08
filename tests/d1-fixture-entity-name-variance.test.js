@@ -103,7 +103,7 @@ function metcalfeBundle(fetchedAt = '2026-09-08T02:15:09.068Z') {
         time: { elapsed: 64, extra: null },
         team: { id: 58, name: 'Millwall' },
         player: { id: 531386, name: 'J. Metcalfe' },
-        assist: { id: 400000, name: 'Replacement' },
+        assist: null,
         type: 'subst', detail: 'Substitution 1', comments: null,
       },
     ],
