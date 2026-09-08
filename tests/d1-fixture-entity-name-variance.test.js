@@ -160,6 +160,40 @@ function campbellBundle() {
   return bundle;
 }
 
+function morganBundle() {
+  const bundle = metcalfeBundle();
+  bundle.fixture.id = 'af:fixture:1563088';
+  bundle.fixture.providerId = 1563088;
+  bundle.fixture.teams.away = {
+    id: 'af:team:60', providerId: 60, name: 'West Brom', logo: null, winner: true,
+  };
+  bundle.lineups[0].teamId = 'af:team:60';
+  bundle.lineups[0].startXI[0] = {
+    id: 'af:player:544659', providerId: 544659, name: 'J. Morgan',
+    number: 11, position: null, grid: '4:1', role: 'starter',
+  };
+  bundle.playerStats[0] = {
+    ...bundle.playerStats[0],
+    fixtureId: 'af:fixture:1563088',
+    playerId: 'af:player:330982',
+    playerProviderId: 330982,
+    playerName: 'Jimmy Morgan',
+    teamId: 'af:team:60',
+    position: 'F',
+    starter: true,
+    values: { minutes: 89, rating: 8, goals: 1, assists: 1 },
+  };
+  bundle.events = [{
+    ...bundle.events[0],
+    id: 'af:event:1563088:10',
+    teamId: 'af:team:60',
+    playerId: 'af:player:544659',
+    relatedPlayerId: null,
+    elapsed: 87,
+  }];
+  return bundle;
+}
+
 test('accepts provider display-name variants for the same canonical player identity', () => {
   const context = validateBundle(hincapieBundle(), catalog());
   const player = context.players.get('af:player:127817');
@@ -220,6 +254,22 @@ test('reconciles Tyreece Campbell lineup and goal references with his player sta
   assert.equal(context.players.has('af:player:356419'), false);
   assert.equal(context.players.get('af:player:394294').name, 'Tyreece Campbell');
   assert.equal(context.normalized.lineups[0].startXI[0].position, 'M');
+  assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
+});
+
+test('reconciles Jimmy Morgan lineup and goal references with his player statistics identity', () => {
+  const result = reconcileReviewedPlayerAliases(morganBundle());
+  assert.equal(result.applications.length, 1);
+  assert.equal(result.applications[0].aliasPlayerId, 'af:player:544659');
+  assert.equal(result.applications[0].canonicalPlayerId, 'af:player:330982');
+  assert.equal(result.bundle.lineups[0].startXI[0].id, 'af:player:330982');
+  assert.equal(result.bundle.lineups[0].startXI[0].providerId, 330982);
+  assert.equal(result.bundle.events[0].playerId, 'af:player:330982');
+
+  const context = validateBundle(morganBundle(), catalog());
+  assert.equal(context.players.has('af:player:544659'), false);
+  assert.equal(context.players.get('af:player:330982').name, 'Jimmy Morgan');
+  assert.equal(context.normalized.lineups[0].startXI[0].position, 'F');
   assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
 });
 
