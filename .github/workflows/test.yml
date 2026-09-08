@@ -47,6 +47,7 @@ jobs:
           node --check scripts/d1/request-admin-ingest.mjs
           node --check scripts/d1/create-v2-admin-plan.js
           node --check scripts/v2/reconcile-fixture-revision.js
+          node --check scripts/v2/render-public-wrangler.mjs
           node --check scripts/d1/render-admin-wrangler.mjs
           node --check shared/date-index-contract.mjs
           node --check shared/fixed-snapshot-contract.mjs
