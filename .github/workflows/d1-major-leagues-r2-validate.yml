@@ -15,6 +15,8 @@ on:
       - scripts/v2/fixture-contract.js
       - tests/d1-major-league-snapshot-prepare.test.js
       - tests/d1-fixture-entity-name-variance.test.js
+      - scripts/d1/report-player-identity-variance.js
+      - tests/d1-player-identity-variance-report.test.js
       - .github/workflows/d1-major-leagues-r2-validate.yml
 
 permissions:
@@ -40,7 +42,7 @@ jobs:
           node-version: '22'
 
       - name: Verify validator tests
-        run: node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-fixture-entity-name-variance.test.js
+        run: node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-fixture-entity-name-variance.test.js tests/d1-player-identity-variance-report.test.js
 
       - name: Resolve reviewed R2 staging source
         run: |
@@ -88,6 +90,14 @@ jobs:
           tar -xzf .tmp/d1-r2-validate/snapshot.tar.gz \
             -C .tmp/d1-r2-validate/extracted --no-same-owner --no-same-permissions
 
+      - name: Scan every completed fixture for player identity variance
+        run: |
+          node scripts/d1/report-player-identity-variance.js \
+            --snapshot-root .tmp/d1-r2-validate/extracted \
+            --latest .tmp/d1-r2-validate/latest.json \
+            --evidence config/d1-major-league-snapshot-20260908.json \
+            --out .tmp/d1-r2-validate/player-identity-variance.json
+
       - name: Run season gate and prepare migration artifacts without writes
         run: |
           node scripts/d1/prepare-major-league-d1-migration.js \
@@ -112,6 +122,7 @@ jobs:
             .tmp/d1-r2-validate/latest.json
             .tmp/d1-r2-validate/archive-entries.txt
             .tmp/d1-r2-validate/summary.json
+            .tmp/d1-r2-validate/player-identity-variance.json
             .tmp/d1-r2-validate/prepared
           if-no-files-found: error
           retention-days: 30
