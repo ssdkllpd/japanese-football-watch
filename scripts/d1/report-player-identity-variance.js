@@ -70,10 +70,17 @@ function uniqueBest(items, score) {
 function reviewedAliasMap(evidence) {
   const result = new Map();
   for (const rule of evidence.playerAliases || []) {
-    const key = [rule.league, rule.season, rule.teamId, rule.aliasPlayerId, rule.canonicalPlayerId].join('|');
+    const key = reviewedAliasPairKey(
+      rule.league, rule.season, rule.teamId, rule.aliasPlayerId, rule.canonicalPlayerId,
+    );
     result.set(key, rule);
   }
   return result;
+}
+
+function reviewedAliasPairKey(league, season, teamId, firstPlayerId, secondPlayerId) {
+  const pair = [String(firstPlayerId), String(secondPlayerId)].sort();
+  return [league, season, teamId, ...pair].join('|');
 }
 
 function addIdentityObservation(map, playerId, playerName, teamId = null) {
@@ -184,7 +191,9 @@ function inspectTeam(bundle, teamId, scope, aliases, identityIndex) {
     if (!bestStat) continue;
     const bestLineup = uniqueBest(lineupOnly, candidate => candidateScore(candidate, bestStat.item));
     if (!bestLineup || bestLineup.item.id !== left.id) continue;
-    const key = [scope.league, scope.season, teamId, left.id, bestStat.item.id].join('|');
+    const key = reviewedAliasPairKey(
+      scope.league, scope.season, teamId, left.id, bestStat.item.id,
+    );
     accepted.push({
       aliasPlayerId: left.id,
       aliasProviderId: left.providerId,

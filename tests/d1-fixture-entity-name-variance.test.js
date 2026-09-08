@@ -8,6 +8,7 @@ const {
   reconcileReviewedPlayerAliases,
   validateBundle,
 } = require('../scripts/d1/fixture-bundle-importer');
+const reviewedEvidence = require('../config/d1-major-league-snapshot-20260908.json');
 
 function catalog() {
   return {
@@ -194,6 +195,56 @@ function morganBundle() {
   return bundle;
 }
 
+function lawalBundle() {
+  const bundle = metcalfeBundle();
+  bundle.fixture.id = 'af:fixture:1563090';
+  bundle.fixture.providerId = 1563090;
+  bundle.fixture.teams.away = {
+    id: 'af:team:75', providerId: 75, name: 'Stoke City', logo: null, winner: false,
+  };
+  bundle.lineups[0].teamId = 'af:team:75';
+  bundle.lineups[0].startXI[0] = {
+    id: 'af:player:425199', providerId: 425199, name: 'B. Lawal',
+    number: 18, position: null, grid: '3:2', role: 'starter',
+  };
+  bundle.playerStats[0] = {
+    ...bundle.playerStats[0], fixtureId: 'af:fixture:1563090',
+    playerId: 'af:player:309814', playerProviderId: 309814,
+    playerName: 'Bosun Lawal', teamId: 'af:team:75', position: 'M', starter: true,
+  };
+  bundle.events = [{
+    ...bundle.events[0], id: 'af:event:1563090:2', teamId: 'af:team:75',
+    playerId: 'af:player:425199', relatedPlayerId: null,
+  }];
+  return bundle;
+}
+
+function ouziadBundle() {
+  const bundle = metcalfeBundle();
+  bundle.fixture.id = 'af:fixture:1552730';
+  bundle.fixture.providerId = 1552730;
+  bundle.fixture.competitionId = 'af:competition:61';
+  bundle.fixture.seasonId = 'af:season:61:2026';
+  bundle.fixture.teams.away = {
+    id: 'af:team:111', providerId: 111, name: 'Le Havre', logo: null, winner: false,
+  };
+  bundle.lineups[0].teamId = 'af:team:111';
+  bundle.lineups[0].startXI[0] = {
+    id: 'af:player:673857', providerId: 673857, name: 'D. Ouziad',
+    number: 35, position: null, grid: null, role: 'substitute',
+  };
+  bundle.playerStats[0] = {
+    ...bundle.playerStats[0], fixtureId: 'af:fixture:1552730',
+    playerId: 'af:player:957', playerProviderId: 957,
+    playerName: 'Djibril Ouziad', teamId: 'af:team:111', position: 'M', starter: false,
+  };
+  bundle.events[0] = {
+    ...bundle.events[0], id: 'af:event:1552730:4', teamId: 'af:team:111',
+    playerId: 'af:player:957', relatedPlayerId: null,
+  };
+  return bundle;
+}
+
 test('accepts provider display-name variants for the same canonical player identity', () => {
   const context = validateBundle(hincapieBundle(), catalog());
   const player = context.players.get('af:player:127817');
@@ -271,6 +322,31 @@ test('reconciles Jimmy Morgan lineup and goal references with his player statist
   assert.equal(context.players.get('af:player:330982').name, 'Jimmy Morgan');
   assert.equal(context.normalized.lineups[0].startXI[0].position, 'F');
   assert.equal(context.providerVariantEvidence.playerAliases.length, 1);
+});
+
+test('loads every corroborated positive-id variance as pinned reviewed evidence', () => {
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.reviewedPairCount, 73);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.newlyReviewedPairCount, 70);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.reversedToLineupIdentityCount, 4);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.excludedMissingOrZeroIdPairCount, 7);
+  assert.equal(reviewedEvidence.playerAliases.length, 73);
+});
+
+test('reconciles the next blocking Bosun Lawal variance to the player-statistics identity', () => {
+  const result = reconcileReviewedPlayerAliases(lawalBundle());
+  assert.equal(result.applications.length, 1);
+  assert.equal(result.bundle.lineups[0].startXI[0].id, 'af:player:309814');
+  assert.equal(result.bundle.playerStats[0].playerId, 'af:player:309814');
+  assert.equal(result.bundle.events[0].playerId, 'af:player:309814');
+});
+
+test('reverses a fixture-player id that conflicts with the saved season identity', () => {
+  const result = reconcileReviewedPlayerAliases(ouziadBundle());
+  assert.equal(result.applications.length, 1);
+  assert.equal(result.bundle.lineups[0].startXI[0].id, 'af:player:673857');
+  assert.equal(result.bundle.playerStats[0].playerId, 'af:player:673857');
+  assert.equal(result.bundle.playerStats[0].playerProviderId, 673857);
+  assert.equal(result.bundle.events[0].playerId, 'af:player:673857');
 });
 
 test('fills a missing lineup position from matching player stats', () => {

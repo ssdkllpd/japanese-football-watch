@@ -95,3 +95,31 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   assert.equal(report.findings[0].counts.appearanceUnion, 2);
   assert.equal(report.findings[0].counts.projectedAfterCandidates, 1);
 });
+
+test('recognizes a reviewed alias regardless of which endpoint identity is canonical', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-identity-report-reversed-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const completed = path.join(root, 'league-40', 'completed-fixtures');
+  fs.mkdirSync(completed, { recursive: true });
+  fs.writeFileSync(path.join(completed, '1563088.json'), JSON.stringify(fixture()));
+  const latest = {
+    provider: 'api-football', snapshotId: '20260908-021509068Z',
+    archiveKey: 'audit/example.tar.gz', archiveSha256: 'a'.repeat(64),
+    completedAt: '2026-09-08T02:15:09.068Z',
+  };
+  const evidence = {
+    snapshotId: latest.snapshotId,
+    playerAliases: [{
+      observedAt: latest.completedAt, league: 40, season: 2026, teamId: 'af:team:60',
+      aliasPlayerId: 'af:player:330982', canonicalPlayerId: 'af:player:544659',
+    }],
+  };
+  const latestPath = path.join(root, 'latest.json');
+  const evidencePath = path.join(root, 'evidence.json');
+  fs.writeFileSync(latestPath, JSON.stringify(latest));
+  fs.writeFileSync(evidencePath, JSON.stringify(evidence));
+
+  const report = scanSnapshot({ snapshotRoot: root, latest: latestPath, evidence: evidencePath });
+  assert.equal(report.candidates[0].alreadyReviewed, true);
+  assert.equal(report.summary.unreviewedCandidateCount, 0);
+});
