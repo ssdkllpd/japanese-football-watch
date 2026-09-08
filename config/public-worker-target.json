@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "jfw-public-worker-target/1",
+  "workerName": "jfw-football-data-v2",
+  "workerOrigin": "https://jfw-football-data-v2.ssdkllpd.workers.dev",
+  "appOrigin": "https://ssdkllpd.github.io",
+  "r2BucketName": "jfw-football-data",
+  "d1DatabaseName": "jfw-football-staging",
+  "d1DatabaseId": "fdfd74e4-2702-4aa2-ab20-c062e952fe25",
+  "liveCompetitionIds": [39, 40, 61, 78, 88, 94, 135, 140, 144, 179],
+  "d1ReadFlags": {
+    "D1_DATE_INDEX_ENABLED": false,
+    "D1_COMPETITION_DATE_INDEX_ENABLED": false,
+    "D1_STANDINGS_ENABLED": false,
+    "D1_FIXTURE_DETAIL_ENABLED": false
+  }
+}

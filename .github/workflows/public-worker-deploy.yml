@@ -1,0 +1,86 @@
+name: Deploy Public Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/public-worker-deploy.yml'
+      - 'config/public-worker-target.json'
+      - 'scripts/v2/render-public-wrangler.mjs'
+      - 'scripts/d1/fixture-repository.js'
+      - 'worker/**'
+      - 'shared/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-worker-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate credentials and render locked public configuration
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY is required'; exit 1; }
+          node scripts/v2/render-public-wrangler.mjs \
+            --manifest config/public-worker-target.json \
+            --output .tmp/public-worker/wrangler.toml
+
+      - name: Deploy public read Worker
+        run: npx --yes wrangler@4 deploy --config .tmp/public-worker/wrangler.toml
+
+      - name: Install live-data provider secret
+        shell: bash
+        run: >-
+          printf '%s' "$API_FOOTBALL_KEY" |
+          npx --yes wrangler@4 secret put API_FOOTBALL_KEY
+          --config .tmp/public-worker/wrangler.toml
+
+      - name: Verify allowed-origin health and CORS
+        shell: bash
+        run: |
+          mkdir -p .tmp/public-worker/evidence
+          worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
+          app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
+            --header "Origin: $app_origin" \
+            --dump-header .tmp/public-worker/evidence/headers.txt \
+            --output .tmp/public-worker/evidence/health.json \
+            "$worker_origin/health"
+          jq -e '.ok == true and .service == "football-data-v2"' \
+            .tmp/public-worker/evidence/health.json >/dev/null
+          tr -d '\r' < .tmp/public-worker/evidence/headers.txt \
+            | grep -Fxi "access-control-allow-origin: $app_origin"
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$worker_origin/health")
+          test "$status" = '403'
+          jq -n --arg workerOrigin "$worker_origin" --arg appOrigin "$app_origin" \
+            '{workerOrigin: $workerOrigin, appOrigin: $appOrigin, allowedOriginHealth: true, noOriginDenied: true}' \
+            > .tmp/public-worker/evidence/report.json
+
+      - name: Upload public deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-worker-deployment-${{ github.sha }}
+          path: |
+            .tmp/public-worker/evidence/health.json
+            .tmp/public-worker/evidence/report.json
+          if-no-files-found: warn
+          retention-days: 14
