@@ -45,13 +45,31 @@ function reconcilePlayerDisplayNames(bundle, catalog = {}) {
   return { bundle: nextBundle, catalog: nextCatalog };
 }
 
+function omitNullTeamStatValues(bundle) {
+  const nextBundle = structuredClone(bundle);
+  for (const stat of nextBundle.teamStats || []) {
+    if (!stat?.values || typeof stat.values !== 'object' || Array.isArray(stat.values)) continue;
+    stat.values = Object.fromEntries(Object.entries(stat.values)
+      .filter(([, value]) => value !== null && value !== undefined));
+  }
+  return nextBundle;
+}
+
+function reconcileProviderVariants(bundle, catalog = {}) {
+  const names = reconcilePlayerDisplayNames(bundle, catalog);
+  return {
+    bundle: omitNullTeamStatValues(names.bundle),
+    catalog: names.catalog,
+  };
+}
+
 function validateBundle(bundle, catalog = {}) {
-  const reconciled = reconcilePlayerDisplayNames(bundle, catalog);
+  const reconciled = reconcileProviderVariants(bundle, catalog);
   return core.validateBundle(reconciled.bundle, reconciled.catalog);
 }
 
 function importFixtureBundle(database, bundle, catalog = {}, correctionDocument) {
-  const reconciled = reconcilePlayerDisplayNames(bundle, catalog);
+  const reconciled = reconcileProviderVariants(bundle, catalog);
   return core.importFixtureBundle(
     database,
     reconciled.bundle,

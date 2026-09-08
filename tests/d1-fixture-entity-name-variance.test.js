@@ -76,3 +76,14 @@ test('still fails closed when canonical player id and provider id disagree', () 
     /playerStats\[0\]\.id must equal af:player:127818/,
   );
 });
+
+test('omits nullable provider team-stat values before D1 validation', () => {
+  const bundle = hincapieBundle();
+  bundle.teamStats = [{
+    teamId: 'af:team:42',
+    values: { red_cards: null, total_shots: 10 },
+    provenance: { ...bundle.fixture.provenance },
+  }];
+  const context = validateBundle(bundle, catalog());
+  assert.deepEqual(context.normalized.teamStats[0].values, { total_shots: 10 });
+});
