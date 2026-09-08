@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "jfw-d1-major-leagues-reviewed-evidence/1",
+  "snapshotId": "20260908-021509068Z",
+  "archiveKey": "audit/api-football/v3/major-leagues/2026/snapshots/20260908-021509068Z.tar.gz",
+  "archiveSha256": "dd7dc93ba2256dcac56bbc0d5adf8b626177e77fa92389ee1c6fd73c1070d456",
+  "leagues": [
+    { "league": 39, "competitionId": "af:competition:39", "seasonId": "af:season:39:2026", "providerSeason": 2026, "startsOn": "2026-08-21", "endsOn": "2027-05-30", "teamCount": 20, "fixtureCount": 380, "completedFixtureDetailCount": 30, "standingsRowCount": 20 },
+    { "league": 40, "competitionId": "af:competition:40", "seasonId": "af:season:40:2026", "providerSeason": 2026, "startsOn": "2026-08-14", "endsOn": "2027-05-01", "teamCount": 24, "fixtureCount": 552, "completedFixtureDetailCount": 60, "standingsRowCount": 24 },
+    { "league": 61, "competitionId": "af:competition:61", "seasonId": "af:season:61:2026", "providerSeason": 2026, "startsOn": "2026-08-21", "endsOn": "2027-05-29", "teamCount": 18, "fixtureCount": 306, "completedFixtureDetailCount": 27, "standingsRowCount": 18 },
+    { "league": 78, "competitionId": "af:competition:78", "seasonId": "af:season:78:2026", "providerSeason": 2026, "startsOn": "2026-08-28", "endsOn": "2027-05-22", "teamCount": 18, "fixtureCount": 306, "completedFixtureDetailCount": 18, "standingsRowCount": 18 },
+    { "league": 88, "competitionId": "af:competition:88", "seasonId": "af:season:88:2026", "providerSeason": 2026, "startsOn": "2026-08-07", "endsOn": "2027-05-23", "teamCount": 18, "fixtureCount": 306, "completedFixtureDetailCount": 41, "standingsRowCount": 18 },
+    { "league": 94, "competitionId": "af:competition:94", "seasonId": "af:season:94:2026", "providerSeason": 2026, "startsOn": "2026-08-07", "endsOn": "2027-05-16", "teamCount": 18, "fixtureCount": 306, "completedFixtureDetailCount": 42, "standingsRowCount": 18 },
+    { "league": 135, "competitionId": "af:competition:135", "seasonId": "af:season:135:2026", "providerSeason": 2026, "startsOn": "2026-08-22", "endsOn": "2027-05-30", "teamCount": 20, "fixtureCount": 380, "completedFixtureDetailCount": 30, "standingsRowCount": 20 },
+    { "league": 140, "competitionId": "af:competition:140", "seasonId": "af:season:140:2026", "providerSeason": 2026, "startsOn": "2026-08-15", "endsOn": "2027-05-30", "teamCount": 20, "fixtureCount": 380, "completedFixtureDetailCount": 41, "standingsRowCount": 20 },
+    { "league": 144, "competitionId": "af:competition:144", "seasonId": "af:season:144:2026", "providerSeason": 2026, "startsOn": "2026-08-07", "endsOn": "2027-05-22", "teamCount": 18, "fixtureCount": 306, "completedFixtureDetailCount": 45, "standingsRowCount": 18 },
+    { "league": 179, "competitionId": "af:competition:179", "seasonId": "af:season:179:2026", "providerSeason": 2026, "startsOn": "2026-07-31", "endsOn": "2027-04-10", "teamCount": 12, "fixtureCount": 198, "completedFixtureDetailCount": 31, "standingsRowCount": 12 }
+  ],
+  "totals": {
+    "teams": 186,
+    "fixtures": 3420,
+    "completedFixtures": 365,
+    "completedFixtureDetails": 365,
+    "standingsRows": 186,
+    "playerRows": 4842,
+    "uniquePlayersByLeague": 4842,
+    "squadPlayers": 5782,
+    "coaches": 592
+  }
+}

@@ -9,6 +9,8 @@ const {
 } = fixtureImporterModule;
 
 export const FIXTURE_OPERATION = 'fixture_publish';
+export const FIXTURE_MIGRATION_OPERATION = 'fixture_migration_publish';
+const FIXTURE_MIGRATION_SCHEMA = 'jfw-d1-fixture-migration-artifact/1';
 const SCORE_KINDS = ['halftime', 'fulltime', 'extratime', 'penalty'];
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const MAX_D1_QUERIES_PER_INVOCATION = 50;
@@ -53,9 +55,12 @@ export function assertFixtureRequest(input) {
     'schemaVersion', 'operation', 'fixtureId', 'competitionId', 'seasonId',
     'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
   ]);
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) {
+    for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) allowed.add(key);
+  }
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin fixture ingest request contains unknown fields: ${unknown.join(', ')}.`);
-  if (input.operation !== FIXTURE_OPERATION
+  if (![FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation)
     || !/^af:fixture:\d+$/.test(String(input.fixtureId || ''))
     || !/^af:competition:\d+$/.test(String(input.competitionId || ''))
     || !/^af:season:\d+:\d+$/.test(String(input.seasonId || ''))) {
@@ -70,6 +75,19 @@ export function assertFixtureRequest(input) {
     requireObject(input.catalog, 'Admin fixture catalog');
   }
   requireObject(input.correctionDefinitions, 'Admin fixture correctionDefinitions');
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) {
+    if (!/^\d{8}-\d{9}Z$/.test(String(input.snapshotId || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.archiveSha256 || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.artifactSha256 || ''))) {
+      throw new Error('Fixture migration source declaration is invalid.');
+    }
+    const fixtureProviderId = input.fixtureId.slice('af:fixture:'.length);
+    const expectedKey = `migration/api-football/v3/major-leagues/2026/${input.archiveSha256}`
+      + `/fixtures/${fixtureProviderId}-${input.artifactSha256}.json`;
+    if (input.artifactKey !== expectedKey) {
+      throw new Error('Fixture migration artifact key is not content-addressed in the reviewed prefix.');
+    }
+  }
   return input;
 }
 
@@ -98,7 +116,31 @@ async function storedCatalog(database, input) {
 }
 
 function expectedFixtureKey(input) {
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) return input.artifactKey;
   return `football/v2/competitions/${input.competitionId}/seasons/${input.seasonId}/fixtures/${input.fixtureId}.json`;
+}
+
+function fixtureMigrationPayload(value, input) {
+  requireObject(value, 'Fixture migration artifact');
+  const allowed = new Set(['schemaVersion', 'source', 'bundle']);
+  const unknown = Object.keys(value).filter(key => !allowed.has(key));
+  if (unknown.length || value.schemaVersion !== FIXTURE_MIGRATION_SCHEMA) {
+    throw new Error('Fixture migration artifact schema is invalid.');
+  }
+  requireObject(value.source, 'Fixture migration source');
+  const sourceAllowed = new Set([
+    'provider', 'apiVersion', 'snapshotId', 'archiveKey', 'archiveSha256',
+    'archiveByteSize', 'observedAt',
+  ]);
+  const sourceUnknown = Object.keys(value.source).filter(key => !sourceAllowed.has(key));
+  if (sourceUnknown.length || value.source.provider !== 'api-football'
+    || value.source.apiVersion !== 'v3' || value.source.snapshotId !== input.snapshotId
+    || value.source.archiveSha256 !== input.archiveSha256
+    || value.source.archiveKey !== `audit/api-football/v3/major-leagues/2026/snapshots/${input.snapshotId}.tar.gz`
+    || !Number.isSafeInteger(value.source.archiveByteSize) || value.source.archiveByteSize < 0) {
+    throw new Error('Fixture migration artifact source is invalid.');
+  }
+  return value.bundle;
 }
 
 function revisionSelector() {
@@ -664,8 +706,14 @@ export async function publishFixtureFromR2(env, input) {
     throw error;
   }
   const raw = await object.text();
-  let payload;
-  try { payload = JSON.parse(raw); } catch { throw new Error('Fixture R2 object is not JSON.'); }
+  if (input.operation === FIXTURE_MIGRATION_OPERATION
+    && await sha256(raw) !== input.artifactSha256) {
+    throw new Error('Fixture migration artifact hash mismatch.');
+  }
+  let storedPayload;
+  try { storedPayload = JSON.parse(raw); } catch { throw new Error('Fixture R2 object is not JSON.'); }
+  const payload = input.operation === FIXTURE_MIGRATION_OPERATION
+    ? fixtureMigrationPayload(storedPayload, input) : storedPayload;
   if (payload?.fixture?.id !== input.fixtureId
     || payload?.fixture?.competitionId !== input.competitionId
     || payload?.fixture?.seasonId !== input.seasonId) {
@@ -682,7 +730,7 @@ export async function publishFixtureFromR2(env, input) {
   const checked = await preflight(env.FOOTBALL_DB, context, contentSha256);
   if (checked.noOp) {
     return {
-      schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: FIXTURE_OPERATION,
+      schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: input.operation,
       fixtureId: input.fixtureId, sourceR2Key, sourceSha256, contentSha256,
       imported: false, reason: 'already_published', revision: context.fixture.revision,
     };
@@ -701,7 +749,7 @@ export async function publishFixtureFromR2(env, input) {
   }
   await env.FOOTBALL_DB.batch(statements);
   return {
-    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: FIXTURE_OPERATION,
+    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: input.operation,
     fixtureId: input.fixtureId, sourceR2Key, sourceSha256, contentSha256,
     imported: true, revision: context.fixture.revision, statementCount: statements.length,
     counts: {

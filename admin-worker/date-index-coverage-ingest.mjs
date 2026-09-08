@@ -7,6 +7,8 @@ import {
 } from '../shared/date-index-contract.mjs';
 
 export const DATE_INDEX_COVERAGE_OPERATION = 'date_index_coverage_publish';
+export const MAJOR_LEAGUE_DATE_COVERAGE_OPERATION = 'major_league_date_coverage_publish';
+const MAJOR_LEAGUE_DATE_COVERAGE_SCHEMA = 'jfw-d1-major-league-date-coverage-artifact/1';
 const MAX_COMPETITION_INDEXES = 24;
 const MAX_ARTIFACT_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_ARTIFACT_BYTES = 8 * 1024 * 1024;
@@ -22,9 +24,15 @@ export function assertDateIndexCoverageRequest(input) {
     throw new Error('Admin date index coverage request must be an object.');
   }
   const allowed = new Set(['schemaVersion', 'operation', 'date', 'competitionIds']);
+  if (input.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
+    for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) {
+      allowed.add(key);
+    }
+  }
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin date index coverage request contains unknown fields: ${unknown.join(', ')}.`);
-  if (input.operation !== DATE_INDEX_COVERAGE_OPERATION || !realDate(input.date)
+  if (![DATE_INDEX_COVERAGE_OPERATION, MAJOR_LEAGUE_DATE_COVERAGE_OPERATION].includes(input.operation)
+    || !realDate(input.date)
     || !Array.isArray(input.competitionIds)) {
     throw new Error('Admin date index coverage scope is invalid.');
   }
@@ -39,6 +47,18 @@ export function assertDateIndexCoverageRequest(input) {
   const competitionIds = [...input.competitionIds].sort(compareCodePoint);
   if (new Set(competitionIds).size !== competitionIds.length) {
     throw new Error('Admin date index coverage contains duplicate competition IDs.');
+  }
+  if (input.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
+    if (!/^\d{8}-\d{9}Z$/.test(String(input.snapshotId || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.archiveSha256 || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.artifactSha256 || ''))) {
+      throw new Error('Major-league date coverage source declaration is invalid.');
+    }
+    const expectedKey = `migration/api-football/v3/major-leagues/2026/${input.archiveSha256}`
+      + `/date-coverages-${input.artifactSha256}.json`;
+    if (input.artifactKey !== expectedKey) {
+      throw new Error('Major-league date coverage artifact key is not content-addressed in the reviewed prefix.');
+    }
   }
   return { ...input, competitionIds };
 }
@@ -100,6 +120,125 @@ async function readArtifact(bucket, key, expected) {
   try { payload = JSON.parse(raw); } catch { throw new Error(`Date index R2 object is not JSON: ${key}.`); }
   assertValidDateIndexPayload(payload, expected);
   return { key, raw, byteSize, payload, sha256: await sha256(raw) };
+}
+
+function exactFields(value, allowed, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+  const unknown = Object.keys(value).filter(key => !allowed.has(key));
+  if (unknown.length) throw new Error(`${label} contains unknown fields: ${unknown.join(', ')}.`);
+}
+
+function canonicalIds(values, expression, label) {
+  if (!Array.isArray(values)) throw new Error(`${label} must be an array.`);
+  values.forEach((value, index) => {
+    if (typeof value !== 'string' || !expression.test(value)) {
+      throw new Error(`${label}[${index}] is invalid.`);
+    }
+  });
+  const sorted = [...values].sort(compareCodePoint);
+  if (new Set(sorted).size !== sorted.length) throw new Error(`${label} contains duplicates.`);
+  if (sorted.some((value, index) => value !== values[index])) {
+    throw new Error(`${label} must be sorted.`);
+  }
+  return sorted;
+}
+
+async function readMajorLeagueCoverageArtifact(bucket, input) {
+  const object = await bucket.get(input.artifactKey);
+  if (!object) {
+    const error = new Error('Major-league date coverage migration artifact is missing.');
+    error.status = 404;
+    throw error;
+  }
+  const raw = await object.text();
+  const byteSize = new TextEncoder().encode(raw).byteLength;
+  if (byteSize > MAX_ARTIFACT_BYTES) {
+    throw new Error('Major-league date coverage migration artifact exceeds the ingest limit.');
+  }
+  if (await sha256(raw) !== input.artifactSha256) {
+    throw new Error('Major-league date coverage migration artifact hash mismatch.');
+  }
+  let artifact;
+  try { artifact = JSON.parse(raw); } catch {
+    throw new Error('Major-league date coverage migration artifact is not JSON.');
+  }
+  exactFields(artifact, new Set(['schemaVersion', 'source', 'dates']), 'date coverage artifact');
+  if (artifact.schemaVersion !== MAJOR_LEAGUE_DATE_COVERAGE_SCHEMA || !Array.isArray(artifact.dates)) {
+    throw new Error('Major-league date coverage migration artifact schema is invalid.');
+  }
+  exactFields(artifact.source, new Set([
+    'provider', 'apiVersion', 'snapshotId', 'archiveKey', 'archiveSha256',
+    'archiveByteSize', 'observedAt',
+  ]), 'date coverage artifact source');
+  let observedAt = null;
+  try { observedAt = new Date(artifact.source.observedAt).toISOString(); } catch { /* rejected below */ }
+  if (artifact.source.provider !== 'api-football' || artifact.source.apiVersion !== 'v3'
+    || artifact.source.snapshotId !== input.snapshotId
+    || artifact.source.archiveSha256 !== input.archiveSha256
+    || artifact.source.archiveKey
+      !== `audit/api-football/v3/major-leagues/2026/snapshots/${input.snapshotId}.tar.gz`
+    || !Number.isSafeInteger(artifact.source.archiveByteSize) || artifact.source.archiveByteSize < 0
+    || observedAt !== artifact.source.observedAt) {
+    throw new Error('Major-league date coverage migration source is invalid.');
+  }
+  if (artifact.dates.length === 0 || artifact.dates.length > 500) {
+    throw new Error('Major-league date coverage artifact exceeds the date bounds.');
+  }
+  const dates = artifact.dates.map((dateItem, dateIndex) => {
+    exactFields(dateItem, new Set([
+      'date', 'fixtureIds', 'fixtureIdDigest', 'competitions',
+    ]), `date coverage artifact dates[${dateIndex}]`);
+    if (!realDate(dateItem.date) || !Array.isArray(dateItem.competitions)) {
+      throw new Error(`date coverage artifact dates[${dateIndex}] is invalid.`);
+    }
+    const fixtureIds = canonicalIds(
+      dateItem.fixtureIds, /^af:fixture:\d+$/,
+      `date coverage artifact dates[${dateIndex}].fixtureIds`,
+    );
+    const competitions = dateItem.competitions.map((competition, competitionIndex) => {
+      exactFields(competition, new Set([
+        'competitionId', 'fixtureIds', 'fixtureIdDigest',
+      ]), `date coverage artifact dates[${dateIndex}].competitions[${competitionIndex}]`);
+      if (!/^af:competition:\d+$/.test(String(competition.competitionId || ''))) {
+        throw new Error('Major-league date coverage competition ID is invalid.');
+      }
+      return {
+        ...competition,
+        fixtureIds: canonicalIds(
+          competition.fixtureIds, /^af:fixture:\d+$/,
+          `date coverage artifact dates[${dateIndex}].competitions[${competitionIndex}].fixtureIds`,
+        ),
+      };
+    });
+    const competitionIds = competitions.map(item => item.competitionId);
+    canonicalIds(competitionIds, /^af:competition:\d+$/,
+      `date coverage artifact dates[${dateIndex}].competitions`);
+    const scopedIds = competitions.flatMap(item => item.fixtureIds).sort(compareCodePoint);
+    if (scopedIds.length !== fixtureIds.length
+      || scopedIds.some((value, index) => value !== fixtureIds[index])) {
+      throw new Error(`Major-league date coverage competition partition is incomplete for ${dateItem.date}.`);
+    }
+    return { ...dateItem, fixtureIds, competitions };
+  });
+  canonicalIds(dates.map(item => item.date), /^\d{4}-\d{2}-\d{2}$/,
+    'date coverage artifact dates');
+  const selected = dates.find(item => item.date === input.date);
+  if (!selected) throw new Error('Declared date is absent from the major-league coverage artifact.');
+  if (selected.competitions.length !== input.competitionIds.length
+    || selected.competitions.some((item, index) => item.competitionId !== input.competitionIds[index])) {
+    throw new Error('Declared competition scopes differ from the major-league coverage artifact.');
+  }
+  if (await fixtureDigest(selected.fixtureIds) !== selected.fixtureIdDigest) {
+    throw new Error('Major-league generic date coverage digest is invalid.');
+  }
+  for (const competition of selected.competitions) {
+    if (await fixtureDigest(competition.fixtureIds) !== competition.fixtureIdDigest) {
+      throw new Error(`Major-league competition date coverage digest is invalid: ${competition.competitionId}.`);
+    }
+  }
+  return { artifact, selected, raw, byteSize };
 }
 
 async function storedScope(database, date, competitionIds) {
@@ -264,6 +403,56 @@ export async function publishDateIndexCoverageFromR2(env, request) {
       sourceSha256: item.sha256,
     })),
     undeclaredCompetitions: [],
+    productionReady: false,
+  };
+}
+
+export async function publishMajorLeagueDateCoverageFromR2(env, request) {
+  if (!env.FOOTBALL_DB || !env.FOOTBALL_DATA) throw new Error('Admin ingest bindings are unavailable.');
+  const input = assertDateIndexCoverageRequest(request);
+  if (input.operation !== MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
+    throw new Error('Major-league date coverage operation is invalid.');
+  }
+  const loaded = await readMajorLeagueCoverageArtifact(env.FOOTBALL_DATA, input);
+  const scope = await storedScope(env.FOOTBALL_DB, input.date, input.competitionIds);
+  const storedIds = scope.fixtures.map(item => item.fixture_id);
+  sameIds(loaded.selected.fixtureIds, storedIds, `major-league generic date ${input.date}`);
+  const generic = {
+    key: input.artifactKey,
+    sha256: input.artifactSha256,
+    payload: { generatedAt: loaded.artifact.source.observedAt },
+    fixtureIds: storedIds,
+    fixtureIdDigest: await fixtureDigest(storedIds),
+  };
+  const competitions = loaded.selected.competitions.map(item => {
+    const competitionStoredIds = scope.fixtures
+      .filter(row => row.competition_id === item.competitionId)
+      .map(row => row.fixture_id);
+    sameIds(item.fixtureIds, competitionStoredIds,
+      `major-league competition date ${item.competitionId}/${input.date}`);
+    return {
+      competitionId: item.competitionId,
+      key: input.artifactKey,
+      sha256: input.artifactSha256,
+      payload: { generatedAt: loaded.artifact.source.observedAt },
+      fixtureIds: competitionStoredIds,
+      fixtureIdDigest: item.fixtureIdDigest,
+    };
+  });
+  await env.FOOTBALL_DB.batch(coverageStatements(
+    env.FOOTBALL_DB, input.date, generic, competitions,
+  ));
+  return {
+    schemaVersion: 'jfw-d1-admin-ingest-report/1',
+    operation: MAJOR_LEAGUE_DATE_COVERAGE_OPERATION,
+    snapshotId: input.snapshotId,
+    archiveSha256: input.archiveSha256,
+    artifactKey: input.artifactKey,
+    artifactSha256: input.artifactSha256,
+    date: input.date,
+    fixtureCount: storedIds.length,
+    fixtureIdDigest: generic.fixtureIdDigest,
+    competitionCount: competitions.length,
     productionReady: false,
   };
 }

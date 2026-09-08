@@ -132,13 +132,35 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39 } = {}) {
   const latest = { ...manifest, archiveSha256, archiveKey };
   const latestPath = path.join(root, 'latest.json');
   const configPath = path.join(root, 'config.json');
+  const evidencePath = path.join(root, 'evidence.json');
   writeJson(latestPath, latest);
   writeJson(configPath, {
     schemaVersion: 'jfw-d1-admin-ingest-plan/1', fixtures: [],
     standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
     dateIndexCoverages: [], expectedTotals: null,
   });
-  return { root, snapshotRoot, outputRoot, archiveFile, latestPath, configPath };
+  writeJson(evidencePath, {
+    schemaVersion: 'jfw-d1-major-leagues-reviewed-evidence/1',
+    snapshotId: manifest.snapshotId,
+    archiveKey,
+    archiveSha256,
+    leagues: [{
+      league: 39,
+      competitionId: 'af:competition:39',
+      seasonId: 'af:season:39:2026',
+      providerSeason: 2026,
+      startsOn: '2026-08-01',
+      endsOn: seasonEnd,
+      teamCount: 2,
+      fixtureCount: 1,
+      completedFixtureDetailCount: 1,
+      standingsRowCount: 2,
+    }],
+    totals,
+  });
+  return {
+    root, snapshotRoot, outputRoot, archiveFile, latestPath, configPath, evidencePath,
+  };
 }
 
 function run(paths) {
@@ -148,6 +170,7 @@ function run(paths) {
     archiveFile: paths.archiveFile,
     latest: paths.latestPath,
     config: paths.configPath,
+    evidence: paths.evidencePath,
   });
 }
 
@@ -172,6 +195,11 @@ test('prepares hash-scoped D1 artifacts only after the season boundary gate pass
     /^migration\/api-football\/v3\/major-leagues\/2026\/[0-9a-f]{64}\//);
   assert.ok(fs.existsSync(path.join(paths.outputRoot, 'core', 'league-39.json')));
   assert.ok(fs.existsSync(path.join(paths.outputRoot, 'fixtures', '39', '100.json')));
+  assert.ok(fs.existsSync(path.join(paths.outputRoot, 'coverage', 'date-coverages.json')));
+  assert.equal(result.migrationManifest.dateCoverageArtifact.dateCount, 1);
+  assert.equal(result.migrationManifest.dateCoverageArtifact.competitionDateCount, 1);
+  assert.equal(result.migrationManifest.expectedTotals.dateIndexCoverages, 1);
+  assert.equal(result.migrationManifest.expectedTotals.competitionDateIndexCoverages, 1);
 });
 
 test('fails closed when provider season 2026 does not end in 2027', () => {
@@ -183,4 +211,37 @@ test('fails closed when provider season 2026 does not end in 2027', () => {
 test('fails closed when a fixture belongs to another competition', () => {
   const paths = buildSnapshot({ fixtureLeague: 40 });
   assert.throws(() => run(paths), /outside the declared competition-season/);
+});
+
+test('fails closed when the saved snapshot differs from pinned reviewed evidence', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.totals.fixtures = 2;
+  writeJson(paths.evidencePath, evidence);
+  assert.throws(() => run(paths), /pinned reviewed evidence/);
+  assert.equal(fs.existsSync(path.join(paths.outputRoot, 'migration-manifest.json')), false);
+});
+
+test('builds a complete hash-checked migration request sequence without writing', async () => {
+  const paths = buildSnapshot();
+  run(paths);
+  const { validatePrepared } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const prepared = validatePrepared(paths.outputRoot, paths.evidencePath);
+  assert.deepEqual(prepared.summary, {
+    competitions: 1,
+    coreFixtures: 1,
+    fixtureDetails: 1,
+    standings: 1,
+    dateCoverages: 1,
+    competitionDateCoverages: 1,
+    uploadObjects: 3,
+    adminRequests: 5,
+  });
+  assert.deepEqual(prepared.requests.map(item => item.operation), [
+    'major_league_core_publish',
+    'major_league_standings_publish',
+    'fixture_migration_publish',
+    'major_league_date_coverage_publish',
+    'migration_verify',
+  ]);
 });

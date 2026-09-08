@@ -4,7 +4,8 @@ export const MIGRATION_VERIFY_OPERATION = 'migration_verify';
 
 const MAX_FIXTURES = 500;
 const MAX_STANDINGS = 100;
-const MAX_DATES = 64;
+const MAX_DATES = 500;
+const MAX_MAJOR_LEAGUE_SEASONS = 20;
 const MAX_COMPETITION_SCOPES = 1_000;
 const EXPECTED_TOTAL_KEYS = [
   'fixedSnapshots', 'publishedFixtures', 'publishedStandings',
@@ -63,7 +64,7 @@ export function assertMigrationVerifyRequest(input) {
   }
   const allowed = new Set([
     'schemaVersion', 'operation', 'fixedSnapshot', 'fixtureIds', 'standings', 'dateIndexCoverages',
-    'expectedTotals',
+    'expectedTotals', 'majorLeagueSeasons', 'snapshotId', 'archiveSha256',
   ]);
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin migration verification request contains unknown fields: ${unknown.join(', ')}.`);
@@ -75,6 +76,53 @@ export function assertMigrationVerifyRequest(input) {
     throw new Error('expectedTotals must be declared explicitly.');
   }
   const expectedTotals = normalizeExpectedTotals(input.expectedTotals);
+  requireArray(input.majorLeagueSeasons || [], 'majorLeagueSeasons', MAX_MAJOR_LEAGUE_SEASONS);
+  if ((input.majorLeagueSeasons || []).length) {
+    canonical(input.snapshotId, /^\d{8}-\d{9}Z$/, 'snapshotId');
+    canonical(input.archiveSha256, /^[0-9a-f]{64}$/, 'archiveSha256');
+  } else if (input.snapshotId !== undefined || input.archiveSha256 !== undefined) {
+    throw new Error('snapshotId and archiveSha256 require a majorLeagueSeasons declaration.');
+  }
+  const majorLeagueSeasons = (input.majorLeagueSeasons || []).map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`majorLeagueSeasons[${index}] must be an object.`);
+    }
+    const itemAllowed = new Set([
+      'competitionId', 'seasonId', 'startsOn', 'endsOn', 'teamCount', 'fixtureCount',
+      'publishedFixtureDetailCount', 'standingsRowCount', 'coreArtifactKey',
+      'coreArtifactSha256',
+    ]);
+    const itemUnknown = Object.keys(item).filter(key => !itemAllowed.has(key));
+    if (itemUnknown.length) {
+      throw new Error(`majorLeagueSeasons[${index}] contains unknown fields: ${itemUnknown.join(', ')}.`);
+    }
+    canonical(item.competitionId, /^af:competition:\d+$/, `majorLeagueSeasons[${index}].competitionId`);
+    canonical(item.seasonId, /^af:season:\d+:2026$/, `majorLeagueSeasons[${index}].seasonId`);
+    if (item.seasonId !== `af:season:${item.competitionId.slice('af:competition:'.length)}:2026`) {
+      throw new Error(`majorLeagueSeasons[${index}] competition-season identity is inconsistent.`);
+    }
+    realDate(item.startsOn, `majorLeagueSeasons[${index}].startsOn`);
+    realDate(item.endsOn, `majorLeagueSeasons[${index}].endsOn`);
+    if (!item.startsOn.startsWith('2026-') || !item.endsOn.startsWith('2027-')) {
+      throw new Error(`majorLeagueSeasons[${index}] does not pass the 2026/27 boundary gate.`);
+    }
+    for (const key of ['teamCount', 'fixtureCount', 'publishedFixtureDetailCount', 'standingsRowCount']) {
+      if (!Number.isSafeInteger(item[key]) || item[key] < 0) {
+        throw new Error(`majorLeagueSeasons[${index}].${key} must be a non-negative safe integer.`);
+      }
+    }
+    canonical(item.coreArtifactSha256, /^[0-9a-f]{64}$/,
+      `majorLeagueSeasons[${index}].coreArtifactSha256`);
+    const league = item.competitionId.slice('af:competition:'.length);
+    const expectedCoreKey = `migration/api-football/v3/major-leagues/2026/`
+      + `${input.archiveSha256 || ''}/leagues/${league}/core-${item.coreArtifactSha256}.json`;
+    if (item.coreArtifactKey !== expectedCoreKey) {
+      throw new Error(`majorLeagueSeasons[${index}].coreArtifactKey is not content-addressed.`);
+    }
+    return { ...item };
+  }).sort((left, right) => compareCodePoint(left.competitionId, right.competitionId));
+  unique(majorLeagueSeasons.map(item => `${item.competitionId}\t${item.seasonId}`),
+    'majorLeagueSeasons');
 
   let fixedSnapshot = null;
   if (input.fixedSnapshot !== null) {
@@ -132,10 +180,14 @@ export function assertMigrationVerifyRequest(input) {
   if (competitionScopeCount > MAX_COMPETITION_SCOPES) {
     throw new Error(`dateIndexCoverages exceeds the competition scope limit (${competitionScopeCount}/${MAX_COMPETITION_SCOPES}).`);
   }
-  if (!fixedSnapshot && fixtureIds.length + standings.length + dateIndexCoverages.length === 0) {
+  if (!fixedSnapshot && fixtureIds.length + standings.length + dateIndexCoverages.length
+    + majorLeagueSeasons.length === 0) {
     throw new Error('Admin migration verification scope is empty.');
   }
-  return { ...input, fixedSnapshot, fixtureIds, standings, dateIndexCoverages, expectedTotals };
+  return {
+    ...input, fixedSnapshot, fixtureIds, standings, dateIndexCoverages,
+    majorLeagueSeasons, expectedTotals,
+  };
 }
 
 async function rows(database, sql, params = []) {
@@ -216,6 +268,139 @@ async function verifiedStandings(database, declarations) {
   return new Set(found.map(item => `${item.competition_id}\t${item.season_id}`));
 }
 
+async function verifyMajorLeagueSeasons(database, declarations) {
+  const results = [];
+  for (const expected of declarations) {
+    const found = await rows(database, `
+      SELECT competition.canonical_id AS competition_id,
+        competition.provider_id AS competition_provider_id,
+        source.code AS source_code, source.api_version,
+        season.canonical_id AS season_id, season.provider_season,
+        season.starts_on, season.ends_on,
+        product.canonical_id AS product_season_id,
+        product.starts_on AS product_starts_on, product.ends_on AS product_ends_on,
+        (SELECT COUNT(*) FROM competition_season_teams membership
+          WHERE membership.competition_season_id = season.id) AS team_count,
+        (SELECT COUNT(*) FROM fixtures fixture
+          WHERE fixture.competition_season_id = season.id) AS fixture_count,
+        (SELECT COUNT(*) FROM fixture_score_parts score
+          JOIN fixtures fixture ON fixture.id = score.fixture_id
+          WHERE fixture.competition_season_id = season.id) AS score_part_count,
+        (SELECT COUNT(*) FROM fixtures fixture
+          JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+            AND revision.fixture_id = fixture.id
+          WHERE fixture.competition_season_id = season.id
+            AND revision.lifecycle_state = 'published'
+            AND revision.published_at IS NOT NULL) AS published_fixture_detail_count,
+        (SELECT COUNT(*) FROM standings_publications publication
+          WHERE publication.competition_season_id = season.id) AS standings_publication_count,
+        (SELECT COALESCE(MAX(publication.row_count), -1)
+          FROM standings_publications publication
+          WHERE publication.competition_season_id = season.id) AS standings_declared_row_count,
+        (SELECT COUNT(*) FROM standings_rows standing_row
+          JOIN standings_publications publication
+            ON publication.snapshot_id = standing_row.snapshot_id
+          WHERE publication.competition_season_id = season.id) AS standings_actual_row_count,
+        (SELECT COUNT(*) FROM raw_snapshots raw
+          JOIN record_sources record_source ON record_source.raw_snapshot_id = raw.id
+          WHERE raw.r2_key = ? AND raw.content_sha256 = ?
+            AND raw.retention_class = 'migration-major-league-core'
+            AND record_source.fact_kind = 'major_league_core_snapshot'
+            AND record_source.fact_key = season.canonical_id
+            AND record_source.issue_flags_json = '[]') AS core_proof_count,
+        (SELECT COUNT(*) FROM fixtures fixture
+          WHERE fixture.competition_season_id = season.id
+            AND (fixture.date_jst < date(season.starts_on, '-1 day')
+              OR fixture.date_jst > date(season.ends_on, '+1 day'))) AS fixture_date_violation_count,
+        (SELECT COUNT(*) FROM fixtures fixture
+          WHERE fixture.competition_season_id = season.id
+            AND (NOT EXISTS (
+              SELECT 1 FROM competition_season_teams membership
+              WHERE membership.competition_season_id = season.id
+                AND membership.team_id = fixture.home_team_id
+            ) OR NOT EXISTS (
+              SELECT 1 FROM competition_season_teams membership
+              WHERE membership.competition_season_id = season.id
+                AND membership.team_id = fixture.away_team_id
+            ))) AS fixture_membership_violation_count,
+        (SELECT COUNT(*) FROM standings_rows standing_row
+          JOIN standings_publications publication
+            ON publication.snapshot_id = standing_row.snapshot_id
+          WHERE publication.competition_season_id = season.id
+            AND NOT EXISTS (
+              SELECT 1 FROM competition_season_teams membership
+              WHERE membership.competition_season_id = season.id
+                AND membership.team_id = standing_row.team_id
+            )) AS standings_membership_violation_count
+      FROM competition_seasons season
+      JOIN competitions competition ON competition.id = season.competition_id
+      JOIN provider_sources source ON source.id = competition.source_id
+      JOIN product_seasons product ON product.id = season.product_season_id
+      WHERE competition.canonical_id = ? AND season.canonical_id = ?
+    `, [expected.coreArtifactKey, expected.coreArtifactSha256,
+      expected.competitionId, expected.seasonId]);
+    if (found.length !== 1) {
+      results.push({ expected, found: false, passed: false, mismatches: ['scope_missing'] });
+      continue;
+    }
+    const row = found[0];
+    const actual = {
+      competitionId: row.competition_id,
+      competitionProviderId: Number(row.competition_provider_id),
+      sourceCode: row.source_code,
+      apiVersion: row.api_version,
+      seasonId: row.season_id,
+      providerSeason: Number(row.provider_season),
+      startsOn: row.starts_on,
+      endsOn: row.ends_on,
+      productSeasonId: row.product_season_id,
+      productStartsOn: row.product_starts_on,
+      productEndsOn: row.product_ends_on,
+      teamCount: Number(row.team_count),
+      fixtureCount: Number(row.fixture_count),
+      scorePartCount: Number(row.score_part_count),
+      publishedFixtureDetailCount: Number(row.published_fixture_detail_count),
+      standingsPublicationCount: Number(row.standings_publication_count),
+      standingsDeclaredRowCount: Number(row.standings_declared_row_count),
+      standingsActualRowCount: Number(row.standings_actual_row_count),
+      coreProofCount: Number(row.core_proof_count),
+      fixtureDateViolationCount: Number(row.fixture_date_violation_count),
+      fixtureMembershipViolationCount: Number(row.fixture_membership_violation_count),
+      standingsMembershipViolationCount: Number(row.standings_membership_violation_count),
+    };
+    const expectedProviderId = Number(expected.competitionId.slice('af:competition:'.length));
+    const checks = {
+      competitionId: expected.competitionId,
+      competitionProviderId: expectedProviderId,
+      sourceCode: 'api-football',
+      apiVersion: 'v3',
+      seasonId: expected.seasonId,
+      providerSeason: 2026,
+      startsOn: expected.startsOn,
+      endsOn: expected.endsOn,
+      productSeasonId: 'jfw:season:2026-27',
+      productStartsOn: '2026-07-01',
+      productEndsOn: '2027-06-30',
+      teamCount: expected.teamCount,
+      fixtureCount: expected.fixtureCount,
+      scorePartCount: expected.fixtureCount * 4,
+      publishedFixtureDetailCount: expected.publishedFixtureDetailCount,
+      standingsPublicationCount: 1,
+      standingsDeclaredRowCount: expected.standingsRowCount,
+      standingsActualRowCount: expected.standingsRowCount,
+      coreProofCount: 1,
+      fixtureDateViolationCount: 0,
+      fixtureMembershipViolationCount: 0,
+      standingsMembershipViolationCount: 0,
+    };
+    const mismatches = Object.keys(checks)
+      .filter(key => actual[key] !== checks[key])
+      .map(key => ({ key, expected: checks[key], actual: actual[key] }));
+    results.push({ expected, found: true, actual, passed: mismatches.length === 0, mismatches });
+  }
+  return results;
+}
+
 async function migrationTotals(database, expected) {
   if (!expected) return { expected: null, actual: null, mismatches: [] };
   const [actual = {}] = await rows(database, `
@@ -263,6 +448,9 @@ export async function verifyMigrationState(env, request) {
   const fixedSnapshot = await verifyFixedSnapshot(env.FOOTBALL_DB, input.fixedSnapshot);
   const fixtures = await verifiedFixtureIds(env.FOOTBALL_DB, input.fixtureIds);
   const standings = await verifiedStandings(env.FOOTBALL_DB, input.standings);
+  const majorLeagueSeasons = await verifyMajorLeagueSeasons(
+    env.FOOTBALL_DB, input.majorLeagueSeasons,
+  );
   const dateCoverages = await verifiedDateCoverages(env.FOOTBALL_DB, input.dateIndexCoverages);
   const totals = await migrationTotals(env.FOOTBALL_DB, input.expectedTotals);
 
@@ -282,7 +470,8 @@ export async function verifyMigrationState(env, request) {
   });
   const passed = fixedSnapshot.verified && missingFixtureIds.length === 0
     && missingStandings.length === 0 && missingDateIndexes.length === 0
-    && competitionScopeMismatches.length === 0 && totals.mismatches.length === 0;
+    && competitionScopeMismatches.length === 0 && totals.mismatches.length === 0
+    && majorLeagueSeasons.every(item => item.passed);
   return {
     schemaVersion: 'jfw-d1-admin-ingest-report/1',
     operation: MIGRATION_VERIFY_OPERATION,
@@ -298,6 +487,7 @@ export async function verifyMigrationState(env, request) {
     missingStandings,
     missingDateIndexes,
     competitionScopeMismatches,
+    ...(majorLeagueSeasons.length ? { majorLeagueSeasons } : {}),
     expectedTotals: totals.expected,
     actualTotals: totals.actual,
     totalMismatches: totals.mismatches,

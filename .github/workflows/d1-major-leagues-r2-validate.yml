@@ -6,6 +6,7 @@ on:
     branches: [feat/d1-r2-staging-migration]
     paths:
       - config/d1-major-leagues-2026.json
+      - config/d1-major-league-snapshot-20260908.json
       - config/d1-targets.json
       - scripts/d1/prepare-major-league-d1-migration.js
       - scripts/v2/fetch-standings.js
@@ -91,6 +92,7 @@ jobs:
             --latest .tmp/d1-r2-validate/latest.json \
             --archive-file .tmp/d1-r2-validate/snapshot.tar.gz \
             --config config/d1-major-leagues-2026.json \
+            --evidence config/d1-major-league-snapshot-20260908.json \
             --out .tmp/d1-r2-validate/prepared \
             > .tmp/d1-r2-validate/summary.json
           jq -e '.passed == true and ([.seasonGate[].passed] | all)' \

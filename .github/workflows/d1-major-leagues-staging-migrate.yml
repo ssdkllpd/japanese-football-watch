@@ -1,0 +1,190 @@
+name: D1 Major Leagues Staging Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_staging_write:
+        description: Type WRITE jfw-football-staging 20260908-021509068Z
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-major-leagues-staging-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      EVIDENCE: config/d1-major-league-snapshot-20260908.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify explicit staging write confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirm_staging_write }}
+        run: test "$CONFIRMATION" = 'WRITE jfw-football-staging 20260908-021509068Z'
+
+      - name: Resolve exact reviewed staging target
+        env:
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          test "$D1_DATABASE_NAME" = 'jfw-football-staging'
+          test "$R2_BUCKET" = 'jfw-football-data'
+          test -n "$ADMIN_INGEST_TOKEN"
+          {
+            echo "ADMIN_WORKER_NAME=$ADMIN_WORKER_NAME"
+            echo "D1_DATABASE_NAME=$D1_DATABASE_NAME"
+            echo "D1_DATABASE_ID=$D1_DATABASE_ID"
+            echo "R2_BUCKET=$R2_BUCKET"
+            echo "ADMIN_INGEST_URL=$ADMIN_INGEST_URL"
+          } >> "$GITHUB_ENV"
+
+      - name: Install dependencies and run migration-specific tests
+        run: |
+          npm ci
+          node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-major-league-admin-ingest.test.js
+
+      - name: Download the exact pinned snapshot from R2
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/d1-major-migrate/extracted .tmp/d1-major-migrate/prepared
+          archive_key=$(jq -r '.archiveKey' "$EVIDENCE")
+          archive_sha=$(jq -r '.archiveSha256' "$EVIDENCE")
+          latest_key='audit/api-football/v3/major-leagues/2026/latest.json'
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$latest_key" \
+            --file .tmp/d1-major-migrate/latest.json --remote
+          jq -e --arg snapshot "$(jq -r '.snapshotId' "$EVIDENCE")" \
+            --arg key "$archive_key" --arg sha "$archive_sha" \
+            '.snapshotId==$snapshot and .archiveKey==$key and .archiveSha256==$sha and .complete==true' \
+            .tmp/d1-major-migrate/latest.json >/dev/null
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$archive_key" \
+            --file .tmp/d1-major-migrate/snapshot.tar.gz --remote
+          test "$(sha256sum .tmp/d1-major-migrate/snapshot.tar.gz | cut -d' ' -f1)" = "$archive_sha"
+
+      - name: Extract and reject unsafe archive entries
+        run: |
+          set -euo pipefail
+          tar -tzf .tmp/d1-major-migrate/snapshot.tar.gz > .tmp/d1-major-migrate/archive-entries.txt
+          while IFS= read -r entry; do
+            case "$entry" in
+              /*|../*|*/../*|*/..) echo "Unsafe archive path: $entry"; exit 1 ;;
+            esac
+          done < .tmp/d1-major-migrate/archive-entries.txt
+          if tar -tvzf .tmp/d1-major-migrate/snapshot.tar.gz \
+            | awk 'substr($1,1,1) == "l" || substr($1,1,1) == "h" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo 'Archive contains a symbolic or hard link.'
+            exit 1
+          fi
+          tar -xzf .tmp/d1-major-migrate/snapshot.tar.gz \
+            -C .tmp/d1-major-migrate/extracted --no-same-owner --no-same-permissions
+
+      - name: Re-run pinned season gate and offline D1 compatibility validation
+        run: |
+          set -euo pipefail
+          node scripts/d1/prepare-major-league-d1-migration.js \
+            --snapshot-root .tmp/d1-major-migrate/extracted \
+            --latest .tmp/d1-major-migrate/latest.json \
+            --archive-file .tmp/d1-major-migrate/snapshot.tar.gz \
+            --config config/d1-major-leagues-2026.json \
+            --evidence "$EVIDENCE" \
+            --out .tmp/d1-major-migrate/prepared \
+            > .tmp/d1-major-migrate/preparation-summary.json
+          node scripts/d1/migrate-major-league-snapshot.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --evidence "$EVIDENCE" \
+            --report .tmp/d1-major-migrate/validation-only-report.json
+          jq -e '.passed==true and .validation.summary.coreFixtures==3420 and .validation.summary.fixtureDetails==365 and .validation.summary.standings==10' \
+            .tmp/d1-major-migrate/validation-only-report.json >/dev/null
+
+      - name: Render exact staging admin configuration
+        run: node scripts/d1/render-admin-wrangler.mjs --output .tmp/d1-major-migrate/admin-wrangler.toml
+
+      - name: Verify D1 schema is already at migration 0004
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --command "SELECT id,name FROM d1_migrations ORDER BY id" \
+            > .tmp/d1-major-migrate/preflight-migrations.json
+          jq -e '.[0].results | length==4 and .[3].name=="0004_d1_standings_order_and_fixture_date.sql"' \
+            .tmp/d1-major-migrate/preflight-migrations.json >/dev/null
+
+      - name: Upload only content-addressed non-public migration artifacts
+        run: |
+          set -euo pipefail
+          jq -r '.validation.uploadObjects[] | [.r2Key,.localPath,.sha256] | @tsv' \
+            .tmp/d1-major-migrate/validation-only-report.json \
+            | while IFS=$'\t' read -r key local_file expected_sha; do
+                test "$(sha256sum "$local_file" | cut -d' ' -f1)" = "$expected_sha"
+                case "$key" in
+                  migration/api-football/v3/major-leagues/2026/*) ;;
+                  *) echo "Refusing unsafe R2 key: $key"; exit 1 ;;
+                esac
+                npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" \
+                  --file "$local_file" --content-type application/json --remote >/dev/null
+              done
+
+      - name: Deploy staging-only protected admin Worker
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config .tmp/d1-major-migrate/admin-wrangler.toml
+          printf '%s' "$ADMIN_INGEST_TOKEN" | npx --yes wrangler@4 secret put ADMIN_INGEST_TOKEN \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml
+
+      - name: Capture pre-write D1 Time Travel bookmark
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 time-travel info "$D1_DATABASE_NAME" --json \
+            > .tmp/d1-major-migrate/pre-write-bookmark.json
+          test -s .tmp/d1-major-migrate/pre-write-bookmark.json
+
+      - name: Execute idempotent staging migration and exact scoped verification
+        run: |
+          set -euo pipefail
+          node scripts/d1/migrate-major-league-snapshot.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --evidence "$EVIDENCE" \
+            --report .tmp/d1-major-migrate/execution-report.json \
+            --execute --url "$ADMIN_INGEST_URL"
+          jq -e '.passed==true and .execution.completed==true and .execution.failed==0' \
+            .tmp/d1-major-migrate/execution-report.json >/dev/null
+
+      - name: Confirm public read configuration was not changed
+        run: |
+          set -euo pipefail
+          test "$(rg -c '= "false"' worker/wrangler.toml.example)" -ge 4
+          ! rg '= "true"' worker/wrangler.toml.example
+
+      - name: Upload bounded migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-major-leagues-staging-migration-${{ github.sha }}
+          path: |
+            .tmp/d1-major-migrate/preparation-summary.json
+            .tmp/d1-major-migrate/prepared/validation-report.json
+            .tmp/d1-major-migrate/prepared/migration-manifest.json
+            .tmp/d1-major-migrate/validation-only-report.json
+            .tmp/d1-major-migrate/preflight-migrations.json
+            .tmp/d1-major-migrate/pre-write-bookmark.json
+            .tmp/d1-major-migrate/execution-report.json
+          if-no-files-found: warn
+          retention-days: 30

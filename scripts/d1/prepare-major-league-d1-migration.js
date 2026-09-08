@@ -9,10 +9,12 @@ const {
   validateFixtureBundle,
 } = require('../v2/fixture-contract');
 const { normalizeStandings } = require('../v2/fetch-standings');
+const { validateBundle: validateD1FixtureBundle } = require('./fixture-bundle-importer');
 
 const SNAPSHOT_SCHEMA = 'jfw-api-football-major-leagues-snapshot/1';
 const CORE_ARTIFACT_SCHEMA = 'jfw-d1-major-league-core-artifact/1';
 const FIXTURE_ARTIFACT_SCHEMA = 'jfw-d1-fixture-migration-artifact/1';
+const DATE_COVERAGE_ARTIFACT_SCHEMA = 'jfw-d1-major-league-date-coverage-artifact/1';
 const MIGRATION_MANIFEST_SCHEMA = 'jfw-d1-major-leagues-migration-manifest/1';
 const FINAL_STATUSES = new Set(['FT', 'AET', 'PEN']);
 
@@ -54,6 +56,10 @@ function writeJson(filePath, value) {
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function fixtureIdDigest(fixtureIds) {
+  return sha256(`${[...fixtureIds].sort().join('\n')}\n`);
 }
 
 function fileSha256(filePath) {
@@ -123,6 +129,44 @@ function parseTargets(config) {
   });
   unique(targets.map(item => item.league), 'Migration targets');
   return targets;
+}
+
+function assertReviewedEvidence(evidence, latest, manifest, leagues, totals) {
+  if (evidence?.schemaVersion !== 'jfw-d1-major-leagues-reviewed-evidence/1'
+    || !Array.isArray(evidence.leagues) || !evidence.totals) {
+    fail('Reviewed migration evidence is missing or unsupported.');
+  }
+  if (evidence.snapshotId !== manifest.snapshotId || evidence.snapshotId !== latest.snapshotId
+    || evidence.archiveKey !== latest.archiveKey
+    || evidence.archiveSha256 !== latest.archiveSha256) {
+    fail('Saved R2 snapshot does not match the pinned reviewed evidence.');
+  }
+  if (JSON.stringify(evidence.totals) !== JSON.stringify(totals)) {
+    fail('Snapshot totals do not match the pinned reviewed evidence.');
+  }
+  if (evidence.leagues.length !== leagues.length) {
+    fail('Snapshot league count does not match the pinned reviewed evidence.');
+  }
+  const actualByLeague = new Map(leagues.map(item => [item.league, item]));
+  unique(evidence.leagues.map(item => item.league), 'Reviewed evidence leagues');
+  for (const expected of evidence.leagues) {
+    const actual = actualByLeague.get(expected.league);
+    const observed = actual ? {
+      league: actual.league,
+      competitionId: actual.competitionId,
+      seasonId: actual.seasonId,
+      providerSeason: actual.season,
+      startsOn: actual.startsOn,
+      endsOn: actual.endsOn,
+      teamCount: actual.teamCount,
+      fixtureCount: actual.fixtureCount,
+      completedFixtureDetailCount: actual.fixtureArtifacts.length,
+      standingsRowCount: actual.standingsRowCount,
+    } : null;
+    if (JSON.stringify(observed) !== JSON.stringify(expected)) {
+      fail(`League ${expected.league} does not match the pinned reviewed evidence.`);
+    }
+  }
 }
 
 function exactNumericParameter(payload, key, expected, label) {
@@ -246,6 +290,48 @@ function fixtureMigrationArtifact(bundle, source) {
   };
 }
 
+function assertD1FixtureCompatibility(bundle, catalog) {
+  const context = validateD1FixtureBundle(bundle, catalog);
+  const lineupPlayers = new Set(context.normalized.lineups.flatMap(lineup => [
+    ...lineup.startXI.map(player => player.id),
+    ...lineup.substitutes.map(player => player.id),
+  ]));
+  const appearanceIds = new Set([
+    ...lineupPlayers,
+    ...context.normalized.playerStats.map(item => item.playerId),
+  ]);
+  const counts = {
+    events: context.normalized.events.length,
+    lineups: context.normalized.lineups.length,
+    appearances: appearanceIds.size,
+    lineupEntries: context.normalized.lineups.reduce(
+      (sum, lineup) => sum + lineup.startXI.length + lineup.substitutes.length, 0,
+    ),
+    playerStats: context.normalized.playerStats.length,
+    teamStats: context.normalized.teamStats.length,
+    fieldStates: context.normalized.lineups.reduce(
+      (sum, lineup) => sum + Object.keys(lineup.fieldStates || {}).length, 0,
+    ) + context.normalized.playerStats.reduce(
+      (sum, item) => sum + Object.keys(item.fieldStates || {}).length, 0,
+    ),
+  };
+  const limits = {
+    events: 100, lineups: 2, appearances: 40, lineupEntries: 40,
+    playerStats: 40, teamStats: 2, fieldStates: 160,
+  };
+  for (const [key, limit] of Object.entries(limits)) {
+    if (counts[key] > limit) fail(`Fixture ${bundle.fixture.id} ${key} exceeds the D1 publish limit (${counts[key]}/${limit}).`);
+  }
+  for (const stat of context.normalized.playerStats) {
+    for (const fieldPath of Object.keys(stat.fieldIssues || {})) {
+      if (!Object.hasOwn(stat.fieldStates || {}, fieldPath)) {
+        fail(`Fixture ${bundle.fixture.id} playerStats field issue lacks field state: ${stat.playerId}:${fieldPath}.`);
+      }
+    }
+  }
+  return counts;
+}
+
 function validateLeague(snapshotRoot, target, manifestLeague, context) {
   const leagueDir = path.join(snapshotRoot, `league-${target.league}`);
   if (!fs.statSync(leagueDir).isDirectory()) fail(`League directory is missing: ${leagueDir}`);
@@ -316,7 +402,13 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
         city: bundle.fixture.venue.city,
       });
     }
-    return fixtureIndexEntry(bundle);
+    return {
+      ...fixtureIndexEntry(bundle),
+      providerId: bundle.fixture.providerId,
+      round: bundle.fixture.round,
+      referee: bundle.fixture.referee,
+      venue: bundle.fixture.venue,
+    };
   });
 
   const finalIds = new Set(rawFixtures
@@ -396,6 +488,26 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     endsOn: metadata.end,
     status: metadata.season.current === true ? 'current' : 'scheduled',
   };
+  const d1Catalog = {
+    productSeasonId: `jfw:season:${target.season}-${String(target.season + 1).slice(-2)}`,
+    source: { apiVersion: 'v3' },
+    competition: { type: competition.type, countryCode: metadata.row.country.code || null },
+    season: {
+      status: season.status, startsOn: season.startsOn, endsOn: season.endsOn,
+      finalizedOn: null,
+    },
+  };
+  const fixtureDetailMaxima = {
+    events: 0, lineups: 0, appearances: 0, lineupEntries: 0,
+    playerStats: 0, teamStats: 0, fieldStates: 0,
+  };
+  for (const fixtureArtifact of fixtureArtifacts) {
+    const prepared = readJson(path.join(context.outputRoot, fixtureArtifact.path));
+    const counts = assertD1FixtureCompatibility(prepared.bundle, d1Catalog);
+    for (const key of Object.keys(fixtureDetailMaxima)) {
+      fixtureDetailMaxima[key] = Math.max(fixtureDetailMaxima[key], counts[key]);
+    }
+  }
   const coreArtifact = {
     schemaVersion: CORE_ARTIFACT_SCHEMA,
     source: context.source,
@@ -428,6 +540,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     venueCount: coreArtifact.venues.length,
     fixtureCount: coreFixtures.length,
     completedFixtureCount: finalIds.size,
+    fixtureDetailMaxima,
     fixtureBoundaryAdjustments,
     standingsRowCount: standingRows,
     playerRows: players.rows,
@@ -440,10 +553,40 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
       r2Key: `${context.migrationPrefix}/leagues/${target.league}/core-${coreSha256}.json`,
     },
     fixtureArtifacts,
+    coverageFixtures: coreFixtures.map(item => ({
+      fixtureId: item.fixtureId,
+      competitionId: item.competitionId,
+      dateJst: item.dateJst,
+    })),
   };
 }
 
-function validateManifest(snapshotRoot, latest, config, archiveFile, outputRoot) {
+function buildDateCoverageArtifact(source, leagues) {
+  const byDate = new Map();
+  for (const fixture of leagues.flatMap(item => item.coverageFixtures)) {
+    if (!byDate.has(fixture.dateJst)) byDate.set(fixture.dateJst, []);
+    byDate.get(fixture.dateJst).push(fixture);
+  }
+  const dates = [...byDate.entries()].sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, fixtures]) => {
+      const fixtureIds = fixtures.map(item => item.fixtureId).sort();
+      const competitionMap = new Map();
+      for (const fixture of fixtures) {
+        if (!competitionMap.has(fixture.competitionId)) competitionMap.set(fixture.competitionId, []);
+        competitionMap.get(fixture.competitionId).push(fixture.fixtureId);
+      }
+      const competitions = [...competitionMap.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([competitionId, ids]) => {
+          const sortedIds = ids.sort();
+          return { competitionId, fixtureIds: sortedIds, fixtureIdDigest: fixtureIdDigest(sortedIds) };
+        });
+      return { date, fixtureIds, fixtureIdDigest: fixtureIdDigest(fixtureIds), competitions };
+    });
+  return { schemaVersion: DATE_COVERAGE_ARTIFACT_SCHEMA, source, dates };
+}
+
+function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, outputRoot) {
   const manifest = readJson(path.join(snapshotRoot, 'manifest.json'), 'snapshot manifest');
   if (manifest?.schemaVersion !== SNAPSHOT_SCHEMA || manifest.complete !== true) {
     fail('Snapshot manifest is not a complete supported snapshot.');
@@ -460,7 +603,8 @@ function validateManifest(snapshotRoot, latest, config, archiveFile, outputRoot)
   if (!/^audit\/api-football\/v3\/major-leagues\/2026\/snapshots\/[0-9TZ-]+\.tar\.gz$/.test(latest.archiveKey)) {
     fail('Latest pointer archive key is outside the reviewed audit prefix.');
   }
-  if (archiveFile && fileSha256(archiveFile) !== latest.archiveSha256) fail('Downloaded R2 archive SHA-256 mismatch.');
+  if (!archiveFile) fail('Downloaded R2 archive file is required for immutable migration evidence.');
+  if (fileSha256(archiveFile) !== latest.archiveSha256) fail('Downloaded R2 archive SHA-256 mismatch.');
   const targets = parseTargets(config);
   if (manifest.targetCount !== targets.length || !Array.isArray(manifest.leagues)
     || manifest.leagues.length !== targets.length) fail('Snapshot target count does not match reviewed config.');
@@ -476,11 +620,12 @@ function validateManifest(snapshotRoot, latest, config, archiveFile, outputRoot)
     snapshotId: manifest.snapshotId,
     archiveKey: latest.archiveKey,
     archiveSha256: latest.archiveSha256,
+    archiveByteSize: fs.statSync(archiveFile).size,
     observedAt,
   };
   const migrationPrefix = `migration/api-football/v3/major-leagues/2026/${latest.archiveSha256}`;
   const context = { outputRoot, observedAt, source, migrationPrefix };
-  const leagues = targets.map(target => {
+  const validatedLeagues = targets.map(target => {
     const manifestLeague = manifestByLeague.get(target.league);
     if (!manifestLeague || manifestLeague.competitionId !== target.competitionId
       || manifestLeague.seasonId !== target.seasonId || manifestLeague.season !== target.season) {
@@ -488,7 +633,18 @@ function validateManifest(snapshotRoot, latest, config, archiveFile, outputRoot)
     }
     return validateLeague(snapshotRoot, target, manifestLeague, context);
   });
-  unique(leagues.flatMap(item => item.fixtureArtifacts.map(fixture => fixture.fixtureId)), 'Completed fixture artifacts');
+  unique(validatedLeagues.flatMap(item => item.fixtureArtifacts.map(fixture => fixture.fixtureId)), 'Completed fixture artifacts');
+  const dateCoverage = buildDateCoverageArtifact(source, validatedLeagues);
+  const coverageRelativePath = 'coverage/date-coverages.json';
+  const coverageSha256 = writeJson(path.join(outputRoot, coverageRelativePath), dateCoverage);
+  const coverageArtifact = {
+    path: coverageRelativePath,
+    artifactSha256: coverageSha256,
+    r2Key: `${migrationPrefix}/date-coverages-${coverageSha256}.json`,
+    dateCount: dateCoverage.dates.length,
+    competitionDateCount: dateCoverage.dates.reduce((sum, item) => sum + item.competitions.length, 0),
+  };
+  const leagues = validatedLeagues.map(({ coverageFixtures, ...league }) => league);
   const totals = {
     teams: leagues.reduce((sum, item) => sum + item.teamCount, 0),
     fixtures: leagues.reduce((sum, item) => sum + item.fixtureCount, 0),
@@ -501,7 +657,8 @@ function validateManifest(snapshotRoot, latest, config, archiveFile, outputRoot)
     coaches: leagues.reduce((sum, item) => sum + item.coachRows, 0),
   };
   if (JSON.stringify(totals) !== JSON.stringify(manifest.totals)) fail('Recomputed snapshot totals do not match the manifest.');
-  return { manifest, source, migrationPrefix, leagues, totals };
+  assertReviewedEvidence(evidence, latest, manifest, leagues, totals);
+  return { manifest, source, migrationPrefix, leagues, totals, coverageArtifact };
 }
 
 function prepare(options) {
@@ -510,8 +667,9 @@ function prepare(options) {
   fs.mkdirSync(outputRoot, { recursive: true });
   const latest = readJson(path.resolve(options.latest), 'R2 latest pointer');
   const config = readJson(path.resolve(options.config), 'migration target config');
+  const evidence = readJson(path.resolve(options.evidence), 'reviewed migration evidence');
   const result = validateManifest(
-    snapshotRoot, latest, config,
+    snapshotRoot, latest, config, evidence,
     options.archiveFile ? path.resolve(options.archiveFile) : null,
     outputRoot,
   );
@@ -541,6 +699,7 @@ function prepare(options) {
     d1WritesPerformed: false,
     publicReadFlagsChanged: false,
     leagues: result.leagues,
+    dateCoverageArtifact: result.coverageArtifact,
     expectedTotals: {
       competitions: result.leagues.length,
       competitionSeasons: result.leagues.length,
@@ -549,6 +708,8 @@ function prepare(options) {
       publishedFixtureDetails: result.totals.completedFixtureDetails,
       standingsPublications: result.leagues.length,
       standingsRows: result.totals.standingsRows,
+      dateIndexCoverages: result.coverageArtifact.dateCount,
+      competitionDateIndexCoverages: result.coverageArtifact.competitionDateCount,
     },
   };
   writeJson(path.join(outputRoot, 'migration-manifest.json'), migrationManifest);
@@ -557,13 +718,14 @@ function prepare(options) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args['snapshot-root'] || !args.latest || !args.config || !args.out) {
-    fail('Usage: prepare-major-league-d1-migration.js --snapshot-root DIR --latest FILE --config FILE --out DIR [--archive-file FILE]');
+  if (!args['snapshot-root'] || !args.latest || !args.config || !args.evidence || !args.out) {
+    fail('Usage: prepare-major-league-d1-migration.js --snapshot-root DIR --latest FILE --config FILE --evidence FILE --out DIR [--archive-file FILE]');
   }
   const result = prepare({
     snapshotRoot: args['snapshot-root'],
     latest: args.latest,
     config: args.config,
+    evidence: args.evidence,
     outputRoot: args.out,
     archiveFile: args['archive-file'],
   });
@@ -588,6 +750,7 @@ if (require.main === module) {
 
 module.exports = {
   CORE_ARTIFACT_SCHEMA,
+  DATE_COVERAGE_ARTIFACT_SCHEMA,
   FIXTURE_ARTIFACT_SCHEMA,
   MIGRATION_MANIFEST_SCHEMA,
   parseArgs,
