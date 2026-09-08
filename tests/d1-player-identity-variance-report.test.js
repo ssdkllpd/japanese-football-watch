@@ -53,6 +53,17 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   const completed = path.join(root, 'league-40', 'completed-fixtures');
   fs.mkdirSync(completed, { recursive: true });
   fs.writeFileSync(path.join(completed, '1563088.json'), JSON.stringify(fixture()));
+  const players = path.join(root, 'league-40', 'players');
+  fs.mkdirSync(players, { recursive: true });
+  fs.writeFileSync(path.join(players, 'page-1.json'), JSON.stringify({ response: [{
+    player: { id: 330982, name: 'Jimmy Morgan' },
+    statistics: [{ team: { id: 60 } }],
+  }] }));
+  const squads = path.join(root, 'league-40', 'squads');
+  fs.mkdirSync(squads, { recursive: true });
+  fs.writeFileSync(path.join(squads, '60.json'), JSON.stringify({ response: [{
+    team: { id: 60 }, players: [{ id: 330982, name: 'Jimmy Morgan' }],
+  }] }));
   const latest = {
     provider: 'api-football', snapshotId: '20260908-021509068Z',
     archiveKey: 'audit/example.tar.gz', archiveSha256: 'a'.repeat(64),
@@ -77,6 +88,10 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   assert.equal(report.candidates[0].aliasPlayerId, 'af:player:544659');
   assert.equal(report.candidates[0].canonicalPlayerId, 'af:player:330982');
   assert.equal(report.candidates[0].alreadyReviewed, true);
+  assert.deepEqual(report.candidates[0].evidence.lineupIdentity.seasonNames, []);
+  assert.deepEqual(report.candidates[0].evidence.playerStatsIdentity.seasonNames, ['Jimmy Morgan']);
+  assert.equal(report.candidates[0].evidence.playerStatsIdentity.seasonListsFixtureTeam, true);
+  assert.equal(report.candidates[0].evidence.playerStatsIdentity.squadListsFixtureTeam, true);
   assert.equal(report.findings[0].counts.appearanceUnion, 2);
   assert.equal(report.findings[0].counts.projectedAfterCandidates, 1);
 });

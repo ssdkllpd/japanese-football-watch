@@ -76,6 +76,69 @@ function reviewedAliasMap(evidence) {
   return result;
 }
 
+function addIdentityObservation(map, playerId, playerName, teamId = null) {
+  if (!Number.isSafeInteger(playerId) || playerId <= 0) return;
+  if (!map.has(playerId)) map.set(playerId, { names: new Set(), teamIds: new Set() });
+  const observation = map.get(playerId);
+  if (String(playerName || '').trim()) observation.names.add(String(playerName).trim());
+  if (Number.isSafeInteger(teamId) && teamId > 0) observation.teamIds.add(`af:team:${teamId}`);
+}
+
+function leagueIdentityIndex(leagueRoot) {
+  const season = new Map();
+  const squad = new Map();
+  const playersRoot = path.join(leagueRoot, 'players');
+  if (fs.existsSync(playersRoot)) {
+    const pages = fs.readdirSync(playersRoot, { withFileTypes: true })
+      .filter(entry => entry.isFile() && /^page-\d+\.json$/.test(entry.name))
+      .map(entry => entry.name).sort();
+    for (const page of pages) {
+      for (const row of readJson(path.join(playersRoot, page)).response || []) {
+        const teamIds = (row.statistics || []).map(item => item?.team?.id)
+          .filter(value => Number.isSafeInteger(value) && value > 0);
+        if (!teamIds.length) addIdentityObservation(season, row?.player?.id, row?.player?.name);
+        for (const teamId of teamIds) {
+          addIdentityObservation(season, row?.player?.id, row?.player?.name, teamId);
+        }
+      }
+    }
+  }
+  const squadsRoot = path.join(leagueRoot, 'squads');
+  if (fs.existsSync(squadsRoot)) {
+    const files = fs.readdirSync(squadsRoot, { withFileTypes: true })
+      .filter(entry => entry.isFile() && /^\d+\.json$/.test(entry.name))
+      .map(entry => entry.name).sort();
+    for (const file of files) {
+      for (const block of readJson(path.join(squadsRoot, file)).response || []) {
+        const teamId = block?.team?.id;
+        for (const player of block?.players || []) {
+          addIdentityObservation(squad, player?.id, player?.name, teamId);
+        }
+      }
+    }
+  }
+  return { season, squad };
+}
+
+function identityEvidence(index, teamId, playerId) {
+  const providerId = /^af:player:(\d+)$/.exec(String(playerId || ''));
+  const id = providerId ? Number(providerId[1]) : null;
+  const season = id === null ? null : index.season.get(id);
+  const squad = id === null ? null : index.squad.get(id);
+  return {
+    seasonNames: season ? [...season.names].sort() : [],
+    seasonTeamIds: season ? [...season.teamIds].sort() : [],
+    seasonListsFixtureTeam: season ? season.teamIds.has(teamId) : false,
+    squadNames: squad ? [...squad.names].sort() : [],
+    squadListsFixtureTeam: squad ? squad.teamIds.has(teamId) : false,
+  };
+}
+
+function eventReferenceCount(bundle, teamId, playerId) {
+  return bundle.events.filter(event => event.teamId === teamId
+    && (event.playerId === playerId || event.relatedPlayerId === playerId)).length;
+}
+
 function teamName(bundle, teamId) {
   for (const side of ['home', 'away']) {
     if (bundle.fixture.teams[side].id === teamId) return bundle.fixture.teams[side].name;
@@ -107,7 +170,7 @@ function statPlayers(bundle, teamId) {
   }));
 }
 
-function inspectTeam(bundle, teamId, scope, aliases) {
+function inspectTeam(bundle, teamId, scope, aliases, identityIndex) {
   const lineup = lineupPlayers(bundle, teamId);
   const stats = statPlayers(bundle, teamId);
   const lineupIds = new Set(lineup.map(item => item.id));
@@ -136,6 +199,12 @@ function inspectTeam(bundle, teamId, scope, aliases) {
       score: bestStat.score,
       confidence: bestStat.score === 100 ? 'exact_name' : 'surname_and_first_initial',
       alreadyReviewed: aliases.has(key),
+      evidence: {
+        lineupIdentity: identityEvidence(identityIndex, teamId, left.id),
+        playerStatsIdentity: identityEvidence(identityIndex, teamId, bestStat.item.id),
+        lineupEventReferences: eventReferenceCount(bundle, teamId, left.id),
+        playerStatsEventReferences: eventReferenceCount(bundle, teamId, bestStat.item.id),
+      },
     });
   }
 
@@ -152,14 +221,14 @@ function inspectTeam(bundle, teamId, scope, aliases) {
   };
 }
 
-function inspectFixture(raw, observedAt, aliases) {
+function inspectFixture(raw, observedAt, aliases, identityIndex = { season: new Map(), squad: new Map() }) {
   const bundle = normalizeFixtureBundle(raw, { fetchedAt: observedAt, revision: 1 });
   const scope = {
     league: bundle.competition.providerId,
     season: bundle.season.providerSeason,
   };
   const teamIds = [bundle.fixture.teams.home.id, bundle.fixture.teams.away.id];
-  const teams = teamIds.map(teamId => inspectTeam(bundle, teamId, scope, aliases));
+  const teams = teamIds.map(teamId => inspectTeam(bundle, teamId, scope, aliases, identityIndex));
   const lineupEntries = bundle.lineups.flatMap(item => [
     ...item.startXI.map(player => player.id),
     ...item.substitutes.map(player => player.id),
@@ -209,9 +278,13 @@ function scanSnapshot(options) {
   const aliases = reviewedAliasMap(evidence);
   const fixtures = [];
   for (const league of numericDirectories(snapshotRoot, /^league-(\d+)$/)) {
-    const completedRoot = path.join(snapshotRoot, league.name, 'completed-fixtures');
+    const leagueRoot = path.join(snapshotRoot, league.name);
+    const completedRoot = path.join(leagueRoot, 'completed-fixtures');
+    const identityIndex = leagueIdentityIndex(leagueRoot);
     for (const file of numericFiles(completedRoot)) {
-      fixtures.push(inspectFixture(readJson(path.join(completedRoot, file.name)), latest.completedAt, aliases));
+      fixtures.push(inspectFixture(
+        readJson(path.join(completedRoot, file.name)), latest.completedAt, aliases, identityIndex,
+      ));
     }
   }
   const findings = fixtures.filter(item => item.teams.some(team => (
