@@ -48,12 +48,12 @@ function bundleScope(bundle) {
   };
 }
 
-function reconcileReviewedPlayerAliases(bundle) {
+function reconcileReviewedPlayerAliases(bundle, rules = REVIEWED_PLAYER_ALIAS_RULES) {
   const nextBundle = structuredClone(bundle);
   const scope = bundleScope(nextBundle);
   const applications = [];
 
-  for (const rule of REVIEWED_PLAYER_ALIAS_RULES) {
+  for (const rule of rules) {
     if (scope.league !== rule.league || scope.season !== rule.season || scope.observedAt !== rule.observedAt) continue;
     let references = 0;
 

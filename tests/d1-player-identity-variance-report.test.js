@@ -72,8 +72,11 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   const evidence = {
     snapshotId: latest.snapshotId,
     playerAliases: [{
+      provider: 'api-football', snapshotId: latest.snapshotId,
       observedAt: latest.completedAt, league: 40, season: 2026, teamId: 'af:team:60',
-      aliasPlayerId: 'af:player:544659', canonicalPlayerId: 'af:player:330982',
+      aliasPlayerId: 'af:player:544659', aliasProviderId: 544659,
+      canonicalPlayerId: 'af:player:330982', canonicalProviderId: 330982,
+      reason: 'test reviewed variance',
     }],
   };
   const latestPath = path.join(root, 'latest.json');
@@ -94,6 +97,7 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   assert.equal(report.candidates[0].evidence.playerStatsIdentity.squadListsFixtureTeam, true);
   assert.equal(report.findings[0].counts.appearanceUnion, 2);
   assert.equal(report.findings[0].counts.projectedAfterCandidates, 1);
+  assert.equal(report.findings[0].counts.reviewedAppearanceUnion, 1);
 });
 
 test('includes saved catalog evidence for unresolved endpoint identities', () => {
@@ -126,8 +130,11 @@ test('recognizes a reviewed alias regardless of which endpoint identity is canon
   const evidence = {
     snapshotId: latest.snapshotId,
     playerAliases: [{
+      provider: 'api-football', snapshotId: latest.snapshotId,
       observedAt: latest.completedAt, league: 40, season: 2026, teamId: 'af:team:60',
-      aliasPlayerId: 'af:player:330982', canonicalPlayerId: 'af:player:544659',
+      aliasPlayerId: 'af:player:330982', aliasProviderId: 330982,
+      canonicalPlayerId: 'af:player:544659', canonicalProviderId: 544659,
+      reason: 'test reversed reviewed variance',
     }],
   };
   const latestPath = path.join(root, 'latest.json');

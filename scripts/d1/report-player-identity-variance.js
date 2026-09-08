@@ -3,6 +3,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeFixtureBundle } = require('../v2/fixture-contract');
+const {
+  reconcileReviewedPlayerAliases,
+  reviewedPlayerAliasRules,
+} = require('./fixture-bundle-importer');
 
 const REPORT_SCHEMA = 'jfw-player-identity-variance-report/1';
 
@@ -238,8 +242,15 @@ function inspectTeam(bundle, teamId, scope, aliases, identityIndex) {
   };
 }
 
-function inspectFixture(raw, observedAt, aliases, identityIndex = { season: new Map(), squad: new Map() }) {
+function inspectFixture(
+  raw,
+  observedAt,
+  aliases,
+  identityIndex = { season: new Map(), squad: new Map() },
+  aliasRules = [],
+) {
   const bundle = normalizeFixtureBundle(raw, { fetchedAt: observedAt, revision: 1 });
+  const reviewedBundle = reconcileReviewedPlayerAliases(bundle, aliasRules).bundle;
   const scope = {
     league: bundle.competition.providerId,
     season: bundle.season.providerSeason,
@@ -253,6 +264,12 @@ function inspectFixture(raw, observedAt, aliases, identityIndex = { season: new 
   const lineupIds = new Set(lineupEntries);
   const statIds = new Set(bundle.playerStats.map(item => item.playerId));
   const appearanceUnion = new Set([...lineupIds, ...statIds]);
+  const reviewedLineupIds = new Set(reviewedBundle.lineups.flatMap(item => [
+    ...item.startXI.map(player => player.id),
+    ...item.substitutes.map(player => player.id),
+  ]));
+  const reviewedStatIds = new Set(reviewedBundle.playerStats.map(item => item.playerId));
+  const reviewedAppearanceUnion = new Set([...reviewedLineupIds, ...reviewedStatIds]);
   const candidates = teams.flatMap(item => item.candidates);
   return {
     fixtureId: bundle.fixture.id,
@@ -266,6 +283,7 @@ function inspectFixture(raw, observedAt, aliases, identityIndex = { season: new 
       playerStats: bundle.playerStats.length,
       appearanceUnion: appearanceUnion.size,
       projectedAfterCandidates: appearanceUnion.size - candidates.length,
+      reviewedAppearanceUnion: reviewedAppearanceUnion.size,
     },
   };
 }
@@ -293,6 +311,7 @@ function scanSnapshot(options) {
     fail('Diagnostic inputs do not describe the same reviewed snapshot observation.');
   }
   const aliases = reviewedAliasMap(evidence);
+  const aliasRules = reviewedPlayerAliasRules(evidence);
   const fixtures = [];
   for (const league of numericDirectories(snapshotRoot, /^league-(\d+)$/)) {
     const leagueRoot = path.join(snapshotRoot, league.name);
@@ -300,7 +319,7 @@ function scanSnapshot(options) {
     const identityIndex = leagueIdentityIndex(leagueRoot);
     for (const file of numericFiles(completedRoot)) {
       fixtures.push(inspectFixture(
-        readJson(path.join(completedRoot, file.name)), latest.completedAt, aliases, identityIndex,
+        readJson(path.join(completedRoot, file.name)), latest.completedAt, aliases, identityIndex, aliasRules,
       ));
     }
   }
@@ -339,6 +358,8 @@ function scanSnapshot(options) {
       ), 0),
       rawUnionOver40FixtureCount: fixtures.filter(item => item.counts.appearanceUnion > 40).length,
       projectedOver40FixtureCount: fixtures.filter(item => item.counts.projectedAfterCandidates > 40).length,
+      reviewedOver40FixtureCount: fixtures.filter(item => item.counts.reviewedAppearanceUnion > 40).length,
+      maxReviewedAppearanceUnion: Math.max(0, ...fixtures.map(item => item.counts.reviewedAppearanceUnion)),
       lineupOver40FixtureCount: fixtures.filter(item => item.counts.lineupEntries > 40).length,
       playerStatsOver40FixtureCount: fixtures.filter(item => item.counts.playerStats > 40).length,
     },

@@ -10,6 +10,7 @@ const {
 } = require('../v2/fixture-contract');
 const { normalizeStandings } = require('../v2/fetch-standings');
 const { validateBundle: validateD1FixtureBundle } = require('./fixture-bundle-importer');
+const { FIXTURE_PUBLISH_LIMITS } = require('./fixture-publish-limits');
 
 const SNAPSHOT_SCHEMA = 'jfw-api-football-major-leagues-snapshot/1';
 const CORE_ARTIFACT_SCHEMA = 'jfw-d1-major-league-core-artifact/1';
@@ -315,11 +316,7 @@ function assertD1FixtureCompatibility(bundle, catalog) {
       (sum, item) => sum + Object.keys(item.fieldStates || {}).length, 0,
     ),
   };
-  const limits = {
-    events: 100, lineups: 2, appearances: 40, lineupEntries: 40,
-    playerStats: 40, teamStats: 2, fieldStates: 160,
-  };
-  for (const [key, limit] of Object.entries(limits)) {
+  for (const [key, limit] of Object.entries(FIXTURE_PUBLISH_LIMITS)) {
     if (counts[key] > limit) fail(`Fixture ${bundle.fixture.id} ${key} exceeds the D1 publish limit (${counts[key]}/${limit}).`);
   }
   for (const stat of context.normalized.playerStats) {

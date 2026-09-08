@@ -711,7 +711,7 @@ Origin allowlist はブラウザ互換と雑な abuse の軽減には使える�
 - LIVE pollはD1ではcompact heartbeatだけを更新し、完全bundleは前節の検証済みR2 LIVE projectionへ切り替える。D1 detail revisionはfinal reconcileまたはfinal後の訂正時だけ作る。
 - final bundleは差分ではなく、events、lineups、appearances、player/team stats、section/field states、provenanceをすべて含む**完全snapshot**である。新しいstaging revisionへ親record/appearanceから順に複数chunkで保存し、旧published revisionとのchain合成は行わない。
 - 全件検証後、admin Worker の最終 `batch()` が compact fixture/score parts、追跡対象の `JFW_RATING_RESULTS`、revision lifecycle、`published_revision` を同時に反映する。旧 revision は `superseded` とし、監査用 header/content hash だけ残す。superseded cleanup の「旧 detail」は §8 の `detail` と `state/provenance` に列挙した `fixture_events`、`fixture_lineups`、`fixture_lineup_entries`、`fixture_player_appearances`、`fixture_player_stats`、`fixture_team_stats`、`section_states`、`field_states`、detail 専用 `record_sources` だけを指す。fixture scope の score parts/player record/rating、`entity_field_states` は削除しない。公開 query は staging/superseded revision を読まない。
-- Free の50 query/invocation と100 bound parameters/query を超えないよう、multi-row statement と chunk checkpoint を使う。途中失敗は同じ staging revision から再開する。
+- Free の50 query/invocation と100 bound parameters/query を超えないよう、可変長のfixture detailは検証済みJSON rowsetを固定数の `json_each` statementへ渡す。途中失敗時はD1 batch全体をロールバックし、同じ完全snapshotを再実行する。
 - 新しい canonical bundle の content hash が公開 revision と同じなら書込みを省略し、D1 row-write を消費しない。
 - 初期実装では既存の GitHub Actions を取得・正規化 orchestrator として利用し、staging/publish は認証済み admin Worker endpoint 経由に固定する。Actions から D1 REST API や `wrangler d1 execute` で publish pointer を直接変更しない。
 - Free の Cron Trigger CPU は HTTP request と同じ10 ms であり、ingest への置換は成立しない見込みなので、Free の間は GitHub Actions を継続する。将来の置換は Paid を含む別 ADR と実測後に判断する。
@@ -724,15 +724,15 @@ LIVE detail の対象は `config/competition-scope-v1.json.trackingLeagues[].id`
 
 LIVE detailはR2 projectionで更新し、D1 detail publishはfinal reconcileまたはfinal後の訂正に限定する。D1全体で `MAX_DAILY_D1_DETAIL_PUBLISHES = 20`、1 fixture・1日1回を硬い上限とし、final初回、訂正の古い順、fixture canonical IDの順で処理する。上限を超えた訂正は完全bundleをR2に保持したまま次のUTC日へqueueし、部分D1 snapshotを公開しない。compact heartbeatは1 fixture・1日最大30回とする。
 
-1回のD1 publishは完全snapshotのinsertと、存在する場合は旧完全snapshotのcleanupを含む。予算用cardinalityはevents 100、appearances 40、lineups 2、lineup entries 40、player stats 40、team stats 2、section states 8、field states 160、detail record sources 160を上限とする。実データがどれかを超えた場合は切り捨てず、R2へ完全bundleを保持して次日jobへ送り、上限と予算を再レビューする。
+1回のD1 publishは完全snapshotのinsertと、存在する場合は旧完全snapshotのcleanupを含む。予算用cardinalityはevents 100、appearances 80、lineups 2、lineup entries 40、player stats 40、team stats 2、section states 8、field states 160、detail record sources 160を上限とする。appearances 80は、別々に取得したlineup entries最大40件とplayer stats最大40件が一件も重ならない場合の集合上限であり、エンドポイント間の正当なロスター差異を切り捨てない。実データがほかの上限を超えた場合も切り捨てず、R2へ完全bundleを保持して次日jobへ送り、上限と予算を再レビューする。
 
 | 新snapshot/pointer | 行数・index増幅 | 最大 writes |
 |---|---:|---:|
 | `fixtures` compact + `published_revision` | table 1 + 影響する index 最大4 | 5 |
 | `fixture_score_parts` | 最大5行、secondary indexなし | 5 |
 | revision lifecycle | new/old revision 各1行 | 2 |
-| 初出の `fixture_player_records` | 40行 × table/unique/history index 最大3 | 120 |
-| `fixture_player_appearances` | 40行 × table/unique/lookup index 最大3 | 120 |
+| 初出の `fixture_player_records` | 80行 × table/unique/history index 最大3 | 240 |
+| `fixture_player_appearances` | 80行 × table/unique/lookup index 最大3 | 240 |
 | `fixture_lineups` | 2行 × table/unique最大2 | 4 |
 | `fixture_lineup_entries` | 40行 × table/PK最大2 | 80 |
 | `fixture_player_stats` | 40行 × table/PK最大2 | 80 |
@@ -742,9 +742,9 @@ LIVE detailはR2 projectionで更新し、D1 detail publishはfinal reconcileま
 | `field_states` | 160行 × table/PK最大2 | 320 |
 | detail `record_sources` | 160行 × table/index最大2 | 320 |
 | `jfw_rating_results` | 追跡対象最大10行 × table/PK 最大2 | 20 |
-| **新snapshot最大** | 上記合計 | **1,396** |
-| 旧snapshot cleanup | player record/rating/compactを除く全detail/index | **1,244** |
-| **訂正publishの計算上限** | 1,396 + 1,244を100単位へ切上げ | **2,700** |
+| **新snapshot最大** | 上記合計 | **1,636** |
+| 旧snapshot cleanup | player record/rating/compactを除く全detail/index | **1,364** |
+| **訂正publishの計算上限** | 1,636 + 1,364を100単位へ切上げ | **3,000** |
 
 初回finalは旧snapshot cleanupがないため通常は1,396以下だが、日次予算はすべて訂正publish上限2,700として数える。compact-only heartbeatは `fixtures` 最大5 + score parts最大5 = 10 writesとする。
 
