@@ -9,9 +9,12 @@ on:
       - config/d1-major-league-snapshot-20260908.json
       - config/d1-targets.json
       - scripts/d1/prepare-major-league-d1-migration.js
+      - scripts/d1/fixture-bundle-importer.js
+      - scripts/d1/fixture-bundle-importer-core.js
       - scripts/v2/fetch-standings.js
       - scripts/v2/fixture-contract.js
       - tests/d1-major-league-snapshot-prepare.test.js
+      - tests/d1-fixture-entity-name-variance.test.js
       - .github/workflows/d1-major-leagues-r2-validate.yml
 
 permissions:
@@ -37,7 +40,7 @@ jobs:
           node-version: '22'
 
       - name: Verify validator tests
-        run: node --test tests/d1-major-league-snapshot-prepare.test.js
+        run: node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-fixture-entity-name-variance.test.js
 
       - name: Resolve reviewed R2 staging source
         run: |
