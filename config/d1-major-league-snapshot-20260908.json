@@ -7,9 +7,10 @@
     "observedAt": "2026-09-08T02:15:09.068Z",
     "method": "Team-scoped reciprocal name matching across lineup and fixture-player rows, corroborated against the saved season-player and squad responses",
     "cause": "API-Football returned distinct player IDs for the same identity across its lineup/squad and fixture-player/season response families; four team scopes required the lineup identity because the fixture-player ID conflicted with the saved season identity",
-    "reviewedPairCount": 73,
-    "newlyReviewedPairCount": 70,
+    "reviewedPairCount": 78,
+    "newlyReviewedPairCount": 75,
     "reversedToLineupIdentityCount": 4,
+    "nonLexicalCorroboratedPairCount": 5,
     "excludedMissingOrZeroIdPairCount": 7
   },
   "playerAliases": [
@@ -961,6 +962,71 @@
       "canonicalPlayerId": "af:player:341326",
       "canonicalProviderId": 341326,
       "reason": "API-Football cross-endpoint identity variance for B. Krauhaus confirmed in the pinned snapshot; lineup/squad ID 560744 was reconciled to fixture-player/season ID 341326 across fixture(s) 1556659"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 40,
+      "season": 2026,
+      "teamId": "af:team:1335",
+      "aliasPlayerId": "af:player:584930",
+      "aliasProviderId": 584930,
+      "canonicalPlayerId": "af:player:615628",
+      "canonicalProviderId": 615628,
+      "reason": "API-Football cross-endpoint identity variance for Robert Junior Forzah Nkeng confirmed in fixture 1563130; lineup abbreviation R. Nkeng and fixture-player name Junior Nkeng describe the same Charlton substitute"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 78,
+      "season": 2026,
+      "teamId": "af:team:185",
+      "aliasPlayerId": "af:player:279913",
+      "aliasProviderId": 279913,
+      "canonicalPlayerId": "af:player:535086",
+      "canonicalProviderId": 535086,
+      "reason": "API-Football cross-endpoint identity variance for Luka Djuric confirmed across fixtures 1575146 and 1575157; lineup Djuric and fixture-player Duric differ only by provider transliteration of Đ"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 135,
+      "season": 2026,
+      "teamId": "af:team:1579",
+      "aliasPlayerId": "af:player:550912",
+      "aliasProviderId": 550912,
+      "canonicalPlayerId": "af:player:421859",
+      "canonicalProviderId": 421859,
+      "reason": "API-Football cross-endpoint identity variance for Manga Foe Ondoa confirmed across fixtures 1550092, 1550104 and 1550115; lineup F. Ondoa is the abbreviated form of the saved Monza season identity"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 140,
+      "season": 2026,
+      "teamId": "af:team:536",
+      "aliasPlayerId": "af:player:651890",
+      "aliasProviderId": 651890,
+      "canonicalPlayerId": "af:player:546882",
+      "canonicalProviderId": 546882,
+      "reason": "API-Football cross-endpoint identity variance for Nico Guillen confirmed in fixture 1570341; lineup Guilen and fixture-player Guillén differ by provider spelling and diacritic handling"
+    },
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 140,
+      "season": 2026,
+      "teamId": "af:team:546",
+      "aliasPlayerId": "af:player:591933",
+      "aliasProviderId": 591933,
+      "canonicalPlayerId": "af:player:427182",
+      "canonicalProviderId": 427182,
+      "reason": "API-Football cross-endpoint identity variance for Francisco Curro Burgos confirmed in fixture 1570348; lineup Francisco Burgos and fixture-player Curro Burgos are the same Getafe player"
     }
   ],
   "leagues": [

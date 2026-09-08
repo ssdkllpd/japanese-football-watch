@@ -245,6 +245,25 @@ function ouziadBundle() {
   return bundle;
 }
 
+function nkengBundle() {
+  const bundle = metcalfeBundle();
+  bundle.fixture.id = 'af:fixture:1563130';
+  bundle.fixture.providerId = 1563130;
+  bundle.lineups[0].teamId = 'af:team:1335';
+  bundle.lineups[0].substitutes = [{
+    id: 'af:player:584930', providerId: 584930, name: 'R. Nkeng',
+    number: 35, position: null, grid: null, role: 'substitute',
+  }];
+  bundle.lineups[0].startXI = [];
+  bundle.playerStats = [{
+    ...bundle.playerStats[0], fixtureId: 'af:fixture:1563130',
+    playerId: 'af:player:615628', playerProviderId: 615628,
+    playerName: 'Junior Nkeng', teamId: 'af:team:1335', position: 'F', starter: false,
+  }];
+  bundle.events = [];
+  return bundle;
+}
+
 test('accepts provider display-name variants for the same canonical player identity', () => {
   const context = validateBundle(hincapieBundle(), catalog());
   const player = context.players.get('af:player:127817');
@@ -325,11 +344,12 @@ test('reconciles Jimmy Morgan lineup and goal references with his player statist
 });
 
 test('loads every corroborated positive-id variance as pinned reviewed evidence', () => {
-  assert.equal(reviewedEvidence.playerIdentityVarianceReview.reviewedPairCount, 73);
-  assert.equal(reviewedEvidence.playerIdentityVarianceReview.newlyReviewedPairCount, 70);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.reviewedPairCount, 78);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.newlyReviewedPairCount, 75);
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.reversedToLineupIdentityCount, 4);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.nonLexicalCorroboratedPairCount, 5);
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.excludedMissingOrZeroIdPairCount, 7);
-  assert.equal(reviewedEvidence.playerAliases.length, 73);
+  assert.equal(reviewedEvidence.playerAliases.length, 78);
 });
 
 test('reconciles the next blocking Bosun Lawal variance to the player-statistics identity', () => {
@@ -347,6 +367,13 @@ test('reverses a fixture-player id that conflicts with the saved season identity
   assert.equal(result.bundle.playerStats[0].playerId, 'af:player:673857');
   assert.equal(result.bundle.playerStats[0].playerProviderId, 673857);
   assert.equal(result.bundle.events[0].playerId, 'af:player:673857');
+});
+
+test('reconciles a reviewed full-name and nickname-initial variance', () => {
+  const result = reconcileReviewedPlayerAliases(nkengBundle());
+  assert.equal(result.applications.length, 1);
+  assert.equal(result.bundle.lineups[0].substitutes[0].id, 'af:player:615628');
+  assert.equal(result.bundle.playerStats[0].playerId, 'af:player:615628');
 });
 
 test('fills a missing lineup position from matching player stats', () => {
