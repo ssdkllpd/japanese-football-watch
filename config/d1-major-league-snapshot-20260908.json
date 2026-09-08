@@ -3,6 +3,21 @@
   "snapshotId": "20260908-021509068Z",
   "archiveKey": "audit/api-football/v3/major-leagues/2026/snapshots/20260908-021509068Z.tar.gz",
   "archiveSha256": "dd7dc93ba2256dcac56bbc0d5adf8b626177e77fa92389ee1c6fd73c1070d456",
+  "playerAliases": [
+    {
+      "provider": "api-football",
+      "snapshotId": "20260908-021509068Z",
+      "observedAt": "2026-09-08T02:15:09.068Z",
+      "league": 40,
+      "season": 2026,
+      "teamId": "af:team:58",
+      "aliasPlayerId": "af:player:531386",
+      "aliasProviderId": 531386,
+      "canonicalPlayerId": "af:player:297641",
+      "canonicalProviderId": 297641,
+      "reason": "API-Football endpoint identity variance for Jenson Metcalfe confirmed across five Millwall fixtures in the pinned snapshot"
+    }
+  ],
   "leagues": [
     { "league": 39, "competitionId": "af:competition:39", "seasonId": "af:season:39:2026", "providerSeason": 2026, "startsOn": "2026-08-21", "endsOn": "2027-05-30", "teamCount": 20, "fixtureCount": 380, "completedFixtureDetailCount": 30, "standingsRowCount": 20 },
     { "league": 40, "competitionId": "af:competition:40", "seasonId": "af:season:40:2026", "providerSeason": 2026, "startsOn": "2026-08-14", "endsOn": "2027-05-01", "teamCount": 24, "fixtureCount": 552, "completedFixtureDetailCount": 60, "standingsRowCount": 24 },
