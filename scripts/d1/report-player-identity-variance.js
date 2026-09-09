@@ -287,6 +287,45 @@ function inspectFixture(
   ]));
   const reviewedStatIds = new Set(canonicalBundle.playerStats.map(item => item.playerId));
   const reviewedAppearanceUnion = new Set([...reviewedLineupIds, ...reviewedStatIds]);
+  const duplicateRows = entries => {
+    const byPlayer = new Map();
+    for (const entry of entries) {
+      if (!/^af:player:[1-9]\d*$/.test(String(entry.playerId || ''))) continue;
+      if (!byPlayer.has(entry.playerId)) byPlayer.set(entry.playerId, []);
+      byPlayer.get(entry.playerId).push(entry);
+    }
+    return [...byPlayer.entries()]
+      .filter(([, occurrences]) => occurrences.length > 1)
+      .map(([playerId, occurrences]) => ({ playerId, occurrences }));
+  };
+  const duplicateLineupPlayers = duplicateRows(canonicalBundle.lineups.flatMap((lineup, lineupIndex) => [
+    ...lineup.startXI.map((player, playerIndex) => ({
+      playerId: player.id,
+      providerId: player.providerId,
+      name: player.name,
+      teamId: lineup.teamId,
+      role: 'starter',
+      lineupIndex,
+      playerIndex,
+    })),
+    ...lineup.substitutes.map((player, playerIndex) => ({
+      playerId: player.id,
+      providerId: player.providerId,
+      name: player.name,
+      teamId: lineup.teamId,
+      role: 'substitute',
+      lineupIndex,
+      playerIndex,
+    })),
+  ]));
+  const duplicatePlayerStats = duplicateRows(canonicalBundle.playerStats.map((stat, playerIndex) => ({
+    playerId: stat.playerId,
+    providerId: stat.playerProviderId,
+    name: stat.playerName,
+    teamId: stat.teamId,
+    position: stat.position,
+    playerIndex,
+  })));
   const candidates = teams.flatMap(item => item.candidates);
   return {
     fixtureId: bundle.fixture.id,
@@ -295,6 +334,8 @@ function inspectFixture(
     seasonId: bundle.fixture.seasonId,
     dateJst: bundle.fixture.dateJst,
     teams,
+    duplicateLineupPlayers,
+    duplicatePlayerStats,
     counts: {
       lineupEntries: lineupEntries.length,
       playerStats: bundle.playerStats.length,
@@ -302,6 +343,14 @@ function inspectFixture(
       projectedAfterCandidates: appearanceUnion.size - candidates.length,
       reviewedAppearanceUnion: reviewedAppearanceUnion.size,
       providerMissingPlayerIdentityOmissions: missingIdentities.omissions.length,
+      duplicateLineupPlayerIdentityCount: duplicateLineupPlayers.length,
+      duplicateLineupEntryCount: duplicateLineupPlayers.reduce(
+        (sum, item) => sum + item.occurrences.length, 0,
+      ),
+      duplicatePlayerStatsIdentityCount: duplicatePlayerStats.length,
+      duplicatePlayerStatsRowCount: duplicatePlayerStats.reduce(
+        (sum, item) => sum + item.occurrences.length, 0,
+      ),
     },
   };
 }
@@ -354,6 +403,17 @@ function scanSnapshot(options) {
     teamName: team.teamName,
     ...candidate,
   }))));
+  const endpointDuplicates = fixtures.filter(item => (
+    item.duplicateLineupPlayers.length || item.duplicatePlayerStats.length
+  )).map(item => ({
+    fixtureId: item.fixtureId,
+    providerFixtureId: item.providerFixtureId,
+    competitionId: item.competitionId,
+    seasonId: item.seasonId,
+    dateJst: item.dateJst,
+    duplicateLineupPlayers: item.duplicateLineupPlayers,
+    duplicatePlayerStats: item.duplicatePlayerStats,
+  }));
   return {
     schemaVersion: REPORT_SCHEMA,
     source: {
@@ -388,8 +448,22 @@ function scanSnapshot(options) {
       maxLineupEntries: Math.max(0, ...fixtures.map(item => item.counts.lineupEntries)),
       playerStatsOver40FixtureCount: fixtures.filter(item => item.counts.playerStats > 40).length,
       maxPlayerStats: Math.max(0, ...fixtures.map(item => item.counts.playerStats)),
+      endpointDuplicateFixtureCount: endpointDuplicates.length,
+      duplicateLineupPlayerIdentityCount: fixtures.reduce(
+        (sum, item) => sum + item.counts.duplicateLineupPlayerIdentityCount, 0,
+      ),
+      duplicateLineupEntryCount: fixtures.reduce(
+        (sum, item) => sum + item.counts.duplicateLineupEntryCount, 0,
+      ),
+      duplicatePlayerStatsIdentityCount: fixtures.reduce(
+        (sum, item) => sum + item.counts.duplicatePlayerStatsIdentityCount, 0,
+      ),
+      duplicatePlayerStatsRowCount: fixtures.reduce(
+        (sum, item) => sum + item.counts.duplicatePlayerStatsRowCount, 0,
+      ),
     },
     candidates,
+    endpointDuplicates,
     findings,
   };
 }

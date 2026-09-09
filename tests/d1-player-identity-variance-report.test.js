@@ -144,6 +144,27 @@ test('counts missing provider identities by endpoint row and never treats null e
   assert.equal(inspected.counts.providerMissingPlayerIdentityOmissions, 2);
 });
 
+test('reports every positive player id repeated within lineup and player-stat endpoints', () => {
+  const raw = fixture();
+  raw.lineups[0].substitutes.push({
+    player: { id: 544659, name: 'Different Person', number: 20, pos: 'M', grid: null },
+  });
+  raw.players[0].players.push({
+    player: { id: 330982, name: 'Another Person', photo: null },
+    statistics: [{ games: { minutes: 0, position: 'M', substitute: true, captain: false } }],
+  });
+
+  const inspected = require('../scripts/d1/report-player-identity-variance').inspectFixture(
+    raw, '2026-09-08T02:15:09.068Z', new Map(), undefined, [],
+  );
+  assert.deepEqual(inspected.duplicateLineupPlayers.map(item => item.playerId), ['af:player:544659']);
+  assert.equal(inspected.duplicateLineupPlayers[0].occurrences.length, 2);
+  assert.deepEqual(inspected.duplicatePlayerStats.map(item => item.playerId), ['af:player:330982']);
+  assert.equal(inspected.duplicatePlayerStats[0].occurrences.length, 2);
+  assert.equal(inspected.counts.duplicateLineupEntryCount, 2);
+  assert.equal(inspected.counts.duplicatePlayerStatsRowCount, 2);
+});
+
 test('recognizes a reviewed alias regardless of which endpoint identity is canonical', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-identity-report-reversed-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
