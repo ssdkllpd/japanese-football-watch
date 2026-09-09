@@ -88,6 +88,8 @@ test('snapshot scan reports reviewed and unreviewed identity variance without ch
   assert.equal(report.summary.fixturesScanned, 1);
   assert.equal(report.summary.candidateCount, 1);
   assert.equal(report.summary.unreviewedCandidateCount, 0);
+  assert.equal(report.summary.maxLineupEntries, 1);
+  assert.equal(report.summary.maxPlayerStats, 1);
   assert.equal(report.candidates[0].aliasPlayerId, 'af:player:544659');
   assert.equal(report.candidates[0].canonicalPlayerId, 'af:player:330982');
   assert.equal(report.candidates[0].alreadyReviewed, true);

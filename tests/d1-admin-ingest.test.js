@@ -204,6 +204,39 @@ function eightyAppearanceFixture() {
   return bundle;
 }
 
+function eightyEndpointRowsFixture() {
+  const bundle = fixturePayload();
+  const source = bundle.fixture.provenance;
+  const player = providerId => ({
+    id: `af:player:${providerId}`,
+    providerId,
+    name: `Player ${providerId}`,
+    number: ((providerId - 1001) % 40) + 1,
+    position: 'F',
+    grid: null,
+  });
+  const home = Array.from({ length: 40 }, (_, index) => player(1001 + index));
+  const away = Array.from({ length: 40 }, (_, index) => player(1041 + index));
+  bundle.lineups = [
+    { teamId: 'af:team:40', formation: '4-3-3', coach: null, startXI: home.slice(0, 11).map(item => ({ ...item, role: 'starter' })), substitutes: home.slice(11).map(item => ({ ...item, role: 'substitute' })), fieldStates: {}, provenance: source },
+    { teamId: 'af:team:50', formation: '4-4-2', coach: null, startXI: away.slice(0, 11).map(item => ({ ...item, role: 'starter' })), substitutes: away.slice(11).map(item => ({ ...item, role: 'substitute' })), fieldStates: {}, provenance: source },
+  ];
+  bundle.playerStats = [...home, ...away].map((item, index) => ({
+    fixtureId: bundle.fixture.id,
+    playerId: item.id,
+    playerProviderId: item.providerId,
+    playerName: item.name,
+    playerPhoto: null,
+    teamId: index < 40 ? 'af:team:40' : 'af:team:50',
+    position: item.position,
+    starter: index % 40 < 11,
+    captain: false,
+    values: { minutes: index % 40 < 11 ? 90 : 0, rating: 6.5 },
+    fieldStates: {}, fieldIssues: {}, provenance: source,
+  }));
+  return bundle;
+}
+
 function fixtureIngestBody(bundle = fixturePayload()) {
   return {
     schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_publish',
@@ -397,6 +430,24 @@ test('admin fixture ingest supports the complete 80-player endpoint union withou
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 80);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_lineup_entries').get().count, 40);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_stats').get().count, 40);
+});
+
+test('admin fixture ingest preserves 80 lineup and player-stat rows within the free query budget', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = eightyEndpointRowsFixture();
+  const response = await admin.default.fetch(
+    request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle),
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.report.counts.appearances, 80);
+  assert.equal(body.report.counts.playerStats, 80);
+  assert.equal(body.report.statementCount + 12 <= 50, true);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 80);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_lineup_entries').get().count, 80);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_stats').get().count, 80);
 });
 
 test('admin fixture ingest preserves an R2-authoritative revision across an empty D1 history', async t => {

@@ -35,7 +35,7 @@ function standing(team, rank) {
   };
 }
 
-function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39 } = {}) {
+function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePlayerCount = 0 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-d1-prepare-'));
   const snapshotRoot = path.join(root, 'snapshot');
   const leagueDir = path.join(snapshotRoot, 'league-39');
@@ -68,6 +68,41 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39 } = {}) {
     },
   };
   const completed = { ...fixture, events: [], lineups: [], players: [], statistics: [] };
+  if (fixturePlayerCount) {
+    const homeCount = Math.ceil(fixturePlayerCount / 2);
+    const playerRows = Array.from({ length: fixturePlayerCount }, (_, index) => ({
+      id: 1001 + index,
+      name: `Fixture Player ${index + 1}`,
+      number: (index % 40) + 1,
+      pos: 'M',
+      grid: null,
+    }));
+    const endpointTeams = [
+      { team: team1, players: playerRows.slice(0, homeCount) },
+      { team: team2, players: playerRows.slice(homeCount) },
+    ];
+    completed.lineups = endpointTeams.map(({ team, players }) => ({
+      team,
+      formation: '4-4-2',
+      coach: null,
+      startXI: players.slice(0, 11).map(player => ({ player })),
+      substitutes: players.slice(11).map(player => ({ player })),
+    }));
+    completed.players = endpointTeams.map(({ team, players }) => ({
+      team,
+      players: players.map((player, index) => ({
+        player: { id: player.id, name: player.name, photo: null },
+        statistics: [{ games: {
+          minutes: index < 11 ? 90 : 0,
+          number: player.number,
+          position: player.pos,
+          rating: '6.5',
+          captain: false,
+          substitute: index >= 11,
+        } }],
+      })),
+    }));
+  }
   writeJson(path.join(leagueDir, 'league.json'), envelope({ id: '39', season: '2026' }, [{
     league: { id: 39, name: 'Premier League', type: 'League', logo: null },
     country: { name: 'England', code: 'GB', flag: null },
@@ -206,6 +241,19 @@ test('prepares hash-scoped D1 artifacts only after the season boundary gate pass
   assert.equal(result.migrationManifest.dateCoverageArtifact.competitionDateCount, 1);
   assert.equal(result.migrationManifest.expectedTotals.dateIndexCoverages, 1);
   assert.equal(result.migrationManifest.expectedTotals.competitionDateIndexCoverages, 1);
+});
+
+test('prepares a fixture with 51 lineup and player-stat rows without truncation', () => {
+  const paths = buildSnapshot({ fixturePlayerCount: 51 });
+  const result = run(paths);
+  assert.equal(result.validationReport.passed, true);
+  const prepared = JSON.parse(fs.readFileSync(
+    path.join(paths.outputRoot, 'fixtures', '39', '100.json'), 'utf8',
+  ));
+  assert.equal(prepared.bundle.lineups.reduce(
+    (sum, lineup) => sum + lineup.startXI.length + lineup.substitutes.length, 0,
+  ), 51);
+  assert.equal(prepared.bundle.playerStats.length, 51);
 });
 
 test('fails closed when provider season 2026 does not end in 2027', () => {
