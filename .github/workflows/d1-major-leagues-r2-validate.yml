@@ -105,7 +105,12 @@ jobs:
             and .summary.lineupOver40FixtureCount == 162
             and .summary.maxLineupEntries == 52
             and .summary.playerStatsOver40FixtureCount == 161
-            and .summary.maxPlayerStats == 52' \
+            and .summary.maxPlayerStats == 52
+            and .summary.endpointDuplicateFixtureCount == 2
+            and .summary.duplicateLineupPlayerIdentityCount == 2
+            and .summary.duplicateLineupEntryCount == 4
+            and .summary.duplicatePlayerStatsIdentityCount == 2
+            and .summary.duplicatePlayerStatsRowCount == 4' \
             .tmp/d1-r2-validate/player-identity-variance.json >/dev/null
 
       - name: Run season gate and prepare migration artifacts without writes

@@ -38,6 +38,38 @@ function reviewedPlayerAliasRules(evidence = reviewedEvidence) {
 
 const REVIEWED_PLAYER_ALIAS_RULES = reviewedPlayerAliasRules();
 
+function reviewedPlayerCollisionOmissionRules(evidence = reviewedEvidence) {
+  const review = evidence?.providerPlayerIdentityCollisionReview;
+  if (!review || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(String(review.observedAt || ''))
+    || !Array.isArray(review.omissions)) {
+    throw new Error('Reviewed provider player identity collision evidence is invalid.');
+  }
+  const seen = new Set();
+  const sections = new Set(['lineups.startXI', 'lineups.substitutes', 'playerStats']);
+  return review.omissions.map((rule, index) => {
+    const label = `Reviewed player collision omission ${index}`;
+    if (!Number.isSafeInteger(rule?.league) || !Number.isSafeInteger(rule?.season)
+      || !/^af:fixture:\d+$/.test(String(rule?.fixtureId || ''))
+      || !/^af:team:\d+$/.test(String(rule?.teamId || ''))
+      || !sections.has(rule?.section)
+      || !/^af:player:[1-9]\d*$/.test(String(rule?.playerId || ''))
+      || !Number.isSafeInteger(rule?.providerId) || rule.providerId <= 0
+      || rule.playerId !== `af:player:${rule.providerId}`
+      || !String(rule?.name || '').trim()
+      || !['starter', 'substitute'].includes(rule?.role)
+      || rule?.reason !== 'provider_player_id_collides_with_distinct_identity') {
+      throw new Error(`${label} is invalid.`);
+    }
+    const key = [rule.league, rule.season, rule.fixtureId, rule.teamId, rule.section,
+      rule.playerId, rule.name, rule.role].join('|');
+    if (seen.has(key)) throw new Error(`${label} is duplicated.`);
+    seen.add(key);
+    return { ...rule, observedAt: review.observedAt };
+  });
+}
+
+const REVIEWED_PLAYER_COLLISION_OMISSION_RULES = reviewedPlayerCollisionOmissionRules();
+
 function isMissingProviderPlayerIdentity(id, providerId) {
   return (id === null && (providerId === null || providerId === 0))
     || (id === 'af:player:0' && providerId === 0);
@@ -79,6 +111,70 @@ function reconcileMissingProviderPlayerIdentities(bundle) {
   for (const event of nextBundle.events || []) {
     if (event.playerId === 'af:player:0') event.playerId = null;
     if (event.relatedPlayerId === 'af:player:0') event.relatedPlayerId = null;
+  }
+
+  omissions.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return { bundle: nextBundle, omissions };
+}
+
+function reconcileCollidingProviderPlayerIdentities(
+  bundle,
+  rules = REVIEWED_PLAYER_COLLISION_OMISSION_RULES,
+) {
+  const nextBundle = structuredClone(bundle);
+  const scope = bundleScope(nextBundle);
+  const omissions = [];
+  const applicable = rules.filter(rule => rule.league === scope.league
+    && rule.season === scope.season && rule.fixtureId === nextBundle.fixture?.id
+    && rule.observedAt === scope.observedAt);
+  const originalLineupCounts = new Map();
+  for (const lineup of nextBundle.lineups) {
+    for (const player of [...lineup.startXI, ...lineup.substitutes]) {
+      originalLineupCounts.set(player.id, (originalLineupCounts.get(player.id) || 0) + 1);
+    }
+  }
+  const originalStatCounts = new Map();
+  for (const stat of nextBundle.playerStats) {
+    originalStatCounts.set(stat.playerId, (originalStatCounts.get(stat.playerId) || 0) + 1);
+  }
+
+  for (const rule of applicable) {
+    const originalCount = rule.section === 'playerStats'
+      ? originalStatCounts.get(rule.playerId)
+      : originalLineupCounts.get(rule.playerId);
+    if ((originalCount || 0) < 2) {
+      throw new Error(`Reviewed player collision is no longer duplicated: ${rule.fixtureId}:${rule.playerId}:${rule.section}.`);
+    }
+
+    let matches = 0;
+    const keep = (row, teamId, role) => {
+      const playerId = rule.section === 'playerStats' ? row.playerId : row.id;
+      const providerId = rule.section === 'playerStats' ? row.playerProviderId : row.providerId;
+      const name = rule.section === 'playerStats' ? row.playerName : row.name;
+      const matched = playerId === rule.playerId && providerId === rule.providerId
+        && teamId === rule.teamId && name === rule.name && role === rule.role;
+      if (matched) matches += 1;
+      return !matched;
+    };
+
+    if (rule.section === 'playerStats') {
+      nextBundle.playerStats = nextBundle.playerStats.filter(stat => keep(
+        stat,
+        stat.teamId,
+        stat.starter === true ? 'starter' : 'substitute',
+      ));
+    } else {
+      const key = rule.section === 'lineups.startXI' ? 'startXI' : 'substitutes';
+      const role = key === 'startXI' ? 'starter' : 'substitute';
+      for (const lineup of nextBundle.lineups) {
+        lineup[key] = lineup[key].filter(player => keep(player, lineup.teamId, role));
+      }
+    }
+    if (matches !== 1) {
+      throw new Error(`Reviewed player collision omission matched ${matches} rows: ${rule.fixtureId}:${rule.playerId}:${rule.section}.`);
+    }
+    const { observedAt, league, season, ...omission } = rule;
+    omissions.push(omission);
   }
 
   omissions.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
@@ -246,13 +342,15 @@ function omitNullTeamStatValues(bundle) {
 function reconcileProviderVariants(bundle, catalog = {}) {
   const missingIdentities = reconcileMissingProviderPlayerIdentities(bundle);
   const identities = reconcileReviewedPlayerAliases(missingIdentities.bundle);
-  const positions = reconcileMissingPlayerPositions(identities.bundle);
+  const collisions = reconcileCollidingProviderPlayerIdentities(identities.bundle);
+  const positions = reconcileMissingPlayerPositions(collisions.bundle);
   const names = reconcilePlayerDisplayNames(positions, catalog);
   return {
     bundle: omitNullTeamStatValues(names.bundle),
     catalog: names.catalog,
     playerAliasApplications: identities.applications,
     playerIdentityOmissions: missingIdentities.omissions,
+    playerIdentityCollisionOmissions: collisions.omissions,
   };
 }
 
@@ -262,6 +360,7 @@ function validateBundle(bundle, catalog = {}) {
   context.providerVariantEvidence = {
     playerAliases: reconciled.playerAliasApplications,
     playerIdentityOmissions: reconciled.playerIdentityOmissions,
+    playerIdentityCollisionOmissions: reconciled.playerIdentityCollisionOmissions,
   };
   return context;
 }
@@ -281,6 +380,7 @@ module.exports = {
   importFixtureBundle,
   reconcileMissingPlayerPositions,
   reconcileMissingProviderPlayerIdentities,
+  reconcileCollidingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
   reviewedPlayerAliasRules,
   validateBundle,

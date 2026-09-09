@@ -165,6 +165,76 @@
       }
     ]
   },
+  "providerPlayerIdentityCollisionReview": {
+    "observedAt": "2026-09-08T02:15:09.068Z",
+    "cause": "API-Football assigned one positive player ID to two distinct people within the same fixture response; the retained identities are corroborated by other completed fixtures in the pinned snapshot",
+    "policy": "Keep the immutable source rows in the pinned R2 snapshot, retain the identity corroborated by other fixtures, omit only the conflicting endpoint rows from canonical D1 facts, preserve unambiguous event references, and fail preparation if the exact reviewed omission set changes",
+    "fixtureCount": 2,
+    "collisionCount": 2,
+    "omittedEndpointRowCount": 5,
+    "omissions": [
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575457",
+        "teamId": "af:team:240",
+        "section": "lineups.substitutes",
+        "playerId": "af:player:119633",
+        "name": "F. Pereira da Costa",
+        "providerId": 119633,
+        "role": "substitute",
+        "reason": "provider_player_id_collides_with_distinct_identity"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575457",
+        "teamId": "af:team:240",
+        "section": "playerStats",
+        "playerId": "af:player:119633",
+        "name": "Costinha",
+        "providerId": 119633,
+        "role": "substitute",
+        "reason": "provider_player_id_collides_with_distinct_identity"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575461",
+        "teamId": "af:team:225",
+        "section": "lineups.substitutes",
+        "playerId": "af:player:379078",
+        "name": "M. Silva",
+        "providerId": 379078,
+        "role": "substitute",
+        "reason": "provider_player_id_collides_with_distinct_identity"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575461",
+        "teamId": "af:team:225",
+        "section": "lineups.substitutes",
+        "playerId": "af:player:379078",
+        "name": "J. Silva",
+        "providerId": 379078,
+        "role": "substitute",
+        "reason": "provider_player_id_collides_with_distinct_identity"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575461",
+        "teamId": "af:team:225",
+        "section": "playerStats",
+        "playerId": "af:player:379078",
+        "name": "Pedro Silva",
+        "providerId": 379078,
+        "role": "substitute",
+        "reason": "provider_player_id_collides_with_distinct_identity"
+      }
+    ]
+  },
   "playerAliases": [
     {
       "provider": "api-football",

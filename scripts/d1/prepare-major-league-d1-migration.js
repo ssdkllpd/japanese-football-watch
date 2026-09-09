@@ -205,6 +205,45 @@ function assertReviewedProviderIdentityOmissions(evidence, latest, omissions) {
   }
 }
 
+function normalizedProviderCollisionOmission(value) {
+  return {
+    league: value?.league,
+    season: value?.season,
+    fixtureId: value?.fixtureId,
+    teamId: value?.teamId,
+    section: value?.section,
+    playerId: value?.playerId,
+    name: value?.name,
+    providerId: value?.providerId,
+    role: value?.role,
+    reason: value?.reason,
+  };
+}
+
+function collisionOmissionSortKey(value) {
+  return [value.league, value.season, value.fixtureId, value.teamId, value.section,
+    value.playerId, value.name, value.providerId, value.role, value.reason]
+    .map(item => String(item ?? '')).join('|');
+}
+
+function assertReviewedProviderIdentityCollisionOmissions(evidence, latest, omissions) {
+  const review = evidence?.providerPlayerIdentityCollisionReview;
+  if (!review || review.observedAt !== latest.completedAt || !Array.isArray(review.omissions)) {
+    fail('Pinned provider player identity collision review is missing or stale.');
+  }
+  const expected = review.omissions.map(normalizedProviderCollisionOmission)
+    .sort((left, right) => collisionOmissionSortKey(left).localeCompare(collisionOmissionSortKey(right)));
+  const actual = omissions.map(normalizedProviderCollisionOmission)
+    .sort((left, right) => collisionOmissionSortKey(left).localeCompare(collisionOmissionSortKey(right)));
+  const collisionCount = new Set(actual.map(item => `${item.fixtureId}|${item.playerId}`)).size;
+  if (JSON.stringify(actual) !== JSON.stringify(expected)
+    || review.omittedEndpointRowCount !== actual.length
+    || review.fixtureCount !== new Set(actual.map(item => item.fixtureId)).size
+    || review.collisionCount !== collisionCount) {
+    fail('Provider player identity collision omissions differ from pinned reviewed evidence.');
+  }
+}
+
 function exactNumericParameter(payload, key, expected, label) {
   if (String(payload?.parameters?.[key]) !== String(expected)) {
     fail(`${label}.parameters.${key} does not match ${expected}.`);
@@ -364,6 +403,8 @@ function assertD1FixtureCompatibility(bundle, catalog) {
   return {
     counts,
     playerIdentityOmissions: context.providerVariantEvidence.playerIdentityOmissions,
+    playerIdentityCollisionOmissions:
+      context.providerVariantEvidence.playerIdentityCollisionOmissions,
   };
 }
 
@@ -537,11 +578,17 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     playerStats: 0, teamStats: 0, fieldStates: 0,
   };
   const playerIdentityOmissions = [];
+  const playerIdentityCollisionOmissions = [];
   for (const fixtureArtifact of fixtureArtifacts) {
     const prepared = readJson(path.join(context.outputRoot, fixtureArtifact.path));
     const compatibility = assertD1FixtureCompatibility(prepared.bundle, d1Catalog);
     const counts = compatibility.counts;
     playerIdentityOmissions.push(...compatibility.playerIdentityOmissions.map(item => ({
+      league: target.league,
+      season: target.season,
+      ...item,
+    })));
+    playerIdentityCollisionOmissions.push(...compatibility.playerIdentityCollisionOmissions.map(item => ({
       league: target.league,
       season: target.season,
       ...item,
@@ -584,6 +631,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     completedFixtureCount: finalIds.size,
     fixtureDetailMaxima,
     playerIdentityOmissions,
+    playerIdentityCollisionOmissions,
     fixtureBoundaryAdjustments,
     standingsRowCount: standingRows,
     playerRows: players.rows,
@@ -681,6 +729,11 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
     evidence,
     latest,
     validatedLeagues.flatMap(item => item.playerIdentityOmissions),
+  );
+  assertReviewedProviderIdentityCollisionOmissions(
+    evidence,
+    latest,
+    validatedLeagues.flatMap(item => item.playerIdentityCollisionOmissions),
   );
   const dateCoverage = buildDateCoverageArtifact(source, validatedLeagues);
   const coverageRelativePath = 'coverage/date-coverages.json';

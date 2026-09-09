@@ -198,6 +198,13 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePl
       omittedEndpointRowCount: 0,
       omissions: [],
     },
+    providerPlayerIdentityCollisionReview: {
+      observedAt,
+      fixtureCount: 0,
+      collisionCount: 0,
+      omittedEndpointRowCount: 0,
+      omissions: [],
+    },
   });
   return {
     root, snapshotRoot, outputRoot, archiveFile, latestPath, configPath, evidencePath,
@@ -290,6 +297,32 @@ test('fails closed when an unreviewed provider-missing player identity appears',
   writeJson(completedPath, completed);
 
   assert.throws(() => run(paths), /omissions differ from pinned reviewed evidence/);
+});
+
+test('fails closed when provider collision omissions differ from reviewed evidence', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.providerPlayerIdentityCollisionReview = {
+    observedAt: '2026-09-08T02:15:09.068Z',
+    fixtureCount: 1,
+    collisionCount: 1,
+    omittedEndpointRowCount: 1,
+    omissions: [{
+      league: 39,
+      season: 2026,
+      fixtureId: 'af:fixture:100',
+      teamId: 'af:team:1',
+      section: 'playerStats',
+      playerId: 'af:player:101',
+      name: 'Unexpected Collision',
+      providerId: 101,
+      role: 'substitute',
+      reason: 'provider_player_id_collides_with_distinct_identity',
+    }],
+  };
+  writeJson(paths.evidencePath, evidence);
+
+  assert.throws(() => run(paths), /collision omissions differ from pinned reviewed evidence/);
 });
 
 test('builds a complete hash-checked migration request sequence without writing', async () => {

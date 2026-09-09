@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 const {
+  reconcileCollidingProviderPlayerIdentities,
   reconcileMissingPlayerPositions,
   reconcileMissingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
@@ -351,6 +352,9 @@ test('loads every corroborated positive-id variance as pinned reviewed evidence'
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.nonLexicalCorroboratedPairCount, 5);
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.excludedMissingOrZeroIdPairCount, 8);
   assert.equal(reviewedEvidence.playerAliases.length, 78);
+  assert.equal(reviewedEvidence.providerPlayerIdentityCollisionReview.fixtureCount, 2);
+  assert.equal(reviewedEvidence.providerPlayerIdentityCollisionReview.collisionCount, 2);
+  assert.equal(reviewedEvidence.providerPlayerIdentityCollisionReview.omittedEndpointRowCount, 5);
 });
 
 test('quarantines missing and zero player identities without merging distinct people', () => {
@@ -382,6 +386,56 @@ test('quarantines missing and zero player identities without merging distinct pe
   const context = validateBundle(bundle, catalog());
   assert.equal(context.players.has('af:player:0'), false);
   assert.equal(context.providerVariantEvidence.playerIdentityOmissions.length, 3);
+});
+
+test('quarantines only exact reviewed collision rows and preserves the retained identity', () => {
+  const bundle = hincapieBundle();
+  bundle.lineups[0].substitutes.push({
+    ...structuredClone(bundle.lineups[0].startXI[0]),
+    name: 'Wrong Person',
+    role: 'substitute',
+  });
+  bundle.playerStats.push({
+    ...structuredClone(bundle.playerStats[0]),
+    playerName: 'Wrong Person Full Name',
+    starter: false,
+  });
+  bundle.events.push({
+    id: 'af:event:1557377:1', type: 'subst', detail: 'Substitution 1', comments: null,
+    elapsed: 70, extra: null, teamId: 'af:team:42', playerId: null,
+    relatedPlayerId: 'af:player:127817', provenance: bundle.fixture.provenance,
+  });
+  const common = {
+    observedAt: bundle.fixture.provenance.fetchedAt,
+    league: 39,
+    season: 2026,
+    fixtureId: bundle.fixture.id,
+    teamId: 'af:team:42',
+    playerId: 'af:player:127817',
+    providerId: 127817,
+    role: 'substitute',
+    reason: 'provider_player_id_collides_with_distinct_identity',
+  };
+  const rules = [
+    { ...common, section: 'lineups.substitutes', name: 'Wrong Person' },
+    { ...common, section: 'playerStats', name: 'Wrong Person Full Name' },
+  ];
+
+  const result = reconcileCollidingProviderPlayerIdentities(bundle, rules);
+  assert.equal(result.bundle.lineups[0].startXI.length, 1);
+  assert.equal(result.bundle.lineups[0].substitutes.length, 0);
+  assert.equal(result.bundle.playerStats.length, 1);
+  assert.equal(result.bundle.lineups[0].startXI[0].name, 'P. Hincapie');
+  assert.equal(result.bundle.events[0].relatedPlayerId, 'af:player:127817');
+  assert.deepEqual(result.omissions.map(item => item.section).sort(),
+    ['lineups.substitutes', 'playerStats']);
+
+  assert.throws(
+    () => reconcileCollidingProviderPlayerIdentities(bundle, [
+      { ...rules[0], name: 'Different Unexpected Name' }, rules[1],
+    ]),
+    /matched 0 rows/,
+  );
 });
 
 test('reconciles the next blocking Bosun Lawal variance to the player-statistics identity', () => {
