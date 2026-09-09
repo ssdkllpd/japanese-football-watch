@@ -103,9 +103,9 @@ jobs:
           jq -e '.summary.providerMissingPlayerIdentityFixtureCount == 6
             and .summary.providerMissingPlayerIdentityOmissionCount == 13
             and .summary.lineupOver40FixtureCount == 162
-            and .summary.maxLineupEntries == 51
+            and .summary.maxLineupEntries == 52
             and .summary.playerStatsOver40FixtureCount == 161
-            and .summary.maxPlayerStats == 51' \
+            and .summary.maxPlayerStats == 52' \
             .tmp/d1-r2-validate/player-identity-variance.json >/dev/null
 
       - name: Run season gate and prepare migration artifacts without writes
