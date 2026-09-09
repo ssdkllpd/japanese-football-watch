@@ -165,6 +165,25 @@ test('reports every positive player id repeated within lineup and player-stat en
   assert.equal(inspected.counts.duplicatePlayerStatsRowCount, 2);
 });
 
+test('reports every lineup coach whose provider identity is zero or missing', () => {
+  const raw = fixture();
+  raw.lineups[0].coach = { id: 0, name: 'Coach Without ID', photo: null };
+
+  const inspected = require('../scripts/d1/report-player-identity-variance').inspectFixture(
+    raw, '2026-09-08T02:15:09.068Z', new Map(),
+  );
+  assert.deepEqual(inspected.providerMissingCoaches, [{
+    fixtureId: 'af:fixture:1563088',
+    teamId: 'af:team:60',
+    lineupIndex: 0,
+    coachId: 'af:coach:0',
+    providerId: 0,
+    name: 'Coach Without ID',
+    photo: null,
+  }]);
+  assert.equal(inspected.counts.providerMissingCoachIdentityCount, 1);
+});
+
 test('recognizes a reviewed alias regardless of which endpoint identity is canonical', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-identity-report-reversed-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

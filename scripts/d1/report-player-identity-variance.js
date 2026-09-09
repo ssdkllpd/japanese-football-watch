@@ -326,6 +326,20 @@ function inspectFixture(
     position: stat.position,
     playerIndex,
   })));
+  const providerMissingCoaches = bundle.lineups.flatMap((lineup, lineupIndex) => {
+    const coach = lineup.coach;
+    if (!coach || (coach.providerId !== 0 && coach.providerId !== null
+      && coach.id !== 'af:coach:0' && coach.id !== null)) return [];
+    return [{
+      fixtureId: bundle.fixture.id,
+      teamId: lineup.teamId,
+      lineupIndex,
+      coachId: coach.id,
+      providerId: coach.providerId,
+      name: coach.name,
+      photo: coach.photo,
+    }];
+  });
   const candidates = teams.flatMap(item => item.candidates);
   return {
     fixtureId: bundle.fixture.id,
@@ -336,6 +350,7 @@ function inspectFixture(
     teams,
     duplicateLineupPlayers,
     duplicatePlayerStats,
+    providerMissingCoaches,
     counts: {
       lineupEntries: lineupEntries.length,
       playerStats: bundle.playerStats.length,
@@ -351,6 +366,7 @@ function inspectFixture(
       duplicatePlayerStatsRowCount: duplicatePlayerStats.reduce(
         (sum, item) => sum + item.occurrences.length, 0,
       ),
+      providerMissingCoachIdentityCount: providerMissingCoaches.length,
     },
   };
 }
@@ -414,6 +430,13 @@ function scanSnapshot(options) {
     duplicateLineupPlayers: item.duplicateLineupPlayers,
     duplicatePlayerStats: item.duplicatePlayerStats,
   }));
+  const providerMissingCoaches = fixtures.flatMap(item => item.providerMissingCoaches.map(coach => ({
+    providerFixtureId: item.providerFixtureId,
+    competitionId: item.competitionId,
+    seasonId: item.seasonId,
+    dateJst: item.dateJst,
+    ...coach,
+  })));
   return {
     schemaVersion: REPORT_SCHEMA,
     source: {
@@ -461,9 +484,13 @@ function scanSnapshot(options) {
       duplicatePlayerStatsRowCount: fixtures.reduce(
         (sum, item) => sum + item.counts.duplicatePlayerStatsRowCount, 0,
       ),
+      providerMissingCoachIdentityFixtureCount:
+        new Set(providerMissingCoaches.map(item => item.fixtureId)).size,
+      providerMissingCoachIdentityRowCount: providerMissingCoaches.length,
     },
     candidates,
     endpointDuplicates,
+    providerMissingCoaches,
     findings,
   };
 }
