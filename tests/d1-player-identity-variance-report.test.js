@@ -116,6 +116,32 @@ test('includes saved catalog evidence for unresolved endpoint identities', () =>
   assert.equal(inspected.teams[1].unresolvedStatsOnly[0].identityEvidence.seasonListsFixtureTeam, true);
 });
 
+test('counts missing provider identities by endpoint row and never treats null event ids as evidence', () => {
+  const raw = fixture();
+  raw.lineups[0].substitutes = [{
+    player: { id: null, name: 'Unidentified Player', number: 20, pos: 'M', grid: null },
+  }];
+  raw.players[0].players.push({
+    player: { id: 0, name: 'Unidentified Player', photo: null },
+    statistics: [{ games: { minutes: 0, position: null, substitute: false, captain: false } }],
+  });
+  raw.events.push({
+    time: { elapsed: 90, extra: null }, team: { id: 60 },
+    player: { id: null, name: 'Someone Else' }, assist: null,
+    type: 'Card', detail: 'Yellow Card', comments: null,
+  });
+
+  const inspected = require('../scripts/d1/report-player-identity-variance').inspectFixture(
+    raw, '2026-09-08T02:15:09.068Z', new Map(),
+  );
+  const candidate = inspected.teams[1].candidates.find(item => item.aliasName === 'Unidentified Player');
+  assert.equal(candidate.aliasPlayerId, null);
+  assert.equal(candidate.canonicalPlayerId, null);
+  assert.equal(candidate.evidence.lineupEventReferences, 0);
+  assert.equal(candidate.evidence.playerStatsEventReferences, 0);
+  assert.equal(inspected.counts.providerMissingPlayerIdentityOmissions, 2);
+});
+
 test('recognizes a reviewed alias regardless of which endpoint identity is canonical', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-identity-report-reversed-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -112,6 +112,30 @@ test('all players are normalized as general football facts without a Japanese re
   assert.deepEqual(bundle.playerStats[0].fieldStates.saves, { presence: 'not_applicable' });
 });
 
+test('player id zero remains an explicit provider sentinel and never becomes a canonical player id', () => {
+  const fixture = sampleFixture();
+  fixture.lineups[0].substitutes.push({
+    player: { id: null, name: 'Missing Lineup Identity', number: 20, pos: 'M', grid: null },
+  });
+  fixture.players[0].players.push({
+    player: { id: 0, name: 'Missing Stats Identity', photo: null },
+    statistics: [{ games: { minutes: 0, position: null, substitute: false, captain: false } }],
+  });
+  fixture.events.push({
+    time: { elapsed: 90, extra: null }, team: { id: 40 },
+    player: { id: 0, name: 'Missing Event Identity' }, assist: null,
+    type: 'Card', detail: 'Yellow Card',
+  });
+
+  const bundle = contract.normalizeFixtureBundle(fixture, { finalized: true });
+  assert.equal(bundle.lineups[0].substitutes[0].id, null);
+  assert.equal(bundle.lineups[0].substitutes[0].providerId, null);
+  assert.equal(bundle.playerStats[1].playerId, null);
+  assert.equal(bundle.playerStats[1].playerProviderId, 0);
+  assert.equal(bundle.events[1].playerId, null);
+  assert.equal(JSON.stringify(bundle).includes('af:player:0'), false);
+});
+
 test('section presence distinguishes not fetched from fetched empty data', () => {
   const notFetched = sampleFixture();
   delete notFetched.events;

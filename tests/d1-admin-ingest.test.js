@@ -335,6 +335,35 @@ test('admin fixture ingest publishes one complete revision and is content-idempo
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 1);
 });
 
+test('admin fixture ingest never merges distinct missing identities into player zero', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fixturePayload();
+  bundle.lineups[0].substitutes.push({
+    id: null, providerId: null, name: 'Missing Lineup ID', number: 20,
+    position: 'M', grid: null, role: 'substitute',
+  });
+  for (const name of ['First Missing Stats ID', 'Second Missing Stats ID']) {
+    bundle.playerStats.push({
+      ...structuredClone(bundle.playerStats[0]),
+      playerId: 'af:player:0', playerProviderId: 0, playerName: name,
+      position: null, starter: true, captain: false, values: { minutes: 0 },
+      fieldStates: {},
+    });
+  }
+
+  const response = await admin.default.fetch(
+    request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle),
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.report.counts.appearances, 1);
+  assert.equal(body.report.counts.playerStats, 1);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM players WHERE provider_id = 0').get().count, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 1);
+});
+
 test('admin fixture ingest preserves 41 distinct endpoint-backed appearances within the free query budget', async t => {
   const db = database();
   t.after(() => db.close());

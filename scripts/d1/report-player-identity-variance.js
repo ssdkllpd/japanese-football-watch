@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeFixtureBundle } = require('../v2/fixture-contract');
 const {
+  reconcileMissingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
   reviewedPlayerAliasRules,
 } = require('./fixture-bundle-importer');
@@ -66,7 +67,9 @@ function candidateScore(lineup, stat) {
 
 function uniqueBest(items, score) {
   const ranked = items.map(item => ({ item, score: score(item) })).filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.item.id.localeCompare(b.item.id));
+    .sort((a, b) => b.score - a.score
+      || String(a.item.id || a.item.name || '').localeCompare(String(b.item.id || b.item.name || ''))
+      || String(a.item.occurrenceKey || '').localeCompare(String(b.item.occurrenceKey || '')));
   if (!ranked.length || (ranked[1] && ranked[0].score === ranked[1].score)) return null;
   return ranked[0];
 }
@@ -146,6 +149,7 @@ function identityEvidence(index, teamId, playerId) {
 }
 
 function eventReferenceCount(bundle, teamId, playerId) {
+  if (!/^af:player:[1-9]\d*$/.test(String(playerId || ''))) return 0;
   return bundle.events.filter(event => event.teamId === teamId
     && (event.playerId === playerId || event.relatedPlayerId === playerId)).length;
 }
@@ -160,7 +164,8 @@ function teamName(bundle, teamId) {
 function lineupPlayers(bundle, teamId) {
   const lineup = bundle.lineups.find(item => item.teamId === teamId);
   if (!lineup) return [];
-  return [...lineup.startXI, ...lineup.substitutes].map(player => ({
+  return [...lineup.startXI, ...lineup.substitutes].map((player, index) => ({
+    occurrenceKey: `lineup:${index}`,
     id: player.id,
     providerId: player.providerId,
     name: player.name,
@@ -171,7 +176,8 @@ function lineupPlayers(bundle, teamId) {
 }
 
 function statPlayers(bundle, teamId) {
-  return bundle.playerStats.filter(item => item.teamId === teamId).map(item => ({
+  return bundle.playerStats.filter(item => item.teamId === teamId).map((item, index) => ({
+    occurrenceKey: `playerStats:${index}`,
     id: item.playerId,
     providerId: item.playerProviderId,
     name: item.playerName,
@@ -184,58 +190,64 @@ function statPlayers(bundle, teamId) {
 function inspectTeam(bundle, teamId, scope, aliases, identityIndex) {
   const lineup = lineupPlayers(bundle, teamId);
   const stats = statPlayers(bundle, teamId);
-  const lineupIds = new Set(lineup.map(item => item.id));
-  const statIds = new Set(stats.map(item => item.id));
-  const lineupOnly = lineup.filter(item => !statIds.has(item.id));
-  const statsOnly = stats.filter(item => !lineupIds.has(item.id));
+  const validPlayerId = value => /^af:player:[1-9]\d*$/.test(String(value || ''));
+  const lineupIds = new Set(lineup.map(item => item.id).filter(validPlayerId));
+  const statIds = new Set(stats.map(item => item.id).filter(validPlayerId));
+  const lineupOnly = lineup.filter(item => !validPlayerId(item.id) || !statIds.has(item.id));
+  const statsOnly = stats.filter(item => !validPlayerId(item.id) || !lineupIds.has(item.id));
   const accepted = [];
 
   for (const left of lineupOnly) {
     const bestStat = uniqueBest(statsOnly, right => candidateScore(left, right));
     if (!bestStat) continue;
     const bestLineup = uniqueBest(lineupOnly, candidate => candidateScore(candidate, bestStat.item));
-    if (!bestLineup || bestLineup.item.id !== left.id) continue;
+    if (!bestLineup || bestLineup.item.occurrenceKey !== left.occurrenceKey) continue;
     const key = reviewedAliasPairKey(
       scope.league, scope.season, teamId, left.id, bestStat.item.id,
     );
     accepted.push({
-      aliasPlayerId: left.id,
-      aliasProviderId: left.providerId,
-      aliasName: left.name,
-      canonicalPlayerId: bestStat.item.id,
-      canonicalProviderId: bestStat.item.providerId,
-      canonicalName: bestStat.item.name,
-      lineupRole: left.role,
-      statsRole: bestStat.item.role,
-      lineupNumber: left.number,
-      statsMinutes: bestStat.item.minutes,
-      score: bestStat.score,
-      confidence: bestStat.score === 100 ? 'exact_name' : 'surname_and_first_initial',
-      alreadyReviewed: aliases.has(key),
-      evidence: {
-        lineupIdentity: identityEvidence(identityIndex, teamId, left.id),
-        playerStatsIdentity: identityEvidence(identityIndex, teamId, bestStat.item.id),
-        lineupEventReferences: eventReferenceCount(bundle, teamId, left.id),
-        playerStatsEventReferences: eventReferenceCount(bundle, teamId, bestStat.item.id),
+      lineupOccurrenceKey: left.occurrenceKey,
+      statOccurrenceKey: bestStat.item.occurrenceKey,
+      candidate: {
+        aliasPlayerId: left.id,
+        aliasProviderId: left.providerId,
+        aliasName: left.name,
+        canonicalPlayerId: bestStat.item.id,
+        canonicalProviderId: bestStat.item.providerId,
+        canonicalName: bestStat.item.name,
+        lineupRole: left.role,
+        statsRole: bestStat.item.role,
+        lineupNumber: left.number,
+        statsMinutes: bestStat.item.minutes,
+        score: bestStat.score,
+        confidence: bestStat.score === 100 ? 'exact_name' : 'surname_and_first_initial',
+        alreadyReviewed: aliases.has(key),
+        evidence: {
+          lineupIdentity: identityEvidence(identityIndex, teamId, left.id),
+          playerStatsIdentity: identityEvidence(identityIndex, teamId, bestStat.item.id),
+          lineupEventReferences: eventReferenceCount(bundle, teamId, left.id),
+          playerStatsEventReferences: eventReferenceCount(bundle, teamId, bestStat.item.id),
+        },
       },
     });
   }
 
-  const acceptedLineupIds = new Set(accepted.map(item => item.aliasPlayerId));
-  const acceptedStatIds = new Set(accepted.map(item => item.canonicalPlayerId));
+  const acceptedLineupKeys = new Set(accepted.map(item => item.lineupOccurrenceKey));
+  const acceptedStatKeys = new Set(accepted.map(item => item.statOccurrenceKey));
+  const publicPlayer = ({ occurrenceKey, ...item }) => item;
   return {
     teamId,
     teamName: teamName(bundle, teamId),
     lineupCount: lineup.length,
     playerStatsCount: stats.length,
-    candidates: accepted,
-    unresolvedLineupOnly: lineupOnly.filter(item => !acceptedLineupIds.has(item.id)).map(item => ({
-      ...item,
+    candidates: accepted.map(item => item.candidate),
+    unresolvedLineupOnly: lineupOnly.filter(item => !acceptedLineupKeys.has(item.occurrenceKey)).map(item => ({
+      ...publicPlayer(item),
       identityEvidence: identityEvidence(identityIndex, teamId, item.id),
       eventReferences: eventReferenceCount(bundle, teamId, item.id),
     })),
-    unresolvedStatsOnly: statsOnly.filter(item => !acceptedStatIds.has(item.id)).map(item => ({
-      ...item,
+    unresolvedStatsOnly: statsOnly.filter(item => !acceptedStatKeys.has(item.occurrenceKey)).map(item => ({
+      ...publicPlayer(item),
       identityEvidence: identityEvidence(identityIndex, teamId, item.id),
       eventReferences: eventReferenceCount(bundle, teamId, item.id),
     })),
@@ -251,6 +263,8 @@ function inspectFixture(
 ) {
   const bundle = normalizeFixtureBundle(raw, { fetchedAt: observedAt, revision: 1 });
   const reviewedBundle = reconcileReviewedPlayerAliases(bundle, aliasRules).bundle;
+  const missingIdentities = reconcileMissingProviderPlayerIdentities(reviewedBundle);
+  const canonicalBundle = missingIdentities.bundle;
   const scope = {
     league: bundle.competition.providerId,
     season: bundle.season.providerSeason,
@@ -261,14 +275,17 @@ function inspectFixture(
     ...item.startXI.map(player => player.id),
     ...item.substitutes.map(player => player.id),
   ]);
-  const lineupIds = new Set(lineupEntries);
-  const statIds = new Set(bundle.playerStats.map(item => item.playerId));
+  const endpointKeys = (ids, prefix) => ids.map((id, index) => (
+    /^af:player:[1-9]\d*$/.test(String(id || '')) ? id : `${prefix}:${index}`
+  ));
+  const lineupIds = endpointKeys(lineupEntries, 'missing-lineup');
+  const statIds = endpointKeys(bundle.playerStats.map(item => item.playerId), 'missing-stat');
   const appearanceUnion = new Set([...lineupIds, ...statIds]);
-  const reviewedLineupIds = new Set(reviewedBundle.lineups.flatMap(item => [
+  const reviewedLineupIds = new Set(canonicalBundle.lineups.flatMap(item => [
     ...item.startXI.map(player => player.id),
     ...item.substitutes.map(player => player.id),
   ]));
-  const reviewedStatIds = new Set(reviewedBundle.playerStats.map(item => item.playerId));
+  const reviewedStatIds = new Set(canonicalBundle.playerStats.map(item => item.playerId));
   const reviewedAppearanceUnion = new Set([...reviewedLineupIds, ...reviewedStatIds]);
   const candidates = teams.flatMap(item => item.candidates);
   return {
@@ -284,6 +301,7 @@ function inspectFixture(
       appearanceUnion: appearanceUnion.size,
       projectedAfterCandidates: appearanceUnion.size - candidates.length,
       reviewedAppearanceUnion: reviewedAppearanceUnion.size,
+      providerMissingPlayerIdentityOmissions: missingIdentities.omissions.length,
     },
   };
 }
@@ -356,6 +374,12 @@ function scanSnapshot(options) {
       unresolvedStatsOnlyCount: findings.reduce((sum, item) => sum + item.teams.reduce(
         (inner, team) => inner + team.unresolvedStatsOnly.length, 0,
       ), 0),
+      providerMissingPlayerIdentityFixtureCount: fixtures.filter(
+        item => item.counts.providerMissingPlayerIdentityOmissions > 0,
+      ).length,
+      providerMissingPlayerIdentityOmissionCount: fixtures.reduce(
+        (sum, item) => sum + item.counts.providerMissingPlayerIdentityOmissions, 0,
+      ),
       rawUnionOver40FixtureCount: fixtures.filter(item => item.counts.appearanceUnion > 40).length,
       projectedOver40FixtureCount: fixtures.filter(item => item.counts.projectedAfterCandidates > 40).length,
       reviewedOver40FixtureCount: fixtures.filter(item => item.counts.reviewedAppearanceUnion > 40).length,

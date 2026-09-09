@@ -5,6 +5,7 @@ const test = require('node:test');
 const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 const {
   reconcileMissingPlayerPositions,
+  reconcileMissingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
   validateBundle,
 } = require('../scripts/d1/fixture-bundle-importer');
@@ -348,8 +349,39 @@ test('loads every corroborated positive-id variance as pinned reviewed evidence'
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.newlyReviewedPairCount, 75);
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.reversedToLineupIdentityCount, 4);
   assert.equal(reviewedEvidence.playerIdentityVarianceReview.nonLexicalCorroboratedPairCount, 5);
-  assert.equal(reviewedEvidence.playerIdentityVarianceReview.excludedMissingOrZeroIdPairCount, 7);
+  assert.equal(reviewedEvidence.playerIdentityVarianceReview.excludedMissingOrZeroIdPairCount, 8);
   assert.equal(reviewedEvidence.playerAliases.length, 78);
+});
+
+test('quarantines missing and zero player identities without merging distinct people', () => {
+  const bundle = hincapieBundle();
+  bundle.lineups[0].substitutes.push({
+    id: null, providerId: null, name: 'Lineup Without ID', number: 20,
+    position: 'M', grid: null, role: 'substitute',
+  });
+  for (const name of ['First Zero ID', 'Second Zero ID']) {
+    bundle.playerStats.push({
+      ...structuredClone(bundle.playerStats[0]),
+      playerId: 'af:player:0', playerProviderId: 0, playerName: name,
+      position: null, starter: true, values: { minutes: 0 },
+    });
+  }
+  bundle.events.push({
+    id: 'af:event:1557377:99', type: 'card', detail: 'Yellow Card', comments: null,
+    elapsed: 90, extra: null, teamId: 'af:team:42', playerId: 'af:player:0',
+    relatedPlayerId: null, provenance: bundle.fixture.provenance,
+  });
+
+  const reconciled = reconcileMissingProviderPlayerIdentities(bundle);
+  assert.equal(reconciled.bundle.lineups[0].substitutes.length, 0);
+  assert.equal(reconciled.bundle.playerStats.length, 1);
+  assert.equal(reconciled.bundle.events.at(-1).playerId, null);
+  assert.deepEqual(reconciled.omissions.map(item => item.name).sort(),
+    ['First Zero ID', 'Lineup Without ID', 'Second Zero ID']);
+
+  const context = validateBundle(bundle, catalog());
+  assert.equal(context.players.has('af:player:0'), false);
+  assert.equal(context.providerVariantEvidence.playerIdentityOmissions.length, 3);
 });
 
 test('reconciles the next blocking Bosun Lawal variance to the player-statistics identity', () => {

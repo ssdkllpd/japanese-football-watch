@@ -11,7 +11,159 @@
     "newlyReviewedPairCount": 75,
     "reversedToLineupIdentityCount": 4,
     "nonLexicalCorroboratedPairCount": 5,
-    "excludedMissingOrZeroIdPairCount": 7
+    "excludedMissingOrZeroIdPairCount": 8
+  },
+  "providerMissingPlayerIdentityReview": {
+    "observedAt": "2026-09-08T02:15:09.068Z",
+    "cause": "API-Football returned player.id 0 or null in lineup and fixture-player endpoint rows; these values do not identify a provider player and must not become af:player:0",
+    "policy": "Keep the immutable source rows in the pinned R2 snapshot, omit only the unidentifiable endpoint rows from canonical D1 facts, and fail preparation if the exact reviewed omission set changes",
+    "fixtureCount": 6,
+    "omittedEndpointRowCount": 13,
+    "omissions": [
+      {
+        "league": 61,
+        "season": 2026,
+        "fixtureId": "af:fixture:1552751",
+        "teamId": "af:team:81",
+        "section": "playerStats",
+        "name": "Bamo Meite",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 61,
+        "season": 2026,
+        "fixtureId": "af:fixture:1552751",
+        "teamId": "af:team:81",
+        "section": "playerStats",
+        "name": "Nouhoum Kamissoko",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 88,
+        "season": 2026,
+        "fixtureId": "af:fixture:1552135",
+        "teamId": "af:team:205",
+        "section": "playerStats",
+        "name": "David Stockbrink",
+        "providerId": 0,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 88,
+        "season": 2026,
+        "fixtureId": "af:fixture:1552161",
+        "teamId": "af:team:198",
+        "section": "playerStats",
+        "name": "Caleb Kramer",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575457",
+        "teamId": "af:team:215",
+        "section": "playerStats",
+        "name": "Rodrigo Soares",
+        "providerId": 0,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575483",
+        "teamId": "af:team:230",
+        "section": "lineups.substitutes",
+        "name": "fletcher lowe",
+        "providerId": null,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575483",
+        "teamId": "af:team:230",
+        "section": "playerStats",
+        "name": "fletcher lowe",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575483",
+        "teamId": "af:team:240",
+        "section": "lineups.substitutes",
+        "name": "Mamadu Balde",
+        "providerId": null,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575483",
+        "teamId": "af:team:240",
+        "section": "playerStats",
+        "name": "Mamadu Balde",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 135,
+        "season": 2026,
+        "fixtureId": "af:fixture:1550109",
+        "teamId": "af:team:490",
+        "section": "lineups.substitutes",
+        "name": "A. Sugamele",
+        "providerId": null,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 135,
+        "season": 2026,
+        "fixtureId": "af:fixture:1550109",
+        "teamId": "af:team:490",
+        "section": "lineups.substitutes",
+        "name": "Roberto Gagliardini",
+        "providerId": null,
+        "role": "substitute",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 135,
+        "season": 2026,
+        "fixtureId": "af:fixture:1550109",
+        "teamId": "af:team:490",
+        "section": "playerStats",
+        "name": "A. Sugamele",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      },
+      {
+        "league": 135,
+        "season": 2026,
+        "fixtureId": "af:fixture:1550109",
+        "teamId": "af:team:490",
+        "section": "playerStats",
+        "name": "Roberto Gagliardini",
+        "providerId": 0,
+        "role": "starter",
+        "reason": "provider_player_id_missing_or_non_positive"
+      }
+    ]
   },
   "playerAliases": [
     {

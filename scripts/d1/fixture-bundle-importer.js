@@ -38,6 +38,53 @@ function reviewedPlayerAliasRules(evidence = reviewedEvidence) {
 
 const REVIEWED_PLAYER_ALIAS_RULES = reviewedPlayerAliasRules();
 
+function isMissingProviderPlayerIdentity(id, providerId) {
+  return (id === null && (providerId === null || providerId === 0))
+    || (id === 'af:player:0' && providerId === 0);
+}
+
+function reconcileMissingProviderPlayerIdentities(bundle) {
+  const nextBundle = structuredClone(bundle);
+  const omissions = [];
+
+  function omission(section, teamId, player, role = null) {
+    omissions.push({
+      fixtureId: nextBundle.fixture?.id || null,
+      teamId: teamId || null,
+      section,
+      name: String(player?.name ?? player?.playerName ?? '').trim() || null,
+      providerId: player?.providerId ?? player?.playerProviderId ?? null,
+      role,
+      reason: 'provider_player_id_missing_or_non_positive',
+    });
+  }
+
+  for (const lineup of nextBundle.lineups || []) {
+    for (const [key, role] of [['startXI', 'starter'], ['substitutes', 'substitute']]) {
+      lineup[key] = (lineup[key] || []).filter(player => {
+        if (!isMissingProviderPlayerIdentity(player?.id, player?.providerId)) return true;
+        omission(`lineups.${key}`, lineup.teamId, player, role);
+        return false;
+      });
+    }
+  }
+
+  nextBundle.playerStats = (nextBundle.playerStats || []).filter(stat => {
+    if (!isMissingProviderPlayerIdentity(stat?.playerId, stat?.playerProviderId)) return true;
+    omission('playerStats', stat.teamId, stat, stat.starter === true ? 'starter'
+      : (stat.starter === false ? 'substitute' : null));
+    return false;
+  });
+
+  for (const event of nextBundle.events || []) {
+    if (event.playerId === 'af:player:0') event.playerId = null;
+    if (event.relatedPlayerId === 'af:player:0') event.relatedPlayerId = null;
+  }
+
+  omissions.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return { bundle: nextBundle, omissions };
+}
+
 function bundleScope(bundle) {
   const competition = /^af:competition:(\d+)$/.exec(String(bundle?.fixture?.competitionId || ''));
   const season = /^af:season:(\d+):(\d+)$/.exec(String(bundle?.fixture?.seasonId || ''));
@@ -197,13 +244,15 @@ function omitNullTeamStatValues(bundle) {
 }
 
 function reconcileProviderVariants(bundle, catalog = {}) {
-  const identities = reconcileReviewedPlayerAliases(bundle);
+  const missingIdentities = reconcileMissingProviderPlayerIdentities(bundle);
+  const identities = reconcileReviewedPlayerAliases(missingIdentities.bundle);
   const positions = reconcileMissingPlayerPositions(identities.bundle);
   const names = reconcilePlayerDisplayNames(positions, catalog);
   return {
     bundle: omitNullTeamStatValues(names.bundle),
     catalog: names.catalog,
     playerAliasApplications: identities.applications,
+    playerIdentityOmissions: missingIdentities.omissions,
   };
 }
 
@@ -212,6 +261,7 @@ function validateBundle(bundle, catalog = {}) {
   const context = core.validateBundle(reconciled.bundle, reconciled.catalog);
   context.providerVariantEvidence = {
     playerAliases: reconciled.playerAliasApplications,
+    playerIdentityOmissions: reconciled.playerIdentityOmissions,
   };
   return context;
 }
@@ -230,6 +280,7 @@ module.exports = {
   ...core,
   importFixtureBundle,
   reconcileMissingPlayerPositions,
+  reconcileMissingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
   reviewedPlayerAliasRules,
   validateBundle,

@@ -157,6 +157,12 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39 } = {}) {
       standingsRowCount: 2,
     }],
     totals,
+    providerMissingPlayerIdentityReview: {
+      observedAt,
+      fixtureCount: 0,
+      omittedEndpointRowCount: 0,
+      omissions: [],
+    },
   });
   return {
     root, snapshotRoot, outputRoot, archiveFile, latestPath, configPath, evidencePath,
@@ -220,6 +226,22 @@ test('fails closed when the saved snapshot differs from pinned reviewed evidence
   writeJson(paths.evidencePath, evidence);
   assert.throws(() => run(paths), /pinned reviewed evidence/);
   assert.equal(fs.existsSync(path.join(paths.outputRoot, 'migration-manifest.json')), false);
+});
+
+test('fails closed when an unreviewed provider-missing player identity appears', () => {
+  const paths = buildSnapshot();
+  const completedPath = path.join(paths.snapshotRoot, 'league-39', 'completed-fixtures', '100.json');
+  const completed = JSON.parse(fs.readFileSync(completedPath, 'utf8'));
+  completed.players = [{
+    team: { id: 1, name: 'Alpha' },
+    players: [{
+      player: { id: 0, name: 'Unexpected Missing Identity', photo: null },
+      statistics: [{ games: { minutes: 0, position: null, substitute: false, captain: false } }],
+    }],
+  }];
+  writeJson(completedPath, completed);
+
+  assert.throws(() => run(paths), /omissions differ from pinned reviewed evidence/);
 });
 
 test('builds a complete hash-checked migration request sequence without writing', async () => {

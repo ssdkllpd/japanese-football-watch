@@ -100,6 +100,9 @@ jobs:
             --latest .tmp/d1-r2-validate/latest.json \
             --evidence config/d1-major-league-snapshot-20260908.json \
             --out .tmp/d1-r2-validate/player-identity-variance.json
+          jq -e '.summary.providerMissingPlayerIdentityFixtureCount == 6
+            and .summary.providerMissingPlayerIdentityOmissionCount == 13' \
+            .tmp/d1-r2-validate/player-identity-variance.json >/dev/null
 
       - name: Run season gate and prepare migration artifacts without writes
         run: |

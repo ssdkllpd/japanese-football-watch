@@ -170,6 +170,41 @@ function assertReviewedEvidence(evidence, latest, manifest, leagues, totals) {
   }
 }
 
+function normalizedProviderIdentityOmission(value) {
+  return {
+    league: value?.league,
+    season: value?.season,
+    fixtureId: value?.fixtureId,
+    teamId: value?.teamId,
+    section: value?.section,
+    name: value?.name,
+    providerId: value?.providerId ?? null,
+    role: value?.role ?? null,
+    reason: value?.reason,
+  };
+}
+
+function omissionSortKey(value) {
+  return [value.league, value.season, value.fixtureId, value.teamId, value.section,
+    value.name, value.providerId, value.role, value.reason].map(item => String(item ?? '')).join('|');
+}
+
+function assertReviewedProviderIdentityOmissions(evidence, latest, omissions) {
+  const review = evidence?.providerMissingPlayerIdentityReview;
+  if (!review || review.observedAt !== latest.completedAt || !Array.isArray(review.omissions)) {
+    fail('Pinned provider-missing player identity review is missing or stale.');
+  }
+  const expected = review.omissions.map(normalizedProviderIdentityOmission)
+    .sort((left, right) => omissionSortKey(left).localeCompare(omissionSortKey(right)));
+  const actual = omissions.map(normalizedProviderIdentityOmission)
+    .sort((left, right) => omissionSortKey(left).localeCompare(omissionSortKey(right)));
+  if (JSON.stringify(actual) !== JSON.stringify(expected)
+    || review.omittedEndpointRowCount !== actual.length
+    || review.fixtureCount !== new Set(actual.map(item => item.fixtureId)).size) {
+    fail('Provider-missing player identity omissions differ from pinned reviewed evidence.');
+  }
+}
+
 function exactNumericParameter(payload, key, expected, label) {
   if (String(payload?.parameters?.[key]) !== String(expected)) {
     fail(`${label}.parameters.${key} does not match ${expected}.`);
@@ -326,7 +361,10 @@ function assertD1FixtureCompatibility(bundle, catalog) {
       }
     }
   }
-  return counts;
+  return {
+    counts,
+    playerIdentityOmissions: context.providerVariantEvidence.playerIdentityOmissions,
+  };
 }
 
 function validateLeague(snapshotRoot, target, manifestLeague, context) {
@@ -498,9 +536,16 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     events: 0, lineups: 0, appearances: 0, lineupEntries: 0,
     playerStats: 0, teamStats: 0, fieldStates: 0,
   };
+  const playerIdentityOmissions = [];
   for (const fixtureArtifact of fixtureArtifacts) {
     const prepared = readJson(path.join(context.outputRoot, fixtureArtifact.path));
-    const counts = assertD1FixtureCompatibility(prepared.bundle, d1Catalog);
+    const compatibility = assertD1FixtureCompatibility(prepared.bundle, d1Catalog);
+    const counts = compatibility.counts;
+    playerIdentityOmissions.push(...compatibility.playerIdentityOmissions.map(item => ({
+      league: target.league,
+      season: target.season,
+      ...item,
+    })));
     for (const key of Object.keys(fixtureDetailMaxima)) {
       fixtureDetailMaxima[key] = Math.max(fixtureDetailMaxima[key], counts[key]);
     }
@@ -538,6 +583,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     fixtureCount: coreFixtures.length,
     completedFixtureCount: finalIds.size,
     fixtureDetailMaxima,
+    playerIdentityOmissions,
     fixtureBoundaryAdjustments,
     standingsRowCount: standingRows,
     playerRows: players.rows,
@@ -631,6 +677,11 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
     return validateLeague(snapshotRoot, target, manifestLeague, context);
   });
   unique(validatedLeagues.flatMap(item => item.fixtureArtifacts.map(fixture => fixture.fixtureId)), 'Completed fixture artifacts');
+  assertReviewedProviderIdentityOmissions(
+    evidence,
+    latest,
+    validatedLeagues.flatMap(item => item.playerIdentityOmissions),
+  );
   const dateCoverage = buildDateCoverageArtifact(source, validatedLeagues);
   const coverageRelativePath = 'coverage/date-coverages.json';
   const coverageSha256 = writeJson(path.join(outputRoot, coverageRelativePath), dateCoverage);
