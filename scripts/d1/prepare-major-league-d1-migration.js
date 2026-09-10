@@ -244,6 +244,60 @@ function assertReviewedProviderIdentityCollisionOmissions(evidence, latest, omis
   }
 }
 
+function normalizedCoachIdentityRecovery(value) {
+  return {
+    league: value?.league,
+    season: value?.season,
+    fixtureId: value?.fixtureId,
+    teamId: value?.teamId,
+    sourceName: value?.sourceName,
+    sourceProviderId: value?.sourceProviderId ?? null,
+    canonicalCoachId: value?.canonicalCoachId,
+    canonicalProviderId: value?.canonicalProviderId,
+    canonicalName: value?.canonicalName,
+    canonicalPhoto: value?.canonicalPhoto ?? null,
+    reason: value?.reason,
+  };
+}
+
+function normalizedCoachIdentityOmission(value) {
+  return {
+    league: value?.league,
+    season: value?.season,
+    fixtureId: value?.fixtureId,
+    teamId: value?.teamId,
+    sourceName: value?.sourceName,
+    sourceProviderId: value?.sourceProviderId ?? null,
+    reason: value?.reason,
+  };
+}
+
+function coachIdentitySortKey(value) {
+  return Object.values(value).map(item => String(item ?? '')).join('|');
+}
+
+function assertReviewedProviderMissingCoachIdentities(evidence, latest, recoveries, omissions) {
+  const review = evidence?.providerMissingCoachIdentityReview;
+  if (!review || review.observedAt !== latest.completedAt
+    || !Array.isArray(review.recoveries) || !Array.isArray(review.omissions)) {
+    fail('Pinned provider-missing coach identity review is missing or stale.');
+  }
+  const sort = (left, right) => coachIdentitySortKey(left).localeCompare(coachIdentitySortKey(right));
+  const expectedRecoveries = review.recoveries.map(normalizedCoachIdentityRecovery).sort(sort);
+  const actualRecoveries = recoveries.map(normalizedCoachIdentityRecovery).sort(sort);
+  const expectedOmissions = review.omissions.map(normalizedCoachIdentityOmission).sort(sort);
+  const actualOmissions = omissions.map(normalizedCoachIdentityOmission).sort(sort);
+  const fixtureCount = new Set([...actualRecoveries, ...actualOmissions]
+    .map(item => item.fixtureId)).size;
+  if (JSON.stringify(actualRecoveries) !== JSON.stringify(expectedRecoveries)
+    || JSON.stringify(actualOmissions) !== JSON.stringify(expectedOmissions)
+    || review.recoveredCoachRowCount !== actualRecoveries.length
+    || review.omittedCoachRowCount !== actualOmissions.length
+    || review.fixtureCount !== fixtureCount) {
+    fail('Provider-missing coach identity handling differs from pinned reviewed evidence.');
+  }
+}
+
 function exactNumericParameter(payload, key, expected, label) {
   if (String(payload?.parameters?.[key]) !== String(expected)) {
     fail(`${label}.parameters.${key} does not match ${expected}.`);
@@ -405,6 +459,8 @@ function assertD1FixtureCompatibility(bundle, catalog) {
     playerIdentityOmissions: context.providerVariantEvidence.playerIdentityOmissions,
     playerIdentityCollisionOmissions:
       context.providerVariantEvidence.playerIdentityCollisionOmissions,
+    coachIdentityRecoveries: context.providerVariantEvidence.coachIdentityRecoveries,
+    coachIdentityOmissions: context.providerVariantEvidence.coachIdentityOmissions,
   };
 }
 
@@ -579,6 +635,8 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
   };
   const playerIdentityOmissions = [];
   const playerIdentityCollisionOmissions = [];
+  const coachIdentityRecoveries = [];
+  const coachIdentityOmissions = [];
   for (const fixtureArtifact of fixtureArtifacts) {
     const prepared = readJson(path.join(context.outputRoot, fixtureArtifact.path));
     const compatibility = assertD1FixtureCompatibility(prepared.bundle, d1Catalog);
@@ -589,6 +647,16 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
       ...item,
     })));
     playerIdentityCollisionOmissions.push(...compatibility.playerIdentityCollisionOmissions.map(item => ({
+      league: target.league,
+      season: target.season,
+      ...item,
+    })));
+    coachIdentityRecoveries.push(...compatibility.coachIdentityRecoveries.map(item => ({
+      league: target.league,
+      season: target.season,
+      ...item,
+    })));
+    coachIdentityOmissions.push(...compatibility.coachIdentityOmissions.map(item => ({
       league: target.league,
       season: target.season,
       ...item,
@@ -632,6 +700,8 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     fixtureDetailMaxima,
     playerIdentityOmissions,
     playerIdentityCollisionOmissions,
+    coachIdentityRecoveries,
+    coachIdentityOmissions,
     fixtureBoundaryAdjustments,
     standingsRowCount: standingRows,
     playerRows: players.rows,
@@ -734,6 +804,12 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
     evidence,
     latest,
     validatedLeagues.flatMap(item => item.playerIdentityCollisionOmissions),
+  );
+  assertReviewedProviderMissingCoachIdentities(
+    evidence,
+    latest,
+    validatedLeagues.flatMap(item => item.coachIdentityRecoveries),
+    validatedLeagues.flatMap(item => item.coachIdentityOmissions),
   );
   const dateCoverage = buildDateCoverageArtifact(source, validatedLeagues);
   const coverageRelativePath = 'coverage/date-coverages.json';

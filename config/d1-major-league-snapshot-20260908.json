@@ -165,6 +165,56 @@
       }
     ]
   },
+  "providerMissingCoachIdentityReview": {
+    "observedAt": "2026-09-08T02:15:09.068Z",
+    "cause": "API-Football returned coach.id 0 for three different coaches; the previous normalizer converted every sentinel to af:coach:0 and caused unrelated coach records to collide",
+    "policy": "Keep the immutable source rows in the pinned R2 snapshot, recover only exact coach identities corroborated by the same team's other completed fixtures, quarantine any unreviewed non-positive coach identity, and fail preparation if the exact recovery or omission set changes",
+    "fixtureCount": 2,
+    "recoveredCoachRowCount": 3,
+    "omittedCoachRowCount": 0,
+    "recoveries": [
+      {
+        "league": 94,
+        "season": 2026,
+        "fixtureId": "af:fixture:1575483",
+        "teamId": "af:team:230",
+        "sourceName": "Vasco Matos",
+        "sourceProviderId": 0,
+        "canonicalCoachId": "af:coach:6484",
+        "canonicalProviderId": 6484,
+        "canonicalName": "Vasco Matos",
+        "canonicalPhoto": "https://media.api-sports.io/football/coachs/6484.png",
+        "reason": "provider_coach_id_recovered_from_pinned_team_history"
+      },
+      {
+        "league": 140,
+        "season": 2026,
+        "fixtureId": "af:fixture:1570368",
+        "teamId": "af:team:546",
+        "sourceName": "Pepe Bordalás",
+        "sourceProviderId": 0,
+        "canonicalCoachId": "af:coach:1596",
+        "canonicalProviderId": 1596,
+        "canonicalName": "Jose Bordalas Jimenez",
+        "canonicalPhoto": "https://media.api-sports.io/football/coachs/1596.png",
+        "reason": "provider_coach_id_recovered_from_pinned_team_history"
+      },
+      {
+        "league": 140,
+        "season": 2026,
+        "fixtureId": "af:fixture:1570368",
+        "teamId": "af:team:538",
+        "sourceName": "Claudio Giráldez",
+        "sourceProviderId": 0,
+        "canonicalCoachId": "af:coach:25640",
+        "canonicalProviderId": 25640,
+        "canonicalName": "Claudio Giraldez",
+        "canonicalPhoto": "https://media.api-sports.io/football/coachs/25640.png",
+        "reason": "provider_coach_id_recovered_from_pinned_team_history"
+      }
+    ],
+    "omissions": []
+  },
   "providerPlayerIdentityCollisionReview": {
     "observedAt": "2026-09-08T02:15:09.068Z",
     "cause": "API-Football assigned one positive player ID to two distinct people within the same fixture response; the retained identities are corroborated by other completed fixtures in the pinned snapshot",

@@ -110,7 +110,9 @@ jobs:
             and .summary.duplicateLineupPlayerIdentityCount == 2
             and .summary.duplicateLineupEntryCount == 4
             and .summary.duplicatePlayerStatsIdentityCount == 2
-            and .summary.duplicatePlayerStatsRowCount == 4' \
+            and .summary.duplicatePlayerStatsRowCount == 4
+            and .summary.providerMissingCoachIdentityFixtureCount == 2
+            and .summary.providerMissingCoachIdentityRowCount == 3' \
             .tmp/d1-r2-validate/player-identity-variance.json >/dev/null
 
       - name: Run season gate and prepare migration artifacts without writes

@@ -6,6 +6,7 @@ const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 const {
   reconcileCollidingProviderPlayerIdentities,
   reconcileMissingPlayerPositions,
+  reconcileMissingProviderCoachIdentities,
   reconcileMissingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
   validateBundle,
@@ -66,6 +67,32 @@ function hincapieBundle() {
       }],
     }],
   }, { fetchedAt: '2026-09-08T02:15:09.068Z', revision: 1 });
+}
+
+function vascoMatosRecoveryBundle() {
+  const bundle = hincapieBundle();
+  bundle.fixture.id = 'af:fixture:1575483';
+  bundle.fixture.providerId = 1575483;
+  bundle.fixture.competitionId = 'af:competition:94';
+  bundle.fixture.seasonId = 'af:season:94:2026';
+  bundle.competition.id = 'af:competition:94';
+  bundle.competition.providerId = 94;
+  bundle.competition.name = 'Primeira Liga';
+  bundle.season.id = 'af:season:94:2026';
+  bundle.season.competitionId = 'af:competition:94';
+  bundle.fixture.teams.home = {
+    id: 'af:team:230', providerId: 230, name: 'Estoril', logo: null, winner: true,
+  };
+  bundle.fixture.teams.away = {
+    id: 'af:team:240', providerId: 240, name: 'Casa Pia', logo: null, winner: false,
+  };
+  bundle.lineups[0].teamId = 'af:team:230';
+  bundle.lineups[0].coach = {
+    id: null, providerId: 0, name: 'Vasco Matos', photo: null,
+  };
+  bundle.playerStats[0].fixtureId = bundle.fixture.id;
+  bundle.playerStats[0].teamId = 'af:team:230';
+  return bundle;
 }
 
 function metcalfeBundle(fetchedAt = '2026-09-08T02:15:09.068Z') {
@@ -386,6 +413,53 @@ test('quarantines missing and zero player identities without merging distinct pe
   const context = validateBundle(bundle, catalog());
   assert.equal(context.players.has('af:player:0'), false);
   assert.equal(context.providerVariantEvidence.playerIdentityOmissions.length, 3);
+});
+
+test('recovers an exact reviewed coach identity from pinned team history', () => {
+  const bundle = vascoMatosRecoveryBundle();
+  const reconciled = reconcileMissingProviderCoachIdentities(bundle);
+  assert.deepEqual(reconciled.bundle.lineups[0].coach, {
+    id: 'af:coach:6484',
+    providerId: 6484,
+    name: 'Vasco Matos',
+    photo: 'https://media.api-sports.io/football/coachs/6484.png',
+  });
+  assert.equal(reconciled.recoveries.length, 1);
+  assert.equal(reconciled.omissions.length, 0);
+
+  const context = validateBundle(bundle, catalog());
+  assert.equal(context.coaches.has('af:coach:0'), false);
+  assert.equal(context.coaches.get('af:coach:6484').providerId, 6484);
+  assert.equal(context.providerVariantEvidence.coachIdentityRecoveries.length, 1);
+});
+
+test('quarantines an unreviewed non-positive coach identity instead of merging it', () => {
+  const bundle = hincapieBundle();
+  bundle.lineups[0].coach = {
+    id: 'af:coach:0', providerId: 0, name: 'Unexpected Coach', photo: null,
+  };
+  const reconciled = reconcileMissingProviderCoachIdentities(bundle);
+  assert.equal(reconciled.bundle.lineups[0].coach, null);
+  assert.deepEqual(reconciled.omissions, [{
+    fixtureId: 'af:fixture:1557377',
+    teamId: 'af:team:42',
+    sourceName: 'Unexpected Coach',
+    sourceProviderId: 0,
+    reason: 'provider_coach_id_missing_or_non_positive',
+  }]);
+
+  const context = validateBundle(bundle, catalog());
+  assert.equal(context.coaches.has('af:coach:0'), false);
+  assert.equal(context.providerVariantEvidence.coachIdentityOmissions.length, 1);
+});
+
+test('fails closed when a reviewed coach recovery no longer matches its exact source row', () => {
+  const bundle = vascoMatosRecoveryBundle();
+  bundle.lineups[0].coach.name = 'Unexpected Name';
+  assert.throws(
+    () => reconcileMissingProviderCoachIdentities(bundle),
+    /Reviewed coach recovery matched 0 rows/,
+  );
 });
 
 test('quarantines only exact reviewed collision rows and preserves the retained identity', () => {

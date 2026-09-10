@@ -176,7 +176,7 @@ test('reports every lineup coach whose provider identity is zero or missing', ()
     fixtureId: 'af:fixture:1563088',
     teamId: 'af:team:60',
     lineupIndex: 0,
-    coachId: 'af:coach:0',
+    coachId: null,
     providerId: 0,
     name: 'Coach Without ID',
     photo: null,

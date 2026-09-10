@@ -136,6 +136,17 @@ test('player id zero remains an explicit provider sentinel and never becomes a c
   assert.equal(JSON.stringify(bundle).includes('af:player:0'), false);
 });
 
+test('coach id zero remains an explicit provider sentinel and never becomes a canonical coach id', () => {
+  const fixture = sampleFixture();
+  fixture.lineups[0].coach = { id: 0, name: 'Missing Coach Identity', photo: null };
+
+  const bundle = contract.normalizeFixtureBundle(fixture, { finalized: true });
+  assert.equal(bundle.lineups[0].coach.id, null);
+  assert.equal(bundle.lineups[0].coach.providerId, 0);
+  assert.equal(bundle.lineups[0].coach.name, 'Missing Coach Identity');
+  assert.equal(JSON.stringify(bundle).includes('af:coach:0'), false);
+});
+
 test('section presence distinguishes not fetched from fetched empty data', () => {
   const notFetched = sampleFixture();
   delete notFetched.events;

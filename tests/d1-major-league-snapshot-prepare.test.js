@@ -205,6 +205,14 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePl
       omittedEndpointRowCount: 0,
       omissions: [],
     },
+    providerMissingCoachIdentityReview: {
+      observedAt,
+      fixtureCount: 0,
+      recoveredCoachRowCount: 0,
+      omittedCoachRowCount: 0,
+      recoveries: [],
+      omissions: [],
+    },
   });
   return {
     root, snapshotRoot, outputRoot, archiveFile, latestPath, configPath, evidencePath,
@@ -297,6 +305,25 @@ test('fails closed when an unreviewed provider-missing player identity appears',
   writeJson(completedPath, completed);
 
   assert.throws(() => run(paths), /omissions differ from pinned reviewed evidence/);
+});
+
+test('fails closed when an unreviewed provider-missing coach identity appears', () => {
+  const paths = buildSnapshot();
+  const completedPath = path.join(paths.snapshotRoot, 'league-39', 'completed-fixtures', '100.json');
+  const completed = JSON.parse(fs.readFileSync(completedPath, 'utf8'));
+  completed.lineups = [{
+    team: { id: 1, name: 'Alpha' },
+    formation: null,
+    coach: { id: 0, name: 'Unexpected Coach', photo: null },
+    startXI: [],
+    substitutes: [],
+  }];
+  writeJson(completedPath, completed);
+
+  assert.throws(
+    () => run(paths),
+    /coach identity handling differs from pinned reviewed evidence/,
+  );
 });
 
 test('fails closed when provider collision omissions differ from reviewed evidence', () => {

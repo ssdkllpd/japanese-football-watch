@@ -96,10 +96,11 @@ function normalizeTeam(team) {
 
 function normalizeCoach(coach) {
   if (!coach) return null;
-  const providerId = numeric(coach.id) ?? coach.id ?? null;
+  const providerId = numeric(coach.id);
+  const canonicalProviderId = Number.isSafeInteger(providerId) && providerId > 0 ? providerId : null;
   if (providerId === null && !text(coach.name)) return null;
   return {
-    id: afId('coach', providerId),
+    id: afId('coach', canonicalProviderId),
     providerId,
     name: text(coach.name),
     photo: text(coach.photo),

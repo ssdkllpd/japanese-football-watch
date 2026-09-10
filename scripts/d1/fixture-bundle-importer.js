@@ -70,9 +70,110 @@ function reviewedPlayerCollisionOmissionRules(evidence = reviewedEvidence) {
 
 const REVIEWED_PLAYER_COLLISION_OMISSION_RULES = reviewedPlayerCollisionOmissionRules();
 
+function reviewedCoachIdentityRecoveryRules(evidence = reviewedEvidence) {
+  const review = evidence?.providerMissingCoachIdentityReview;
+  if (!review || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(String(review.observedAt || ''))
+    || !Array.isArray(review.recoveries) || !Array.isArray(review.omissions)) {
+    throw new Error('Reviewed provider-missing coach identity evidence is invalid.');
+  }
+  const seen = new Set();
+  return review.recoveries.map((rule, index) => {
+    const label = `Reviewed coach identity recovery ${index}`;
+    if (!Number.isSafeInteger(rule?.league) || !Number.isSafeInteger(rule?.season)
+      || !/^af:fixture:\d+$/.test(String(rule?.fixtureId || ''))
+      || !/^af:team:\d+$/.test(String(rule?.teamId || ''))
+      || !String(rule?.sourceName || '').trim()
+      || ![null, 0].includes(rule?.sourceProviderId)
+      || !/^af:coach:[1-9]\d*$/.test(String(rule?.canonicalCoachId || ''))
+      || !Number.isSafeInteger(rule?.canonicalProviderId) || rule.canonicalProviderId <= 0
+      || rule.canonicalCoachId !== `af:coach:${rule.canonicalProviderId}`
+      || !String(rule?.canonicalName || '').trim()
+      || (rule?.canonicalPhoto !== null && typeof rule?.canonicalPhoto !== 'string')
+      || rule?.reason !== 'provider_coach_id_recovered_from_pinned_team_history') {
+      throw new Error(`${label} is invalid.`);
+    }
+    const key = [rule.league, rule.season, rule.fixtureId, rule.teamId,
+      rule.sourceName, rule.sourceProviderId].join('|');
+    if (seen.has(key)) throw new Error(`${label} is duplicated.`);
+    seen.add(key);
+    return { ...rule, observedAt: review.observedAt };
+  });
+}
+
+const REVIEWED_COACH_IDENTITY_RECOVERY_RULES = reviewedCoachIdentityRecoveryRules();
+
 function isMissingProviderPlayerIdentity(id, providerId) {
   return (id === null && (providerId === null || providerId === 0))
     || (id === 'af:player:0' && providerId === 0);
+}
+
+function isMissingProviderCoachIdentity(id, providerId) {
+  return (id === null && (providerId === null || providerId === 0))
+    || (id === 'af:coach:0' && providerId === 0);
+}
+
+function reconcileMissingProviderCoachIdentities(
+  bundle,
+  rules = REVIEWED_COACH_IDENTITY_RECOVERY_RULES,
+) {
+  const nextBundle = structuredClone(bundle);
+  const scope = bundleScope(nextBundle);
+  const fixtureId = nextBundle.fixture?.id || null;
+  const applicable = rules.filter(rule => rule.league === scope.league
+    && rule.season === scope.season && rule.fixtureId === fixtureId
+    && rule.observedAt === scope.observedAt);
+  const matched = new Set();
+  const recoveries = [];
+  const omissions = [];
+
+  for (const lineup of nextBundle.lineups || []) {
+    const coach = lineup?.coach;
+    if (!coach || !isMissingProviderCoachIdentity(coach.id, coach.providerId)) continue;
+    const sourceName = String(coach.name || '').trim() || null;
+    const sourceProviderId = coach.providerId ?? null;
+    const candidates = applicable.filter(rule => rule.teamId === lineup.teamId
+      && rule.sourceName === sourceName && rule.sourceProviderId === sourceProviderId);
+    if (candidates.length > 1) {
+      throw new Error(`Multiple reviewed coach recoveries match ${fixtureId}:${lineup.teamId}.`);
+    }
+    const rule = candidates[0];
+    if (!rule) {
+      lineup.coach = null;
+      omissions.push({
+        fixtureId,
+        teamId: lineup.teamId || null,
+        sourceName,
+        sourceProviderId,
+        reason: 'provider_coach_id_missing_or_non_positive',
+      });
+      continue;
+    }
+    const ruleKey = [rule.fixtureId, rule.teamId, rule.sourceName, rule.sourceProviderId].join('|');
+    if (matched.has(ruleKey)) {
+      throw new Error(`Reviewed coach recovery matched multiple rows: ${fixtureId}:${lineup.teamId}.`);
+    }
+    matched.add(ruleKey);
+    lineup.coach = {
+      id: rule.canonicalCoachId,
+      providerId: rule.canonicalProviderId,
+      name: rule.canonicalName,
+      photo: rule.canonicalPhoto,
+    };
+    const { observedAt, league, season, ...recovery } = rule;
+    recoveries.push(recovery);
+  }
+
+  for (const rule of applicable) {
+    const ruleKey = [rule.fixtureId, rule.teamId, rule.sourceName, rule.sourceProviderId].join('|');
+    if (!matched.has(ruleKey)) {
+      throw new Error(`Reviewed coach recovery matched 0 rows: ${rule.fixtureId}:${rule.teamId}.`);
+    }
+  }
+
+  const sort = (left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right));
+  recoveries.sort(sort);
+  omissions.sort(sort);
+  return { bundle: nextBundle, recoveries, omissions };
 }
 
 function reconcileMissingProviderPlayerIdentities(bundle) {
@@ -343,7 +444,8 @@ function reconcileProviderVariants(bundle, catalog = {}) {
   const missingIdentities = reconcileMissingProviderPlayerIdentities(bundle);
   const identities = reconcileReviewedPlayerAliases(missingIdentities.bundle);
   const collisions = reconcileCollidingProviderPlayerIdentities(identities.bundle);
-  const positions = reconcileMissingPlayerPositions(collisions.bundle);
+  const coaches = reconcileMissingProviderCoachIdentities(collisions.bundle);
+  const positions = reconcileMissingPlayerPositions(coaches.bundle);
   const names = reconcilePlayerDisplayNames(positions, catalog);
   return {
     bundle: omitNullTeamStatValues(names.bundle),
@@ -351,6 +453,8 @@ function reconcileProviderVariants(bundle, catalog = {}) {
     playerAliasApplications: identities.applications,
     playerIdentityOmissions: missingIdentities.omissions,
     playerIdentityCollisionOmissions: collisions.omissions,
+    coachIdentityRecoveries: coaches.recoveries,
+    coachIdentityOmissions: coaches.omissions,
   };
 }
 
@@ -361,6 +465,8 @@ function validateBundle(bundle, catalog = {}) {
     playerAliases: reconciled.playerAliasApplications,
     playerIdentityOmissions: reconciled.playerIdentityOmissions,
     playerIdentityCollisionOmissions: reconciled.playerIdentityCollisionOmissions,
+    coachIdentityRecoveries: reconciled.coachIdentityRecoveries,
+    coachIdentityOmissions: reconciled.coachIdentityOmissions,
   };
   return context;
 }
@@ -380,8 +486,10 @@ module.exports = {
   importFixtureBundle,
   reconcileMissingPlayerPositions,
   reconcileMissingProviderPlayerIdentities,
+  reconcileMissingProviderCoachIdentities,
   reconcileCollidingProviderPlayerIdentities,
   reconcileReviewedPlayerAliases,
+  reviewedCoachIdentityRecoveryRules,
   reviewedPlayerAliasRules,
   validateBundle,
 };
