@@ -205,6 +205,27 @@ function traceBase({ requestIndex, requestPassed, leagueId, fixtureId, stat, art
   };
 }
 
+function fixtureTraceBase({ requestIndex, requestPassed, leagueId, fixtureId, artifact,
+  factKind, d1Column, normalizedBundleKey, rawProviderValue, normalizedValue }) {
+  return {
+    globalRequestIndex: requestIndex,
+    operation: 'fixture_migration_publish',
+    leagueId,
+    fixtureId,
+    factKind,
+    playerId: null,
+    teamId: null,
+    d1Column,
+    normalizedBundleKey,
+    rawProviderValue: rawProviderValue === undefined ? null : rawProviderValue,
+    normalizedValue,
+    d1Value: null,
+    d1WriteOutcome: requestPassed ? 'persisted' : 'request_rolled_back_or_failed',
+    artifactPath: artifact.path,
+    r2Key: artifact.r2Key,
+  };
+}
+
 function storedStatRows(database) {
   const playerColumns = Object.values(PLAYER_COLUMNS).map(column => `stats.${column}`).join(', ');
   const teamColumns = Object.values(TEAM_COLUMNS).map(column => `stats.${column}`).join(', ');
@@ -256,6 +277,36 @@ function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
       const rawRows = rawPlayerRows(raw);
       const rawTeams = rawTeamRows(raw);
       const requestPassed = requestOutcomes.get(fixtureId) === true;
+      if (wrapper.bundle.fixture?.venue?.id && !wrapper.bundle.fixture.venue.name) {
+        issues.push({
+          ...fixtureTraceBase({
+            requestIndex: requestIndexes.get(fixtureId), requestPassed, leagueId: league.league,
+            fixtureId, artifact, factKind: 'venue', d1Column: 'venues.name',
+            normalizedBundleKey: 'fixture.venue.name',
+            rawProviderValue: raw?.fixture?.venue?.name,
+            normalizedValue: wrapper.bundle.fixture.venue.name,
+          }),
+          expectedConstraint: 'venues.name NOT NULL when fixture.venue.id is present',
+          severity: 'error',
+          reason: 'identified_venue_has_no_name',
+        });
+      }
+      for (const [eventIndex, event] of (wrapper.bundle.events || []).entries()) {
+        if (typeof event.elapsed === 'number' && event.elapsed < 0) {
+          issues.push({
+            ...fixtureTraceBase({
+              requestIndex: requestIndexes.get(fixtureId), requestPassed, leagueId: league.league,
+              fixtureId, artifact, factKind: 'event', d1Column: 'fixture_events.elapsed',
+              normalizedBundleKey: `events[${eventIndex}].elapsed`,
+              rawProviderValue: raw?.events?.[eventIndex]?.time?.elapsed,
+              normalizedValue: event.elapsed,
+            }),
+            expectedConstraint: 'fixture_events.elapsed IS NULL OR elapsed >= 0',
+            severity: 'error',
+            reason: 'negative_event_elapsed',
+          });
+        }
+      }
       for (const stat of wrapper.bundle.playerStats || []) {
         normalizedPlayerStatRows += 1;
         const playerProviderId = Number(stat.playerProviderId);
@@ -386,13 +437,18 @@ function integrity(database) {
 function issueSummary(issues) {
   const bySeverity = {};
   const byColumn = {};
+  const byReason = {};
   const affectedFixtures = new Set();
   for (const issue of issues) {
     bySeverity[issue.severity] = (bySeverity[issue.severity] || 0) + 1;
     byColumn[issue.d1Column] = (byColumn[issue.d1Column] || 0) + 1;
+    byReason[issue.reason] = (byReason[issue.reason] || 0) + 1;
     if (issue.fixtureId) affectedFixtures.add(issue.fixtureId);
   }
-  return { total: issues.length, bySeverity, byColumn, affectedFixtures: [...affectedFixtures].sort() };
+  return {
+    total: issues.length, bySeverity, byColumn, byReason,
+    affectedFixtures: [...affectedFixtures].sort(),
+  };
 }
 
 async function audit(options) {

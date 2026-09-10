@@ -106,6 +106,7 @@ jobs:
 
       - name: Run all 564 requests against current migrations in local SQLite
         run: |
+          set +e
           set -uo pipefail
           node scripts/d1/audit-major-league-snapshot.mjs \
             --prepared "$WORK_ROOT/prepared" \
@@ -121,8 +122,11 @@ jobs:
             and .apiFootballRequestsPerformed==false
             and .publicReadFlagsChanged==false' \
             "$WORK_ROOT/report/snapshot-audit.json" >/dev/null
-          jq '{passed,validation,authoritative:{attempted,operationSummary,
-            failedRequestCount:(.failedRequests|length)},diagnostics:{summary,passSemantics,providerRating}}' \
+          jq '{passed,validation,authoritative:{attempted:.authoritative.attempted,
+            operationSummary:.authoritative.operationSummary,
+            failedRequestCount:(.authoritative.failedRequests|length)},
+            diagnostics:{summary:.diagnostics.summary,passSemantics:.diagnostics.passSemantics,
+            providerRating:.diagnostics.providerRating}}' \
             "$WORK_ROOT/report/snapshot-audit.json"
           test "$audit_exit" -eq 0 || test "$audit_exit" -eq 1
 
