@@ -4,6 +4,7 @@ import {
 } from '../shared/standings-contract.mjs';
 import {
   FIXTURE_OPERATION,
+  FIXTURE_MIGRATION_OPERATION,
   assertFixtureRequest,
   publishFixtureFromR2,
 } from './fixture-ingest.mjs';
@@ -14,7 +15,9 @@ import {
 } from './fixed-snapshot-ingest.mjs';
 import {
   DATE_INDEX_COVERAGE_OPERATION,
+  MAJOR_LEAGUE_DATE_COVERAGE_OPERATION,
   assertDateIndexCoverageRequest,
+  publishMajorLeagueDateCoverageFromR2,
   publishDateIndexCoverageFromR2,
 } from './date-index-coverage-ingest.mjs';
 import {
@@ -22,6 +25,13 @@ import {
   assertMigrationVerifyRequest,
   verifyMigrationState,
 } from './migration-verify.mjs';
+import {
+  MAJOR_LEAGUE_CORE_OPERATION,
+  MAJOR_LEAGUE_STANDINGS_OPERATION,
+  assertMajorLeagueSnapshotRequest,
+  loadMajorLeagueCoreArtifact,
+  publishMajorLeagueCoreFromR2,
+} from './major-league-snapshot-ingest.mjs';
 
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const STANDINGS_OPERATION = 'standings_publish';
@@ -67,10 +77,19 @@ async function requireAdminToken(request, env) {
 function assertRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Admin ingest request must be an object.');
   if (value.schemaVersion !== REQUEST_SCHEMA) throw new Error(`schemaVersion must be ${REQUEST_SCHEMA}.`);
-  if (value.operation === FIXTURE_OPERATION) return assertFixtureRequest(value);
+  if (value.operation === FIXTURE_OPERATION || value.operation === FIXTURE_MIGRATION_OPERATION) {
+    return assertFixtureRequest(value);
+  }
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
-  if (value.operation === DATE_INDEX_COVERAGE_OPERATION) return assertDateIndexCoverageRequest(value);
+  if (value.operation === DATE_INDEX_COVERAGE_OPERATION
+    || value.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
+    return assertDateIndexCoverageRequest(value);
+  }
   if (value.operation === MIGRATION_VERIFY_OPERATION) return assertMigrationVerifyRequest(value);
+  if (value.operation === MAJOR_LEAGUE_CORE_OPERATION
+    || value.operation === MAJOR_LEAGUE_STANDINGS_OPERATION) {
+    return assertMajorLeagueSnapshotRequest(value);
+  }
   const allowed = new Set(['schemaVersion', 'operation', 'competitionId', 'seasonId']);
   const unknown = Object.keys(value).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin ingest request contains unknown fields: ${unknown.join(', ')}.`);
@@ -249,6 +268,27 @@ function writeStatements(database, season, payload, sourceKey, sourceSha256, ide
   return { statements, rowCount: rows.length };
 }
 
+async function publishStandingsPayload(env, {
+  competitionId, seasonId, payload, sourceR2Key, sourceSha256, operation,
+}) {
+  assertValidStandingsPayload(payload, { expectedCompetitionId: competitionId, expectedSeasonId: seasonId });
+  const season = await resolveSeason(env.FOOTBALL_DB, competitionId, seasonId);
+  if (!season || season.provider_season !== payload.season.providerSeason
+    || season.competition_provider_id !== payload.competition.providerId) {
+    throw new Error('Competition-season is not stored with the declared provider identity.');
+  }
+  const teams = payload.groups.flatMap(group => group.table.map(row => row.team));
+  await assertStoredTeamIdentities(env.FOOTBALL_DB, season.source_id, teams);
+  const identityDigest = await sha256(standingsIdentityDigestInput(payload.groups));
+  const write = writeStatements(env.FOOTBALL_DB, season, payload, sourceR2Key, sourceSha256, identityDigest);
+  await env.FOOTBALL_DB.batch(write.statements);
+  return {
+    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation,
+    competitionId, seasonId, sourceR2Key, sourceSha256, rowCount: write.rowCount,
+    identityDigest, publishedAt: payload.generatedAt,
+  };
+}
+
 export async function publishStandingsFromR2(env, competitionId, seasonId) {
   if (!env.FOOTBALL_DB || !env.FOOTBALL_DATA) throw new Error('Admin ingest bindings are unavailable.');
   const sourceR2Key = expectedStandingsKey(competitionId, seasonId);
@@ -261,40 +301,47 @@ export async function publishStandingsFromR2(env, competitionId, seasonId) {
   const raw = await object.text();
   let payload;
   try { payload = JSON.parse(raw); } catch { throw new Error('Standings R2 object is not JSON.'); }
-  assertValidStandingsPayload(payload, { expectedCompetitionId: competitionId, expectedSeasonId: seasonId });
-  const season = await resolveSeason(env.FOOTBALL_DB, competitionId, seasonId);
-  if (!season || season.provider_season !== payload.season.providerSeason
-    || season.competition_provider_id !== payload.competition.providerId) {
-    throw new Error('Competition-season is not stored with the declared provider identity.');
-  }
-  const teams = payload.groups.flatMap(group => group.table.map(row => row.team));
-  await assertStoredTeamIdentities(env.FOOTBALL_DB, season.source_id, teams);
-  const sourceSha256 = await sha256(raw);
-  const identityDigest = await sha256(standingsIdentityDigestInput(payload.groups));
-  const write = writeStatements(env.FOOTBALL_DB, season, payload, sourceR2Key, sourceSha256, identityDigest);
-  await env.FOOTBALL_DB.batch(write.statements);
-  return {
-    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: STANDINGS_OPERATION,
-    competitionId, seasonId, sourceR2Key, sourceSha256, rowCount: write.rowCount,
-    identityDigest, publishedAt: payload.generatedAt,
-  };
+  return publishStandingsPayload(env, {
+    competitionId, seasonId, payload, sourceR2Key,
+    sourceSha256: await sha256(raw), operation: STANDINGS_OPERATION,
+  });
+}
+
+export async function publishMajorLeagueStandingsFromR2(env, request) {
+  const loaded = await loadMajorLeagueCoreArtifact(env, request);
+  return publishStandingsPayload(env, {
+    competitionId: loaded.input.competitionId,
+    seasonId: loaded.input.seasonId,
+    payload: loaded.artifact.standings,
+    sourceR2Key: loaded.input.artifactKey,
+    sourceSha256: loaded.input.artifactSha256,
+    operation: MAJOR_LEAGUE_STANDINGS_OPERATION,
+  });
 }
 
 export async function handleAdminIngest(request, env) {
+  let authenticated = false;
   try {
     if (new URL(request.url).pathname !== '/admin/v1/ingest') return json({ error: 'Not found' }, 404);
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
     await requireAdminToken(request, env);
+    authenticated = true;
     const input = assertRequest(await requestJson(request));
     let report;
-    if (input.operation === FIXTURE_OPERATION) {
+    if (input.operation === FIXTURE_OPERATION || input.operation === FIXTURE_MIGRATION_OPERATION) {
       report = await publishFixtureFromR2(env, input);
     } else if (input.operation === FIXED_SNAPSHOT_OPERATION) {
       report = await publishFixedSnapshotFromR2(env, input);
     } else if (input.operation === DATE_INDEX_COVERAGE_OPERATION) {
       report = await publishDateIndexCoverageFromR2(env, input);
+    } else if (input.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
+      report = await publishMajorLeagueDateCoverageFromR2(env, input);
     } else if (input.operation === MIGRATION_VERIFY_OPERATION) {
       report = await verifyMigrationState(env, input);
+    } else if (input.operation === MAJOR_LEAGUE_CORE_OPERATION) {
+      report = await publishMajorLeagueCoreFromR2(env, input);
+    } else if (input.operation === MAJOR_LEAGUE_STANDINGS_OPERATION) {
+      report = await publishMajorLeagueStandingsFromR2(env, input);
     } else {
       report = await publishStandingsFromR2(env, input.competitionId, input.seasonId);
     }
@@ -304,7 +351,10 @@ export async function handleAdminIngest(request, env) {
     return json({ ok: true, report }, 200);
   } catch (error) {
     const status = error?.status || 422;
-    return json({ error: status === 401 ? 'Unauthorized' : 'Admin ingest rejected' }, status);
+    return json({
+      error: status === 401 ? 'Unauthorized' : 'Admin ingest rejected',
+      ...(authenticated && status !== 401 ? { detail: String(error?.message || 'unknown_error') } : {}),
+    }, status);
   }
 }
 

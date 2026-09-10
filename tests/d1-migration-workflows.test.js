@@ -165,7 +165,7 @@ test('the committed target manifest locks the independently reviewed staging ide
   });
 });
 
-test('all six staging write workflows prove the same exact target before their first D1 write', () => {
+test('all seven staging write workflows prove the same exact target before their first write', () => {
   const workflows = [
     ['d1-staging-provision.yml', 'd1 migrations apply'],
     ['d1-staging-bootstrap.yml', 'r2 object put'],
@@ -173,6 +173,7 @@ test('all six staging write workflows prove the same exact target before their f
     ['v2-standings.yml', 'request-admin-ingest.mjs'],
     ['v2-fixture-vertical-slice.yml', 'request-admin-ingest.mjs'],
     ['v2-date-feed.yml', 'request-admin-ingest.mjs'],
+    ['d1-major-leagues-staging-migrate.yml', 'r2 object put'],
   ];
   for (const [name, firstWrite] of workflows) {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
@@ -187,6 +188,35 @@ test('all six staging write workflows prove the same exact target before their f
   }
   const renderer = fs.readFileSync(path.join(root, 'scripts', 'd1', 'render-admin-wrangler.mjs'), 'utf8');
   assert.equal(renderer.includes('.includes(targetEnvironment)'), false);
+});
+
+test('major-league inventory workflow is read-only and targets staging exactly', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-staging-inventory.yml'), 'utf8',
+  );
+  assert.match(workflow, /environment: d1-staging/);
+  assert.match(workflow, /verify-d1-target\.mjs --manifest config\/d1-targets\.json --target staging/);
+  assert.match(workflow, /PRAGMA foreign_key_check/);
+  assert.equal(workflow.includes('d1 migrations apply'), false);
+  assert.equal(workflow.includes('r2 object put'), false);
+  assert.equal(workflow.includes('wrangler@4 deploy'), false);
+  assert.equal(workflow.includes('request-admin-ingest.mjs'), false);
+});
+
+test('major-league staging migration is pinned, reversible, and leaves public flags off', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-major-leagues-staging-migrate.yml'), 'utf8',
+  );
+  assert.match(workflow, /WRITE jfw-football-staging 20260908-021509068Z/);
+  assert.match(workflow, /d1-major-league-snapshot-20260908\.json/);
+  assert.match(workflow, /validation-only-report\.json/);
+  const bookmark = workflow.indexOf('d1 time-travel info');
+  const execute = workflow.indexOf('--execute --url');
+  assert.equal(bookmark > 0 && execute > bookmark, true);
+  assert.equal(workflow.includes('time-travel restore'), false);
+  assert.equal(workflow.includes('d1 migrations apply'), false);
+  assert.equal(workflow.includes('D1_STANDINGS_ENABLED = "true"'), false);
+  assert.equal(workflow.includes('API_FOOTBALL_KEY'), false);
 });
 
 test('migrations keep foreign key enforcement active for local SQLite drivers', () => {

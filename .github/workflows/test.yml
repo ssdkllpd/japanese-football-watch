@@ -45,10 +45,12 @@ jobs:
           node --check scripts/v2/merge-date-index.js
           node --check scripts/d1/import-date-index-coverage.mjs
           node --check scripts/d1/request-admin-ingest.mjs
+          node --check scripts/d1/migrate-major-league-snapshot.mjs
           node --check scripts/d1/create-v2-admin-plan.js
           node --check scripts/v2/reconcile-fixture-revision.js
           node --check scripts/v2/render-public-wrangler.mjs
           node --check scripts/d1/render-admin-wrangler.mjs
+          node --check scripts/d1/prepare-major-league-d1-migration.js
           node --check shared/date-index-contract.mjs
           node --check shared/fixed-snapshot-contract.mjs
           node --check worker/index.mjs
@@ -57,5 +59,6 @@ jobs:
           node --check admin-worker/migration-verify.mjs
           node --check admin-worker/fixture-ingest.mjs
           node --check admin-worker/fixed-snapshot-ingest.mjs
+          node --check admin-worker/major-league-snapshot-ingest.mjs
       - name: Run tests
         run: node --test tests/*.test.js

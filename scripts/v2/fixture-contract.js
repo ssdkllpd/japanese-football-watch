@@ -24,6 +24,19 @@ function afId(kind, providerId) {
   return `af:${kind}:${String(providerId)}`;
 }
 
+function providerPlayerId(value) {
+  const parsed = numeric(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function providerPlayerIdentity(value) {
+  const rawProviderId = numeric(value);
+  return {
+    id: afId('player', providerPlayerId(value)),
+    providerId: rawProviderId,
+  };
+}
+
 function seasonId(competitionProviderId, season) {
   if (competitionProviderId === null || competitionProviderId === undefined || season === null || season === undefined) return null;
   return `af:season:${String(competitionProviderId)}:${String(season)}`;
@@ -83,10 +96,11 @@ function normalizeTeam(team) {
 
 function normalizeCoach(coach) {
   if (!coach) return null;
-  const providerId = numeric(coach.id) ?? coach.id ?? null;
+  const providerId = numeric(coach.id);
+  const canonicalProviderId = Number.isSafeInteger(providerId) && providerId > 0 ? providerId : null;
   if (providerId === null && !text(coach.name)) return null;
   return {
-    id: afId('coach', providerId),
+    id: afId('coach', canonicalProviderId),
     providerId,
     name: text(coach.name),
     photo: text(coach.photo),
@@ -95,10 +109,11 @@ function normalizeCoach(coach) {
 
 function normalizeLineupPlayer(item, role) {
   const player = item?.player || item || {};
-  const providerId = numeric(player.id) ?? player.id ?? null;
+  const identity = providerPlayerIdentity(player.id);
+  const providerId = identity.providerId;
   if (providerId === null && !text(player.name)) return null;
   return {
-    id: afId('player', providerId),
+    id: identity.id,
     providerId,
     name: text(player.name),
     number: numeric(player.number),
@@ -142,8 +157,8 @@ function normalizeEvents(fixture, fixtureProviderId, fetchedAt) {
     elapsed: numeric(event?.time?.elapsed),
     extra: numeric(event?.time?.extra),
     teamId: afId('team', numeric(event?.team?.id) ?? event?.team?.id ?? null),
-    playerId: afId('player', numeric(event?.player?.id) ?? event?.player?.id ?? null),
-    relatedPlayerId: afId('player', numeric(event?.assist?.id) ?? event?.assist?.id ?? null),
+    playerId: afId('player', providerPlayerId(event?.player?.id)),
+    relatedPlayerId: afId('player', providerPlayerId(event?.assist?.id)),
     provenance: recordProvenance(fetchedAt),
   }));
 }
@@ -159,7 +174,8 @@ function normalizePlayerStats(fixture, fetchedAt) {
     const teamProviderId = numeric(teamBlock?.team?.id) ?? teamBlock?.team?.id ?? null;
     for (const item of teamBlock?.players || []) {
       const player = item?.player || {};
-      const playerProviderId = numeric(player.id) ?? player.id ?? null;
+      const identity = providerPlayerIdentity(player.id);
+      const playerProviderId = identity.providerId;
       const stats = Array.isArray(item?.statistics) ? (item.statistics[0] || {}) : {};
       const values = {};
       assignNumeric(values, 'minutes', stats?.games?.minutes);
@@ -200,7 +216,7 @@ function normalizePlayerStats(fixture, fetchedAt) {
 
       rows.push({
         fixtureId: afId('fixture', fixture?.fixture?.id),
-        playerId: afId('player', playerProviderId),
+        playerId: identity.id,
         playerProviderId,
         playerName: text(player.name),
         playerPhoto: text(player.photo),

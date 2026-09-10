@@ -1,4 +1,5 @@
 import fixtureImporterModule from '../scripts/d1/fixture-bundle-importer.js';
+import fixturePublishLimitsModule from '../scripts/d1/fixture-publish-limits.js';
 
 const {
   PLAYER_STAT_COLUMNS,
@@ -7,8 +8,11 @@ const {
   correctionDefinitions,
   validateBundle,
 } = fixtureImporterModule;
+const { FIXTURE_PUBLISH_LIMITS } = fixturePublishLimitsModule;
 
 export const FIXTURE_OPERATION = 'fixture_publish';
+export const FIXTURE_MIGRATION_OPERATION = 'fixture_migration_publish';
+const FIXTURE_MIGRATION_SCHEMA = 'jfw-d1-fixture-migration-artifact/1';
 const SCORE_KINDS = ['halftime', 'fulltime', 'extratime', 'penalty'];
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const MAX_D1_QUERIES_PER_INVOCATION = 50;
@@ -37,12 +41,6 @@ async function first(database, sql, params = []) {
   return database.prepare(sql).bind(...params).first();
 }
 
-function chunks(values, size) {
-  const result = [];
-  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
-  return result;
-}
-
 function requireObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object.`);
 }
@@ -53,9 +51,12 @@ export function assertFixtureRequest(input) {
     'schemaVersion', 'operation', 'fixtureId', 'competitionId', 'seasonId',
     'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
   ]);
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) {
+    for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) allowed.add(key);
+  }
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin fixture ingest request contains unknown fields: ${unknown.join(', ')}.`);
-  if (input.operation !== FIXTURE_OPERATION
+  if (![FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation)
     || !/^af:fixture:\d+$/.test(String(input.fixtureId || ''))
     || !/^af:competition:\d+$/.test(String(input.competitionId || ''))
     || !/^af:season:\d+:\d+$/.test(String(input.seasonId || ''))) {
@@ -70,6 +71,19 @@ export function assertFixtureRequest(input) {
     requireObject(input.catalog, 'Admin fixture catalog');
   }
   requireObject(input.correctionDefinitions, 'Admin fixture correctionDefinitions');
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) {
+    if (!/^\d{8}-\d{9}Z$/.test(String(input.snapshotId || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.archiveSha256 || ''))
+      || !/^[0-9a-f]{64}$/.test(String(input.artifactSha256 || ''))) {
+      throw new Error('Fixture migration source declaration is invalid.');
+    }
+    const fixtureProviderId = input.fixtureId.slice('af:fixture:'.length);
+    const expectedKey = `migration/api-football/v3/major-leagues/2026/${input.archiveSha256}`
+      + `/fixtures/${fixtureProviderId}-${input.artifactSha256}.json`;
+    if (input.artifactKey !== expectedKey) {
+      throw new Error('Fixture migration artifact key is not content-addressed in the reviewed prefix.');
+    }
+  }
   return input;
 }
 
@@ -98,7 +112,31 @@ async function storedCatalog(database, input) {
 }
 
 function expectedFixtureKey(input) {
+  if (input.operation === FIXTURE_MIGRATION_OPERATION) return input.artifactKey;
   return `football/v2/competitions/${input.competitionId}/seasons/${input.seasonId}/fixtures/${input.fixtureId}.json`;
+}
+
+function fixtureMigrationPayload(value, input) {
+  requireObject(value, 'Fixture migration artifact');
+  const allowed = new Set(['schemaVersion', 'source', 'bundle']);
+  const unknown = Object.keys(value).filter(key => !allowed.has(key));
+  if (unknown.length || value.schemaVersion !== FIXTURE_MIGRATION_SCHEMA) {
+    throw new Error('Fixture migration artifact schema is invalid.');
+  }
+  requireObject(value.source, 'Fixture migration source');
+  const sourceAllowed = new Set([
+    'provider', 'apiVersion', 'snapshotId', 'archiveKey', 'archiveSha256',
+    'archiveByteSize', 'observedAt',
+  ]);
+  const sourceUnknown = Object.keys(value.source).filter(key => !sourceAllowed.has(key));
+  if (sourceUnknown.length || value.source.provider !== 'api-football'
+    || value.source.apiVersion !== 'v3' || value.source.snapshotId !== input.snapshotId
+    || value.source.archiveSha256 !== input.archiveSha256
+    || value.source.archiveKey !== `audit/api-football/v3/major-leagues/2026/snapshots/${input.snapshotId}.tar.gz`
+    || !Number.isSafeInteger(value.source.archiveByteSize) || value.source.archiveByteSize < 0) {
+    throw new Error('Fixture migration artifact source is invalid.');
+  }
+  return value.bundle;
 }
 
 function revisionSelector() {
@@ -124,17 +162,18 @@ async function assertExistingIdentities(database, sourceCode, context) {
     ['venues', context.normalized.fixture.venue?.id ? [context.normalized.fixture.venue] : [], 'canonical_id'],
   ];
   for (const [table, entities, key] of groups) {
-    for (const group of chunks(entities, 25)) {
-      if (!group.length) continue;
-      const result = await database.prepare(`
-        SELECT ${key} AS canonical_id, source_id, provider_id FROM ${table}
-        WHERE ${key} IN (${group.map(() => '?').join(', ')})
-      `).bind(...group.map(item => item.id)).all();
-      for (const row of result.results || []) {
-        const expected = group.find(item => item.id === row.canonical_id);
-        if (!expected || row.source_id !== source?.id || row.provider_id !== expected.providerId) {
-          throw new Error(`Stored provider identity differs: ${row.canonical_id}.`);
-        }
+    if (!entities.length) continue;
+    const expectedById = new Map(entities.map(item => [item.id, item]));
+    const result = await database.prepare(`
+      SELECT stored.${key} AS canonical_id, stored.source_id, stored.provider_id
+      FROM ${table} stored
+      JOIN json_each(?) expected
+        ON stored.${key} = json_extract(expected.value, '$.id')
+    `).bind(JSON.stringify(entities.map(item => ({ id: item.id })))).all();
+    for (const row of result.results || []) {
+      const expected = expectedById.get(row.canonical_id);
+      if (!expected || row.source_id !== source?.id || row.provider_id !== expected.providerId) {
+        throw new Error(`Stored provider identity differs: ${row.canonical_id}.`);
       }
     }
   }
@@ -159,13 +198,13 @@ function assertFixtureCardinality(context) {
     + context.normalized.playerStats
       .reduce((count, stat) => count + Object.keys(stat.fieldStates || {}).length, 0);
   const limits = [
-    ['events', context.normalized.events.length, 100],
-    ['lineups', context.normalized.lineups.length, 2],
-    ['appearances', appearances.length, 40],
-    ['lineup entries', lineupEntries, 40],
-    ['player stats', context.normalized.playerStats.length, 40],
-    ['team stats', context.normalized.teamStats.length, 2],
-    ['field states', fieldStates, 160],
+    ['events', context.normalized.events.length, FIXTURE_PUBLISH_LIMITS.events],
+    ['lineups', context.normalized.lineups.length, FIXTURE_PUBLISH_LIMITS.lineups],
+    ['appearances', appearances.length, FIXTURE_PUBLISH_LIMITS.appearances],
+    ['lineup entries', lineupEntries, FIXTURE_PUBLISH_LIMITS.lineupEntries],
+    ['player stats', context.normalized.playerStats.length, FIXTURE_PUBLISH_LIMITS.playerStats],
+    ['team stats', context.normalized.teamStats.length, FIXTURE_PUBLISH_LIMITS.teamStats],
+    ['field states', fieldStates, FIXTURE_PUBLISH_LIMITS.fieldStates],
   ];
   for (const [label, count, limit] of limits) {
     if (count > limit) throw new Error(`Fixture ${label} exceed the D1 publish limit (${count}/${limit}).`);
@@ -214,44 +253,75 @@ function addMasterStatements(database, statements, context, catalog) {
     catalog.season.startsOn || null, catalog.season.endsOn || null,
     catalog.season.finalizedOn || null, catalog.season.status]));
 
-  for (const group of chunks(entityValues(teams), 16)) {
-    statements.push(statement(database, `
-      INSERT INTO teams(canonical_id, source_id, provider_id, name, code, logo_url)
-      VALUES ${group.map(() => '(?, (SELECT id FROM provider_sources WHERE code = ?), ?, ?, ?, ?)').join(', ')}
-      ON CONFLICT(canonical_id) DO UPDATE SET name = excluded.name,
-        code = COALESCE(excluded.code, teams.code), logo_url = excluded.logo_url
-    `, group.flatMap(team => [team.id, source, team.providerId, team.name,
-      team.code || null, team.logo || null])));
-  }
   const teamValues = entityValues(teams);
   if (teamValues.length) {
     statements.push(statement(database, `
-      INSERT OR IGNORE INTO competition_season_teams(competition_season_id, team_id)
-      VALUES ${teamValues.map(() => `(
-        (SELECT id FROM competition_seasons WHERE canonical_id = ?),
-        (SELECT id FROM teams WHERE canonical_id = ?)
-      )`).join(', ')}
-    `, teamValues.flatMap(team => [season.id, team.id])));
+      INSERT INTO teams(canonical_id, source_id, provider_id, name, code, logo_url)
+      SELECT json_extract(value, '$.id'),
+        (SELECT id FROM provider_sources WHERE code = ?),
+        json_extract(value, '$.providerId'), json_extract(value, '$.name'),
+        json_extract(value, '$.code'), json_extract(value, '$.logo')
+      FROM json_each(?) WHERE true
+      ON CONFLICT(canonical_id) DO UPDATE SET name = excluded.name,
+        code = COALESCE(excluded.code, teams.code), logo_url = excluded.logo_url
+    `, [source, JSON.stringify(teamValues.map(team => ({
+      id: team.id,
+      providerId: team.providerId,
+      name: team.name,
+      code: team.code || null,
+      logo: team.logo || null,
+    })))]));
   }
-  for (const group of chunks(entityValues(players), 14)) {
+  if (teamValues.length) {
+    statements.push(statement(database, `
+      INSERT OR IGNORE INTO competition_season_teams(competition_season_id, team_id)
+      SELECT (SELECT id FROM competition_seasons WHERE canonical_id = ?),
+        (SELECT id FROM teams WHERE canonical_id = json_extract(value, '$.id'))
+      FROM json_each(?)
+    `, [season.id, JSON.stringify(teamValues.map(team => ({ id: team.id })))]));
+  }
+  const playerValues = entityValues(players);
+  if (playerValues.length) {
     statements.push(statement(database, `
       INSERT INTO players(
         canonical_id, source_id, provider_id, display_name, nationality, birth_date, photo_url
-      ) VALUES ${group.map(() => '(?, (SELECT id FROM provider_sources WHERE code = ?), ?, ?, ?, ?, ?)').join(', ')}
+      )
+      SELECT json_extract(value, '$.id'),
+        (SELECT id FROM provider_sources WHERE code = ?),
+        json_extract(value, '$.providerId'), json_extract(value, '$.name'),
+        json_extract(value, '$.nationality'), json_extract(value, '$.birthDate'),
+        json_extract(value, '$.photo')
+      FROM json_each(?) WHERE true
       ON CONFLICT(canonical_id) DO UPDATE SET display_name = excluded.display_name,
         nationality = COALESCE(excluded.nationality, players.nationality),
         birth_date = COALESCE(excluded.birth_date, players.birth_date),
         photo_url = COALESCE(excluded.photo_url, players.photo_url)
-    `, group.flatMap(player => [player.id, source, player.providerId, player.name,
-      player.nationality || null, player.birthDate || null, player.photo || null])));
+    `, [source, JSON.stringify(playerValues.map(player => ({
+      id: player.id,
+      providerId: player.providerId,
+      name: player.name,
+      nationality: player.nationality || null,
+      birthDate: player.birthDate || null,
+      photo: player.photo || null,
+    })))]));
   }
-  for (const group of chunks(entityValues(coaches), 20)) {
+  const coachValues = entityValues(coaches);
+  if (coachValues.length) {
     statements.push(statement(database, `
       INSERT INTO coaches(canonical_id, source_id, provider_id, display_name, photo_url)
-      VALUES ${group.map(() => '(?, (SELECT id FROM provider_sources WHERE code = ?), ?, ?, ?)').join(', ')}
+      SELECT json_extract(value, '$.id'),
+        (SELECT id FROM provider_sources WHERE code = ?),
+        json_extract(value, '$.providerId'), json_extract(value, '$.name'),
+        json_extract(value, '$.photo')
+      FROM json_each(?) WHERE true
       ON CONFLICT(canonical_id) DO UPDATE SET display_name = excluded.display_name,
         photo_url = COALESCE(excluded.photo_url, coaches.photo_url)
-    `, group.flatMap(coach => [coach.id, source, coach.providerId, coach.name, coach.photo || null])));
+    `, [source, JSON.stringify(coachValues.map(coach => ({
+      id: coach.id,
+      providerId: coach.providerId,
+      name: coach.name,
+      photo: coach.photo || null,
+    })))]));
   }
   const venue = normalized.fixture.venue;
   if (venue?.id) {
@@ -349,14 +419,20 @@ function addLineupStatements(database, statements, context) {
   }
   const fieldStates = lineups.flatMap(lineup => Object.entries(lineup.fieldStates || {})
     .map(([fieldPath, state]) => ({ lineup, fieldPath, state })));
-  for (const group of chunks(fieldStates, 12)) {
+  if (fieldStates.length) {
     statements.push(statement(database, `
       INSERT INTO field_states(
         fixture_revision_id, fact_kind, fact_key, field_path, presence, issue_flags_json
-      ) VALUES ${group.map(() => `(
-        (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}), 'lineup', ?, ?, ?, '[]'
-      )`).join(', ')}
-    `, group.flatMap(item => [...rev, item.lineup.teamId, item.fieldPath, item.state.presence])));
+      )
+      SELECT (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
+        'lineup', json_extract(value, '$.teamId'), json_extract(value, '$.fieldPath'),
+        json_extract(value, '$.presence'), '[]'
+      FROM json_each(?)
+    `, [...rev, JSON.stringify(fieldStates.map(item => ({
+      teamId: item.lineup.teamId,
+      fieldPath: item.fieldPath,
+      presence: item.state.presence,
+    })))]));
   }
 }
 
@@ -391,88 +467,109 @@ function appearanceSelector() {
     )`;
 }
 
-function appearanceParams(fixture, playerId) {
-  return [fixture.id, fixture.revision, fixture.id, playerId];
-}
-
 function addAppearanceStatements(database, statements, context) {
   const { fixture, kickoffUtc } = context;
   const appearances = appearanceData(context);
-  for (const group of chunks(appearances, 12)) {
+  if (appearances.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_player_records(fixture_id, team_id, player_id, kickoff_utc)
-      VALUES ${group.map(() => `(
-        (SELECT id FROM fixtures WHERE canonical_id = ?),
-        (SELECT id FROM teams WHERE canonical_id = ?),
-        (SELECT id FROM players WHERE canonical_id = ?), ?
-      )`).join(', ')}
+      SELECT (SELECT id FROM fixtures WHERE canonical_id = ?),
+        (SELECT id FROM teams WHERE canonical_id = json_extract(value, '$.teamId')),
+        (SELECT id FROM players WHERE canonical_id = json_extract(value, '$.playerId')), ?
+      FROM json_each(?) WHERE true
       ON CONFLICT(fixture_id, player_id) DO UPDATE SET kickoff_utc = excluded.kickoff_utc
-    `, group.flatMap(item => [fixture.id, item.teamId, item.playerId, kickoffUtc])));
-  }
-  for (const group of chunks(appearances, 9)) {
+    `, [fixture.id, kickoffUtc, JSON.stringify(appearances.map(item => ({
+      teamId: item.teamId,
+      playerId: item.playerId,
+    })))]));
     statements.push(statement(database, `
       INSERT INTO fixture_player_appearances(
         fixture_revision_id, player_record_id, appearance_state, position, minutes, captain
-      ) VALUES ${group.map(() => `(
-        (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
+      )
+      SELECT (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
         (SELECT record.id FROM fixture_player_records record
           JOIN fixtures fixture ON fixture.id = record.fixture_id
           JOIN players player ON player.id = record.player_id
-          WHERE fixture.canonical_id = ? AND player.canonical_id = ?), ?, ?, ?, ?
-      )`).join(', ')}
-    `, group.flatMap(item => [fixture.id, fixture.revision, fixture.id, item.playerId,
-      item.appearanceState, item.stat?.position ?? item.lineup?.position ?? null,
-      item.stat?.values?.minutes ?? null,
-      item.stat?.captain === null || item.stat?.captain === undefined ? null : Number(item.stat.captain)])));
+          WHERE fixture.canonical_id = ?
+            AND player.canonical_id = json_extract(value, '$.playerId')),
+        json_extract(value, '$.appearanceState'), json_extract(value, '$.position'),
+        json_extract(value, '$.minutes'), json_extract(value, '$.captain')
+      FROM json_each(?)
+    `, [fixture.id, fixture.revision, fixture.id, JSON.stringify(appearances.map(item => ({
+      playerId: item.playerId,
+      appearanceState: item.appearanceState,
+      position: item.stat?.position ?? item.lineup?.position ?? null,
+      minutes: item.stat?.values?.minutes ?? null,
+      captain: item.stat?.captain === null || item.stat?.captain === undefined
+        ? null : Number(item.stat.captain),
+    })))]));
   }
   const lineupEntries = appearances.filter(item => item.lineup);
-  for (const group of chunks(lineupEntries, 8)) {
+  if (lineupEntries.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_lineup_entries(
         lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid
-      ) VALUES ${group.map(() => `(
+      )
+      SELECT
         (SELECT lineup.id FROM fixture_lineups lineup
           JOIN fixture_revisions revision ON revision.id = lineup.fixture_revision_id
           JOIN fixtures fixture ON fixture.id = revision.fixture_id
           JOIN teams team ON team.id = lineup.team_id
-          WHERE fixture.canonical_id = ? AND revision.revision_no = ? AND team.canonical_id = ?),
-        (SELECT id FROM fixture_player_appearances WHERE ${appearanceSelector()}), ?, ?, ?, ?
-      )`).join(', ')}
-    `, group.flatMap(item => [fixture.id, fixture.revision, item.teamId,
-      ...appearanceParams(fixture, item.playerId), item.lineup.role, item.lineup.entryOrder,
-      item.lineup.number, item.lineup.grid])));
+          WHERE fixture.canonical_id = ? AND revision.revision_no = ?
+            AND team.canonical_id = json_extract(value, '$.teamId')),
+        (SELECT id FROM fixture_player_appearances
+          WHERE ${appearanceSelector().replace('player.canonical_id = ?', "player.canonical_id = json_extract(value, '$.playerId')")}),
+        json_extract(value, '$.role'), json_extract(value, '$.entryOrder'),
+        json_extract(value, '$.number'), json_extract(value, '$.grid')
+      FROM json_each(?)
+    `, [fixture.id, fixture.revision, fixture.id, fixture.revision, fixture.id,
+      JSON.stringify(lineupEntries.map(item => ({
+        teamId: item.teamId,
+        playerId: item.playerId,
+        role: item.lineup.role,
+        entryOrder: item.lineup.entryOrder,
+        number: item.lineup.number,
+        grid: item.lineup.grid,
+      })))]));
   }
   const statEntries = appearances.filter(item => item.stat);
   const statKeys = Object.keys(PLAYER_STAT_COLUMNS);
   const statColumns = statKeys.map(key => PLAYER_STAT_COLUMNS[key]);
-  for (const group of chunks(statEntries, 2)) {
-    const valueSql = `(
-      (SELECT id FROM fixture_player_appearances WHERE ${appearanceSelector()}),
-      ${statColumns.map(() => '?').join(', ')}, ?
-    )`;
+  if (statEntries.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_player_stats(player_appearance_id, ${statColumns.join(', ')}, extra_stats_json)
-      VALUES ${group.map(() => valueSql).join(', ')}
-    `, group.flatMap(item => {
+      SELECT (SELECT id FROM fixture_player_appearances
+          WHERE ${appearanceSelector().replace('player.canonical_id = ?', "player.canonical_id = json_extract(value, '$.playerId')")}),
+        ${statKeys.map(key => `json_extract(value, '$.values.${key}')`).join(', ')},
+        json_extract(value, '$.extraStatsJson')
+      FROM json_each(?)
+    `, [fixture.id, fixture.revision, fixture.id, JSON.stringify(statEntries.map(item => {
       const extra = Object.fromEntries(Object.entries(item.stat.values)
         .filter(([key]) => !PLAYER_STAT_COLUMNS[key]));
-      return [...appearanceParams(fixture, item.playerId),
-        ...statKeys.map(key => Object.hasOwn(item.stat.values, key) ? item.stat.values[key] : null),
-        Object.keys(extra).length ? JSON.stringify(extra) : null];
-    })));
+      return {
+        playerId: item.playerId,
+        values: item.stat.values,
+        extraStatsJson: Object.keys(extra).length ? JSON.stringify(extra) : null,
+      };
+    }))]));
   }
   const states = statEntries.flatMap(item => Object.entries(item.stat.fieldStates || {})
     .map(([fieldPath, state]) => ({ item, fieldPath, state })));
-  for (const group of chunks(states, 10)) {
+  if (states.length) {
     statements.push(statement(database, `
       INSERT INTO field_states(
         fixture_revision_id, fact_kind, fact_key, field_path, presence, issue_flags_json
-      ) VALUES ${group.map(() => `(
-        (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}), 'player_stat', ?, ?, ?, ?
-      )`).join(', ')}
-    `, group.flatMap(({ item, fieldPath, state }) => [fixture.id, fixture.revision,
-      item.playerId, fieldPath, state.presence,
-      JSON.stringify(item.stat.fieldIssues?.[fieldPath] || [])])));
+      )
+      SELECT (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
+        'player_stat', json_extract(value, '$.playerId'), json_extract(value, '$.fieldPath'),
+        json_extract(value, '$.presence'), json_extract(value, '$.issueFlagsJson')
+      FROM json_each(?)
+    `, [fixture.id, fixture.revision, JSON.stringify(states.map(({ item, fieldPath, state }) => ({
+      playerId: item.playerId,
+      fieldPath,
+      presence: state.presence,
+      issueFlagsJson: JSON.stringify(item.stat.fieldIssues?.[fieldPath] || []),
+    })))]));
   }
   return appearances;
 }
@@ -480,40 +577,42 @@ function addAppearanceStatements(database, statements, context) {
 function addRemainingDetailStatements(database, statements, context) {
   const { normalized, fixture, publishedAt } = context;
   const rev = revisionParams(fixture.id, fixture.revision);
-  for (const group of chunks(normalized.events, 8)) {
+  if (normalized.events.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_events(
         fixture_revision_id, event_key, team_id, player_id, related_player_id,
         elapsed, extra_minute, event_order, type, detail, comments
-      ) VALUES ${group.map(() => `(
-        (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}), ?,
-        (SELECT id FROM teams WHERE canonical_id = ?),
-        (SELECT id FROM players WHERE canonical_id = ?),
-        (SELECT id FROM players WHERE canonical_id = ?), ?, ?, ?, ?, ?, ?
-      )`).join(', ')}
-    `, group.flatMap(event => {
-      const index = normalized.events.findIndex(item => item.id === event.id);
-      return [...rev, event.id, event.teamId, event.playerId, event.relatedPlayerId,
-        event.elapsed, event.extra, index, event.type, event.detail, event.comments];
-    })));
+      )
+      SELECT (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
+        json_extract(value, '$.id'),
+        (SELECT id FROM teams WHERE canonical_id = json_extract(value, '$.teamId')),
+        (SELECT id FROM players WHERE canonical_id = json_extract(value, '$.playerId')),
+        (SELECT id FROM players WHERE canonical_id = json_extract(value, '$.relatedPlayerId')),
+        json_extract(value, '$.elapsed'), json_extract(value, '$.extra'),
+        CAST(key AS INTEGER), json_extract(value, '$.type'),
+        json_extract(value, '$.detail'), json_extract(value, '$.comments')
+      FROM json_each(?)
+    `, [...rev, JSON.stringify(normalized.events)]));
   }
   const teamKeys = Object.keys(TEAM_STAT_COLUMNS);
   const teamColumns = teamKeys.map(key => TEAM_STAT_COLUMNS[key]);
-  for (const group of chunks(normalized.teamStats, 6)) {
-    const valueSql = `(
-      (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
-      (SELECT id FROM teams WHERE canonical_id = ?), ${teamColumns.map(() => '?').join(', ')}, ?
-    )`;
+  if (normalized.teamStats.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_team_stats(fixture_revision_id, team_id, ${teamColumns.join(', ')}, extra_stats_json)
-      VALUES ${group.map(() => valueSql).join(', ')}
-    `, group.flatMap(stat => {
+      SELECT (SELECT id FROM fixture_revisions WHERE ${revisionSelector()}),
+        (SELECT id FROM teams WHERE canonical_id = json_extract(value, '$.teamId')),
+        ${teamKeys.map(key => `json_extract(value, '$.values.${key}')`).join(', ')},
+        json_extract(value, '$.extraStatsJson')
+      FROM json_each(?)
+    `, [...rev, JSON.stringify(normalized.teamStats.map(stat => {
       const extra = Object.fromEntries(Object.entries(stat.values)
         .filter(([key]) => !TEAM_STAT_COLUMNS[key]));
-      return [...rev, stat.teamId,
-        ...teamKeys.map(key => Object.hasOwn(stat.values, key) ? stat.values[key] : null),
-        Object.keys(extra).length ? JSON.stringify(extra) : null];
-    })));
+      return {
+        teamId: stat.teamId,
+        values: stat.values,
+        extraStatsJson: Object.keys(extra).length ? JSON.stringify(extra) : null,
+      };
+    }))]));
   }
   statements.push(statement(database, `
     INSERT INTO section_states(fixture_revision_id, section_key, presence, observed_at)
@@ -525,18 +624,29 @@ function addRemainingDetailStatements(database, statements, context) {
     return [...rev, key, presence === 'present' && normalized[key].length === 0 ? 'present_empty' : presence, publishedAt];
   })));
   const overrides = Object.entries(normalized.overrides || {});
-  for (const group of chunks(overrides, 8)) {
+  if (overrides.length) {
     statements.push(statement(database, `
       INSERT INTO correction_states(
         correction_key, target_kind, target_canonical_id, field_path, status,
         provider_baseline_json, applied_value_json, reason, source_url, verified_at, reconciled_at
-      ) VALUES ${group.map(() => "(?, 'fixture', ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(', ')}
-    `, group.flatMap(([fieldPath, override]) => [
-      `${fixture.id}:${fieldPath}`, fixture.id, fieldPath, override.status,
-      JSON.stringify(override.correctedProviderValue), JSON.stringify(override.value),
-      override.reason ?? null, override.sourceUrl ?? null, override.verifiedAt ?? null,
-      override.reconciledAt,
-    ])));
+      )
+      SELECT json_extract(value, '$.correctionKey'), 'fixture', ?,
+        json_extract(value, '$.fieldPath'), json_extract(value, '$.status'),
+        json_extract(value, '$.providerBaselineJson'), json_extract(value, '$.appliedValueJson'),
+        json_extract(value, '$.reason'), json_extract(value, '$.sourceUrl'),
+        json_extract(value, '$.verifiedAt'), json_extract(value, '$.reconciledAt')
+      FROM json_each(?)
+    `, [fixture.id, JSON.stringify(overrides.map(([fieldPath, override]) => ({
+      correctionKey: `${fixture.id}:${fieldPath}`,
+      fieldPath,
+      status: override.status,
+      providerBaselineJson: JSON.stringify(override.correctedProviderValue) ?? null,
+      appliedValueJson: JSON.stringify(override.value) ?? null,
+      reason: override.reason ?? null,
+      sourceUrl: override.sourceUrl ?? null,
+      verifiedAt: override.verifiedAt ?? null,
+      reconciledAt: override.reconciledAt,
+    })))]));
   }
 }
 
@@ -664,8 +774,14 @@ export async function publishFixtureFromR2(env, input) {
     throw error;
   }
   const raw = await object.text();
-  let payload;
-  try { payload = JSON.parse(raw); } catch { throw new Error('Fixture R2 object is not JSON.'); }
+  if (input.operation === FIXTURE_MIGRATION_OPERATION
+    && await sha256(raw) !== input.artifactSha256) {
+    throw new Error('Fixture migration artifact hash mismatch.');
+  }
+  let storedPayload;
+  try { storedPayload = JSON.parse(raw); } catch { throw new Error('Fixture R2 object is not JSON.'); }
+  const payload = input.operation === FIXTURE_MIGRATION_OPERATION
+    ? fixtureMigrationPayload(storedPayload, input) : storedPayload;
   if (payload?.fixture?.id !== input.fixtureId
     || payload?.fixture?.competitionId !== input.competitionId
     || payload?.fixture?.seasonId !== input.seasonId) {
@@ -682,7 +798,7 @@ export async function publishFixtureFromR2(env, input) {
   const checked = await preflight(env.FOOTBALL_DB, context, contentSha256);
   if (checked.noOp) {
     return {
-      schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: FIXTURE_OPERATION,
+      schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: input.operation,
       fixtureId: input.fixtureId, sourceR2Key, sourceSha256, contentSha256,
       imported: false, reason: 'already_published', revision: context.fixture.revision,
     };
@@ -701,7 +817,7 @@ export async function publishFixtureFromR2(env, input) {
   }
   await env.FOOTBALL_DB.batch(statements);
   return {
-    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: FIXTURE_OPERATION,
+    schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: input.operation,
     fixtureId: input.fixtureId, sourceR2Key, sourceSha256, contentSha256,
     imported: true, revision: context.fixture.revision, statementCount: statements.length,
     counts: {

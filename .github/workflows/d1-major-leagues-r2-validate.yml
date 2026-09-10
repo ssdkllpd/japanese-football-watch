@@ -1,0 +1,145 @@
+name: D1 Major Leagues R2 Validate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/d1-r2-staging-migration]
+    paths:
+      - config/d1-major-leagues-2026.json
+      - config/d1-major-league-snapshot-20260908.json
+      - config/d1-targets.json
+      - scripts/d1/prepare-major-league-d1-migration.js
+      - scripts/d1/fixture-publish-limits.js
+      - scripts/d1/fixture-bundle-importer.js
+      - scripts/d1/fixture-bundle-importer-core.js
+      - admin-worker/fixture-ingest.mjs
+      - scripts/v2/fetch-standings.js
+      - scripts/v2/fixture-contract.js
+      - tests/d1-major-league-snapshot-prepare.test.js
+      - tests/d1-fixture-entity-name-variance.test.js
+      - scripts/d1/report-player-identity-variance.js
+      - tests/d1-player-identity-variance-report.test.js
+      - tests/d1-admin-ingest.test.js
+      - .github/workflows/d1-major-leagues-r2-validate.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-major-leagues-r2-validate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-saved-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      LATEST_KEY: audit/api-football/v3/major-leagues/2026/latest.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify validator tests
+        run: node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-fixture-entity-name-variance.test.js tests/d1-player-identity-variance-report.test.js tests/d1-admin-ingest.test.js
+
+      - name: Resolve reviewed R2 staging source
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
+          r2_bucket=$(jq -r '.targets.staging.r2BucketName' config/d1-targets.json)
+          test "$r2_bucket" = 'jfw-football-data' || { echo 'Reviewed staging R2 bucket mismatch'; exit 1; }
+          echo "R2_BUCKET=$r2_bucket" >> "$GITHUB_ENV"
+
+      - name: Download immutable saved snapshot from R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/d1-r2-validate/extracted .tmp/d1-r2-validate/prepared
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$LATEST_KEY" \
+            --file .tmp/d1-r2-validate/latest.json --remote
+          jq -e '
+            .schemaVersion == "jfw-api-football-major-leagues-snapshot/1"
+            and .complete == true
+            and (.archiveSha256 | test("^[0-9a-f]{64}$"))
+            and (.archiveKey | test("^audit/api-football/v3/major-leagues/2026/snapshots/[0-9TZ-]+\\.tar\\.gz$"))
+            and .archiveKey == .r2.archiveKey
+          ' .tmp/d1-r2-validate/latest.json >/dev/null
+          archive_key=$(jq -r '.archiveKey' .tmp/d1-r2-validate/latest.json)
+          archive_sha=$(jq -r '.archiveSha256' .tmp/d1-r2-validate/latest.json)
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$archive_key" \
+            --file .tmp/d1-r2-validate/snapshot.tar.gz --remote
+          test "$(sha256sum .tmp/d1-r2-validate/snapshot.tar.gz | cut -d' ' -f1)" = "$archive_sha"
+
+      - name: Extract archive with traversal and link rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -tzf .tmp/d1-r2-validate/snapshot.tar.gz > .tmp/d1-r2-validate/archive-entries.txt
+          while IFS= read -r entry; do
+            case "$entry" in
+              /*|../*|*/../*|*/..) echo "Unsafe archive path: $entry"; exit 1 ;;
+            esac
+          done < .tmp/d1-r2-validate/archive-entries.txt
+          if tar -tvzf .tmp/d1-r2-validate/snapshot.tar.gz \
+            | awk 'substr($1,1,1) == "l" || substr($1,1,1) == "h" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo 'Archive contains a symbolic or hard link; refusing extraction.'
+            exit 1
+          fi
+          tar -xzf .tmp/d1-r2-validate/snapshot.tar.gz \
+            -C .tmp/d1-r2-validate/extracted --no-same-owner --no-same-permissions
+
+      - name: Scan every completed fixture for player identity variance
+        run: |
+          node scripts/d1/report-player-identity-variance.js \
+            --snapshot-root .tmp/d1-r2-validate/extracted \
+            --latest .tmp/d1-r2-validate/latest.json \
+            --evidence config/d1-major-league-snapshot-20260908.json \
+            --out .tmp/d1-r2-validate/player-identity-variance.json
+          jq -e '.summary.providerMissingPlayerIdentityFixtureCount == 6
+            and .summary.providerMissingPlayerIdentityOmissionCount == 13
+            and .summary.lineupOver40FixtureCount == 162
+            and .summary.maxLineupEntries == 52
+            and .summary.playerStatsOver40FixtureCount == 161
+            and .summary.maxPlayerStats == 52
+            and .summary.endpointDuplicateFixtureCount == 2
+            and .summary.duplicateLineupPlayerIdentityCount == 2
+            and .summary.duplicateLineupEntryCount == 4
+            and .summary.duplicatePlayerStatsIdentityCount == 2
+            and .summary.duplicatePlayerStatsRowCount == 4
+            and .summary.providerMissingCoachIdentityFixtureCount == 2
+            and .summary.providerMissingCoachIdentityRowCount == 3' \
+            .tmp/d1-r2-validate/player-identity-variance.json >/dev/null
+
+      - name: Run season gate and prepare migration artifacts without writes
+        run: |
+          node scripts/d1/prepare-major-league-d1-migration.js \
+            --snapshot-root .tmp/d1-r2-validate/extracted \
+            --latest .tmp/d1-r2-validate/latest.json \
+            --archive-file .tmp/d1-r2-validate/snapshot.tar.gz \
+            --config config/d1-major-leagues-2026.json \
+            --evidence config/d1-major-league-snapshot-20260908.json \
+            --out .tmp/d1-r2-validate/prepared \
+            > .tmp/d1-r2-validate/summary.json
+          jq -e '.passed == true and ([.seasonGate[].passed] | all)' \
+            .tmp/d1-r2-validate/prepared/validation-report.json >/dev/null
+          jq '{passed, source, seasonGate, totals, preparedCoreArtifacts, preparedFixtureArtifacts}' \
+            .tmp/d1-r2-validate/summary.json
+
+      - name: Upload bounded validation evidence and prepared artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-major-leagues-r2-validation-${{ github.sha }}
+          path: |
+            .tmp/d1-r2-validate/latest.json
+            .tmp/d1-r2-validate/archive-entries.txt
+            .tmp/d1-r2-validate/summary.json
+            .tmp/d1-r2-validate/player-identity-variance.json
+            .tmp/d1-r2-validate/prepared
+          if-no-files-found: error
+          retention-days: 30
