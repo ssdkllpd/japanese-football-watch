@@ -203,6 +203,22 @@ test('major-league inventory workflow is read-only and targets staging exactly',
   assert.equal(workflow.includes('request-admin-ingest.mjs'), false);
 });
 
+test('major-league full snapshot audit reads only R2 and executes all data locally', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github', 'workflows', 'd1-major-leagues-snapshot-audit.yml'), 'utf8',
+  );
+  assert.match(workflow, /environment: d1-staging/);
+  assert.match(workflow, /verify-d1-target\.mjs --manifest config\/d1-targets\.json --target staging/);
+  assert.match(workflow, /r2 object get/);
+  assert.match(workflow, /audit-major-league-snapshot\.mjs/);
+  assert.match(workflow, /authoritative\.attempted==564/);
+  for (const forbidden of [
+    'ADMIN_INGEST_TOKEN', 'API_FOOTBALL_KEY', 'r2 object put', 'd1 execute',
+    'd1 migrations apply', 'wrangler@4 deploy', 'request-admin-ingest.mjs', '--execute',
+    'time-travel restore',
+  ]) assert.equal(workflow.includes(forbidden), false, forbidden);
+});
+
 test('major-league staging migration is pinned, reversible, and leaves public flags off', () => {
   const workflow = fs.readFileSync(
     path.join(root, '.github', 'workflows', 'd1-major-leagues-staging-migrate.yml'), 'utf8',

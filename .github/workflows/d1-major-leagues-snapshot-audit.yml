@@ -1,0 +1,138 @@
+name: D1 Major Leagues Snapshot Audit (read only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/d1-migration-safety-r2]
+    paths:
+      - .github/workflows/d1-major-leagues-snapshot-audit.yml
+      - admin-worker/**
+      - config/d1-major-league-snapshot-20260908.json
+      - config/d1-major-leagues-2026.json
+      - migrations/**
+      - scripts/d1/**
+      - scripts/v2/fixture-contract.js
+      - tests/d1-major-league-snapshot-audit.test.js
+      - tests/d1-fixture-worker-local-parity.test.js
+      - tests/d1-migration-workflows.test.js
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-major-leagues-snapshot-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 60
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      EVIDENCE: config/d1-major-league-snapshot-20260908.json
+      WORK_ROOT: .tmp/d1-major-audit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve exact reviewed R2 source
+        env:
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          test "$R2_BUCKET" = 'jfw-football-data'
+          echo "R2_BUCKET=$R2_BUCKET" >> "$GITHUB_ENV"
+
+      - name: Install dependencies and run audit safety tests
+        run: |
+          npm ci
+          node --test tests/d1-major-league-snapshot-audit.test.js \
+            tests/d1-fixture-worker-local-parity.test.js tests/d1-migration-workflows.test.js
+
+      - name: Download exact pinned snapshot from R2 without writing
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORK_ROOT/extracted" "$WORK_ROOT/prepared" "$WORK_ROOT/report"
+          archive_key=$(jq -r '.archiveKey' "$EVIDENCE")
+          archive_sha=$(jq -r '.archiveSha256' "$EVIDENCE")
+          latest_key='audit/api-football/v3/major-leagues/2026/latest.json'
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$latest_key" \
+            --file "$WORK_ROOT/latest.json" --remote
+          jq -e --arg snapshot "$(jq -r '.snapshotId' "$EVIDENCE")" \
+            --arg key "$archive_key" --arg sha "$archive_sha" \
+            '.snapshotId==$snapshot and .archiveKey==$key and .archiveSha256==$sha and .complete==true' \
+            "$WORK_ROOT/latest.json" >/dev/null
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$archive_key" \
+            --file "$WORK_ROOT/snapshot.tar.gz" --remote
+          test "$(sha256sum "$WORK_ROOT/snapshot.tar.gz" | cut -d' ' -f1)" = "$archive_sha"
+
+      - name: Extract snapshot after rejecting unsafe archive entries
+        run: |
+          set -euo pipefail
+          tar -tzf "$WORK_ROOT/snapshot.tar.gz" > "$WORK_ROOT/archive-entries.txt"
+          while IFS= read -r entry; do
+            case "$entry" in
+              /*|../*|*/../*|*/..) echo "Unsafe archive path: $entry"; exit 1 ;;
+            esac
+          done < "$WORK_ROOT/archive-entries.txt"
+          if tar -tvzf "$WORK_ROOT/snapshot.tar.gz" \
+            | awk 'substr($1,1,1) == "l" || substr($1,1,1) == "h" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo 'Archive contains a symbolic or hard link.'
+            exit 1
+          fi
+          tar -xzf "$WORK_ROOT/snapshot.tar.gz" \
+            -C "$WORK_ROOT/extracted" --no-same-owner --no-same-permissions
+
+      - name: Rebuild reviewed migration artifacts locally
+        run: |
+          set -euo pipefail
+          node scripts/d1/prepare-major-league-d1-migration.js \
+            --snapshot-root "$WORK_ROOT/extracted" \
+            --latest "$WORK_ROOT/latest.json" \
+            --archive-file "$WORK_ROOT/snapshot.tar.gz" \
+            --config config/d1-major-leagues-2026.json \
+            --evidence "$EVIDENCE" \
+            --out "$WORK_ROOT/prepared" \
+            > "$WORK_ROOT/report/preparation-summary.json"
+
+      - name: Run all 564 requests against current migrations in local SQLite
+        run: |
+          set -uo pipefail
+          node scripts/d1/audit-major-league-snapshot.mjs \
+            --prepared "$WORK_ROOT/prepared" \
+            --snapshot-root "$WORK_ROOT/extracted" \
+            --evidence "$EVIDENCE" \
+            --report "$WORK_ROOT/report/snapshot-audit.json"
+          audit_exit=$?
+          set -e
+          test -s "$WORK_ROOT/report/snapshot-audit.json"
+          jq -e '.authoritative.attempted==564
+            and .validation.requestCountMatches==true
+            and .remoteD1WritesPerformed==false
+            and .apiFootballRequestsPerformed==false
+            and .publicReadFlagsChanged==false' \
+            "$WORK_ROOT/report/snapshot-audit.json" >/dev/null
+          jq '{passed,validation,authoritative:{attempted,operationSummary,
+            failedRequestCount:(.failedRequests|length)},diagnostics:{summary,passSemantics,providerRating}}' \
+            "$WORK_ROOT/report/snapshot-audit.json"
+          test "$audit_exit" -eq 0 || test "$audit_exit" -eq 1
+
+      - name: Upload bounded local audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-major-leagues-snapshot-audit-${{ github.sha }}
+          path: |
+            .tmp/d1-major-audit/report
+            .tmp/d1-major-audit/prepared/validation-report.json
+          if-no-files-found: error
+          retention-days: 30
