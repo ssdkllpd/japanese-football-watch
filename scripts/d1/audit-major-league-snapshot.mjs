@@ -254,6 +254,23 @@ function storedStatRows(database) {
   };
 }
 
+function venuePersistenceIssue(database, fixtureId, venue) {
+  if (!venue?.id || venue.name) return null;
+  const fixture = database.prepare('SELECT venue_id FROM fixtures WHERE canonical_id = ?').get(fixtureId);
+  const master = database.prepare('SELECT id, name FROM venues WHERE canonical_id = ?').get(venue.id);
+  if (master && fixture?.venue_id === master.id && String(master.name || '').trim()) return null;
+  if (!master && fixture?.venue_id === null) return null;
+  return master
+    ? {
+      expectedConstraint: 'a nameless identified venue reuses the existing named venue master',
+      reason: 'existing_nameless_venue_not_reused',
+    }
+    : {
+      expectedConstraint: 'a nameless identified venue without a master is persisted as fixture.venue_id NULL',
+      reason: 'unresolved_nameless_venue_was_linked',
+    };
+}
+
 function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
   const manifest = readJson(prepared.manifestPath, 'prepared migration manifest');
   const requestIndexes = new Map(prepared.requests.map((request, index) => [request.fixtureId, index + 1]));
@@ -277,7 +294,8 @@ function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
       const rawRows = rawPlayerRows(raw);
       const rawTeams = rawTeamRows(raw);
       const requestPassed = requestOutcomes.get(fixtureId) === true;
-      if (wrapper.bundle.fixture?.venue?.id && !wrapper.bundle.fixture.venue.name) {
+      const venueIssue = venuePersistenceIssue(database, fixtureId, wrapper.bundle.fixture?.venue);
+      if (venueIssue) {
         issues.push({
           ...fixtureTraceBase({
             requestIndex: requestIndexes.get(fixtureId), requestPassed, leagueId: league.league,
@@ -286,9 +304,9 @@ function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
             rawProviderValue: raw?.fixture?.venue?.name,
             normalizedValue: wrapper.bundle.fixture.venue.name,
           }),
-          expectedConstraint: 'venues.name NOT NULL when fixture.venue.id is present',
+          expectedConstraint: venueIssue.expectedConstraint,
           severity: 'error',
-          reason: 'identified_venue_has_no_name',
+          reason: venueIssue.reason,
         });
       }
       for (const [eventIndex, event] of (wrapper.bundle.events || []).entries()) {
@@ -451,6 +469,7 @@ async function audit(options) {
     && databaseIntegrity.foreignKeyViolations.length === 0
     && databaseIntegrity.integrityCheck.length === 1
     && databaseIntegrity.integrityCheck[0].integrity_check === 'ok';
+  const diagnosticsPassed = semantic.issues.every(issue => issue.severity !== 'error');
   const report = {
     schemaVersion: 'jfw-d1-major-leagues-snapshot-audit/1',
     mode: 'local-authoritative-schema-audit',
@@ -465,12 +484,13 @@ async function audit(options) {
       databaseIntegrity,
     },
     diagnostics: {
+      passed: diagnosticsPassed,
       summary: issueSummary(semantic.issues),
       passSemantics: semantic.passSemantics,
       providerRating: semantic.providerRating,
       issues: semantic.issues,
     },
-    passed: authoritativePassed,
+    passed: authoritativePassed && diagnosticsPassed,
     productionReady: false,
     remoteD1WritesPerformed: false,
     apiFootballRequestsPerformed: false,
@@ -480,7 +500,7 @@ async function audit(options) {
   return report;
 }
 
-export { audit, executeLocalRequests, requestLocation, scanFixtureSemantics };
+export { audit, executeLocalRequests, requestLocation, scanFixtureSemantics, venuePersistenceIssue };
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));

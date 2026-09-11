@@ -116,7 +116,11 @@ jobs:
           audit_exit=$?
           set -e
           test -s "$WORK_ROOT/report/snapshot-audit.json"
-          jq -e '.authoritative.attempted==564
+          jq -e '.passed==true
+            and .authoritative.passed==true
+            and .diagnostics.passed==true
+            and .diagnostics.summary.bySeverity.error==null
+            and .authoritative.attempted==564
             and .validation.requestCountMatches==true
             and .remoteD1WritesPerformed==false
             and .apiFootballRequestsPerformed==false

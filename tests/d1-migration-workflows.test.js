@@ -211,6 +211,7 @@ test('major-league full snapshot audit reads only R2 and executes all data local
   assert.match(workflow, /verify-d1-target\.mjs --manifest config\/d1-targets\.json --target staging/);
   assert.match(workflow, /r2 object get/);
   assert.match(workflow, /audit-major-league-snapshot\.mjs/);
+  assert.match(workflow, /\.diagnostics\.passed==true/);
   assert.match(workflow, /authoritative\.attempted==564/);
   for (const forbidden of [
     'ADMIN_INGEST_TOKEN', 'API_FOOTBALL_KEY', 'r2 object put', 'd1 execute',
