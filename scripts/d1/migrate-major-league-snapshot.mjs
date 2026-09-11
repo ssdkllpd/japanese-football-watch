@@ -344,12 +344,28 @@ async function executeRequests(prepared, options) {
 
 export { validatePrepared, executeRequests };
 
+function validationResult(prepared) {
+  const checks = {
+    sourcePinned: prepared.source?.provider === 'api-football'
+      && /^[0-9a-f]{64}$/.test(String(prepared.source?.archiveSha256 || '')),
+    requestCountMatches: prepared.requests.length === prepared.summary.adminRequests,
+    uploadCountMatches: prepared.uploadObjects.length === prepared.summary.uploadObjects,
+    requestsNonEmpty: prepared.requests.length > 0,
+    uploadObjectsNonEmpty: prepared.uploadObjects.length > 0,
+    uploadHashesValid: prepared.uploadObjects.every(item => /^[0-9a-f]{64}$/.test(item.sha256)),
+  };
+  return { passed: Object.values(checks).every(Boolean), checks };
+}
+
+export { validationResult };
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.prepared || !args.evidence || !args.report) {
     fail('Usage: migrate-major-league-snapshot.mjs --prepared DIR --evidence FILE --report FILE [--execute --url URL]');
   }
   const prepared = validatePrepared(path.resolve(args.prepared), path.resolve(args.evidence));
+  const validation = validationResult(prepared);
   const execute = args.execute === true;
   if (execute && !args.url) fail('--url is required with --execute.');
   const execution = execute ? await executeRequests(prepared, {
@@ -360,9 +376,9 @@ async function main() {
     schemaVersion: 'jfw-d1-major-leagues-migration-client-report/1',
     mode: execute ? 'execute' : 'validate-only',
     source: prepared.source,
-    validation: { passed: true, summary: prepared.summary, uploadObjects: prepared.uploadObjects },
+    validation: { ...validation, summary: prepared.summary, uploadObjects: prepared.uploadObjects },
     execution,
-    passed: execute ? execution.completed : true,
+    passed: validation.passed && (!execute || execution.completed),
     productionReady: false,
     publicReadFlagsChanged: false,
   };

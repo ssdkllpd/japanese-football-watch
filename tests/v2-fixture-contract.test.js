@@ -55,7 +55,7 @@ function sampleFixture() {
           games: { minutes: 90, position: 'F', rating: '7.8', captain: false, substitute: false },
           shots: { total: 3, on: 2 },
           goals: { total: 1, assists: 0, conceded: 0, saves: null },
-          passes: { total: 24, key: 1, accuracy: 82 },
+          passes: { total: 24, key: 1, accuracy: 20 },
           tackles: { total: 1, blocks: 0, interceptions: 0 },
           duels: { total: 8, won: 4 },
           dribbles: { attempts: 2, success: 1, past: 0 },
@@ -89,6 +89,7 @@ test('general fixture contract uses provider-native IDs, UTC canonical time and 
   assert.equal(bundle.fixture.dateJst, '2026-08-22');
   assert.equal(bundle.fixture.productTimeZone, 'Asia/Tokyo');
   assert.equal(bundle.fixture.ingestionState, 'finalized');
+  assert.equal(bundle.teamStats[0].values.ball_possession, 56);
   assert.equal(bundle.contractVersion, '2.1.0');
   assert.equal(bundle.detailAvailability, 'available');
   assert.deepEqual(contract.validateFixtureBundle(bundle), []);
@@ -109,7 +110,36 @@ test('all players are normalized as general football facts without a Japanese re
   assert.equal(bundle.playerStats[0].values.goals, 1);
   assert.equal(bundle.playerStats[0].values.assists, 0);
   assert.equal(bundle.playerStats[0].values.rating, 7.8);
+  assert.equal(bundle.playerStats[0].values.passes, 24);
+  assert.equal(bundle.playerStats[0].values.passesAccurate, 20);
+  assert.equal(Object.hasOwn(bundle.playerStats[0].values, 'passAccuracy'), false);
   assert.deepEqual(bundle.playerStats[0].fieldStates.saves, { presence: 'not_applicable' });
+});
+
+test('provider pass accuracy is normalized as an accurate-pass count and invalid numbers are omitted', () => {
+  const numericString = sampleFixture();
+  numericString.players[0].players[0].statistics[0].passes = { total: '5', accuracy: '3' };
+  const accepted = contract.normalizeFixtureBundle(numericString, { finalized: true });
+  assert.deepEqual({
+    passes: accepted.playerStats[0].values.passes,
+    passesAccurate: accepted.playerStats[0].values.passesAccurate,
+  }, { passes: 5, passesAccurate: 3 });
+
+  for (const value of [null, undefined, 'not-a-number', NaN, Infinity]) {
+    const fixture = sampleFixture();
+    fixture.players[0].players[0].statistics[0].passes.accuracy = value;
+    const normalized = contract.normalizeFixtureBundle(fixture, { finalized: true });
+    assert.equal(Object.hasOwn(normalized.playerStats[0].values, 'passesAccurate'), false);
+  }
+});
+
+test('negative or fractional provider event minutes are omitted without clamping', () => {
+  for (const value of [-5, 2.5, 'bad']) {
+    const fixture = sampleFixture();
+    fixture.events[0].time.elapsed = value;
+    const normalized = contract.normalizeFixtureBundle(fixture, { finalized: true });
+    assert.equal(normalized.events[0].elapsed, null);
+  }
 });
 
 test('player id zero remains an explicit provider sentinel and never becomes a canonical player id', () => {

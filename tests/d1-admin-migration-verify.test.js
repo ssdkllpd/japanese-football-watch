@@ -6,17 +6,16 @@ const path = require('node:path');
 const test = require('node:test');
 const { DatabaseSync } = require('node:sqlite');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migrations = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql', '0003_d1_standings_publication.sql',
-  '0004_d1_standings_order_and_fixture_date.sql']
-  .map(file => fs.readFileSync(path.join(__dirname, '..', 'migrations', file), 'utf8'));
+const root = path.join(__dirname, '..');
 const snapshotSha = 'b'.repeat(64);
 const fixtureDigest = 'c'.repeat(64);
 const sourceSha = 'd'.repeat(64);
 
 function database() {
   const db = new DatabaseSync(':memory:');
-  for (const migration of migrations) db.exec(migration);
+  applyMigrations(db, root);
   db.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
     INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)

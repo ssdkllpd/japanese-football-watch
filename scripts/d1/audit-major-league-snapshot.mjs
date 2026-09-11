@@ -24,7 +24,7 @@ const PLAYER_FIELDS = {
   shotsOnTarget: ['shots', 'on'],
   passes: ['passes', 'total'],
   keyPasses: ['passes', 'key'],
-  passAccuracy: ['passes', 'accuracy'],
+  passesAccurate: ['passes', 'accuracy'],
   tackles: ['tackles', 'total'],
   blocks: ['tackles', 'blocks'],
   interceptions: ['tackles', 'interceptions'],
@@ -330,21 +330,10 @@ function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
           }
         }
 
-        if (Object.hasOwn(stat.values || {}, 'passAccuracy')) {
-          const rawAccuracy = valueAt(rawRow?.stats, PLAYER_FIELDS.passAccuracy);
+        if (Object.hasOwn(stat.values || {}, 'passesAccurate')) {
+          const rawAccuracy = valueAt(rawRow?.stats, PLAYER_FIELDS.passesAccurate);
           const rawPasses = valueAt(rawRow?.stats, PLAYER_FIELDS.passes);
-          passSamples.push({ rawAccuracy, rawPasses, normalizedValue: stat.values.passAccuracy });
-          issues.push({
-            ...traceBase({
-              requestIndex: requestIndexes.get(fixtureId), leagueId: league.league,
-              requestPassed, fixtureId, stat, artifact, rawValue: rawAccuracy,
-              d1Value: stored.players.get(`${fixtureId}:${stat.teamId}:${stat.playerId}`)?.pass_accuracy ?? null,
-              key: 'passAccuracy', column: 'pass_accuracy',
-            }),
-            expectedConstraint: 'pass_accuracy is a percentage in [0,100], but API-Football passes.accuracy is a successful-pass count',
-            severity: 'error',
-            reason: 'provider_pass_count_mapped_to_percentage_column',
-          });
+          passSamples.push({ rawAccuracy, rawPasses, normalizedValue: stat.values.passesAccurate });
         }
         if (Object.hasOwn(stat.values || {}, 'rating')) ratings.push(stat.values.rating);
         for (const [left, right, reason] of DOMAIN_RULES) {
@@ -404,7 +393,7 @@ function scanFixtureSemantics(prepared, snapshotRoot, database, results = []) {
       comparableWithPassTotal: comparablePasses.length,
       rawAccuracyAtMostPassTotal: comparablePasses.filter(item => Number(item.rawAccuracy) <= Number(item.rawPasses)).length,
       rawAccuracyAbove100: comparablePasses.filter(item => Number(item.rawAccuracy) > 100).length,
-      conclusion: 'API-Football passes.accuracy is a successful-pass count and must not be persisted as a percentage.',
+      conclusion: 'API-Football passes.accuracy is persisted as successful-pass count passesAccurate, never as a percentage.',
     },
     providerRating: {
       observed: ratings.length,

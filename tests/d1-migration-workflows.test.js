@@ -227,18 +227,23 @@ test('major-league staging migration is pinned, reversible, and leaves public fl
   assert.match(workflow, /d1-major-league-snapshot-20260908\.json/);
   assert.match(workflow, /validation-only-report\.json/);
   const bookmark = workflow.indexOf('d1 time-travel info');
+  const migrate = workflow.indexOf('d1 migrations apply');
+  const upload = workflow.indexOf('r2 object put');
   const execute = workflow.indexOf('--execute --url');
-  assert.equal(bookmark > 0 && execute > bookmark, true);
+  assert.equal(bookmark > 0 && migrate > bookmark && upload > bookmark && execute > bookmark, true);
   assert.equal(workflow.includes('time-travel restore'), false);
-  assert.equal(workflow.includes('d1 migrations apply'), false);
+  assert.equal(workflow.includes('d1 migrations apply'), true);
+  assert.match(workflow, /verify-migration-inventory\.mjs/);
+  assert.match(workflow, /check-major-league-partial-state\.mjs/);
+  assert.match(workflow, /check-schema-lock\.mjs/);
   assert.equal(workflow.includes('D1_STANDINGS_ENABLED = "true"'), false);
   assert.equal(workflow.includes('API_FOOTBALL_KEY'), false);
 });
 
 test('migrations keep foreign key enforcement active for local SQLite drivers', () => {
   const { DatabaseSync } = require('node:sqlite');
-  const files = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql',
-    '0003_d1_standings_publication.sql', '0004_d1_standings_order_and_fixture_date.sql'];
+  const { migrationFiles } = require('../scripts/d1/migration-inventory');
+  const files = migrationFiles(root);
   const database = new DatabaseSync(':memory:');
   for (const file of files) database.exec(fs.readFileSync(path.join(root, 'migrations', file), 'utf8'));
   assert.equal(database.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);

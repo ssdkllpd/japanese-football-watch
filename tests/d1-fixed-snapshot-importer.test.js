@@ -19,8 +19,9 @@ const {
   resolveTrackedPlayerCrosswalk,
   validateImportedSnapshot,
 } = require('../scripts/d1/fixed-snapshot-importer');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 const CREATED_AT = '2026-08-27T12:00:00.000Z';
 const SEASON = {
   id: '2026-27',
@@ -124,7 +125,7 @@ function sampleSnapshot(overrides = {}) {
 
 function openDatabase() {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   return database;
 }
 

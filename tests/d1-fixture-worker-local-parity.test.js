@@ -61,7 +61,7 @@ function bundle() {
       fixtureId: 'af:fixture:9001', playerId: 'af:player:1001', playerProviderId: 1001,
       playerName: 'Example Player', playerPhoto: null, teamId: 'af:team:40',
       position: 'F', starter: false, captain: false,
-      values: { minutes: 15, rating: 7.4, shots: 2, shotsOnTarget: 1, passes: 8 },
+      values: { minutes: 15, rating: 7.4, shots: 2, shotsOnTarget: 1, passes: 5, passesAccurate: 3 },
       fieldStates: {}, fieldIssues: {}, provenance: provenance(),
     }],
     sectionStates: {
@@ -100,11 +100,12 @@ function databaseState(db) {
   }));
 }
 
-test('Worker fixture publishing and local importer persist identical database state', async t => {
+async function assertWorkerLocalParity(t, value, setup = () => {}) {
   const local = database();
   const worker = database();
   t.after(() => { local.close(); worker.close(); });
-  const value = bundle();
+  setup(local);
+  setup(worker);
   const definitions = {
     schemaVersion: 'd1-fixture-correction-definitions/1', fixtureId: value.fixture.id,
     definitions: correctionDefinitions(value),
@@ -128,4 +129,33 @@ test('Worker fixture publishing and local importer persist identical database st
 
   assert.equal(report.imported, true);
   assert.deepEqual(databaseState(worker), databaseState(local));
+  return { local, worker };
+}
+
+test('Worker fixture publishing and local importer persist identical normal database state', async t => {
+  const value = bundle();
+  const { local } = await assertWorkerLocalParity(t, value);
+  assert.deepEqual({ ...local.prepare('SELECT passes, passes_accurate FROM fixture_player_stats').get() }, {
+    passes: 5, passes_accurate: 3,
+  });
+});
+
+test('Worker/local parity preserves zero boundaries', async t => {
+  const value = bundle();
+  value.playerStats[0].values = { minutes: 0, rating: 0, passes: 0, passesAccurate: 0 };
+  await assertWorkerLocalParity(t, value);
+});
+
+test('Worker/local parity accepts missing optional stats and a nameless provider venue', async t => {
+  const value = bundle();
+  value.playerStats[0].values = {};
+  value.fixture.venue.name = null;
+  const setup = database => database.exec(`
+    INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
+    INSERT INTO venues(id, canonical_id, source_id, provider_id, name, city)
+      VALUES (1, 'af:venue:10', 1, 10, 'Existing Core Venue', 'London');
+  `);
+  const { local } = await assertWorkerLocalParity(t, value, setup);
+  assert.equal(local.prepare('SELECT venue_id FROM fixtures').get().venue_id, 1);
+  assert.equal(local.prepare('SELECT name FROM venues WHERE id = 1').get().name, 'Existing Core Venue');
 });

@@ -1,0 +1,277 @@
+{
+  "schemaVersion": "jfw-d1-constraints-lock/1",
+  "migrations": [
+    {
+      "name": "0001_d1_core.sql",
+      "sha256": "65cfcbda9576ba68657cef067496d6fdab830e6ffd62b0c4987978425f85d1ae"
+    },
+    {
+      "name": "0002_d1_date_index_coverage.sql",
+      "sha256": "38821e26b9d33f98e392f19134623c21fd845da92c8c15cf267df114be213c08"
+    },
+    {
+      "name": "0003_d1_standings_publication.sql",
+      "sha256": "f1459ab9f9514f1f2e3c741d5ea4248863922d6bbcc540731b553dd0cad1ad94"
+    },
+    {
+      "name": "0004_d1_standings_order_and_fixture_date.sql",
+      "sha256": "5b57480c46405d20c766cfd2d063ba1cb5bda09b62cd748ecdd0e6ee43b14706"
+    },
+    {
+      "name": "0005_d1_player_passes_accurate.sql",
+      "sha256": "8ac87c258c33e16a60bd1521d88e33e54eb2c3815a4dacbd96e974e573b6b2ab"
+    }
+  ],
+  "tables": {
+    "fixture_player_stats": {
+      "columns": [
+        {
+          "name": "player_appearance_id",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 1
+        },
+        {
+          "name": "minutes",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "provider_rating",
+          "type": "REAL",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "goals",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "assists",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "goals_conceded",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "saves",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "shots",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "shots_on_target",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "passes",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "key_passes",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "passes_accurate",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "tackles",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "blocks",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "interceptions",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "duels",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "duels_won",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "dribble_attempts",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "dribbles",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "dribbled_past",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "fouls_drawn",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "fouls_committed",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "yellow_cards",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "red_cards",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "penalties_won",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "penalties_conceded",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "penalties_scored",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "penalties_missed",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "penalties_saved",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "extra_stats_json",
+          "type": "TEXT",
+          "notNull": false,
+          "primaryKey": 0
+        }
+      ],
+      "ddl": "CREATE TABLE \"fixture_player_stats\" ( player_appearance_id INTEGER PRIMARY KEY REFERENCES fixture_player_appearances(id) ON DELETE CASCADE, minutes INTEGER CHECK (minutes IS NULL OR minutes >= 0), provider_rating REAL CHECK (provider_rating IS NULL OR (provider_rating >= 0 AND provider_rating <= 10)), goals INTEGER CHECK (goals IS NULL OR goals >= 0), assists INTEGER CHECK (assists IS NULL OR assists >= 0), goals_conceded INTEGER CHECK (goals_conceded IS NULL OR goals_conceded >= 0), saves INTEGER CHECK (saves IS NULL OR saves >= 0), shots INTEGER CHECK (shots IS NULL OR shots >= 0), shots_on_target INTEGER CHECK (shots_on_target IS NULL OR shots_on_target >= 0), passes INTEGER CHECK (passes IS NULL OR passes >= 0), key_passes INTEGER CHECK (key_passes IS NULL OR key_passes >= 0), passes_accurate INTEGER CHECK ( passes_accurate IS NULL OR ( typeof(passes_accurate) = 'integer' AND passes_accurate >= 0 AND (passes IS NULL OR passes_accurate <= passes) ) ), tackles INTEGER CHECK (tackles IS NULL OR tackles >= 0), blocks INTEGER CHECK (blocks IS NULL OR blocks >= 0), interceptions INTEGER CHECK (interceptions IS NULL OR interceptions >= 0), duels INTEGER CHECK (duels IS NULL OR duels >= 0), duels_won INTEGER CHECK (duels_won IS NULL OR duels_won >= 0), dribble_attempts INTEGER CHECK (dribble_attempts IS NULL OR dribble_attempts >= 0), dribbles INTEGER CHECK (dribbles IS NULL OR dribbles >= 0), dribbled_past INTEGER CHECK (dribbled_past IS NULL OR dribbled_past >= 0), fouls_drawn INTEGER CHECK (fouls_drawn IS NULL OR fouls_drawn >= 0), fouls_committed INTEGER CHECK (fouls_committed IS NULL OR fouls_committed >= 0), yellow_cards INTEGER CHECK (yellow_cards IS NULL OR yellow_cards >= 0), red_cards INTEGER CHECK (red_cards IS NULL OR red_cards >= 0), penalties_won INTEGER CHECK (penalties_won IS NULL OR penalties_won >= 0), penalties_conceded INTEGER CHECK (penalties_conceded IS NULL OR penalties_conceded >= 0), penalties_scored INTEGER CHECK (penalties_scored IS NULL OR penalties_scored >= 0), penalties_missed INTEGER CHECK (penalties_missed IS NULL OR penalties_missed >= 0), penalties_saved INTEGER CHECK (penalties_saved IS NULL OR penalties_saved >= 0), extra_stats_json TEXT CHECK (extra_stats_json IS NULL OR json_valid(extra_stats_json)) )"
+    },
+    "fixture_team_stats": {
+      "columns": [
+        {
+          "name": "fixture_revision_id",
+          "type": "INTEGER",
+          "notNull": true,
+          "primaryKey": 1
+        },
+        {
+          "name": "team_id",
+          "type": "INTEGER",
+          "notNull": true,
+          "primaryKey": 2
+        },
+        {
+          "name": "shots_total",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "shots_on_goal",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "possession_percent",
+          "type": "REAL",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "passes_total",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "passes_accurate",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "fouls",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "corners",
+          "type": "INTEGER",
+          "notNull": false,
+          "primaryKey": 0
+        },
+        {
+          "name": "extra_stats_json",
+          "type": "TEXT",
+          "notNull": false,
+          "primaryKey": 0
+        }
+      ],
+      "ddl": "CREATE TABLE fixture_team_stats ( fixture_revision_id INTEGER NOT NULL REFERENCES fixture_revisions(id) ON DELETE CASCADE, team_id INTEGER NOT NULL REFERENCES teams(id), shots_total INTEGER CHECK (shots_total IS NULL OR shots_total >= 0), shots_on_goal INTEGER CHECK (shots_on_goal IS NULL OR shots_on_goal >= 0), possession_percent REAL CHECK (possession_percent IS NULL OR (possession_percent >= 0 AND possession_percent <= 100)), passes_total INTEGER CHECK (passes_total IS NULL OR passes_total >= 0), passes_accurate INTEGER CHECK (passes_accurate IS NULL OR passes_accurate >= 0), fouls INTEGER CHECK (fouls IS NULL OR fouls >= 0), corners INTEGER CHECK (corners IS NULL OR corners >= 0), extra_stats_json TEXT CHECK (extra_stats_json IS NULL OR json_valid(extra_stats_json)), PRIMARY KEY (fixture_revision_id, team_id) ) WITHOUT ROWID"
+    }
+  }
+}

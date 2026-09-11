@@ -60,6 +60,7 @@ jobs:
       - name: Install dependencies and run migration-specific tests
         run: |
           npm ci
+          node scripts/d1/check-schema-lock.mjs
           node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-major-league-admin-ingest.test.js
 
       - name: Download the exact pinned snapshot from R2
@@ -117,15 +118,51 @@ jobs:
       - name: Render exact staging admin configuration
         run: node scripts/d1/render-admin-wrangler.mjs --output .tmp/d1-major-migrate/admin-wrangler.toml
 
-      - name: Verify D1 schema is already at migration 0004
+      - name: Verify repository-derived D1 migration prefix
         run: |
           set -euo pipefail
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/d1-major-migrate/admin-wrangler.toml \
             --command "SELECT id,name FROM d1_migrations ORDER BY id" \
             > .tmp/d1-major-migrate/preflight-migrations.json
-          jq -e '.[0].results | length==4 and .[3].name=="0004_d1_standings_order_and_fixture_date.sql"' \
-            .tmp/d1-major-migrate/preflight-migrations.json >/dev/null
+          node scripts/d1/verify-migration-inventory.mjs \
+            --inventory .tmp/d1-major-migrate/preflight-migrations.json --allow-pending \
+            > .tmp/d1-major-migrate/preflight-migration-verification.json
+
+      - name: Fail closed on partial or unexpected target migration state
+        run: |
+          set -euo pipefail
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --write-query .tmp/d1-major-migrate/fixture-state-query.sql
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --file .tmp/d1-major-migrate/fixture-state-query.sql \
+            > .tmp/d1-major-migrate/preflight-fixture-state.json
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --inventory .tmp/d1-major-migrate/preflight-fixture-state.json \
+            > .tmp/d1-major-migrate/preflight-partial-state-report.json
+
+      - name: Capture pre-write D1 Time Travel bookmark
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 time-travel info "$D1_DATABASE_NAME" --json \
+            > .tmp/d1-major-migrate/pre-write-bookmark.json
+          test -s .tmp/d1-major-migrate/pre-write-bookmark.json
+
+      - name: Apply and exactly verify repository D1 migrations
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 migrations apply "$D1_DATABASE_NAME" --remote \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --command "SELECT id,name FROM d1_migrations ORDER BY id" \
+            > .tmp/d1-major-migrate/post-migrations.json
+          node scripts/d1/verify-migration-inventory.mjs \
+            --inventory .tmp/d1-major-migrate/post-migrations.json \
+            > .tmp/d1-major-migrate/post-migration-verification.json
 
       - name: Upload only content-addressed non-public migration artifacts
         run: |
@@ -148,13 +185,6 @@ jobs:
           npx --yes wrangler@4 deploy --config .tmp/d1-major-migrate/admin-wrangler.toml
           printf '%s' "$ADMIN_INGEST_TOKEN" | npx --yes wrangler@4 secret put ADMIN_INGEST_TOKEN \
             --config .tmp/d1-major-migrate/admin-wrangler.toml
-
-      - name: Capture pre-write D1 Time Travel bookmark
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4 d1 time-travel info "$D1_DATABASE_NAME" --json \
-            > .tmp/d1-major-migrate/pre-write-bookmark.json
-          test -s .tmp/d1-major-migrate/pre-write-bookmark.json
 
       - name: Execute idempotent staging migration and exact scoped verification
         run: |
@@ -184,7 +214,12 @@ jobs:
             .tmp/d1-major-migrate/prepared/migration-manifest.json
             .tmp/d1-major-migrate/validation-only-report.json
             .tmp/d1-major-migrate/preflight-migrations.json
+            .tmp/d1-major-migrate/preflight-migration-verification.json
+            .tmp/d1-major-migrate/preflight-fixture-state.json
+            .tmp/d1-major-migrate/preflight-partial-state-report.json
             .tmp/d1-major-migrate/pre-write-bookmark.json
+            .tmp/d1-major-migrate/post-migrations.json
+            .tmp/d1-major-migrate/post-migration-verification.json
             .tmp/d1-major-migrate/execution-report.json
           if-no-files-found: warn
           retention-days: 30

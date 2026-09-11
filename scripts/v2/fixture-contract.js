@@ -13,6 +13,11 @@ function numeric(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function nonNegativeInteger(value) {
+  const parsed = numeric(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function text(value) {
   if (value === null || value === undefined) return null;
   const normalized = String(value).trim();
@@ -154,8 +159,8 @@ function normalizeEvents(fixture, fixtureProviderId, fetchedAt) {
     type: canonicalEventType(event?.type),
     detail: text(event?.detail),
     comments: text(event?.comments),
-    elapsed: numeric(event?.time?.elapsed),
-    extra: numeric(event?.time?.extra),
+    elapsed: nonNegativeInteger(event?.time?.elapsed),
+    extra: nonNegativeInteger(event?.time?.extra),
     teamId: afId('team', numeric(event?.team?.id) ?? event?.team?.id ?? null),
     playerId: afId('player', providerPlayerId(event?.player?.id)),
     relatedPlayerId: afId('player', providerPlayerId(event?.assist?.id)),
@@ -188,7 +193,7 @@ function normalizePlayerStats(fixture, fetchedAt) {
       assignNumeric(values, 'shotsOnTarget', stats?.shots?.on);
       assignNumeric(values, 'passes', stats?.passes?.total);
       assignNumeric(values, 'keyPasses', stats?.passes?.key);
-      assignNumeric(values, 'passAccuracy', stats?.passes?.accuracy);
+      assignNumeric(values, 'passesAccurate', stats?.passes?.accuracy);
       assignNumeric(values, 'tackles', stats?.tackles?.total);
       assignNumeric(values, 'blocks', stats?.tackles?.blocks);
       assignNumeric(values, 'interceptions', stats?.tackles?.interceptions);

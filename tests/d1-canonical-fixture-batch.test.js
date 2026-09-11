@@ -14,8 +14,9 @@ const {
 } = require('../scripts/d1/canonical-fixture-batch');
 const { normalizeFixtureBundle } = require('../scripts/d1/fixture-shadow-compare');
 const { sha256 } = require('../scripts/d1/fixed-snapshot');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 
 function bundle(providerFixtureId) {
   const fixtureId = `af:fixture:${providerFixtureId}`;
@@ -71,7 +72,7 @@ function bundle(providerFixtureId) {
 
 function createDatabase(file = ':memory:') {
   const database = new DatabaseSync(file);
-  database.exec(migration);
+  applyMigrations(database, root);
   database.exec(`INSERT INTO product_seasons(canonical_id, label, starts_on, ends_on)
     VALUES ('jfw:season:2026-27', '2026-27', '2026-07-01', '2027-06-30')`);
   return database;

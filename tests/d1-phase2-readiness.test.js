@@ -17,6 +17,7 @@ const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
 const { buildTrackedPlayerCrosswalkPlan } = require('../scripts/d1/tracked-player-crosswalk-plan');
 const { applyTrackedPlayerCrosswalkPlan } = require('../scripts/d1/tracked-player-crosswalk-executor');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 const {
   importTrackedPlayerRatings,
   ratingCountForExpectedEntries,
@@ -34,7 +35,7 @@ const {
   verifyUnresolvedTrackedPlayerIdentities,
 } = require('../scripts/d1/phase2-readiness');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 const CONTENT_SHA256 = 'a'.repeat(64);
 
 function fixedSnapshot({ mixed = false } = {}) {
@@ -131,7 +132,7 @@ function fixedSnapshot({ mixed = false } = {}) {
 
 function canonicalDatabase(snapshot, file = ':memory:') {
   const database = new DatabaseSync(file);
-  database.exec(migration);
+  applyMigrations(database, root);
   importFixedSnapshot(database, snapshot);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (2, 'api-football', 'v3');

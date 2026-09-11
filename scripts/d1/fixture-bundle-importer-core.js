@@ -14,7 +14,7 @@ const CORRECTION_DEFINITIONS_SCHEMA_VERSION = 'd1-fixture-correction-definitions
 const PLAYER_STAT_COLUMNS = {
   minutes: 'minutes', rating: 'provider_rating', goals: 'goals', assists: 'assists',
   goalsConceded: 'goals_conceded', saves: 'saves', shots: 'shots', shotsOnTarget: 'shots_on_target',
-  passes: 'passes', keyPasses: 'key_passes', passAccuracy: 'pass_accuracy', tackles: 'tackles',
+  passes: 'passes', keyPasses: 'key_passes', passesAccurate: 'passes_accurate', tackles: 'tackles',
   blocks: 'blocks', interceptions: 'interceptions', duels: 'duels', duelsWon: 'duels_won',
   dribbleAttempts: 'dribble_attempts', dribbles: 'dribbles', dribbledPast: 'dribbled_past',
   foulsDrawn: 'fouls_drawn', foulsCommitted: 'fouls_committed', yellowCards: 'yellow_cards',
@@ -26,6 +26,10 @@ const TEAM_STAT_COLUMNS = {
   total_shots: 'shots_total', shots_on_goal: 'shots_on_goal', ball_possession: 'possession_percent',
   total_passes: 'passes_total', passes_accurate: 'passes_accurate', fouls: 'fouls', corner_kicks: 'corners',
 };
+
+const PLAYER_REAL_STATS = new Set(['rating']);
+const TEAM_REAL_STATS = new Set(['ball_possession']);
+const DEPRECATED_PLAYER_STATS = new Set(['passAccuracy']);
 
 function row(database, sql, ...params) {
   return database.prepare(sql).get(...params) || null;
@@ -108,6 +112,19 @@ function validateStateMap(states, path) {
   }
 }
 
+function validateTypedStats(values, columns, realKeys, path) {
+  for (const [key, value] of Object.entries(values)) {
+    if (!columns[key]) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(`${path}.${key} must be a finite number.`);
+    }
+    if (!realKeys.has(key) && !Number.isSafeInteger(value)) {
+      throw new Error(`${path}.${key} must be a safe integer.`);
+    }
+    if (value < 0) throw new Error(`${path}.${key} must not be negative.`);
+  }
+}
+
 function validateRawUtcTimes(bundle) {
   requireUtc(bundle?.fixture?.kickoffUtc, 'fixture.kickoffUtc');
   requireUtc(bundle?.fixture?.reconciledAt, 'fixture.reconciledAt');
@@ -151,6 +168,12 @@ function validateBundle(bundle, catalog = {}) {
   requireValue(fixture.status?.short, 'fixture.status.short');
   const source = requireValue(fixture.provenance?.source, 'fixture.provenance.source');
   validateProvenance(fixture, source, publishedAt, 'fixture');
+  if (fixture.venue?.id !== null) {
+    requireInteger(fixture.venue?.providerId, 'fixture.venue.providerId');
+    requireCanonicalId(fixture.venue.id, 'venue', fixture.venue.providerId, 'fixture.venue.id');
+  } else if (!equalJson(fixture.venue, { id: null, providerId: null, name: null, city: null })) {
+    throw new Error('A missing venue must contain only null canonical fields.');
+  }
 
   requireInteger(normalized.competition?.providerId, 'competition.providerId');
   requireCanonicalId(normalized.competition.id, 'competition', normalized.competition.providerId, 'competition.id');
@@ -209,6 +232,15 @@ function validateBundle(bundle, catalog = {}) {
     if (!stat.values || typeof stat.values !== 'object' || Array.isArray(stat.values)) throw new Error(`${path}.values must be an object.`);
     for (const [key, value] of Object.entries(stat.values)) {
       if (value === null || value === undefined) throw new Error(`${path}.values.${key} must be omitted instead of null.`);
+      if (DEPRECATED_PLAYER_STATS.has(key)) throw new Error(`${path}.values.${key} is deprecated; use passesAccurate.`);
+    }
+    validateTypedStats(stat.values, PLAYER_STAT_COLUMNS, PLAYER_REAL_STATS, `${path}.values`);
+    if (Object.hasOwn(stat.values, 'rating') && stat.values.rating > 10) {
+      throw new Error(`${path}.values.rating must be between 0 and 10.`);
+    }
+    if (Object.hasOwn(stat.values, 'passesAccurate') && Object.hasOwn(stat.values, 'passes')
+      && stat.values.passesAccurate > stat.values.passes) {
+      throw new Error(`${path}.values.passesAccurate must not exceed passes.`);
     }
     validateStateMap(stat.fieldStates || {}, `${path}.fieldStates`);
     if (!stat.fieldIssues || typeof stat.fieldIssues !== 'object' || Array.isArray(stat.fieldIssues)) throw new Error(`${path}.fieldIssues must be an object.`);
@@ -220,6 +252,11 @@ function validateBundle(bundle, catalog = {}) {
     const path = `events[${index}]`;
     requireValue(event.id, `${path}.id`);
     if (!EVENT_TYPES.has(event.type)) throw new Error(`${path}.type is invalid.`);
+    for (const key of ['elapsed', 'extra']) {
+      if (event[key] !== null && (!Number.isSafeInteger(event[key]) || event[key] < 0)) {
+        throw new Error(`${path}.${key} must be a non-negative safe integer or null.`);
+      }
+    }
     if (event.teamId !== null && !teams.has(event.teamId)) throw new Error(`${path}.teamId must be a fixture team or null.`);
     for (const field of ['playerId', 'relatedPlayerId']) {
       if (event[field] !== null && !players.has(event[field])) throw new Error(`${path}.${field} lacks canonical player metadata.`);
@@ -232,6 +269,14 @@ function validateBundle(bundle, catalog = {}) {
     if (!stat.values || typeof stat.values !== 'object' || Array.isArray(stat.values)) throw new Error(`teamStats[${index}].values must be an object.`);
     for (const [key, value] of Object.entries(stat.values)) {
       if (value === null || value === undefined) throw new Error(`teamStats[${index}].values.${key} must be omitted instead of null.`);
+    }
+    validateTypedStats(stat.values, TEAM_STAT_COLUMNS, TEAM_REAL_STATS, `teamStats[${index}].values`);
+    if (Object.hasOwn(stat.values, 'ball_possession') && stat.values.ball_possession > 100) {
+      throw new Error(`teamStats[${index}].values.ball_possession must be between 0 and 100.`);
+    }
+    if (Object.hasOwn(stat.values, 'passes_accurate') && Object.hasOwn(stat.values, 'total_passes')
+      && stat.values.passes_accurate > stat.values.total_passes) {
+      throw new Error(`teamStats[${index}].values.passes_accurate must not exceed total_passes.`);
     }
     validateProvenance(stat, source, publishedAt, `teamStats[${index}]`);
   }
@@ -326,18 +371,15 @@ function upsertMasterData(database, context, catalog) {
   let venue = null;
   if (normalized.fixture.venue?.id !== null) {
     const item = normalized.fixture.venue;
-    requireInteger(item.providerId, 'fixture.venue.providerId');
-    requireCanonicalId(item.id, 'venue', item.providerId, 'fixture.venue.id');
-    requireValue(item.name, 'fixture.venue.name');
-    run(database, `INSERT INTO venues(canonical_id, source_id, provider_id, name, city)
-      VALUES (?1, ?2, ?3, ?4, ?5)
-      ON CONFLICT(canonical_id) DO UPDATE SET name = excluded.name, city = excluded.city`,
-    item.id, sourceRow.id, item.providerId, item.name, item.city);
+    if (item.name) {
+      run(database, `INSERT INTO venues(canonical_id, source_id, provider_id, name, city)
+        VALUES (?1, ?2, ?3, ?4, ?5)
+        ON CONFLICT(canonical_id) DO UPDATE SET name = excluded.name, city = excluded.city`,
+      item.id, sourceRow.id, item.providerId, item.name, item.city);
+    }
     venue = row(database, `SELECT id, source_id, provider_id FROM venues
       WHERE canonical_id = ?1`, item.id);
-    assertProviderIdentity(venue, item.providerId, sourceRow.id, `venue ${item.id}`);
-  } else if (!equalJson(normalized.fixture.venue, { id: null, providerId: null, name: null, city: null })) {
-    throw new Error('A missing venue must contain only null canonical fields.');
+    if (venue) assertProviderIdentity(venue, item.providerId, sourceRow.id, `venue ${item.id}`);
   }
   return { season, sourceRow, venue };
 }

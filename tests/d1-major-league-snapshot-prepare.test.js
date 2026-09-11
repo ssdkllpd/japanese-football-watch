@@ -375,3 +375,15 @@ test('builds a complete hash-checked migration request sequence without writing'
     'migration_verify',
   ]);
 });
+
+test('validate-only pass state is derived from concrete validation checks', async () => {
+  const paths = buildSnapshot();
+  run(paths);
+  const { validatePrepared, validationResult } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const prepared = validatePrepared(paths.outputRoot, paths.evidencePath);
+  assert.equal(validationResult(prepared).passed, true);
+  prepared.summary.adminRequests += 1;
+  const failed = validationResult(prepared);
+  assert.equal(failed.passed, false);
+  assert.equal(failed.checks.requestCountMatches, false);
+});

@@ -16,14 +16,13 @@ const {
   currentSnapshotInputs,
   stableStringify,
 } = require('../scripts/d1/fixed-snapshot');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migrations = ['0001_d1_core.sql', '0002_d1_date_index_coverage.sql', '0003_d1_standings_publication.sql',
-  '0004_d1_standings_order_and_fixture_date.sql']
-  .map(file => fs.readFileSync(path.join(__dirname, '..', 'migrations', file), 'utf8'));
+const root = path.join(__dirname, '..');
 
 function database() {
   const db = new DatabaseSync(':memory:');
-  for (const migration of migrations) db.exec(migration);
+  applyMigrations(db, root);
   return db;
 }
 

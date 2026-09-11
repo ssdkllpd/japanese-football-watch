@@ -324,7 +324,7 @@ function addMasterStatements(database, statements, context, catalog) {
     })))]));
   }
   const venue = normalized.fixture.venue;
-  if (venue?.id) {
+  if (venue?.id && venue.name) {
     statements.push(statement(database, `
       INSERT INTO venues(canonical_id, source_id, provider_id, name, city)
       VALUES (?, (SELECT id FROM provider_sources WHERE code = ?), ?, ?, ?)

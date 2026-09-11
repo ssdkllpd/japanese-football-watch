@@ -122,7 +122,7 @@ test('final fixture events can establish explicit zero while unsupported fields 
         statistics: [{
           games: { minutes: 90, position: 'G', substitute: false },
           goals: { total: 0, conceded: 0, assists: null, saves: 3 },
-          passes: { total: 30, key: 0, accuracy: 25 },
+          passes: { total: 5, key: 0, accuracy: 3 },
           cards: { yellow: 0, red: 0 },
           penalty: { saved: 0, commited: 0 },
         }],
@@ -145,8 +145,8 @@ test('final fixture events can establish explicit zero while unsupported fields 
   assert.equal(record.values.cleanSheets, 1);
   assert.equal(record.values.saves, 3);
   assert.equal(record.values.shotsOnTargetFaced, 3);
-  assert.equal(record.values.passesCompleted, 25);
-  assert.equal(record.values.passesAttempted, 30);
+  assert.equal(record.values.passesCompleted, 3);
+  assert.equal(record.values.passesAttempted, 5);
   assert.equal(record.values.highClaims, undefined);
   assert.ok(record.missingFields.includes('highClaims'));
 });
