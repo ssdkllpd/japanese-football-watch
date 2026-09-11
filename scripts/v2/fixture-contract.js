@@ -99,6 +99,19 @@ function normalizeTeam(team) {
   };
 }
 
+function normalizeVenue(venue) {
+  const providerId = numeric(venue?.id) ?? venue?.id ?? null;
+  if (providerId === null) {
+    return { id: null, providerId: null, name: null, city: null };
+  }
+  return {
+    id: afId('venue', providerId),
+    providerId,
+    name: text(venue?.name),
+    city: text(venue?.city),
+  };
+}
+
 function normalizeCoach(coach) {
   if (!coach) return null;
   const providerId = numeric(coach.id);
@@ -308,12 +321,7 @@ function normalizeFixtureBundle(fixture, options = {}) {
       productTimeZone: PRODUCT_TIME_ZONE,
       round: text(fixture?.league?.round),
       referee: text(fixture?.fixture?.referee),
-      venue: {
-        id: afId('venue', numeric(fixture?.fixture?.venue?.id) ?? fixture?.fixture?.venue?.id ?? null),
-        providerId: numeric(fixture?.fixture?.venue?.id) ?? fixture?.fixture?.venue?.id ?? null,
-        name: text(fixture?.fixture?.venue?.name),
-        city: text(fixture?.fixture?.venue?.city),
-      },
+      venue: normalizeVenue(fixture?.fixture?.venue),
       status: {
         short: statusShort,
         long: text(fixture?.fixture?.status?.long),

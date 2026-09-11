@@ -35,7 +35,10 @@ function standing(team, rank) {
   };
 }
 
-function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePlayerCount = 0 } = {}) {
+function buildSnapshot({
+  seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePlayerCount = 0,
+  fixtureVenue = { id: 10, name: 'Example Stadium', city: 'London' },
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-d1-prepare-'));
   const snapshotRoot = path.join(root, 'snapshot');
   const leagueDir = path.join(snapshotRoot, 'league-39');
@@ -54,7 +57,7 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePl
       date: '2026-09-01T18:00:00+00:00',
       timestamp: 1788285600,
       referee: null,
-      venue: { id: 10, name: 'Example Stadium', city: 'London' },
+      venue: fixtureVenue,
       status: { long: 'Match Finished', short: 'FT', elapsed: 90 },
     },
     league: { id: fixtureLeague, name: 'Premier League', country: 'England', logo: null, flag: null, season: 2026, round: 'Regular Season - 1' },
@@ -269,6 +272,20 @@ test('prepares a fixture with 51 lineup and player-stat rows without truncation'
     (sum, lineup) => sum + lineup.startXI.length + lineup.substitutes.length, 0,
   ), 51);
   assert.equal(prepared.bundle.playerStats.length, 51);
+});
+
+test('prepares a fixture whose provider venue has a name but no identity without inventing a venue', () => {
+  const paths = buildSnapshot({
+    fixtureVenue: { id: null, name: 'Unidentified Ground', city: 'London' },
+  });
+  const result = run(paths);
+  assert.equal(result.validationReport.passed, true);
+  const prepared = JSON.parse(fs.readFileSync(
+    path.join(paths.outputRoot, 'fixtures', '39', '100.json'), 'utf8',
+  ));
+  assert.deepEqual(prepared.bundle.fixture.venue, {
+    id: null, providerId: null, name: null, city: null,
+  });
 });
 
 test('fails closed when provider season 2026 does not end in 2027', () => {

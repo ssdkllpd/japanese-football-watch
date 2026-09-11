@@ -95,6 +95,13 @@ test('general fixture contract uses provider-native IDs, UTC canonical time and 
   assert.deepEqual(contract.validateFixtureBundle(bundle), []);
 });
 
+test('a provider venue without an id is normalized to an entirely missing venue', () => {
+  const fixture = sampleFixture();
+  fixture.fixture.venue = { id: null, name: 'Unidentified Ground', city: 'London' };
+  const bundle = contract.normalizeFixtureBundle(fixture, { finalized: true });
+  assert.deepEqual(bundle.fixture.venue, { id: null, providerId: null, name: null, city: null });
+});
+
 test('2.1 fixture publisher rejects a bundle with missing or invalid detail availability', () => {
   const missing = contract.normalizeFixtureBundle(sampleFixture());
   delete missing.detailAvailability;
