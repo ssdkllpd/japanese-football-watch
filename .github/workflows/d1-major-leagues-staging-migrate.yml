@@ -137,7 +137,7 @@ jobs:
             --write-query .tmp/d1-major-migrate/fixture-state-query.sql
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/d1-major-migrate/admin-wrangler.toml \
-            --file .tmp/d1-major-migrate/fixture-state-query.sql \
+            --command "$(< .tmp/d1-major-migrate/fixture-state-query.sql)" \
             > .tmp/d1-major-migrate/preflight-fixture-state.json
           node scripts/d1/check-major-league-partial-state.mjs \
             --prepared .tmp/d1-major-migrate/prepared \
