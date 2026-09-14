@@ -37,6 +37,15 @@ export function expectedState(preparedRoot) {
   const manifest = readJson(path.join(root, 'migration-manifest.json'));
   const fixtures = new Map();
   const details = new Map();
+  const upgrades = new Map();
+  for (const item of manifest.fixtureRevisionOverrides || []) {
+    if (upgrades.has(item.fixtureId)) throw new Error(`Duplicate expected fixture upgrade: ${item.fixtureId}.`);
+    upgrades.set(item.fixtureId, {
+      previousRevision: Number(item.previousRevision),
+      previousContentSha256: item.previousContentSha256,
+      migrationRevision: Number(item.migrationRevision),
+    });
+  }
   for (const league of manifest.leagues || []) {
     const core = readJson(path.join(root, league.coreArtifact.path));
     for (const item of core.fixtures || []) {
@@ -49,10 +58,21 @@ export function expectedState(preparedRoot) {
       details.set(declaration.fixtureId, {
         revision: normalized.fixture.revision,
         contentSha256: sha256(normalized),
+        upgradeFrom: upgrades.get(declaration.fixtureId) || null,
       });
     }
   }
-  return { fixtures, details };
+  for (const [fixtureId, upgrade] of upgrades) {
+    const detail = details.get(fixtureId);
+    if (!detail || !Number.isInteger(upgrade.previousRevision) || upgrade.previousRevision < 1
+      || !Number.isInteger(upgrade.migrationRevision)
+      || upgrade.migrationRevision !== upgrade.previousRevision + 1
+      || upgrade.migrationRevision !== detail.revision
+      || !/^[0-9a-f]{64}$/.test(String(upgrade.previousContentSha256 || ''))) {
+      throw new Error(`Invalid expected fixture upgrade: ${fixtureId}.`);
+    }
+  }
+  return { fixtures, details, upgrades };
 }
 
 export function partialStateQuery(preparedRoot) {
@@ -77,9 +97,14 @@ export function partialStateQuery(preparedRoot) {
 export function detectPartialState(preparedRoot, payload) {
   const expected = expectedState(preparedRoot);
   const rows = inventoryRows(payload);
+  if (rows.length === 0 && expected.upgrades.size > 0) {
+    throw new Error('Required previous fixture revisions are missing from the migration target.');
+  }
   if (rows.length === 0) return {
     state: 'clean', passed: true, expectedFixtures: expected.fixtures.size,
     expectedDetails: expected.details.size, storedFixtures: 0, matchedDetails: 0,
+    pendingFixtures: expected.fixtures.size, pendingDetails: expected.details.size,
+    pendingUpgrades: 0,
   };
 
   const byFixture = new Map();
@@ -94,11 +119,13 @@ export function detectPartialState(preparedRoot, payload) {
     if (!byFixture.has(row.fixture_id)) byFixture.set(row.fixture_id, []);
     byFixture.get(row.fixture_id).push(row);
   }
-  if (byFixture.size !== expected.fixtures.size) {
-    throw new Error(`Partial migration fixture set detected (${byFixture.size}/${expected.fixtures.size}).`);
+  for (const fixtureId of expected.upgrades.keys()) {
+    if (!byFixture.has(fixtureId)) {
+      throw new Error(`Required previous fixture revision is missing: ${fixtureId}.`);
+    }
   }
-
   let matchedDetails = 0;
+  let pendingUpgrades = 0;
   for (const [fixtureId, fixtureRows] of byFixture) {
     const expectedDetail = expected.details.get(fixtureId);
     const populated = fixtureRows.filter(row => row.revision_no !== null && row.revision_no !== undefined);
@@ -106,21 +133,69 @@ export function detectPartialState(preparedRoot, payload) {
       if (populated.length) throw new Error(`Unexpected detail revision exists for compact fixture: ${fixtureId}.`);
       continue;
     }
-    if (populated.length !== 1) throw new Error(`Unexpected revision count for ${fixtureId}: ${populated.length}.`);
-    const row = populated[0];
-    if (row.revision_no !== expectedDetail.revision
-      || row.content_sha256 !== expectedDetail.contentSha256
-      || row.lifecycle_state !== 'published' || Number(row.is_published) !== 1) {
-      throw new Error(`Fixture revision/hash/publication differs from prepared migration: ${fixtureId}.`);
+    if (populated.length === 0) {
+      if (expectedDetail.upgradeFrom) {
+        throw new Error(`Required previous fixture revision is missing: ${fixtureId}.`);
+      }
+      continue;
     }
-    matchedDetails += 1;
+
+    const revisionNumbers = new Set();
+    for (const row of populated) {
+      const revision = Number(row.revision_no);
+      if (!Number.isInteger(revision) || revision < 1 || revisionNumbers.has(revision)) {
+        throw new Error(`Invalid or duplicate revision history for ${fixtureId}.`);
+      }
+      revisionNumbers.add(revision);
+    }
+    const published = populated.filter(row => Number(row.is_published) === 1);
+    if (published.length !== 1) {
+      throw new Error(`Fixture must have exactly one published revision: ${fixtureId}.`);
+    }
+    const current = published[0];
+    const currentRevision = Number(current.revision_no);
+    if (current.lifecycle_state !== 'published') {
+      throw new Error(`Published fixture revision has an invalid lifecycle: ${fixtureId}.`);
+    }
+    for (const row of populated) {
+      const revision = Number(row.revision_no);
+      if (row === current) continue;
+      if (revision >= currentRevision || row.lifecycle_state !== 'superseded'
+        || Number(row.is_published) !== 0) {
+        throw new Error(`Fixture revision history is inconsistent: ${fixtureId}.`);
+      }
+    }
+    if (currentRevision > expectedDetail.revision) {
+      throw new Error(`Fixture has a revision newer than the prepared migration: ${fixtureId}.`);
+    }
+    if (currentRevision === expectedDetail.revision) {
+      if (current.content_sha256 !== expectedDetail.contentSha256) {
+        throw new Error(`Fixture hash differs at the prepared revision: ${fixtureId}.`);
+      }
+      matchedDetails += 1;
+      continue;
+    }
+    const upgradeFrom = expectedDetail.upgradeFrom;
+    if (!upgradeFrom || currentRevision !== upgradeFrom.previousRevision
+      || expectedDetail.revision !== upgradeFrom.migrationRevision
+      || current.content_sha256 !== upgradeFrom.previousContentSha256) {
+      throw new Error(`Fixture cannot be upgraded directly to the prepared revision: ${fixtureId}.`);
+    }
+    pendingUpgrades += 1;
   }
-  if (matchedDetails !== expected.details.size) {
-    throw new Error(`Partial migration detail set detected (${matchedDetails}/${expected.details.size}).`);
-  }
+  const pendingFixtures = expected.fixtures.size - byFixture.size;
+  const pendingDetails = expected.details.size - matchedDetails;
+  const complete = pendingFixtures === 0 && pendingDetails === 0;
   return {
-    state: 'complete', passed: true, expectedFixtures: expected.fixtures.size,
-    expectedDetails: expected.details.size, storedFixtures: byFixture.size, matchedDetails,
+    state: complete ? 'complete' : 'compatible-partial',
+    passed: true,
+    expectedFixtures: expected.fixtures.size,
+    expectedDetails: expected.details.size,
+    storedFixtures: byFixture.size,
+    matchedDetails,
+    pendingFixtures,
+    pendingDetails,
+    pendingUpgrades,
   };
 }
 

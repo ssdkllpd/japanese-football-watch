@@ -182,6 +182,11 @@ function buildSnapshot({
     snapshotId: manifest.snapshotId,
     archiveKey,
     archiveSha256,
+    fixtureRevisionReview: {
+      observedAt,
+      overrideCount: 0,
+      overrides: [],
+    },
     leagues: [{
       league: 39,
       competitionId: 'af:competition:39',
@@ -272,6 +277,51 @@ test('prepares a fixture with 51 lineup and player-stat rows without truncation'
     (sum, lineup) => sum + lineup.startXI.length + lineup.substitutes.length, 0,
   ), 51);
   assert.equal(prepared.bundle.playerStats.length, 51);
+});
+
+test('applies only a pinned fixture revision override and records it in the output', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.fixtureRevisionReview = {
+    observedAt: '2026-09-08T02:15:09.068Z',
+    overrideCount: 1,
+    overrides: [{
+      fixtureId: 'af:fixture:100',
+      previousRevision: 1,
+      previousContentSha256: '1'.repeat(64),
+      migrationRevision: 2,
+      reason: 'supersedes-reviewed-staging-revision',
+    }],
+  };
+  writeJson(paths.evidencePath, evidence);
+
+  const result = run(paths);
+  const prepared = JSON.parse(fs.readFileSync(
+    path.join(paths.outputRoot, 'fixtures', '39', '100.json'), 'utf8',
+  ));
+  assert.equal(prepared.bundle.fixture.revision, 2);
+  assert.equal(result.migrationManifest.leagues[0].fixtureArtifacts[0].revision, 2);
+  assert.deepEqual(result.validationReport.fixtureRevisionOverrides,
+    evidence.fixtureRevisionReview.overrides);
+});
+
+test('fails closed when a pinned fixture revision override is not consumed', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.fixtureRevisionReview = {
+    observedAt: '2026-09-08T02:15:09.068Z',
+    overrideCount: 1,
+    overrides: [{
+      fixtureId: 'af:fixture:999',
+      previousRevision: 1,
+      previousContentSha256: '1'.repeat(64),
+      migrationRevision: 2,
+      reason: 'supersedes-reviewed-staging-revision',
+    }],
+  };
+  writeJson(paths.evidencePath, evidence);
+
+  assert.throws(() => run(paths), /Reviewed fixture revision overrides identity set mismatch/);
 });
 
 test('prepares a fixture whose provider venue has a name but no identity without inventing a venue', () => {

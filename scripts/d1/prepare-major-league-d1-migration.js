@@ -170,6 +170,37 @@ function assertReviewedEvidence(evidence, latest, manifest, leagues, totals) {
   }
 }
 
+function reviewedFixtureRevisionOverrides(evidence, latest) {
+  const review = evidence?.fixtureRevisionReview;
+  if (!review || review.observedAt !== latest.completedAt
+    || !Array.isArray(review.overrides) || review.overrideCount !== review.overrides.length) {
+    fail('Pinned fixture revision review is missing or stale.');
+  }
+  const overrides = new Map();
+  for (const item of review.overrides) {
+    const fixtureId = String(item?.fixtureId || '');
+    const previousRevision = Number(item?.previousRevision);
+    const migrationRevision = Number(item?.migrationRevision);
+    const previousContentSha256 = String(item?.previousContentSha256 || '');
+    if (!/^af:fixture:\d+$/.test(fixtureId)
+      || !Number.isInteger(previousRevision) || previousRevision < 1
+      || !Number.isInteger(migrationRevision) || migrationRevision !== previousRevision + 1
+      || !/^[0-9a-f]{64}$/.test(previousContentSha256)
+      || typeof item?.reason !== 'string' || item.reason.length === 0) {
+      fail(`Pinned fixture revision override is invalid: ${fixtureId || '<missing>'}.`);
+    }
+    if (overrides.has(fixtureId)) fail(`Duplicate fixture revision override: ${fixtureId}.`);
+    overrides.set(fixtureId, {
+      fixtureId,
+      previousRevision,
+      previousContentSha256,
+      migrationRevision,
+      reason: item.reason,
+    });
+  }
+  return overrides;
+}
+
 function normalizedProviderIdentityOmission(value) {
   return {
     league: value?.league,
@@ -566,6 +597,14 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
       if (!Array.isArray(raw?.[section])) fail(`Completed fixture ${file.id} is missing ${section}.`);
     }
     const bundle = normalizeFixtureBundle(raw, { fetchedAt: context.observedAt });
+    const revisionOverride = context.fixtureRevisionOverrides.get(bundle.fixture.id);
+    if (revisionOverride) {
+      if (bundle.fixture.revision !== revisionOverride.previousRevision) {
+        fail(`Fixture ${bundle.fixture.id} does not match its reviewed previous revision.`);
+      }
+      bundle.fixture.revision = revisionOverride.migrationRevision;
+      context.consumedFixtureRevisionOverrides.add(bundle.fixture.id);
+    }
     const errors = validateFixtureBundle(bundle);
     if (errors.length) fail(`Completed fixture ${file.id} failed normalization: ${errors.join('; ')}`);
     const artifact = fixtureMigrationArtifact(bundle, context.source);
@@ -574,6 +613,7 @@ function validateLeague(snapshotRoot, target, manifestLeague, context) {
     const artifactSha256 = writeJson(outputPath, artifact);
     fixtureArtifacts.push({
       fixtureId: bundle.fixture.id,
+      revision: bundle.fixture.revision,
       competitionId: target.competitionId,
       seasonId: target.seasonId,
       path: relativePath.replaceAll(path.sep, '/'),
@@ -785,7 +825,12 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
     observedAt,
   };
   const migrationPrefix = `migration/api-football/v3/major-leagues/2026/${latest.archiveSha256}`;
-  const context = { outputRoot, observedAt, source, migrationPrefix };
+  const fixtureRevisionOverrides = reviewedFixtureRevisionOverrides(evidence, latest);
+  const consumedFixtureRevisionOverrides = new Set();
+  const context = {
+    outputRoot, observedAt, source, migrationPrefix,
+    fixtureRevisionOverrides, consumedFixtureRevisionOverrides,
+  };
   const validatedLeagues = targets.map(target => {
     const manifestLeague = manifestByLeague.get(target.league);
     if (!manifestLeague || manifestLeague.competitionId !== target.competitionId
@@ -795,6 +840,11 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
     return validateLeague(snapshotRoot, target, manifestLeague, context);
   });
   unique(validatedLeagues.flatMap(item => item.fixtureArtifacts.map(fixture => fixture.fixtureId)), 'Completed fixture artifacts');
+  sameSet(
+    consumedFixtureRevisionOverrides,
+    new Set(fixtureRevisionOverrides.keys()),
+    'Reviewed fixture revision overrides',
+  );
   assertReviewedProviderIdentityOmissions(
     evidence,
     latest,
@@ -835,7 +885,10 @@ function validateManifest(snapshotRoot, latest, config, evidence, archiveFile, o
   };
   if (JSON.stringify(totals) !== JSON.stringify(manifest.totals)) fail('Recomputed snapshot totals do not match the manifest.');
   assertReviewedEvidence(evidence, latest, manifest, leagues, totals);
-  return { manifest, source, migrationPrefix, leagues, totals, coverageArtifact };
+  return {
+    manifest, source, migrationPrefix, leagues, totals, coverageArtifact,
+    fixtureRevisionOverrides: [...fixtureRevisionOverrides.values()],
+  };
 }
 
 function prepare(options) {
@@ -866,6 +919,7 @@ function prepare(options) {
         && item.endsOn.startsWith(`${item.season + 1}-`),
     })),
     totals: result.totals,
+    fixtureRevisionOverrides: result.fixtureRevisionOverrides,
   };
   writeJson(path.join(outputRoot, 'validation-report.json'), validationReport);
   const migrationManifest = {
@@ -875,6 +929,7 @@ function prepare(options) {
     publicR2ObjectsWritten: false,
     d1WritesPerformed: false,
     publicReadFlagsChanged: false,
+    fixtureRevisionOverrides: result.fixtureRevisionOverrides,
     leagues: result.leagues,
     dateCoverageArtifact: result.coverageArtifact,
     expectedTotals: {

@@ -1301,6 +1301,56 @@
       "reason": "API-Football cross-endpoint identity variance for Francisco Curro Burgos confirmed in fixture 1570348; lineup Francisco Burgos and fixture-player Curro Burgos are the same Getafe player"
     }
   ],
+  "fixtureRevisionReview": {
+    "observedAt": "2026-09-08T02:15:09.068Z",
+    "cause": "Six fixture detail revisions were published by the reviewed Phase 3 vertical slice before the full staging migration. The corrected immutable snapshot must supersede those rows without deleting their history.",
+    "policy": "Import the six reviewed fixtures as revision 2, retain revision 1 as superseded history, import every other completed fixture as revision 1, and reject any override not consumed by this exact snapshot.",
+    "overrideCount": 6,
+    "overrides": [
+      {
+        "fixtureId": "af:fixture:1557367",
+        "previousRevision": 1,
+        "previousContentSha256": "a351a55814548cc2ee996616bc3672037af43c96a242eb6c79363b1dc39003b9",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      },
+      {
+        "fixtureId": "af:fixture:1557368",
+        "previousRevision": 1,
+        "previousContentSha256": "ad00eb0c206928aa12a4333373d296712b17a011818edce2fc3f4b39938496fc",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      },
+      {
+        "fixtureId": "af:fixture:1557369",
+        "previousRevision": 1,
+        "previousContentSha256": "edeaed2cbec897f485981d686778456a7afc794e1eb7f1d3bd4c30b8adf2210f",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      },
+      {
+        "fixtureId": "af:fixture:1557370",
+        "previousRevision": 1,
+        "previousContentSha256": "0f2242e983a8157f40b5befe081337df6602b511ae1f66e49db1559787a6be4c",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      },
+      {
+        "fixtureId": "af:fixture:1557371",
+        "previousRevision": 1,
+        "previousContentSha256": "c17ae39a4e0507c35ce8a8527bb90f9976a88641d909476c942bf04ed6ffe6e2",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      },
+      {
+        "fixtureId": "af:fixture:1557372",
+        "previousRevision": 1,
+        "previousContentSha256": "c6a9a0d42fcea655db9c5264d7c112dd125d0a37e2246a050a82f08a243b9f46",
+        "migrationRevision": 2,
+        "reason": "supersedes-reviewed-phase3-staging-revision"
+      }
+    ]
+  },
   "leagues": [
     {
       "league": 39,
