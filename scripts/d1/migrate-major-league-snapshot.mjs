@@ -10,6 +10,9 @@ const { correctionDefinitions } = fixtureImporterModule;
 const MANIFEST_SCHEMA = 'jfw-d1-major-leagues-migration-manifest/1';
 const EVIDENCE_SCHEMA = 'jfw-d1-major-leagues-reviewed-evidence/1';
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
+const MAX_REQUEST_ATTEMPTS = 4;
+const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
+const RETRYABLE_ERROR_NAMES = new Set(['AbortError', 'TimeoutError', 'TypeError']);
 
 function parseArgs(argv) {
   const result = {};
@@ -299,14 +302,22 @@ function requestIdentity(request) {
   return 'complete-major-league-migration';
 }
 
-async function executeRequests(prepared, options) {
-  if (!options.token) fail('ADMIN_INGEST_TOKEN is required for execution.');
-  const url = endpoint(options.url);
-  const results = [];
-  for (const [index, request] of prepared.requests.entries()) {
-    const identity = requestIdentity(request);
+function retryDelay(response, attempt) {
+  const retryAfterHeader = response?.headers?.get('retry-after');
+  const retryAfter = Number(retryAfterHeader);
+  if (retryAfterHeader !== null && retryAfterHeader !== undefined && retryAfterHeader !== ''
+    && Number.isFinite(retryAfter) && retryAfter >= 0) {
+    return Math.min(retryAfter * 1_000, 10_000);
+  }
+  return Math.min(1_000 * (2 ** (attempt - 1)), 10_000);
+}
+
+async function executeRequest(url, request, identity, options) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(url, {
+      const response = await fetchImpl(url, {
         method: 'POST',
         redirect: 'error',
         signal: AbortSignal.timeout(60_000),
@@ -317,19 +328,50 @@ async function executeRequests(prepared, options) {
         body: JSON.stringify(request),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok || body?.ok !== true) {
-        results.push({ operation: request.operation, identity, passed: false, status: response.status,
-          ...(body?.report ? { report: body.report } : {}),
-          ...(body?.detail ? { detail: body.detail } : {}) });
-        break;
+      if (response.ok && body?.ok === true) {
+        return {
+          operation: request.operation, identity, passed: true, status: response.status,
+          attempts: attempt, report: body.report,
+        };
       }
-      results.push({ operation: request.operation, identity, passed: true, status: response.status,
-        report: body.report });
+      if (RETRYABLE_HTTP_STATUSES.has(response.status) && attempt < MAX_REQUEST_ATTEMPTS) {
+        process.stdout.write(`Retrying ${request.operation} ${identity} after HTTP ${response.status} `
+          + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
+        await sleep(retryDelay(response, attempt));
+        continue;
+      }
+      return {
+        operation: request.operation, identity, passed: false, status: response.status,
+        attempts: attempt,
+        ...(body?.report ? { report: body.report } : {}),
+        ...(body?.detail ? { detail: body.detail } : {}),
+      };
     } catch (error) {
-      results.push({ operation: request.operation, identity, passed: false, status: null,
-        error: error?.name || 'request_failed' });
-      break;
+      const errorName = error?.name || 'request_failed';
+      if (RETRYABLE_ERROR_NAMES.has(errorName) && attempt < MAX_REQUEST_ATTEMPTS) {
+        process.stdout.write(`Retrying ${request.operation} ${identity} after ${errorName} `
+          + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
+        await sleep(retryDelay(null, attempt));
+        continue;
+      }
+      return {
+        operation: request.operation, identity, passed: false, status: null,
+        attempts: attempt, error: errorName,
+      };
     }
+  }
+  throw new Error('Unreachable request retry state.');
+}
+
+async function executeRequests(prepared, options) {
+  if (!options.token) fail('ADMIN_INGEST_TOKEN is required for execution.');
+  const url = endpoint(options.url);
+  const results = [];
+  for (const [index, request] of prepared.requests.entries()) {
+    const identity = requestIdentity(request);
+    const result = await executeRequest(url, request, identity, options);
+    results.push(result);
+    if (!result.passed) break;
     if ((index + 1) % 50 === 0) process.stdout.write(`Completed ${index + 1}/${prepared.requests.length} admin requests.\n`);
   }
   return {
