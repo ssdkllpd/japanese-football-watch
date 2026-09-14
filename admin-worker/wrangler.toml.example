@@ -2,7 +2,6 @@ name = "jfw-football-admin-ingest"
 main = "index.mjs"
 compatibility_date = "2026-08-31"
 compatibility_flags = ["nodejs_compat"]
-migrations_dir = "../migrations"
 
 # Deploy this Worker separately from worker/index.mjs. It is the only
 # application component permitted to write through FOOTBALL_DB.
@@ -15,6 +14,7 @@ bucket_name = "REPLACE_WITH_R2_BUCKET"
 binding = "FOOTBALL_DB"
 database_name = "REPLACE_WITH_D1_DATABASE"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "../migrations"
 
 # Set this as a Worker secret; never commit the value.
 # wrangler secret put ADMIN_INGEST_TOKEN

@@ -38,7 +38,6 @@ export function renderAdminWrangler(env, outputPath) {
     `main = ${tomlPath(outputDirectory, path.join(root, 'admin-worker', 'index.mjs'))}`,
     'compatibility_date = "2026-08-31"',
     'compatibility_flags = ["nodejs_compat"]',
-    `migrations_dir = ${tomlPath(outputDirectory, path.join(root, 'migrations'))}`,
     '',
     '[[r2_buckets]]',
     'binding = "FOOTBALL_DATA"',
@@ -48,6 +47,7 @@ export function renderAdminWrangler(env, outputPath) {
     'binding = "FOOTBALL_DB"',
     `database_name = ${JSON.stringify(databaseName)}`,
     `database_id = ${JSON.stringify(databaseId)}`,
+    `migrations_dir = ${tomlPath(outputDirectory, path.join(root, 'migrations'))}`,
     '',
   ].join('\n');
 }

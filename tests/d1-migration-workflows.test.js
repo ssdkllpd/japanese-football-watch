@@ -28,6 +28,10 @@ test('admin wrangler renderer accepts only bounded resource identities and never
   assert.match(rendered, /binding = "FOOTBALL_DATA"/);
   assert.equal(rendered.includes(env.ADMIN_INGEST_TOKEN), false);
   assert.equal(rendered.includes('D1_DATE_INDEX_ENABLED'), false);
+  const d1Binding = rendered.indexOf('[[d1_databases]]');
+  const migrationsDirectory = rendered.indexOf('migrations_dir = ');
+  assert.equal(d1Binding > 0 && migrationsDirectory > d1Binding, true);
+  assert.equal(rendered.slice(0, d1Binding).includes('migrations_dir = '), false);
 
   assert.throws(() => renderAdminWrangler({
     ...env, ADMIN_WORKER_NAME: 'valid"\nD1_FIXTURE_DETAIL_ENABLED = "true',
