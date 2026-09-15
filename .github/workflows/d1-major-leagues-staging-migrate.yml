@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: d1-major-leagues-staging-migrate
+  group: d1-staging-write
   cancel-in-progress: false
 
 jobs:
@@ -61,7 +61,14 @@ jobs:
         run: |
           npm ci
           node scripts/d1/check-schema-lock.mjs
-          node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-major-league-admin-ingest.test.js
+          node --test \
+            tests/d1-major-league-snapshot-prepare.test.js \
+            tests/d1-major-league-admin-ingest.test.js \
+            tests/d1-major-league-partial-state.test.js \
+            tests/d1-major-league-resume-plan.test.js \
+            tests/d1-major-league-migration-retry.test.js \
+            tests/d1-admin-migration-verify.test.js \
+            tests/d1-migration-workflows.test.js
 
       - name: Download the exact pinned snapshot from R2
         run: |
@@ -129,32 +136,6 @@ jobs:
             --inventory .tmp/d1-major-migrate/preflight-migrations.json --allow-pending \
             > .tmp/d1-major-migrate/preflight-migration-verification.json
 
-      - name: Fail closed on partial or unexpected target migration state
-        run: |
-          set -euo pipefail
-          node scripts/d1/check-major-league-partial-state.mjs \
-            --prepared .tmp/d1-major-migrate/prepared \
-            --write-query .tmp/d1-major-migrate/fixture-state-query.sql
-          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
-            --config .tmp/d1-major-migrate/admin-wrangler.toml \
-            --command "$(< .tmp/d1-major-migrate/fixture-state-query.sql)" \
-            > .tmp/d1-major-migrate/preflight-fixture-state.json
-          node scripts/d1/check-major-league-partial-state.mjs \
-            --prepared .tmp/d1-major-migrate/prepared \
-            --inventory .tmp/d1-major-migrate/preflight-fixture-state.json \
-            > .tmp/d1-major-migrate/preflight-partial-state-report.json
-
-      - name: Build a minimal fail-closed resume plan
-        run: |
-          set -euo pipefail
-          node scripts/d1/migrate-major-league-snapshot.mjs \
-            --prepared .tmp/d1-major-migrate/prepared \
-            --evidence "$EVIDENCE" \
-            --resume-state .tmp/d1-major-migrate/preflight-partial-state-report.json \
-            --report .tmp/d1-major-migrate/resume-validation-report.json
-          jq -e '.passed==true and .validation.resume.passed==true' \
-            .tmp/d1-major-migrate/resume-validation-report.json >/dev/null
-
       - name: Capture pre-write D1 Time Travel bookmark
         run: |
           set -euo pipefail
@@ -174,6 +155,32 @@ jobs:
           node scripts/d1/verify-migration-inventory.mjs \
             --inventory .tmp/d1-major-migrate/post-migrations.json \
             > .tmp/d1-major-migrate/post-migration-verification.json
+
+      - name: Re-read exact fixture state after repository migrations
+        run: |
+          set -euo pipefail
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --write-query .tmp/d1-major-migrate/fixture-state-query.sql
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --command "$(< .tmp/d1-major-migrate/fixture-state-query.sql)" \
+            > .tmp/d1-major-migrate/post-migration-fixture-state.json
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --inventory .tmp/d1-major-migrate/post-migration-fixture-state.json \
+            > .tmp/d1-major-migrate/post-migration-partial-state-report.json
+
+      - name: Build a minimal fail-closed resume plan
+        run: |
+          set -euo pipefail
+          node scripts/d1/migrate-major-league-snapshot.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --evidence "$EVIDENCE" \
+            --resume-state .tmp/d1-major-migrate/post-migration-partial-state-report.json \
+            --report .tmp/d1-major-migrate/resume-validation-report.json
+          jq -e '.passed==true and .validation.resume.passed==true' \
+            .tmp/d1-major-migrate/resume-validation-report.json >/dev/null
 
       - name: Upload only content-addressed non-public migration artifacts
         run: |
@@ -204,7 +211,7 @@ jobs:
             --prepared .tmp/d1-major-migrate/prepared \
             --evidence "$EVIDENCE" \
             --report .tmp/d1-major-migrate/execution-report.json \
-            --resume-state .tmp/d1-major-migrate/preflight-partial-state-report.json \
+            --resume-state .tmp/d1-major-migrate/post-migration-partial-state-report.json \
             --execute --url "$ADMIN_INGEST_URL"
           jq -e '.passed==true and .execution.completed==true and .execution.failed==0' \
             .tmp/d1-major-migrate/execution-report.json >/dev/null
@@ -212,8 +219,8 @@ jobs:
       - name: Confirm public read configuration was not changed
         run: |
           set -euo pipefail
-          test "$(rg -c '= "false"' worker/wrangler.toml.example)" -ge 4
-          ! rg '= "true"' worker/wrangler.toml.example
+          test "$(grep -c '= "false"' worker/wrangler.toml.example)" -ge 4
+          ! grep -q '= "true"' worker/wrangler.toml.example
 
       - name: Upload bounded migration evidence
         if: always()
@@ -227,8 +234,8 @@ jobs:
             .tmp/d1-major-migrate/validation-only-report.json
             .tmp/d1-major-migrate/preflight-migrations.json
             .tmp/d1-major-migrate/preflight-migration-verification.json
-            .tmp/d1-major-migrate/preflight-fixture-state.json
-            .tmp/d1-major-migrate/preflight-partial-state-report.json
+            .tmp/d1-major-migrate/post-migration-fixture-state.json
+            .tmp/d1-major-migrate/post-migration-partial-state-report.json
             .tmp/d1-major-migrate/resume-validation-report.json
             .tmp/d1-major-migrate/pre-write-bookmark.json
             .tmp/d1-major-migrate/post-migrations.json

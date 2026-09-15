@@ -110,3 +110,54 @@ test('major-league migration bounds retries for persistent 503 and transient net
     }
   }
 });
+
+test('major-league migration honours Retry-After HTTP dates', async () => {
+  const { executeRequests } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const now = Date.parse('2026-09-15T12:00:00.000Z');
+  const responses = [
+    new Response('', { status: 503, headers: { 'retry-after': 'Tue, 15 Sep 2026 12:00:15 GMT' } }),
+    success(),
+  ];
+  const sleeps = [];
+  const report = await executeRequests(prepared(), {
+    url: 'https://admin.example', token: 'secret-token', now: () => now,
+    async fetchImpl() { return responses.shift(); },
+    async sleep(milliseconds) { sleeps.push(milliseconds); },
+  });
+  assert.equal(report.completed, true);
+  assert.deepEqual(sleeps, [15_000]);
+});
+
+test('major-league migration bounds failure reports and stops before its execution budget', async () => {
+  const { executeRequests } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const largeReport = { schemaVersion: 'example/1', operation: 'fixture_migration_publish',
+    payload: 'x'.repeat(100_000) };
+  let report = await executeRequests(prepared(), {
+    url: 'https://admin.example', token: 'secret-token',
+    async fetchImpl() {
+      return new Response(JSON.stringify({ ok: false, report: largeReport }), {
+        status: 422, headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+  assert.equal(Object.hasOwn(report.results[0], 'report'), false);
+  assert.equal(report.results[0].failureReportBytes > 100_000, true);
+  assert.match(report.results[0].failureReportSha256, /^[0-9a-f]{64}$/);
+  assert.equal(report.results[0].failureReportSchemaVersion, 'example/1');
+
+  let calls = 0;
+  report = await executeRequests(prepared(), {
+    url: 'https://admin.example', token: 'secret-token', maxExecutionMilliseconds: 10_000,
+    now: () => Date.parse('2026-09-15T12:00:00.000Z'),
+    async fetchImpl() {
+      calls += 1;
+      return new Response('', { status: 503, headers: { 'retry-after': '30' } });
+    },
+    async sleep() { throw new Error('budget guard must stop before sleeping'); },
+  });
+  assert.equal(calls, 1);
+  assert.equal(report.completed, false);
+  assert.equal(report.results[0].error, 'ExecutionBudgetExceeded');
+  assert.equal(report.results[0].status, 503);
+  assert.equal(report.results[0].attempts, 1);
+});

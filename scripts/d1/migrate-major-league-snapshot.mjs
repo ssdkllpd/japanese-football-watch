@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import fixtureImporterModule from './fixture-bundle-importer.js';
+import { expectedState } from './check-major-league-partial-state.mjs';
 
 const { correctionDefinitions } = fixtureImporterModule;
 const MANIFEST_SCHEMA = 'jfw-d1-major-leagues-migration-manifest/1';
@@ -12,9 +13,15 @@ const EVIDENCE_SCHEMA = 'jfw-d1-major-leagues-reviewed-evidence/1';
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
 const RESUME_SCHEMA = 'jfw-d1-major-league-partial-state/1';
 const MAX_REQUEST_ATTEMPTS = 6;
+const MAX_EXECUTION_MILLISECONDS = 60 * 60 * 1_000;
 const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
 const RETRYABLE_ERROR_NAMES = new Set(['AbortError', 'TimeoutError', 'TypeError']);
 const MAX_DIAGNOSTIC_LENGTH = 240;
+const RESUME_STATE_KEYS = [
+  'schemaVersion', 'state', 'passed', 'expectedFixtures', 'expectedDetails',
+  'storedFixtures', 'matchedDetails', 'pendingFixtures', 'pendingDetails',
+  'pendingUpgrades', 'matchedFixtureDetailIds', 'pendingFixtureDetailIds',
+];
 
 function parseArgs(argv) {
   const result = {};
@@ -254,6 +261,15 @@ function validatePrepared(preparedRoot, evidencePath) {
     date: item.date,
     competitionIds: item.competitionIds,
   })));
+  const expectedDetails = expectedState(root).details;
+  const fixtureExpectations = [...expectedDetails.entries()].map(([fixtureId, detail]) => ({
+    fixtureId, revisionNo: detail.revision, contentSha256: detail.contentSha256,
+  })).sort((left, right) => (left.fixtureId < right.fixtureId ? -1 : left.fixtureId > right.fixtureId ? 1 : 0));
+  const sortedCompletedFixtureIds = [...completedFixtureIds].sort();
+  if (fixtureExpectations.length !== sortedCompletedFixtureIds.length
+    || fixtureExpectations.some((item, index) => item.fixtureId !== sortedCompletedFixtureIds[index])) {
+    fail('Prepared fixture expectations do not exactly cover completed fixture details.');
+  }
   requests.push({
     schemaVersion: REQUEST_SCHEMA,
     operation: 'migration_verify',
@@ -261,6 +277,7 @@ function validatePrepared(preparedRoot, evidencePath) {
     archiveSha256: source.archiveSha256,
     fixedSnapshot: null,
     fixtureIds: completedFixtureIds,
+    fixtureExpectations,
     standings,
     dateIndexCoverages,
     majorLeagueSeasons,
@@ -325,26 +342,57 @@ function responseDiagnostics(response, raw, body) {
   };
 }
 
-function retryDelay(response, attempt) {
+function failureReportDiagnostics(report) {
+  if (report === undefined || report === null) return {};
+  const raw = JSON.stringify(report);
+  return {
+    failureReportBytes: Buffer.byteLength(raw),
+    failureReportSha256: createHash('sha256').update(raw).digest('hex'),
+    ...(boundedDiagnostic(report?.schemaVersion)
+      ? { failureReportSchemaVersion: boundedDiagnostic(report.schemaVersion) } : {}),
+    ...(boundedDiagnostic(report?.operation)
+      ? { failureReportOperation: boundedDiagnostic(report.operation) } : {}),
+  };
+}
+
+function retryDelay(response, attempt, nowMilliseconds = Date.now()) {
   const retryAfterHeader = response?.headers?.get('retry-after');
   const retryAfter = Number(retryAfterHeader);
   if (retryAfterHeader !== null && retryAfterHeader !== undefined && retryAfterHeader !== ''
     && Number.isFinite(retryAfter) && retryAfter >= 0) {
     return Math.min(retryAfter * 1_000, 30_000);
   }
+  const retryAt = Date.parse(retryAfterHeader || '');
+  if (Number.isFinite(retryAt)) {
+    return Math.min(Math.max(0, retryAt - nowMilliseconds), 30_000);
+  }
   return Math.min(1_000 * (2 ** (attempt - 1)), 30_000);
+}
+
+function executionBudgetFailure(
+  request, identity, attempts, retryHistory, status = null, diagnostics = {},
+) {
+  return {
+    operation: request.operation, identity, passed: false, status,
+    attempts, error: 'ExecutionBudgetExceeded', ...diagnostics,
+    ...(retryHistory.length ? { retryHistory } : {}),
+  };
 }
 
 async function executeRequest(url, request, identity, options) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  const now = options.now || Date.now;
   const retryHistory = [];
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    if (now() >= options.deadline) {
+      return executionBudgetFailure(request, identity, attempt - 1, retryHistory);
+    }
     try {
       const response = await fetchImpl(url, {
         method: 'POST',
         redirect: 'error',
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(Math.max(1, Math.min(60_000, options.deadline - now()))),
         headers: {
           authorization: `Bearer ${options.token}`,
           'content-type': 'application/json',
@@ -364,15 +412,21 @@ async function executeRequest(url, request, identity, options) {
       const diagnostics = responseDiagnostics(response, raw, body);
       if (RETRYABLE_HTTP_STATUSES.has(response.status) && attempt < MAX_REQUEST_ATTEMPTS) {
         retryHistory.push({ attempt, status: response.status, ...diagnostics });
+        const delay = retryDelay(response, attempt, now());
+        if (now() + delay >= options.deadline) {
+          return executionBudgetFailure(
+            request, identity, attempt, retryHistory, response.status, diagnostics,
+          );
+        }
         process.stdout.write(`Retrying ${request.operation} ${identity} after HTTP ${response.status} `
           + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
-        await sleep(retryDelay(response, attempt));
+        await sleep(delay);
         continue;
       }
       return {
         operation: request.operation, identity, passed: false, status: response.status,
         attempts: attempt,
-        ...(body?.report ? { report: body.report } : {}),
+        ...failureReportDiagnostics(body?.report),
         ...diagnostics,
         ...(retryHistory.length ? { retryHistory } : {}),
       };
@@ -380,9 +434,13 @@ async function executeRequest(url, request, identity, options) {
       const errorName = error?.name || 'request_failed';
       if (RETRYABLE_ERROR_NAMES.has(errorName) && attempt < MAX_REQUEST_ATTEMPTS) {
         retryHistory.push({ attempt, error: errorName });
+        const delay = retryDelay(null, attempt, now());
+        if (now() + delay >= options.deadline) {
+          return executionBudgetFailure(request, identity, attempt, retryHistory);
+        }
         process.stdout.write(`Retrying ${request.operation} ${identity} after ${errorName} `
           + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
-        await sleep(retryDelay(null, attempt));
+        await sleep(delay);
         continue;
       }
       return {
@@ -398,10 +456,16 @@ async function executeRequest(url, request, identity, options) {
 async function executeRequests(prepared, options) {
   if (!options.token) fail('ADMIN_INGEST_TOKEN is required for execution.');
   const url = endpoint(options.url);
+  const now = options.now || Date.now;
+  const maxExecutionMilliseconds = options.maxExecutionMilliseconds ?? MAX_EXECUTION_MILLISECONDS;
+  if (!Number.isSafeInteger(maxExecutionMilliseconds) || maxExecutionMilliseconds <= 0) {
+    fail('maxExecutionMilliseconds must be a positive safe integer.');
+  }
+  const deadline = now() + maxExecutionMilliseconds;
   const results = [];
   for (const [index, request] of prepared.requests.entries()) {
     const identity = requestIdentity(request);
-    const result = await executeRequest(url, request, identity, options);
+    const result = await executeRequest(url, request, identity, { ...options, now, deadline });
     results.push(result);
     if (!result.passed) break;
     if ((index + 1) % 50 === 0) process.stdout.write(`Completed ${index + 1}/${prepared.requests.length} admin requests.\n`);
@@ -412,6 +476,7 @@ async function executeRequests(prepared, options) {
     passed: results.filter(item => item.passed).length,
     failed: results.filter(item => !item.passed).length,
     completed: results.length === prepared.requests.length && results.every(item => item.passed),
+    maxExecutionMilliseconds,
     results,
   };
 }
@@ -430,6 +495,13 @@ function sortedUniqueStrings(values, label) {
 }
 
 export function applyResumeState(prepared, resumeState) {
+  if (!resumeState || typeof resumeState !== 'object' || Array.isArray(resumeState)) {
+    fail('D1 resume state must be an object.');
+  }
+  const unknownKeys = Object.keys(resumeState).filter(key => !RESUME_STATE_KEYS.includes(key));
+  if (unknownKeys.length) {
+    fail(`D1 resume state contains unknown fields: ${unknownKeys.join(', ')}.`);
+  }
   if (resumeState?.schemaVersion !== RESUME_SCHEMA || resumeState.passed !== true
     || !['clean', 'compatible-partial', 'complete'].includes(resumeState.state)) {
     fail('D1 resume state is unsupported or did not pass validation.');
@@ -492,11 +564,19 @@ export function applyResumeState(prepared, resumeState) {
 }
 
 function validationResult(prepared) {
+  const requestPlanCountValid = prepared.resume
+    ? prepared.requests.length === prepared.summary.authoritativeAdminRequests
+      - prepared.summary.skippedFixtureDetails
+    : prepared.requests.length === prepared.summary.adminRequests;
+  const uploadPlanCountValid = prepared.resume
+    ? prepared.uploadObjects.length === prepared.summary.authoritativeUploadObjects
+      - prepared.summary.skippedFixtureDetails
+    : prepared.uploadObjects.length === prepared.summary.uploadObjects;
   const checks = {
     sourcePinned: prepared.source?.provider === 'api-football'
       && /^[0-9a-f]{64}$/.test(String(prepared.source?.archiveSha256 || '')),
-    requestCountMatches: prepared.requests.length === prepared.summary.adminRequests,
-    uploadCountMatches: prepared.uploadObjects.length === prepared.summary.uploadObjects,
+    requestPlanCountValid,
+    uploadPlanCountValid,
     requestsNonEmpty: prepared.requests.length > 0,
     uploadObjectsNonEmpty: prepared.uploadObjects.length > 0,
     uploadHashesValid: prepared.uploadObjects.every(item => /^[0-9a-f]{64}$/.test(item.sha256)),

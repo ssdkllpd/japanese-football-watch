@@ -112,6 +112,9 @@ function body() {
       artifactSha256: snapshotSha, productSeasonId: 'jfw:season:2026-27',
     },
     fixtureIds: ['af:fixture:9001'],
+    fixtureExpectations: [{
+      fixtureId: 'af:fixture:9001', revisionNo: 1, contentSha256: sourceSha,
+    }],
     standings: [{ competitionId: 'af:competition:39', seasonId: 'af:season:39:2026' }],
     dateIndexCoverages: [{ date: '2026-08-22', competitionIds: ['af:competition:39'] }],
     expectedTotals: {
@@ -149,7 +152,8 @@ test('admin migration verification proves every externally declared publication 
     },
     fixtureCount: 1, standingsCount: 1, dateIndexCoverageCount: 1,
     competitionDateCoverageCount: 1,
-    missingFixtureIds: [], missingStandings: [], missingDateIndexes: [],
+    missingFixtureIds: [], fixtureRevisionMismatches: [],
+    missingStandings: [], missingDateIndexes: [],
     competitionScopeMismatches: [],
     expectedTotals: {
       fixedSnapshots: 1, publishedFixtures: 1, publishedStandings: 1,
@@ -185,6 +189,22 @@ test('admin migration verification fails closed for missing fixture or mismatche
   }]);
 });
 
+test('admin migration verification independently rejects revision and content drift', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  db.exec(`UPDATE fixture_revisions SET revision_no = 2, content_sha256 = '${'e'.repeat(64)}' WHERE id = 1`);
+  const response = await admin.default.fetch(request(body()), environment(db));
+  assert.equal(response.status, 409);
+  const result = await response.json();
+  assert.deepEqual(result.report.missingFixtureIds, []);
+  assert.deepEqual(result.report.fixtureRevisionMismatches, [{
+    fixtureId: 'af:fixture:9001',
+    expected: { revisionNo: 1, contentSha256: sourceSha },
+    actual: { revisionNo: 2, contentSha256: 'e'.repeat(64) },
+  }]);
+});
+
 test('admin migration verification rejects duplicate and impossible scopes before querying D1', async () => {
   const admin = await import('../admin-worker/index.mjs');
   const invalid = body();
@@ -207,6 +227,13 @@ test('admin migration verification rejects duplicate and impossible scopes befor
     ADMIN_INGEST_TOKEN: 'test-token', FOOTBALL_DB: { prepare() { throw new Error('not reached'); } },
   });
   assert.equal(response.status, 422);
+
+  const mismatchedExpectations = body();
+  mismatchedExpectations.fixtureExpectations[0].fixtureId = 'af:fixture:9999';
+  response = await admin.default.fetch(request(mismatchedExpectations), {
+    ADMIN_INGEST_TOKEN: 'test-token', FOOTBALL_DB: { prepare() { throw new Error('not reached'); } },
+  });
+  assert.equal(response.status, 422);
 });
 
 test('admin migration verification catches externally declared total mismatch outside item scopes', async t => {
@@ -223,4 +250,45 @@ test('admin migration verification catches externally declared total mismatch ou
   assert.deepEqual(result.report.totalMismatches, [
     { key: 'publishedFixtures', expected: 2, actual: 1 },
   ]);
+});
+
+test('the full 365-fixture content verification request stays below the admin body limit', async () => {
+  const { assertMigrationVerifyRequest } = await import('../admin-worker/migration-verify.mjs');
+  const archiveSha256 = 'a'.repeat(64);
+  const fixtureIds = Array.from({ length: 365 }, (_, index) => `af:fixture:${index + 1}`);
+  const fixtureExpectations = fixtureIds.map((fixtureId, index) => ({
+    fixtureId, revisionNo: 1, contentSha256: index.toString(16).padStart(64, '0'),
+  }));
+  const competitionIds = Array.from({ length: 10 }, (_, index) => `af:competition:${index + 1}`);
+  let remainingScopes = 620;
+  const dateIndexCoverages = Array.from({ length: 178 }, (_, index) => {
+    const remainingDates = 178 - index;
+    const count = Math.ceil(remainingScopes / remainingDates);
+    remainingScopes -= count;
+    return {
+      date: new Date(Date.UTC(2026, 6, 1 + index)).toISOString().slice(0, 10),
+      competitionIds: competitionIds.slice(0, count),
+    };
+  });
+  const requestBody = {
+    schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'migration_verify',
+    snapshotId: '20260908-021509068Z', archiveSha256, fixedSnapshot: null,
+    fixtureIds, fixtureExpectations,
+    standings: competitionIds.map((competitionId, index) => ({
+      competitionId, seasonId: `af:season:${index + 1}:2026`,
+    })),
+    dateIndexCoverages,
+    majorLeagueSeasons: competitionIds.map((competitionId, index) => ({
+      competitionId, seasonId: `af:season:${index + 1}:2026`,
+      startsOn: '2026-07-01', endsOn: '2027-06-30', teamCount: 20,
+      fixtureCount: 342, publishedFixtureDetailCount: 37, standingsRowCount: 20,
+      coreArtifactKey: `migration/api-football/v3/major-leagues/2026/${archiveSha256}`
+        + `/leagues/${index + 1}/core-${'b'.repeat(64)}.json`,
+      coreArtifactSha256: 'b'.repeat(64),
+    })),
+    expectedTotals: null,
+  };
+  assert.equal(remainingScopes, 0);
+  assert.doesNotThrow(() => assertMigrationVerifyRequest(requestBody));
+  assert.equal(Buffer.byteLength(JSON.stringify(requestBody)) < 256 * 1024, true);
 });

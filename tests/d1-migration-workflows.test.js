@@ -177,7 +177,7 @@ test('all seven staging write workflows prove the same exact target before their
     ['v2-standings.yml', 'request-admin-ingest.mjs'],
     ['v2-fixture-vertical-slice.yml', 'request-admin-ingest.mjs'],
     ['v2-date-feed.yml', 'request-admin-ingest.mjs'],
-    ['d1-major-leagues-staging-migrate.yml', 'r2 object put'],
+    ['d1-major-leagues-staging-migrate.yml', 'd1 migrations apply'],
   ];
   for (const [name, firstWrite] of workflows) {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
@@ -185,6 +185,7 @@ test('all seven staging write workflows prove the same exact target before their
     const write = workflow.indexOf(firstWrite);
     assert.equal(proof > 0 && write > proof, true, name);
     assert.match(workflow, /environment: d1-staging/, name);
+    assert.match(workflow, /concurrency:[\s\S]*group: d1-staging-write[\s\S]*cancel-in-progress: false/, name);
     for (const key of [
       'ADMIN_WORKER_NAME', 'D1_DATABASE_NAME', 'D1_DATABASE_ID', 'R2_BUCKET', 'ADMIN_INGEST_URL',
     ]) assert.match(workflow, new RegExp(`${key}: \\$\\{\\{ vars\\.${key} \\}\\}`), `${name}:${key}`);
@@ -233,20 +234,28 @@ test('major-league staging migration is pinned, reversible, and leaves public fl
   assert.match(workflow, /validation-only-report\.json/);
   const bookmark = workflow.indexOf('d1 time-travel info');
   const migrate = workflow.indexOf('d1 migrations apply');
+  const exactMigrationVerification = workflow.indexOf('post-migration-verification.json');
+  const resumeRead = workflow.indexOf('post-migration-fixture-state.json');
   const upload = workflow.indexOf('r2 object put');
   const execute = workflow.indexOf('--execute --url');
   assert.equal(bookmark > 0 && migrate > bookmark && upload > bookmark && execute > bookmark, true);
+  assert.equal(exactMigrationVerification > migrate && resumeRead > exactMigrationVerification
+    && upload > resumeRead && execute > resumeRead, true);
   assert.equal(workflow.includes('time-travel restore'), false);
   assert.equal(workflow.includes('d1 migrations apply'), true);
   assert.match(workflow, /verify-migration-inventory\.mjs/);
   assert.match(workflow, /check-major-league-partial-state\.mjs/);
   assert.match(workflow, /Build a minimal fail-closed resume plan/);
-  assert.match(workflow, /--resume-state \.tmp\/d1-major-migrate\/preflight-partial-state-report\.json/);
+  assert.match(workflow, /--resume-state \.tmp\/d1-major-migrate\/post-migration-partial-state-report\.json/);
   assert.match(workflow, /resume-validation-report\.json/);
   assert.match(workflow, /jq -r '\.validation\.uploadObjects\[\] \| \[\.r2Key,\.localPath,\.sha256\] \| @tsv'[\s\S]*resume-validation-report\.json/);
   assert.match(workflow, /--command "\$\(< \.tmp\/d1-major-migrate\/fixture-state-query\.sql\)"/);
   assert.equal(workflow.includes('--file .tmp/d1-major-migrate/fixture-state-query.sql'), false);
   assert.match(workflow, /check-schema-lock\.mjs/);
+  assert.equal((workflow.match(/--allow-pending/g) || []).length, 1);
+  assert.match(workflow, /grep -c '= "false"'/);
+  assert.match(workflow, /grep -q '= "true"'/);
+  assert.equal(workflow.includes('rg -c'), false);
   assert.equal(workflow.includes('D1_STANDINGS_ENABLED = "true"'), false);
   assert.equal(workflow.includes('API_FOOTBALL_KEY'), false);
 });

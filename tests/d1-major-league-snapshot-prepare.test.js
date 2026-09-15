@@ -441,6 +441,11 @@ test('builds a complete hash-checked migration request sequence without writing'
     'major_league_date_coverage_publish',
     'migration_verify',
   ]);
+  assert.deepEqual(prepared.requests.at(-1).fixtureExpectations, [{
+    fixtureId: 'af:fixture:100', revisionNo: 1,
+    contentSha256: prepared.requests.at(-1).fixtureExpectations[0].contentSha256,
+  }]);
+  assert.match(prepared.requests.at(-1).fixtureExpectations[0].contentSha256, /^[0-9a-f]{64}$/);
 });
 
 test('validate-only pass state is derived from concrete validation checks', async () => {
@@ -452,5 +457,5 @@ test('validate-only pass state is derived from concrete validation checks', asyn
   prepared.summary.adminRequests += 1;
   const failed = validationResult(prepared);
   assert.equal(failed.passed, false);
-  assert.equal(failed.checks.requestCountMatches, false);
+  assert.equal(failed.checks.requestPlanCountValid, false);
 });

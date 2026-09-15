@@ -273,6 +273,13 @@ test('major-league core and standings migration is hash-scoped, complete, and id
     archiveSha256: base.archiveSha256,
     fixedSnapshot: null,
     fixtureIds: ['af:fixture:9001'],
+    fixtureExpectations: [db.prepare(`
+      SELECT fixture.canonical_id AS fixtureId, revision.revision_no AS revisionNo,
+        revision.content_sha256 AS contentSha256
+      FROM fixtures fixture
+      JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+      WHERE fixture.canonical_id = 'af:fixture:9001'
+    `).get()],
     standings: [{ competitionId: base.competitionId, seasonId: base.seasonId }],
     dateIndexCoverages: [{
       date: '2026-09-02', competitionIds: ['af:competition:39'],

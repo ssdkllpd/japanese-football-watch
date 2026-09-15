@@ -36,7 +36,7 @@ function resumeState(overrides = {}) {
 }
 
 test('resume plan skips only independently matched fixture writes and their R2 objects', async () => {
-  const { applyResumeState } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const { applyResumeState, validationResult } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
   const result = applyResumeState(prepared(), resumeState());
 
   assert.deepEqual(result.requests.map(item => [item.operation, item.fixtureId || null]), [
@@ -58,6 +58,9 @@ test('resume plan skips only independently matched fixture writes and their R2 o
   assert.equal(result.summary.authoritativeUploadObjects, 4);
   assert.equal(result.summary.uploadObjects, 3);
   assert.equal(result.summary.skippedFixtureDetails, 1);
+  assert.equal(validationResult(result).passed, true);
+  result.summary.authoritativeAdminRequests += 1;
+  assert.equal(validationResult(result).checks.requestPlanCountValid, false);
 });
 
 test('resume plan fails closed on stale, duplicate, unsorted, or incomplete fixture partitions', async () => {
@@ -70,6 +73,7 @@ test('resume plan fails closed on stale, duplicate, unsorted, or incomplete fixt
     resumeState({ pendingFixtureDetailIds: [], pendingDetails: 0 }),
     resumeState({ expectedFixtures: 3 }),
     resumeState({ state: 'complete' }),
+    resumeState({ unexpected: true }),
   ]) assert.throws(() => applyResumeState(prepared(), state));
 
   const missingArtifact = prepared();

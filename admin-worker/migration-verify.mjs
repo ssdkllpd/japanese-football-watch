@@ -63,8 +63,9 @@ export function assertMigrationVerifyRequest(input) {
     throw new Error('Admin migration verification request must be an object.');
   }
   const allowed = new Set([
-    'schemaVersion', 'operation', 'fixedSnapshot', 'fixtureIds', 'standings', 'dateIndexCoverages',
-    'expectedTotals', 'majorLeagueSeasons', 'snapshotId', 'archiveSha256',
+    'schemaVersion', 'operation', 'fixedSnapshot', 'fixtureIds', 'fixtureExpectations',
+    'standings', 'dateIndexCoverages', 'expectedTotals', 'majorLeagueSeasons', 'snapshotId',
+    'archiveSha256',
   ]);
   const unknown = Object.keys(input).filter(key => !allowed.has(key));
   if (unknown.length) throw new Error(`Admin migration verification request contains unknown fields: ${unknown.join(', ')}.`);
@@ -142,6 +143,33 @@ export function assertMigrationVerifyRequest(input) {
     fixtureId, /^af:fixture:\d+$/, `fixtureIds[${index}]`,
   ));
   unique(fixtureIds, 'fixtureIds');
+  requireArray(input.fixtureExpectations || [], 'fixtureExpectations', MAX_FIXTURES);
+  const fixtureExpectations = (input.fixtureExpectations || []).map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`fixtureExpectations[${index}] must be an object.`);
+    }
+    const itemAllowed = new Set(['fixtureId', 'revisionNo', 'contentSha256']);
+    const itemUnknown = Object.keys(item).filter(key => !itemAllowed.has(key));
+    if (itemUnknown.length) {
+      throw new Error(`fixtureExpectations[${index}] contains unknown fields: ${itemUnknown.join(', ')}.`);
+    }
+    canonical(item.fixtureId, /^af:fixture:\d+$/, `fixtureExpectations[${index}].fixtureId`);
+    if (!Number.isSafeInteger(item.revisionNo) || item.revisionNo < 1) {
+      throw new Error(`fixtureExpectations[${index}].revisionNo must be a positive safe integer.`);
+    }
+    canonical(item.contentSha256, /^[0-9a-f]{64}$/,
+      `fixtureExpectations[${index}].contentSha256`);
+    return { ...item };
+  }).sort((left, right) => compareCodePoint(left.fixtureId, right.fixtureId));
+  unique(fixtureExpectations.map(item => item.fixtureId), 'fixtureExpectations');
+  if (fixtureExpectations.length
+    && (fixtureExpectations.length !== fixtureIds.length
+      || fixtureExpectations.some((item, index) => item.fixtureId !== fixtureIds[index]))) {
+    throw new Error('fixtureExpectations must exactly cover fixtureIds.');
+  }
+  if (majorLeagueSeasons.length && fixtureExpectations.length !== fixtureIds.length) {
+    throw new Error('Major-league verification requires an exact expectation for every fixture.');
+  }
 
   const standings = input.standings.map((item, index) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
@@ -185,7 +213,7 @@ export function assertMigrationVerifyRequest(input) {
     throw new Error('Admin migration verification scope is empty.');
   }
   return {
-    ...input, fixedSnapshot, fixtureIds, standings, dateIndexCoverages,
+    ...input, fixedSnapshot, fixtureIds, fixtureExpectations, standings, dateIndexCoverages,
     majorLeagueSeasons, expectedTotals,
   };
 }
@@ -234,11 +262,11 @@ async function verifyFixedSnapshot(database, declaration) {
   };
 }
 
-async function verifiedFixtureIds(database, fixtureIds) {
+async function verifiedFixtures(database, fixtureIds) {
   const found = [];
   for (const group of chunks(fixtureIds, 50)) {
     const result = await rows(database, `
-      SELECT fixture.canonical_id
+      SELECT fixture.canonical_id, revision.revision_no, revision.content_sha256
       FROM fixtures fixture
       JOIN fixture_revisions revision ON revision.id = fixture.published_revision
         AND revision.fixture_id = fixture.id
@@ -246,9 +274,11 @@ async function verifiedFixtureIds(database, fixtureIds) {
         AND revision.lifecycle_state = 'published'
         AND revision.published_at IS NOT NULL
     `, group);
-    found.push(...result.map(row => row.canonical_id));
+    found.push(...result);
   }
-  return new Set(found);
+  return new Map(found.map(row => [row.canonical_id, {
+    revisionNo: Number(row.revision_no), contentSha256: row.content_sha256,
+  }]));
 }
 
 async function verifiedStandings(database, declarations) {
@@ -446,7 +476,7 @@ export async function verifyMigrationState(env, request) {
   if (!env.FOOTBALL_DB) throw new Error('Admin ingest D1 binding is unavailable.');
   const input = assertMigrationVerifyRequest(request);
   const fixedSnapshot = await verifyFixedSnapshot(env.FOOTBALL_DB, input.fixedSnapshot);
-  const fixtures = await verifiedFixtureIds(env.FOOTBALL_DB, input.fixtureIds);
+  const fixtures = await verifiedFixtures(env.FOOTBALL_DB, input.fixtureIds);
   const standings = await verifiedStandings(env.FOOTBALL_DB, input.standings);
   const majorLeagueSeasons = await verifyMajorLeagueSeasons(
     env.FOOTBALL_DB, input.majorLeagueSeasons,
@@ -455,6 +485,14 @@ export async function verifyMigrationState(env, request) {
   const totals = await migrationTotals(env.FOOTBALL_DB, input.expectedTotals);
 
   const missingFixtureIds = input.fixtureIds.filter(fixtureId => !fixtures.has(fixtureId));
+  const fixtureRevisionMismatches = input.fixtureExpectations.flatMap(expected => {
+    const actual = fixtures.get(expected.fixtureId);
+    if (!actual || (actual.revisionNo === expected.revisionNo
+      && actual.contentSha256 === expected.contentSha256)) return [];
+    return [{ fixtureId: expected.fixtureId, expected: {
+      revisionNo: expected.revisionNo, contentSha256: expected.contentSha256,
+    }, actual }];
+  });
   const missingStandings = input.standings.filter(item => !standings.has(
     `${item.competitionId}\t${item.seasonId}`,
   ));
@@ -469,6 +507,7 @@ export async function verifyMigrationState(env, request) {
       ? [] : [{ date: item.date, expected: item.competitionIds, actual }];
   });
   const passed = fixedSnapshot.verified && missingFixtureIds.length === 0
+    && fixtureRevisionMismatches.length === 0
     && missingStandings.length === 0 && missingDateIndexes.length === 0
     && competitionScopeMismatches.length === 0 && totals.mismatches.length === 0
     && majorLeagueSeasons.every(item => item.passed);
@@ -484,6 +523,7 @@ export async function verifyMigrationState(env, request) {
       (count, item) => count + item.competitionIds.length, 0,
     ),
     missingFixtureIds,
+    fixtureRevisionMismatches,
     missingStandings,
     missingDateIndexes,
     competitionScopeMismatches,
