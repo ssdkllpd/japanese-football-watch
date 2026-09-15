@@ -10,9 +10,11 @@ const { correctionDefinitions } = fixtureImporterModule;
 const MANIFEST_SCHEMA = 'jfw-d1-major-leagues-migration-manifest/1';
 const EVIDENCE_SCHEMA = 'jfw-d1-major-leagues-reviewed-evidence/1';
 const REQUEST_SCHEMA = 'jfw-d1-admin-ingest/1';
-const MAX_REQUEST_ATTEMPTS = 4;
+const RESUME_SCHEMA = 'jfw-d1-major-league-partial-state/1';
+const MAX_REQUEST_ATTEMPTS = 6;
 const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
 const RETRYABLE_ERROR_NAMES = new Set(['AbortError', 'TimeoutError', 'TypeError']);
+const MAX_DIAGNOSTIC_LENGTH = 240;
 
 function parseArgs(argv) {
   const result = {};
@@ -302,19 +304,41 @@ function requestIdentity(request) {
   return 'complete-major-league-migration';
 }
 
+function boundedDiagnostic(value) {
+  if (typeof value !== 'string' || !value) return null;
+  return value.slice(0, MAX_DIAGNOSTIC_LENGTH);
+}
+
+function responseDiagnostics(response, raw, body) {
+  const contentType = boundedDiagnostic(response.headers.get('content-type'));
+  const cfRay = boundedDiagnostic(response.headers.get('cf-ray'));
+  const retryAfter = boundedDiagnostic(response.headers.get('retry-after'));
+  return {
+    responseBodyBytes: Buffer.byteLength(raw),
+    responseBodySha256: createHash('sha256').update(raw).digest('hex'),
+    responseBodyKind: raw.length === 0 ? 'empty' : body ? 'json' : 'non_json',
+    ...(contentType ? { responseContentType: contentType } : {}),
+    ...(cfRay ? { cfRay } : {}),
+    ...(retryAfter ? { retryAfter } : {}),
+    ...(boundedDiagnostic(body?.error) ? { serviceError: boundedDiagnostic(body.error) } : {}),
+    ...(boundedDiagnostic(body?.detail) ? { detail: boundedDiagnostic(body.detail) } : {}),
+  };
+}
+
 function retryDelay(response, attempt) {
   const retryAfterHeader = response?.headers?.get('retry-after');
   const retryAfter = Number(retryAfterHeader);
   if (retryAfterHeader !== null && retryAfterHeader !== undefined && retryAfterHeader !== ''
     && Number.isFinite(retryAfter) && retryAfter >= 0) {
-    return Math.min(retryAfter * 1_000, 10_000);
+    return Math.min(retryAfter * 1_000, 30_000);
   }
-  return Math.min(1_000 * (2 ** (attempt - 1)), 10_000);
+  return Math.min(1_000 * (2 ** (attempt - 1)), 30_000);
 }
 
 async function executeRequest(url, request, identity, options) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  const retryHistory = [];
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetchImpl(url, {
@@ -327,14 +351,19 @@ async function executeRequest(url, request, identity, options) {
         },
         body: JSON.stringify(request),
       });
-      const body = await response.json().catch(() => null);
+      const raw = await response.text();
+      let body = null;
+      try { body = raw ? JSON.parse(raw) : null; } catch { /* classified below */ }
       if (response.ok && body?.ok === true) {
         return {
           operation: request.operation, identity, passed: true, status: response.status,
           attempts: attempt, report: body.report,
+          ...(retryHistory.length ? { retryHistory } : {}),
         };
       }
+      const diagnostics = responseDiagnostics(response, raw, body);
       if (RETRYABLE_HTTP_STATUSES.has(response.status) && attempt < MAX_REQUEST_ATTEMPTS) {
+        retryHistory.push({ attempt, status: response.status, ...diagnostics });
         process.stdout.write(`Retrying ${request.operation} ${identity} after HTTP ${response.status} `
           + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
         await sleep(retryDelay(response, attempt));
@@ -344,11 +373,13 @@ async function executeRequest(url, request, identity, options) {
         operation: request.operation, identity, passed: false, status: response.status,
         attempts: attempt,
         ...(body?.report ? { report: body.report } : {}),
-        ...(body?.detail ? { detail: body.detail } : {}),
+        ...diagnostics,
+        ...(retryHistory.length ? { retryHistory } : {}),
       };
     } catch (error) {
       const errorName = error?.name || 'request_failed';
       if (RETRYABLE_ERROR_NAMES.has(errorName) && attempt < MAX_REQUEST_ATTEMPTS) {
+        retryHistory.push({ attempt, error: errorName });
         process.stdout.write(`Retrying ${request.operation} ${identity} after ${errorName} `
           + `(attempt ${attempt + 1}/${MAX_REQUEST_ATTEMPTS}).\n`);
         await sleep(retryDelay(null, attempt));
@@ -357,6 +388,7 @@ async function executeRequest(url, request, identity, options) {
       return {
         operation: request.operation, identity, passed: false, status: null,
         attempts: attempt, error: errorName,
+        ...(retryHistory.length ? { retryHistory } : {}),
       };
     }
   }
@@ -386,6 +418,79 @@ async function executeRequests(prepared, options) {
 
 export { validatePrepared, executeRequests };
 
+function sortedUniqueStrings(values, label) {
+  if (!Array.isArray(values)
+    || values.some(value => typeof value !== 'string' || !/^af:fixture:\d+$/.test(value))) {
+    fail(`${label} must be an array of canonical fixture IDs.`);
+  }
+  const sorted = [...values].sort();
+  if (new Set(sorted).size !== sorted.length) fail(`${label} contains duplicates.`);
+  if (JSON.stringify(values) !== JSON.stringify(sorted)) fail(`${label} must be sorted.`);
+  return sorted;
+}
+
+export function applyResumeState(prepared, resumeState) {
+  if (resumeState?.schemaVersion !== RESUME_SCHEMA || resumeState.passed !== true
+    || !['clean', 'compatible-partial', 'complete'].includes(resumeState.state)) {
+    fail('D1 resume state is unsupported or did not pass validation.');
+  }
+  const fixtureRequests = prepared.requests.filter(request => request.operation === 'fixture_migration_publish');
+  const expectedFixtureIds = fixtureRequests.map(request => request.fixtureId).sort();
+  const matchedFixtureIds = sortedUniqueStrings(
+    resumeState.matchedFixtureDetailIds, 'matchedFixtureDetailIds',
+  );
+  const pendingFixtureIds = sortedUniqueStrings(
+    resumeState.pendingFixtureDetailIds, 'pendingFixtureDetailIds',
+  );
+  const partition = [...matchedFixtureIds, ...pendingFixtureIds].sort();
+  if (JSON.stringify(partition) !== JSON.stringify(expectedFixtureIds)
+    || resumeState.expectedFixtures !== prepared.summary.coreFixtures
+    || resumeState.storedFixtures + resumeState.pendingFixtures !== resumeState.expectedFixtures
+    || resumeState.expectedDetails !== expectedFixtureIds.length
+    || resumeState.matchedDetails !== matchedFixtureIds.length
+    || resumeState.pendingDetails !== pendingFixtureIds.length
+    || resumeState.matchedDetails + resumeState.pendingDetails !== resumeState.expectedDetails
+    || !Number.isInteger(resumeState.pendingUpgrades) || resumeState.pendingUpgrades < 0
+    || resumeState.pendingUpgrades > resumeState.pendingDetails
+    || (resumeState.state === 'clean' && (resumeState.storedFixtures !== 0 || matchedFixtureIds.length !== 0))
+    || (resumeState.state === 'complete'
+      && (resumeState.pendingFixtures !== 0 || pendingFixtureIds.length !== 0))
+    || (resumeState.state === 'compatible-partial'
+      && resumeState.pendingFixtures === 0 && pendingFixtureIds.length === 0)) {
+    fail('D1 resume state does not exactly partition the prepared fixture details.');
+  }
+  const matched = new Set(matchedFixtureIds);
+  const requests = prepared.requests.filter(request => (
+    request.operation !== 'fixture_migration_publish' || !matched.has(request.fixtureId)
+  ));
+  const requiredArtifactKeys = new Set(requests.map(request => request.artifactKey).filter(Boolean));
+  const uploadObjects = prepared.uploadObjects.filter(item => requiredArtifactKeys.has(item.r2Key));
+  if (uploadObjects.length !== requiredArtifactKeys.size) {
+    fail('D1 resume plan cannot resolve every required content-addressed artifact.');
+  }
+  return {
+    ...prepared,
+    requests,
+    uploadObjects,
+    resume: {
+      schemaVersion: RESUME_SCHEMA,
+      state: resumeState.state,
+      passed: true,
+      matchedFixtureDetails: matchedFixtureIds.length,
+      pendingFixtureDetails: pendingFixtureIds.length,
+    },
+    summary: {
+      ...prepared.summary,
+      authoritativeAdminRequests: prepared.summary.adminRequests,
+      authoritativeUploadObjects: prepared.summary.uploadObjects,
+      adminRequests: requests.length,
+      uploadObjects: uploadObjects.length,
+      skippedFixtureDetails: matchedFixtureIds.length,
+      pendingFixtureDetails: pendingFixtureIds.length,
+    },
+  };
+}
+
 function validationResult(prepared) {
   const checks = {
     sourcePinned: prepared.source?.provider === 'api-football'
@@ -395,6 +500,7 @@ function validationResult(prepared) {
     requestsNonEmpty: prepared.requests.length > 0,
     uploadObjectsNonEmpty: prepared.uploadObjects.length > 0,
     uploadHashesValid: prepared.uploadObjects.every(item => /^[0-9a-f]{64}$/.test(item.sha256)),
+    resumeStateValid: !prepared.resume || prepared.resume.passed === true,
   };
   return { passed: Object.values(checks).every(Boolean), checks };
 }
@@ -404,9 +510,13 @@ export { validationResult };
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.prepared || !args.evidence || !args.report) {
-    fail('Usage: migrate-major-league-snapshot.mjs --prepared DIR --evidence FILE --report FILE [--execute --url URL]');
+    fail('Usage: migrate-major-league-snapshot.mjs --prepared DIR --evidence FILE --report FILE '
+      + '[--resume-state FILE] [--execute --url URL]');
   }
-  const prepared = validatePrepared(path.resolve(args.prepared), path.resolve(args.evidence));
+  const fullPrepared = validatePrepared(path.resolve(args.prepared), path.resolve(args.evidence));
+  const prepared = args['resume-state']
+    ? applyResumeState(fullPrepared, readJson(path.resolve(args['resume-state']), 'D1 resume state'))
+    : fullPrepared;
   const validation = validationResult(prepared);
   const execute = args.execute === true;
   if (execute && !args.url) fail('--url is required with --execute.');
@@ -418,7 +528,10 @@ async function main() {
     schemaVersion: 'jfw-d1-major-leagues-migration-client-report/1',
     mode: execute ? 'execute' : 'validate-only',
     source: prepared.source,
-    validation: { ...validation, summary: prepared.summary, uploadObjects: prepared.uploadObjects },
+    validation: {
+      ...validation, summary: prepared.summary, uploadObjects: prepared.uploadObjects,
+      ...(prepared.resume ? { resume: prepared.resume } : {}),
+    },
     execution,
     passed: validation.passed && (!execute || execution.completed),
     productionReady: false,

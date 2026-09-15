@@ -240,6 +240,10 @@ test('major-league staging migration is pinned, reversible, and leaves public fl
   assert.equal(workflow.includes('d1 migrations apply'), true);
   assert.match(workflow, /verify-migration-inventory\.mjs/);
   assert.match(workflow, /check-major-league-partial-state\.mjs/);
+  assert.match(workflow, /Build a minimal fail-closed resume plan/);
+  assert.match(workflow, /--resume-state \.tmp\/d1-major-migrate\/preflight-partial-state-report\.json/);
+  assert.match(workflow, /resume-validation-report\.json/);
+  assert.match(workflow, /jq -r '\.validation\.uploadObjects\[\] \| \[\.r2Key,\.localPath,\.sha256\] \| @tsv'[\s\S]*resume-validation-report\.json/);
   assert.match(workflow, /--command "\$\(< \.tmp\/d1-major-migrate\/fixture-state-query\.sql\)"/);
   assert.equal(workflow.includes('--file .tmp/d1-major-migrate/fixture-state-query.sql'), false);
   assert.match(workflow, /check-schema-lock\.mjs/);

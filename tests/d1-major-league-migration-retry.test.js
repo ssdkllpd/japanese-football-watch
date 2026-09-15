@@ -40,6 +40,13 @@ test('major-league migration retries a transient HTTP failure and preserves one 
     identity: item.identity, passed: item.passed, status: item.status, attempts: item.attempts,
   })), [{ identity: 'af:fixture:1570363', passed: true, status: 200, attempts: 3 }]);
   assert.deepEqual(sleeps, [1000, 2000]);
+  assert.deepEqual(report.results[0].retryHistory.map(item => ({
+    attempt: item.attempt, status: item.status, kind: item.responseBodyKind,
+    retryAfter: item.retryAfter || null,
+  })), [
+    { attempt: 1, status: 503, kind: 'empty', retryAfter: null },
+    { attempt: 2, status: 429, kind: 'empty', retryAfter: '2' },
+  ]);
 });
 
 test('major-league migration does not retry a deterministic data rejection', async () => {
@@ -50,7 +57,11 @@ test('major-league migration does not retry a deterministic data rejection', asy
     token: 'secret-token',
     async fetchImpl() {
       calls += 1;
-      return new Response(JSON.stringify({ detail: 'invalid fixture data' }), { status: 422 });
+      return new Response(JSON.stringify({
+        error: 'Admin ingest rejected', detail: 'invalid fixture data',
+      }), {
+        status: 422, headers: { 'content-type': 'application/json' },
+      });
     },
     async sleep() { throw new Error('sleep must not be called'); },
   });
@@ -59,7 +70,11 @@ test('major-league migration does not retry a deterministic data rejection', asy
   assert.equal(report.completed, false);
   assert.deepEqual(report.results[0], {
     operation: 'fixture_migration_publish', identity: 'af:fixture:1570363',
-    passed: false, status: 422, attempts: 1, detail: 'invalid fixture data',
+    passed: false, status: 422, attempts: 1,
+    responseBodyBytes: 65,
+    responseBodySha256: '9a92bb42557787173b1805a8a34e118f931856324b295be7707b5d30f74302c1',
+    responseBodyKind: 'json', responseContentType: 'application/json',
+    serviceError: 'Admin ingest rejected', detail: 'invalid fixture data',
   });
 });
 
@@ -74,16 +89,24 @@ test('major-league migration bounds retries for persistent 503 and transient net
       async fetchImpl() {
         calls += 1;
         if (failure === 'network') throw new TypeError('temporary network failure');
-        return new Response('', { status: 503 });
+        return new Response('temporary upstream failure', {
+          status: 503, headers: { 'content-type': 'text/plain', 'cf-ray': 'run8-example' },
+        });
       },
       async sleep(milliseconds) { sleeps.push(milliseconds); },
     });
 
-    assert.equal(calls, 4);
-    assert.deepEqual(sleeps, [1000, 2000, 4000]);
+    assert.equal(calls, 6);
+    assert.deepEqual(sleeps, [1000, 2000, 4000, 8000, 16000]);
     assert.equal(report.completed, false);
-    assert.equal(report.results[0].attempts, 4);
+    assert.equal(report.results[0].attempts, 6);
     assert.equal(report.results[0].status, failure === 'http' ? 503 : null);
     assert.equal(report.results[0].error, failure === 'network' ? 'TypeError' : undefined);
+    assert.equal(report.results[0].retryHistory.length, 5);
+    if (failure === 'http') {
+      assert.equal(report.results[0].responseBodyKind, 'non_json');
+      assert.equal(report.results[0].responseBodyBytes, 26);
+      assert.equal(report.results[0].cfRay, 'run8-example');
+    }
   }
 });

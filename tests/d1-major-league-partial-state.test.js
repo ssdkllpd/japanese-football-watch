@@ -84,9 +84,11 @@ test('partial-state detector accepts clean, resumable, and complete databases', 
   const { detectPartialState, expectedState } = await import('../scripts/d1/check-major-league-partial-state.mjs');
   const prepared = preparedDirectory(t);
   assert.deepEqual(detectPartialState(prepared, [{ results: [] }]), {
+    schemaVersion: 'jfw-d1-major-league-partial-state/1',
     state: 'clean', passed: true, expectedFixtures: 2, expectedDetails: 1,
     storedFixtures: 0, matchedDetails: 0, pendingFixtures: 2,
     pendingDetails: 1, pendingUpgrades: 0,
+    matchedFixtureDetailIds: [], pendingFixtureDetailIds: ['af:fixture:1'],
   });
 
   const expected = expectedState(prepared);
@@ -100,14 +102,18 @@ test('partial-state detector accepts clean, resumable, and complete databases', 
   }];
   assert.equal(detectPartialState(prepared, [{ results: completeRows }]).state, 'complete');
   assert.deepEqual(detectPartialState(prepared, [{ results: completeRows.slice(0, 1) }]), {
+    schemaVersion: 'jfw-d1-major-league-partial-state/1',
     state: 'compatible-partial', passed: true, expectedFixtures: 2, expectedDetails: 1,
     storedFixtures: 1, matchedDetails: 1, pendingFixtures: 1,
     pendingDetails: 0, pendingUpgrades: 0,
+    matchedFixtureDetailIds: ['af:fixture:1'], pendingFixtureDetailIds: [],
   });
   assert.deepEqual(detectPartialState(prepared, [{ results: [completeRows[1]] }]), {
+    schemaVersion: 'jfw-d1-major-league-partial-state/1',
     state: 'compatible-partial', passed: true, expectedFixtures: 2, expectedDetails: 1,
     storedFixtures: 1, matchedDetails: 0, pendingFixtures: 1,
     pendingDetails: 1, pendingUpgrades: 0,
+    matchedFixtureDetailIds: [], pendingFixtureDetailIds: ['af:fixture:1'],
   });
   assert.throws(() => detectPartialState(prepared, [{ results: [{ ...completeRows[0], content_sha256: '0'.repeat(64) }, completeRows[1]] }]),
     /hash differs at the prepared revision/);
@@ -139,9 +145,11 @@ test('partial-state detector safely upgrades one reviewed revision and accepts i
     ...old, revision_no: 2, content_sha256: detail.contentSha256,
   }, compact];
   assert.deepEqual(detectPartialState(prepared, [{ results: history }]), {
+    schemaVersion: 'jfw-d1-major-league-partial-state/1',
     state: 'complete', passed: true, expectedFixtures: 2, expectedDetails: 1,
     storedFixtures: 2, matchedDetails: 1, pendingFixtures: 0,
     pendingDetails: 0, pendingUpgrades: 0,
+    matchedFixtureDetailIds: ['af:fixture:1'], pendingFixtureDetailIds: [],
   });
 
   assert.throws(() => detectPartialState(prepared, [{ results: [

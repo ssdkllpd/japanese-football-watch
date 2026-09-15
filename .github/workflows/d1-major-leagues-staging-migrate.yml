@@ -144,6 +144,17 @@ jobs:
             --inventory .tmp/d1-major-migrate/preflight-fixture-state.json \
             > .tmp/d1-major-migrate/preflight-partial-state-report.json
 
+      - name: Build a minimal fail-closed resume plan
+        run: |
+          set -euo pipefail
+          node scripts/d1/migrate-major-league-snapshot.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --evidence "$EVIDENCE" \
+            --resume-state .tmp/d1-major-migrate/preflight-partial-state-report.json \
+            --report .tmp/d1-major-migrate/resume-validation-report.json
+          jq -e '.passed==true and .validation.resume.passed==true' \
+            .tmp/d1-major-migrate/resume-validation-report.json >/dev/null
+
       - name: Capture pre-write D1 Time Travel bookmark
         run: |
           set -euo pipefail
@@ -168,7 +179,7 @@ jobs:
         run: |
           set -euo pipefail
           jq -r '.validation.uploadObjects[] | [.r2Key,.localPath,.sha256] | @tsv' \
-            .tmp/d1-major-migrate/validation-only-report.json \
+            .tmp/d1-major-migrate/resume-validation-report.json \
             | while IFS=$'\t' read -r key local_file expected_sha; do
                 test "$(sha256sum "$local_file" | cut -d' ' -f1)" = "$expected_sha"
                 case "$key" in
@@ -193,6 +204,7 @@ jobs:
             --prepared .tmp/d1-major-migrate/prepared \
             --evidence "$EVIDENCE" \
             --report .tmp/d1-major-migrate/execution-report.json \
+            --resume-state .tmp/d1-major-migrate/preflight-partial-state-report.json \
             --execute --url "$ADMIN_INGEST_URL"
           jq -e '.passed==true and .execution.completed==true and .execution.failed==0' \
             .tmp/d1-major-migrate/execution-report.json >/dev/null
@@ -217,6 +229,7 @@ jobs:
             .tmp/d1-major-migrate/preflight-migration-verification.json
             .tmp/d1-major-migrate/preflight-fixture-state.json
             .tmp/d1-major-migrate/preflight-partial-state-report.json
+            .tmp/d1-major-migrate/resume-validation-report.json
             .tmp/d1-major-migrate/pre-write-bookmark.json
             .tmp/d1-major-migrate/post-migrations.json
             .tmp/d1-major-migrate/post-migration-verification.json

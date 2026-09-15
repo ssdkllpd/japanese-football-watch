@@ -8,6 +8,7 @@ import fixedSnapshotModule from './fixed-snapshot.js';
 
 const { validateBundle } = fixtureImporterModule;
 const { sha256 } = fixedSnapshotModule;
+const REPORT_SCHEMA = 'jfw-d1-major-league-partial-state/1';
 
 function parseArgs(argv) {
   const result = {};
@@ -115,10 +116,13 @@ export function detectPartialState(preparedRoot, payload) {
     throw new Error('Required previous fixture revisions are missing from the migration target.');
   }
   if (rows.length === 0) return {
+    schemaVersion: REPORT_SCHEMA,
     state: 'clean', passed: true, expectedFixtures: expected.fixtures.size,
     expectedDetails: expected.details.size, storedFixtures: 0, matchedDetails: 0,
     pendingFixtures: expected.fixtures.size, pendingDetails: expected.details.size,
     pendingUpgrades: 0,
+    matchedFixtureDetailIds: [],
+    pendingFixtureDetailIds: [...expected.details.keys()].sort(),
   };
 
   const byFixture = new Map();
@@ -140,6 +144,7 @@ export function detectPartialState(preparedRoot, payload) {
   }
   let matchedDetails = 0;
   let pendingUpgrades = 0;
+  const matchedFixtureDetailIds = [];
   for (const [fixtureId, fixtureRows] of byFixture) {
     const expectedDetail = expected.details.get(fixtureId);
     const populated = fixtureRows.filter(row => row.revision_no !== null && row.revision_no !== undefined);
@@ -187,6 +192,7 @@ export function detectPartialState(preparedRoot, payload) {
         throw new Error(`Fixture hash differs at the prepared revision: ${fixtureId}.`);
       }
       matchedDetails += 1;
+      matchedFixtureDetailIds.push(fixtureId);
       continue;
     }
     const upgradeFrom = expectedDetail.upgradeFrom;
@@ -198,9 +204,14 @@ export function detectPartialState(preparedRoot, payload) {
     pendingUpgrades += 1;
   }
   const pendingFixtures = expected.fixtures.size - byFixture.size;
-  const pendingDetails = expected.details.size - matchedDetails;
+  matchedFixtureDetailIds.sort();
+  const matchedFixtureDetailSet = new Set(matchedFixtureDetailIds);
+  const pendingFixtureDetailIds = [...expected.details.keys()]
+    .filter(fixtureId => !matchedFixtureDetailSet.has(fixtureId)).sort();
+  const pendingDetails = pendingFixtureDetailIds.length;
   const complete = pendingFixtures === 0 && pendingDetails === 0;
   return {
+    schemaVersion: REPORT_SCHEMA,
     state: complete ? 'complete' : 'compatible-partial',
     passed: true,
     expectedFixtures: expected.fixtures.size,
@@ -210,6 +221,8 @@ export function detectPartialState(preparedRoot, payload) {
     pendingFixtures,
     pendingDetails,
     pendingUpgrades,
+    matchedFixtureDetailIds,
+    pendingFixtureDetailIds,
   };
 }
 
