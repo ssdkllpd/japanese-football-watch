@@ -3,10 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import fixtureShadowModule from './fixture-shadow-compare.js';
+import fixtureImporterModule from './fixture-bundle-importer.js';
 import fixedSnapshotModule from './fixed-snapshot.js';
 
-const { normalizeFixtureBundle } = fixtureShadowModule;
+const { validateBundle } = fixtureImporterModule;
 const { sha256 } = fixedSnapshotModule;
 
 function parseArgs(argv) {
@@ -48,13 +48,27 @@ export function expectedState(preparedRoot) {
   }
   for (const league of manifest.leagues || []) {
     const core = readJson(path.join(root, league.coreArtifact.path));
+    const catalog = {
+      productSeasonId: core.productSeason?.id,
+      source: { apiVersion: core.source?.apiVersion },
+      competition: {
+        type: core.competition?.type,
+        countryCode: core.competition?.countryCode ?? null,
+      },
+      season: {
+        status: core.season?.status,
+        startsOn: core.season?.startsOn,
+        endsOn: core.season?.endsOn,
+        finalizedOn: core.season?.finalizedOn ?? null,
+      },
+    };
     for (const item of core.fixtures || []) {
       if (fixtures.has(item.fixtureId)) throw new Error(`Duplicate expected fixture: ${item.fixtureId}.`);
       fixtures.set(item.fixtureId, { competitionId: league.competitionId, seasonId: league.seasonId });
     }
     for (const declaration of league.fixtureArtifacts || []) {
       const artifact = readJson(path.join(root, declaration.path));
-      const normalized = normalizeFixtureBundle(artifact.bundle);
+      const normalized = validateBundle(artifact.bundle, catalog).normalized;
       details.set(declaration.fixtureId, {
         revision: normalized.fixture.revision,
         contentSha256: sha256(normalized),

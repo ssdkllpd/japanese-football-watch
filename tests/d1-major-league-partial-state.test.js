@@ -5,6 +5,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { sha256 } = require('../scripts/d1/fixed-snapshot');
+const { normalizeFixtureBundle: normalizeForComparison } = require('../scripts/d1/fixture-shadow-compare');
+const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -14,14 +17,39 @@ function writeJson(filePath, value) {
 function preparedDirectory(t, revision = 1, previousContentSha256 = '1'.repeat(64)) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-partial-state-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const baseFixture = {
-    id: 'af:fixture:1', revision, competitionId: 'af:competition:39', seasonId: 'af:season:39:2026',
-  };
-  const bundle = {
-    contractVersion: '2.1.0', detailAvailability: 'available', fixture: baseFixture,
-    events: [], lineups: [], playerStats: [], teamStats: [], sectionStates: {},
-  };
+  const bundle = normalizeFixtureBundle({
+    fixture: {
+      id: 1, date: '2026-09-01T18:00:00+00:00', referee: null,
+      venue: { id: null, name: null, city: null },
+      status: { short: 'FT', long: 'Match Finished', elapsed: 90 },
+    },
+    league: {
+      id: 39, name: 'Premier League', country: 'England', logo: null, flag: null,
+      season: 2026, round: 'Regular Season - 1',
+    },
+    teams: {
+      home: { id: 40, name: 'Home FC', logo: null, winner: true },
+      away: { id: 50, name: 'Away FC', logo: null, winner: false },
+    },
+    goals: { home: 2, away: 0 },
+    score: {
+      halftime: { home: 1, away: 0 }, fulltime: { home: 2, away: 0 },
+      extratime: { home: null, away: null }, penalty: { home: null, away: null },
+    },
+    events: [], lineups: [], players: [],
+    statistics: [{
+      team: { id: 40, name: 'Home FC', logo: null },
+      statistics: [{ type: 'Total Shots', value: null }],
+    }],
+  }, { fetchedAt: '2026-09-08T02:15:09.068Z' });
+  bundle.fixture.revision = revision;
   writeJson(path.join(root, 'core.json'), {
+    source: { apiVersion: 'v3' },
+    productSeason: { id: 'jfw:season:2026-27' },
+    competition: { type: 'League', countryCode: 'GB' },
+    season: {
+      status: 'current', startsOn: '2026-08-21', endsOn: '2027-05-30', finalizedOn: null,
+    },
     fixtures: [{ fixtureId: 'af:fixture:1' }, { fixtureId: 'af:fixture:2' }],
   });
   writeJson(path.join(root, 'fixture.json'), { bundle });
@@ -38,6 +66,19 @@ function preparedDirectory(t, revision = 1, previousContentSha256 = '1'.repeat(6
   });
   return root;
 }
+
+test('partial-state hash uses the same provider reconciliation as the admin Worker', async t => {
+  const { expectedState } = await import('../scripts/d1/check-major-league-partial-state.mjs');
+  const prepared = preparedDirectory(t);
+  const artifact = JSON.parse(fs.readFileSync(path.join(prepared, 'fixture.json'), 'utf8'));
+  const unreconciledHash = sha256(normalizeForComparison(artifact.bundle));
+  const expectedHash = expectedState(prepared).details.get('af:fixture:1').contentSha256;
+  const reconciled = structuredClone(artifact.bundle);
+  delete reconciled.teamStats[0].values.total_shots;
+
+  assert.notEqual(expectedHash, unreconciledHash);
+  assert.equal(expectedHash, sha256(normalizeForComparison(reconciled)));
+});
 
 test('partial-state detector accepts clean, resumable, and complete databases', async t => {
   const { detectPartialState, expectedState } = await import('../scripts/d1/check-major-league-partial-state.mjs');
