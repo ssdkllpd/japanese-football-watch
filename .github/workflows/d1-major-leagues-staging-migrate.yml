@@ -68,6 +68,7 @@ jobs:
             tests/d1-major-league-resume-plan.test.js \
             tests/d1-major-league-migration-retry.test.js \
             tests/d1-admin-migration-verify.test.js \
+            tests/d1-date-coverage-schema-v6.test.js \
             tests/d1-migration-workflows.test.js
 
       - name: Download the exact pinned snapshot from R2

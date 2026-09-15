@@ -20,6 +20,10 @@
     {
       "name": "0005_d1_player_passes_accurate.sql",
       "sha256": "8ac87c258c33e16a60bd1521d88e33e54eb2c3815a4dacbd96e974e573b6b2ab"
+    },
+    {
+      "name": "0006_d1_date_index_coverage_timestamp.sql",
+      "sha256": "bd34153a6f075cc3dbd465cc95c25c7dbc44d3de150070ebe0e19b8431711573"
     }
   ],
   "tables": {
