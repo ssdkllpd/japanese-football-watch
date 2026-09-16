@@ -456,17 +456,21 @@ async function migrationTotals(database, expected) {
 async function verifiedDateCoverages(database, dates) {
   if (!dates.length) return { generic: new Set(), competitions: new Map() };
   const dateValues = dates.map(item => item.date);
-  const genericRows = await rows(database, `
-    SELECT date_jst FROM date_index_coverages
-    WHERE date_jst IN (${dateValues.map(() => '?').join(', ')})
-  `, dateValues);
-  const competitionRows = await rows(database, `
-    SELECT coverage.date_jst, competition.canonical_id AS competition_id
-    FROM competition_date_index_coverages coverage
-    JOIN competitions competition ON competition.id = coverage.competition_id
-    WHERE coverage.date_jst IN (${dateValues.map(() => '?').join(', ')})
-    ORDER BY coverage.date_jst, competition.canonical_id
-  `, dateValues);
+  const genericRows = [];
+  const competitionRows = [];
+  for (const group of chunks(dateValues, 50)) {
+    genericRows.push(...await rows(database, `
+      SELECT date_jst FROM date_index_coverages
+      WHERE date_jst IN (${group.map(() => '?').join(', ')})
+    `, group));
+    competitionRows.push(...await rows(database, `
+      SELECT coverage.date_jst, competition.canonical_id AS competition_id
+      FROM competition_date_index_coverages coverage
+      JOIN competitions competition ON competition.id = coverage.competition_id
+      WHERE coverage.date_jst IN (${group.map(() => '?').join(', ')})
+      ORDER BY coverage.date_jst, competition.canonical_id
+    `, group));
+  }
   const competitions = new Map(dateValues.map(date => [date, []]));
   for (const row of competitionRows) competitions.get(row.date_jst).push(row.competition_id);
   return { generic: new Set(genericRows.map(row => row.date_jst)), competitions };

@@ -252,8 +252,9 @@ test('admin migration verification catches externally declared total mismatch ou
   ]);
 });
 
-test('the full 365-fixture content verification request stays below the admin body limit', async () => {
+test('the full migration verification request stays below body and D1 bind limits', async () => {
   const { assertMigrationVerifyRequest } = await import('../admin-worker/migration-verify.mjs');
+  const admin = await import('../admin-worker/index.mjs');
   const archiveSha256 = 'a'.repeat(64);
   const fixtureIds = Array.from({ length: 365 }, (_, index) => `af:fixture:${index + 1}`);
   const fixtureExpectations = fixtureIds.map((fixtureId, index) => ({
@@ -291,4 +292,25 @@ test('the full 365-fixture content verification request stays below the admin bo
   assert.equal(remainingScopes, 0);
   assert.doesNotThrow(() => assertMigrationVerifyRequest(requestBody));
   assert.equal(Buffer.byteLength(JSON.stringify(requestBody)) < 256 * 1024, true);
+
+  const bindCounts = [];
+  const d1WithProductionBindLimit = {
+    prepare(sql) {
+      return {
+        bind(...params) {
+          bindCounts.push({ sql, count: params.length });
+          assert.ok(params.length <= 100, `D1 query exceeded 100 bound parameters: ${params.length}`);
+          return { async all() { return { results: [] }; } };
+        },
+      };
+    },
+  };
+  const response = await admin.default.fetch(request(requestBody), {
+    ADMIN_INGEST_TOKEN: 'test-token', FOOTBALL_DB: d1WithProductionBindLimit,
+  });
+  assert.equal(response.status, 409);
+  assert.equal(Math.max(...bindCounts.map(item => item.count)), 50);
+  assert.deepEqual(bindCounts
+    .filter(item => item.sql.includes('date_index_coverages'))
+    .map(item => item.count), [50, 50, 50, 50, 50, 50, 28, 28]);
 });
