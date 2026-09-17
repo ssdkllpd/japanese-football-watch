@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "jfw-public-worker-target/1",
+  "schemaVersion": "jfw-public-worker-target/2",
   "workerName": "jfw-football-data-v2",
   "workerOrigin": "https://jfw-football-data-v2.ssdkllpd.workers.dev",
   "appOrigin": "https://ssdkllpd.github.io",
@@ -8,9 +8,30 @@
   "d1DatabaseId": "fdfd74e4-2702-4aa2-ab20-c062e952fe25",
   "liveCompetitionIds": [39, 40, 61, 78, 88, 94, 135, 140, 144, 179],
   "d1ReadFlags": {
-    "D1_DATE_INDEX_ENABLED": false,
-    "D1_COMPETITION_DATE_INDEX_ENABLED": false,
-    "D1_STANDINGS_ENABLED": false,
-    "D1_FIXTURE_DETAIL_ENABLED": false
+    "D1_DATE_INDEX_ENABLED": true,
+    "D1_COMPETITION_DATE_INDEX_ENABLED": true,
+    "D1_STANDINGS_ENABLED": true,
+    "D1_FIXTURE_DETAIL_ENABLED": true
+  },
+  "d1CutoverAuthorization": {
+    "schemaVersion": "jfw-d1-public-read-authorization/1",
+    "databaseId": "fdfd74e4-2702-4aa2-ab20-c062e952fe25",
+    "migrationWorkflowRunId": 35090817724,
+    "migrationCommit": "8ce12d98017286ed18682583fea71951525724ef",
+    "migrationTree": "2e5b35e746f9babedf402ec628bf25f4df8d26f0",
+    "migrationArtifactSha256": "f0e16d1c741c7d47e22b989ec5b5e40afba570d71cb57c9b848b5faa7401e68a",
+    "authorizedFlags": [
+      "D1_DATE_INDEX_ENABLED",
+      "D1_COMPETITION_DATE_INDEX_ENABLED",
+      "D1_STANDINGS_ENABLED",
+      "D1_FIXTURE_DETAIL_ENABLED"
+    ]
+  },
+  "d1ReadProbes": {
+    "date": "2026-08-21",
+    "competitionId": "af:competition:140",
+    "standingsCompetitionId": "af:competition:39",
+    "standingsSeasonId": "af:season:39:2026",
+    "fixtureId": "af:fixture:1570351"
   }
 }
