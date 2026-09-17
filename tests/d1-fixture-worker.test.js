@@ -6,12 +6,13 @@ const path = require('node:path');
 const test = require('node:test');
 const { DatabaseSync } = require('node:sqlite');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 
 function databaseWithFixture() {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
     INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
@@ -132,7 +133,7 @@ test('fixture detail flag serves the D1 compact DTO without reading R2', async t
 
 test('fixture detail falls back only to a validated same-fixture R2 snapshot', async t => {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   t.after(() => database.close());
   const worker = await import('../worker/index.mjs');
   const env = envWithR2(database);
@@ -176,7 +177,7 @@ test('fixture detail degraded response omits lastSuccessfulAt when reconciledAt 
 
 test('fixture detail flag off validates the R2 snapshot and bypasses D1', async t => {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   t.after(() => database.close());
   const worker = await import('../worker/index.mjs');
   const env = envWithR2(database);
@@ -191,7 +192,7 @@ test('fixture detail flag off validates the R2 snapshot and bypasses D1', async 
 async function responseForFlagOffPayload(t, payload) {
   const worker = await import('../worker/index.mjs');
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   t.after(() => database.close());
   const environment = envWithR2(database, payload);
   environment.D1_FIXTURE_DETAIL_ENABLED = 'false';
@@ -276,7 +277,7 @@ test('fixture detail flag off closes every generated fixed DTO object path', asy
 async function responseForInvalidR2Payload(t, injected, degraded) {
   const worker = await import('../worker/index.mjs');
   const database = degraded ? databaseWithFixture() : new DatabaseSync(':memory:');
-  if (!degraded) database.exec(migration);
+  if (!degraded) applyMigrations(database, root);
   t.after(() => database.close());
   const environment = envWithR2(database, injected);
   environment.D1_FIXTURE_DETAIL_ENABLED = 'true';

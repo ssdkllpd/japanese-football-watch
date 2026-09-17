@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: d1-staging-write
+  cancel-in-progress: false
+
 jobs:
   export-and-publish:
     runs-on: ubuntu-latest

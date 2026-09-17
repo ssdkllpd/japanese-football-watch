@@ -9,15 +9,13 @@ const { DatabaseSync } = require('node:sqlite');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
 const { normalizeFixtureBundle } = require('../scripts/v2/fixture-contract');
 const { correctionDefinitions } = require('../scripts/d1/fixture-bundle-importer');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migrations = [
-  '0001_d1_core.sql', '0002_d1_date_index_coverage.sql',
-  '0003_d1_standings_publication.sql', '0004_d1_standings_order_and_fixture_date.sql',
-].map(file => fs.readFileSync(path.join(__dirname, '..', 'migrations', file), 'utf8'));
+const root = path.join(__dirname, '..');
 
 function database() {
   const db = new DatabaseSync(':memory:');
-  migrations.forEach(migration => db.exec(migration));
+  applyMigrations(db, root);
   return db;
 }
 
@@ -275,6 +273,13 @@ test('major-league core and standings migration is hash-scoped, complete, and id
     archiveSha256: base.archiveSha256,
     fixedSnapshot: null,
     fixtureIds: ['af:fixture:9001'],
+    fixtureExpectations: [db.prepare(`
+      SELECT fixture.canonical_id AS fixtureId, revision.revision_no AS revisionNo,
+        revision.content_sha256 AS contentSha256
+      FROM fixtures fixture
+      JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+      WHERE fixture.canonical_id = 'af:fixture:9001'
+    `).get()],
     standings: [{ competitionId: base.competitionId, seasonId: base.seasonId }],
     dateIndexCoverages: [{
       date: '2026-09-02', competitionIds: ['af:competition:39'],

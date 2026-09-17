@@ -15,8 +15,9 @@ const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { compareFixtureBundles } = require('../scripts/d1/fixture-shadow-compare');
 const { importAndCompare } = require('../scripts/d1/import-fixture-bundle');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 const OBSERVED_AT = '2026-08-21T21:01:00.000Z';
 
 function provenance() {
@@ -105,7 +106,7 @@ function corrections(bundle) {
 
 function createDatabase() {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   database.exec(`INSERT INTO product_seasons(canonical_id, label, starts_on, ends_on)
     VALUES ('jfw:season:2026-27', '2026-27', '2026-07-01', '2027-06-30')`);
   return database;
@@ -129,6 +130,39 @@ test('complete 2.1 bundle imports transactionally and has semantic round-trip pa
   assert.equal(resolved.bundle.playerStats[0].values.expectedAssists, 0);
   assert.equal(resolved.bundle.teamStats[0].values.fouls, 0);
   assert.equal(resolved.bundle.teamStats[0].values.offsides, 0);
+});
+
+test('typed player stats accept only explicit finite values with integer pass counts', () => {
+  for (const value of [undefined, 0, 3]) {
+    const bundle = fixtureBundle();
+    if (value === undefined) delete bundle.playerStats[0].values.passesAccurate;
+    else bundle.playerStats[0].values.passesAccurate = value;
+    bundle.playerStats[0].values.passes = 5;
+    assert.doesNotThrow(() => validateBundle(bundle, catalog()));
+  }
+
+  const invalid = [
+    [null, /omitted instead of null/],
+    [-1, /must not be negative/],
+    ['3', /finite number/],
+    ['nope', /finite number/],
+    [NaN, /omitted instead of null/],
+    [Infinity, /omitted instead of null/],
+    [2.5, /safe integer/],
+    [6, /must not exceed passes/],
+  ];
+  for (const [value, pattern] of invalid) {
+    const bundle = fixtureBundle();
+    bundle.playerStats[0].values.passes = 5;
+    bundle.playerStats[0].values.passesAccurate = value;
+    assert.throws(() => validateBundle(bundle, catalog()), pattern, String(value));
+  }
+});
+
+test('deprecated percentage-shaped passAccuracy cannot leak into extra stats', () => {
+  const bundle = fixtureBundle();
+  bundle.playerStats[0].values.passAccuracy = 60;
+  assert.throws(() => validateBundle(bundle, catalog()), /deprecated; use passesAccurate/);
 });
 
 test('shadow parity detects correction provenance drift stored in D1', async t => {

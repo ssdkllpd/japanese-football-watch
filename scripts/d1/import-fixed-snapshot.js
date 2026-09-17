@@ -5,6 +5,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { importFixedSnapshot, validateImportedSnapshot } = require('./fixed-snapshot-importer');
 const { artifactSha256 } = require('./fixed-snapshot');
+const { applyMigrations } = require('./migration-inventory');
 
 function parseArguments(argv) {
   const values = {};
@@ -16,14 +17,7 @@ function ensureSchema(database, rootDirectory) {
   const exists = database.prepare(`SELECT 1 FROM sqlite_master
     WHERE type = 'table' AND name = 'provider_sources'`).get();
   if (exists) return;
-  for (const file of [
-    '0001_d1_core.sql',
-    '0002_d1_date_index_coverage.sql',
-    '0003_d1_standings_publication.sql',
-    '0004_d1_standings_order_and_fixture_date.sql',
-  ]) {
-    database.exec(fs.readFileSync(path.join(rootDirectory, 'migrations', file), 'utf8'));
-  }
+  applyMigrations(database, rootDirectory);
 }
 
 function databaseCounts(database) {

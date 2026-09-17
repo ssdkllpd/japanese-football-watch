@@ -35,7 +35,10 @@ function standing(team, rank) {
   };
 }
 
-function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePlayerCount = 0 } = {}) {
+function buildSnapshot({
+  seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePlayerCount = 0,
+  fixtureVenue = { id: 10, name: 'Example Stadium', city: 'London' },
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-d1-prepare-'));
   const snapshotRoot = path.join(root, 'snapshot');
   const leagueDir = path.join(snapshotRoot, 'league-39');
@@ -54,7 +57,7 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePl
       date: '2026-09-01T18:00:00+00:00',
       timestamp: 1788285600,
       referee: null,
-      venue: { id: 10, name: 'Example Stadium', city: 'London' },
+      venue: fixtureVenue,
       status: { long: 'Match Finished', short: 'FT', elapsed: 90 },
     },
     league: { id: fixtureLeague, name: 'Premier League', country: 'England', logo: null, flag: null, season: 2026, round: 'Regular Season - 1' },
@@ -179,6 +182,11 @@ function buildSnapshot({ seasonEnd = '2027-05-31', fixtureLeague = 39, fixturePl
     snapshotId: manifest.snapshotId,
     archiveKey,
     archiveSha256,
+    fixtureRevisionReview: {
+      observedAt,
+      overrideCount: 0,
+      overrides: [],
+    },
     leagues: [{
       league: 39,
       competitionId: 'af:competition:39',
@@ -269,6 +277,65 @@ test('prepares a fixture with 51 lineup and player-stat rows without truncation'
     (sum, lineup) => sum + lineup.startXI.length + lineup.substitutes.length, 0,
   ), 51);
   assert.equal(prepared.bundle.playerStats.length, 51);
+});
+
+test('applies only a pinned fixture revision override and records it in the output', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.fixtureRevisionReview = {
+    observedAt: '2026-09-08T02:15:09.068Z',
+    overrideCount: 1,
+    overrides: [{
+      fixtureId: 'af:fixture:100',
+      previousRevision: 1,
+      previousContentSha256: '1'.repeat(64),
+      migrationRevision: 2,
+      reason: 'supersedes-reviewed-staging-revision',
+    }],
+  };
+  writeJson(paths.evidencePath, evidence);
+
+  const result = run(paths);
+  const prepared = JSON.parse(fs.readFileSync(
+    path.join(paths.outputRoot, 'fixtures', '39', '100.json'), 'utf8',
+  ));
+  assert.equal(prepared.bundle.fixture.revision, 2);
+  assert.equal(result.migrationManifest.leagues[0].fixtureArtifacts[0].revision, 2);
+  assert.deepEqual(result.validationReport.fixtureRevisionOverrides,
+    evidence.fixtureRevisionReview.overrides);
+});
+
+test('fails closed when a pinned fixture revision override is not consumed', () => {
+  const paths = buildSnapshot();
+  const evidence = JSON.parse(fs.readFileSync(paths.evidencePath, 'utf8'));
+  evidence.fixtureRevisionReview = {
+    observedAt: '2026-09-08T02:15:09.068Z',
+    overrideCount: 1,
+    overrides: [{
+      fixtureId: 'af:fixture:999',
+      previousRevision: 1,
+      previousContentSha256: '1'.repeat(64),
+      migrationRevision: 2,
+      reason: 'supersedes-reviewed-staging-revision',
+    }],
+  };
+  writeJson(paths.evidencePath, evidence);
+
+  assert.throws(() => run(paths), /Reviewed fixture revision overrides identity set mismatch/);
+});
+
+test('prepares a fixture whose provider venue has a name but no identity without inventing a venue', () => {
+  const paths = buildSnapshot({
+    fixtureVenue: { id: null, name: 'Unidentified Ground', city: 'London' },
+  });
+  const result = run(paths);
+  assert.equal(result.validationReport.passed, true);
+  const prepared = JSON.parse(fs.readFileSync(
+    path.join(paths.outputRoot, 'fixtures', '39', '100.json'), 'utf8',
+  ));
+  assert.deepEqual(prepared.bundle.fixture.venue, {
+    id: null, providerId: null, name: null, city: null,
+  });
 });
 
 test('fails closed when provider season 2026 does not end in 2027', () => {
@@ -374,4 +441,21 @@ test('builds a complete hash-checked migration request sequence without writing'
     'major_league_date_coverage_publish',
     'migration_verify',
   ]);
+  assert.deepEqual(prepared.requests.at(-1).fixtureExpectations, [{
+    fixtureId: 'af:fixture:100', revisionNo: 1,
+    contentSha256: prepared.requests.at(-1).fixtureExpectations[0].contentSha256,
+  }]);
+  assert.match(prepared.requests.at(-1).fixtureExpectations[0].contentSha256, /^[0-9a-f]{64}$/);
+});
+
+test('validate-only pass state is derived from concrete validation checks', async () => {
+  const paths = buildSnapshot();
+  run(paths);
+  const { validatePrepared, validationResult } = await import('../scripts/d1/migrate-major-league-snapshot.mjs');
+  const prepared = validatePrepared(paths.outputRoot, paths.evidencePath);
+  assert.equal(validationResult(prepared).passed, true);
+  prepared.summary.adminRequests += 1;
+  const failed = validationResult(prepared);
+  assert.equal(failed.passed, false);
+  assert.equal(failed.checks.requestPlanCountValid, false);
 });

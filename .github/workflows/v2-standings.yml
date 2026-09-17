@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: d1-staging-write
+  cancel-in-progress: false
+
 jobs:
   ingest-standings:
     runs-on: ubuntu-latest

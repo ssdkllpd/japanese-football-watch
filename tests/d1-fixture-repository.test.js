@@ -8,14 +8,15 @@ const { DatabaseSync } = require('node:sqlite');
 
 const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
 
 function createDatabase() {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
+  applyMigrations(database, root);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version)
     VALUES (1, 'api-football', 'v3');
@@ -97,8 +98,8 @@ function createDatabase() {
 
     INSERT INTO fixture_player_stats(
       player_appearance_id, minutes, provider_rating, goals, assists, shots, shots_on_target,
-      passes, pass_accuracy, yellow_cards
-    ) VALUES (1, 90, 8.2, 1, 0, 3, 2, 32, 87.5, 0);
+      passes, passes_accurate, yellow_cards
+    ) VALUES (1, 90, 8.2, 1, 0, 3, 2, 32, 28, 0);
 
     INSERT INTO fixture_team_stats(
       fixture_revision_id, team_id, shots_total, shots_on_goal, possession_percent,
@@ -215,6 +216,8 @@ test('published D1 revision rebuilds the 2.1 DTO and never leaks staging facts',
   assert.equal(bundle.playerStats.length, 1);
   assert.equal(bundle.playerStats[0].captain, true);
   assert.equal(bundle.playerStats[0].values.assists, 0);
+  assert.equal(bundle.playerStats[0].values.passesAccurate, 28);
+  assert.equal(Object.hasOwn(bundle.playerStats[0].values, 'passAccuracy'), false);
   assert.equal(Object.hasOwn(bundle.playerStats[0].values, 'saves'), false);
   assert.deepEqual(bundle.playerStats[0].fieldStates.saves, { presence: 'not_applicable' });
   assert.deepEqual(bundle.playerStats[0].fieldIssues.assists, ['conflict']);

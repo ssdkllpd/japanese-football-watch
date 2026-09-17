@@ -7,12 +7,9 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { mergeDateIndex } = require('../scripts/v2/merge-date-index');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
-const coverageMigration = fs.readFileSync(
-  path.join(__dirname, '..', 'migrations', '0002_d1_date_index_coverage.sql'),
-  'utf8',
-);
+const root = path.join(__dirname, '..');
 
 async function loadWorker() {
   return import('../worker/index.mjs');
@@ -42,8 +39,7 @@ function localD1(database, onPrepare = () => {}) {
 
 function dateDatabase(options = {}) {
   const database = new DatabaseSync(':memory:');
-  database.exec(migration);
-  database.exec(coverageMigration);
+  applyMigrations(database, root);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
     INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)

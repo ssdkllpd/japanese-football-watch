@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: d1-staging-provision
+  group: d1-staging-write
   cancel-in-progress: false
 
 jobs:
@@ -67,5 +67,5 @@ jobs:
 
       - name: Confirm public flags were not changed
         run: |
-          test "$(rg -c '= "false"' worker/wrangler.toml.example)" -ge 4
-          ! rg '= "true"' worker/wrangler.toml.example
+          test "$(grep -c '= "false"' worker/wrangler.toml.example)" -ge 4
+          ! grep -q '= "true"' worker/wrangler.toml.example

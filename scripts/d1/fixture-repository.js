@@ -171,7 +171,7 @@ FROM (
         'shotsOnTarget', stats.shots_on_target,
         'passes', stats.passes,
         'keyPasses', stats.key_passes,
-        'passAccuracy', stats.pass_accuracy,
+        'passesAccurate', stats.passes_accurate,
         'tackles', stats.tackles,
         'blocks', stats.blocks,
         'interceptions', stats.interceptions,

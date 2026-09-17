@@ -525,6 +525,8 @@ function mapFixtureToSchemaV2(fixture, options = {}) {
     knownValue(values, fieldSources, 'duelsTotal', stats?.duels?.total, sourceId);
     knownValue(values, fieldSources, 'dribbles', stats?.dribbles?.success, sourceId);
     knownValue(values, fieldSources, 'dribbledPast', stats?.dribbles?.past, sourceId);
+    // Legacy tracking calls this successful-pass count passesCompleted. It is
+    // never a percentage; the D1 fixture contract names it passesAccurate.
     knownValue(values, fieldSources, 'passesCompleted', stats?.passes?.accuracy, sourceId);
     knownValue(values, fieldSources, 'passesAttempted', stats?.passes?.total, sourceId);
     knownValue(values, fieldSources, 'penaltiesSaved', stats?.penalty?.saved, sourceId);

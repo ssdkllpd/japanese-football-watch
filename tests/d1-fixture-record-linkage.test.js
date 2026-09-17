@@ -18,8 +18,9 @@ const {
   compareLegacyRecordFacts,
   verifyFixtureRecordParity,
 } = require('../scripts/d1/fixture-record-parity');
+const { applyMigrations } = require('../scripts/d1/migration-inventory');
 
-const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '0001_d1_core.sql'), 'utf8');
+const root = path.join(__dirname, '..');
 const CONTENT_SHA256 = 'a'.repeat(64);
 
 function snapshot(options = {}) {
@@ -63,7 +64,7 @@ function importedCoverage(fixedSnapshot, contentSha256 = CONTENT_SHA256) {
 
 function createDatabase(file = ':memory:', options = {}) {
   const database = new DatabaseSync(file);
-  database.exec(migration);
+  applyMigrations(database, root);
   database.exec(`
     INSERT INTO provider_sources(id, code, api_version) VALUES (1, 'api-football', 'v3');
     INSERT INTO product_seasons(id, canonical_id, label, starts_on, ends_on)
@@ -229,7 +230,7 @@ test('explicit zero does not match canonical null or a different value', t => {
   assert.equal(verified.productionReady, false);
 });
 
-test('unsupported semantics stay outside parity while same-source pass accuracy remains comparable', () => {
+test('unsupported semantics stay outside parity while successful-pass count remains comparable', () => {
   const result = compareLegacyRecordFacts({
     ratingInputs: {
       passesCompleted: { state: 'value', value: 25 },
@@ -239,7 +240,7 @@ test('unsupported semantics stay outside parity while same-source pass accuracy 
     providerRatings: { apiFootball: { value: 7.1 } },
   }, {
     appearanceState: 'unknown',
-    values: { passAccuracy: 25, saves: null, rating: 7.1 },
+    values: { passesAccurate: 25, saves: null, rating: 7.1 },
     fieldStates: { saves: 'not_applicable' },
   });
 

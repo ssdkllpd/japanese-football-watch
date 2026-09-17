@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: d1-major-leagues-staging-migrate
+  group: d1-staging-write
   cancel-in-progress: false
 
 jobs:
@@ -60,7 +60,16 @@ jobs:
       - name: Install dependencies and run migration-specific tests
         run: |
           npm ci
-          node --test tests/d1-major-league-snapshot-prepare.test.js tests/d1-major-league-admin-ingest.test.js
+          node scripts/d1/check-schema-lock.mjs
+          node --test \
+            tests/d1-major-league-snapshot-prepare.test.js \
+            tests/d1-major-league-admin-ingest.test.js \
+            tests/d1-major-league-partial-state.test.js \
+            tests/d1-major-league-resume-plan.test.js \
+            tests/d1-major-league-migration-retry.test.js \
+            tests/d1-admin-migration-verify.test.js \
+            tests/d1-date-coverage-schema-v6.test.js \
+            tests/d1-migration-workflows.test.js
 
       - name: Download the exact pinned snapshot from R2
         run: |
@@ -117,21 +126,68 @@ jobs:
       - name: Render exact staging admin configuration
         run: node scripts/d1/render-admin-wrangler.mjs --output .tmp/d1-major-migrate/admin-wrangler.toml
 
-      - name: Verify D1 schema is already at migration 0004
+      - name: Verify repository-derived D1 migration prefix
         run: |
           set -euo pipefail
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/d1-major-migrate/admin-wrangler.toml \
             --command "SELECT id,name FROM d1_migrations ORDER BY id" \
             > .tmp/d1-major-migrate/preflight-migrations.json
-          jq -e '.[0].results | length==4 and .[3].name=="0004_d1_standings_order_and_fixture_date.sql"' \
-            .tmp/d1-major-migrate/preflight-migrations.json >/dev/null
+          node scripts/d1/verify-migration-inventory.mjs \
+            --inventory .tmp/d1-major-migrate/preflight-migrations.json --allow-pending \
+            > .tmp/d1-major-migrate/preflight-migration-verification.json
+
+      - name: Capture pre-write D1 Time Travel bookmark
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 time-travel info "$D1_DATABASE_NAME" --json \
+            > .tmp/d1-major-migrate/pre-write-bookmark.json
+          test -s .tmp/d1-major-migrate/pre-write-bookmark.json
+
+      - name: Apply and exactly verify repository D1 migrations
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 migrations apply "$D1_DATABASE_NAME" --remote \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --command "SELECT id,name FROM d1_migrations ORDER BY id" \
+            > .tmp/d1-major-migrate/post-migrations.json
+          node scripts/d1/verify-migration-inventory.mjs \
+            --inventory .tmp/d1-major-migrate/post-migrations.json \
+            > .tmp/d1-major-migrate/post-migration-verification.json
+
+      - name: Re-read exact fixture state after repository migrations
+        run: |
+          set -euo pipefail
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --write-query .tmp/d1-major-migrate/fixture-state-query.sql
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/d1-major-migrate/admin-wrangler.toml \
+            --command "$(< .tmp/d1-major-migrate/fixture-state-query.sql)" \
+            > .tmp/d1-major-migrate/post-migration-fixture-state.json
+          node scripts/d1/check-major-league-partial-state.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --inventory .tmp/d1-major-migrate/post-migration-fixture-state.json \
+            > .tmp/d1-major-migrate/post-migration-partial-state-report.json
+
+      - name: Build a minimal fail-closed resume plan
+        run: |
+          set -euo pipefail
+          node scripts/d1/migrate-major-league-snapshot.mjs \
+            --prepared .tmp/d1-major-migrate/prepared \
+            --evidence "$EVIDENCE" \
+            --resume-state .tmp/d1-major-migrate/post-migration-partial-state-report.json \
+            --report .tmp/d1-major-migrate/resume-validation-report.json
+          jq -e '.passed==true and .validation.resume.passed==true' \
+            .tmp/d1-major-migrate/resume-validation-report.json >/dev/null
 
       - name: Upload only content-addressed non-public migration artifacts
         run: |
           set -euo pipefail
           jq -r '.validation.uploadObjects[] | [.r2Key,.localPath,.sha256] | @tsv' \
-            .tmp/d1-major-migrate/validation-only-report.json \
+            .tmp/d1-major-migrate/resume-validation-report.json \
             | while IFS=$'\t' read -r key local_file expected_sha; do
                 test "$(sha256sum "$local_file" | cut -d' ' -f1)" = "$expected_sha"
                 case "$key" in
@@ -149,13 +205,6 @@ jobs:
           printf '%s' "$ADMIN_INGEST_TOKEN" | npx --yes wrangler@4 secret put ADMIN_INGEST_TOKEN \
             --config .tmp/d1-major-migrate/admin-wrangler.toml
 
-      - name: Capture pre-write D1 Time Travel bookmark
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4 d1 time-travel info "$D1_DATABASE_NAME" --json \
-            > .tmp/d1-major-migrate/pre-write-bookmark.json
-          test -s .tmp/d1-major-migrate/pre-write-bookmark.json
-
       - name: Execute idempotent staging migration and exact scoped verification
         run: |
           set -euo pipefail
@@ -163,6 +212,7 @@ jobs:
             --prepared .tmp/d1-major-migrate/prepared \
             --evidence "$EVIDENCE" \
             --report .tmp/d1-major-migrate/execution-report.json \
+            --resume-state .tmp/d1-major-migrate/post-migration-partial-state-report.json \
             --execute --url "$ADMIN_INGEST_URL"
           jq -e '.passed==true and .execution.completed==true and .execution.failed==0' \
             .tmp/d1-major-migrate/execution-report.json >/dev/null
@@ -170,8 +220,8 @@ jobs:
       - name: Confirm public read configuration was not changed
         run: |
           set -euo pipefail
-          test "$(rg -c '= "false"' worker/wrangler.toml.example)" -ge 4
-          ! rg '= "true"' worker/wrangler.toml.example
+          test "$(grep -c '= "false"' worker/wrangler.toml.example)" -ge 4
+          ! grep -q '= "true"' worker/wrangler.toml.example
 
       - name: Upload bounded migration evidence
         if: always()
@@ -184,7 +234,13 @@ jobs:
             .tmp/d1-major-migrate/prepared/migration-manifest.json
             .tmp/d1-major-migrate/validation-only-report.json
             .tmp/d1-major-migrate/preflight-migrations.json
+            .tmp/d1-major-migrate/preflight-migration-verification.json
+            .tmp/d1-major-migrate/post-migration-fixture-state.json
+            .tmp/d1-major-migrate/post-migration-partial-state-report.json
+            .tmp/d1-major-migrate/resume-validation-report.json
             .tmp/d1-major-migrate/pre-write-bookmark.json
+            .tmp/d1-major-migrate/post-migrations.json
+            .tmp/d1-major-migrate/post-migration-verification.json
             .tmp/d1-major-migrate/execution-report.json
           if-no-files-found: warn
           retention-days: 30
