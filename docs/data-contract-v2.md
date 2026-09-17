@@ -407,7 +407,9 @@ Initial routes:
 GET /api/v2/live
 GET /api/v2/fixtures/{fixtureId}
 GET /api/v2/dates/{YYYY-MM-DD}
+GET /api/v2/competitions
 GET /api/v2/competitions/{competitionId}/dates/{YYYY-MM-DD}
+GET /api/v2/competitions/{competitionId}/seasons/{seasonId}
 GET /api/v2/competitions/{competitionId}/seasons/{seasonId}/standings
 GET /health
 ```

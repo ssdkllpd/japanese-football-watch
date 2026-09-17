@@ -37,6 +37,9 @@
     ratingPlayerId: null,
     fixtureReturn: 'matches',
     competitionDetail: null,
+    competitionCatalog: [],
+    competitionCatalogLoading: false,
+    competitionCatalogError: null,
     legacy: null,
     legacySearch: '',
     fixtures: [],
@@ -216,6 +219,29 @@
     return state.legacy;
   }
 
+  async function loadCompetitionCatalog() {
+    if (!state.workerBase || state.competitionCatalogLoading) return state.competitionCatalog;
+    state.competitionCatalogLoading = true;
+    state.competitionCatalogError = null;
+    try {
+      const payload = await apiFetch('/api/v2/competitions');
+      state.competitionCatalog = Array.isArray(payload?.competitions) ? payload.competitions : [];
+      for (const competition of state.competitionCatalog) {
+        const seasons = Array.isArray(competition.seasons) ? competition.seasons : [];
+        const active = seasons.find(season => season.status === 'active') || seasons[0] || null;
+        knownCompetitions.set(competition.id, {
+          ...competition,
+          seasonId: active?.id || null,
+          seasons,
+        });
+      }
+    } catch (error) {
+      state.competitionCatalogError = error;
+    }
+    state.competitionCatalogLoading = false;
+    return state.competitionCatalog;
+  }
+
   function dataIntegrityNotice() {
     const integrity = state.legacy?._dataIntegrity;
     if (!integrity?.degraded) return '';
@@ -345,7 +371,7 @@
   }
 
   function fixtureTeam(team, score) {
-    const logo = team?.logo ? `<img class="team-logo" src="${esc(team.logo)}" alt="" loading="lazy">` : '<span></span>';
+    const logo = team?.logo ? `<img class="team-logo" src="${esc(team.logo)}" data-logo-fallback="entity" alt="" loading="lazy">` : '<span></span>';
     return `<div class="team-line">${logo}<span class="team-name">${esc(team?.name || team?.id || '未取得')}</span><span class="team-score">${valueCell(score)}</span></div>`;
   }
 
@@ -489,8 +515,8 @@
     const home = row?.teams?.home || {};
     const away = row?.teams?.away || {};
     const comp = bundle?.competition?.name || detail.summary?.competitionName || detail.summary?.competitionId || '大会未取得';
-    const homeLogo = home.logo ? `<img src="${esc(home.logo)}" alt="">` : '';
-    const awayLogo = away.logo ? `<img src="${esc(away.logo)}" alt="">` : '';
+    const homeLogo = home.logo ? `<img src="${esc(home.logo)}" data-logo-fallback="entity" alt="">` : '';
+    const awayLogo = away.logo ? `<img src="${esc(away.logo)}" data-logo-fallback="entity" alt="">` : '';
     const returnToCompetition = state.fixtureReturn === 'competition' && state.competitionDetail;
     const returnLabel = returnToCompetition ? 'リーグ' : state.fixtureReturn === 'team' ? 'クラブ' : '試合一覧';
     const tabs = [
@@ -624,6 +650,14 @@
       image.hidden = true;
       image.closest('.person-avatar')?.classList.add('is-fallback');
     }, { once: true }));
+    main.querySelectorAll('img[data-logo-fallback]').forEach(image => image.addEventListener('error', () => {
+      image.hidden = true;
+      const fallback = document.createElement('span');
+      fallback.className = image.dataset.logoFallback === 'competition'
+        ? 'competition-placeholder' : 'entity-logo logo-fallback';
+      fallback.setAttribute('aria-hidden', 'true');
+      image.after(fallback);
+    }, { once: true }));
   }
 
   function substitutionForPlayer(player, bundle, role) {
@@ -701,16 +735,31 @@
       $('leagueDirectory').innerHTML = leagueDirectorySections(leagues, event.target.value);
       bindCompetitionRows();
       bindFollowButtons();
+      bindImageFallbacks();
     });
     bindCompetitionRows();
     bindFollowButtons();
+    bindImageFallbacks();
   }
 
   function competitionDirectory() {
     const unique = new Map(knownCompetitions);
     for (const player of state.legacy?.players || []) if (player.league) {
-      const id = `legacy:competition:${player.league}`;
-      unique.set(id, {id,name:player.league,logo:'',seasonId:null});
+      const canonicalId = config.competitionAliases?.[player.league];
+      if (canonicalId) {
+        const prior = unique.get(canonicalId) || {};
+        unique.set(canonicalId, {
+          ...prior,
+          id: canonicalId,
+          name: prior.name || player.league,
+          logo: prior.logo || '',
+          seasonId: prior.seasonId || null,
+          seasons: prior.seasons || [],
+        });
+      } else {
+        const id = `legacy:competition:${player.league}`;
+        unique.set(id, {id,name:player.league,logo:'',seasonId:null,seasons:[]});
+      }
     }
     for (const row of state.fixtures) if (row.competitionId) {
       const prior = unique.get(row.competitionId) || {};
@@ -732,7 +781,7 @@
     if (!leagues.length) return '<div class="empty-state"><strong>大会なし</strong>この区分に表示できる大会はありません。</div>';
     return leagues.map(item => {
       const on = isCompetitionFollowing(item);
-      return `<div class="entity-row is-link" data-competition-id="${esc(item.id)}" data-competition-name="${esc(item.name)}" data-competition-logo="${esc(item.logo || '')}" data-competition-season="${esc(item.seasonId || '')}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" alt="">` : '<span class="entity-logo"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(item.seasonId ? `シーズン ${seasonLabel(item.seasonId)}` : item.id)}</div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">${icon('follow',on)}</button></div>`;
+      return `<div class="entity-row is-link" data-competition-id="${esc(item.id)}" data-competition-name="${esc(item.name)}" data-competition-logo="${esc(item.logo || '')}" data-competition-season="${esc(item.seasonId || '')}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(item.seasonId ? `シーズン ${seasonLabel(item.seasonId)}` : item.id)}</div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">${icon('follow',on)}</button></div>`;
     }).join('');
   }
 
@@ -766,6 +815,9 @@
       standings: null,
       standingsLoading: false,
       standingsError: null,
+      seasonData: null,
+      seasonDataLoading: false,
+      seasonDataError: null,
     };
     if (!options.routeDriven) {
 
@@ -774,6 +826,47 @@
     renderCompetitionDetail();
     loadCompetitionMatches();
     loadCompetitionStandings();
+    loadCompetitionSeason();
+  }
+
+  function applyCompetitionIdentity(detail, payload) {
+    if (!detail || !payload?.competition) return;
+    const competition = payload.competition;
+    detail.name = competition.name || detail.name;
+    detail.logo = competition.logo || detail.logo || '';
+    detail.country = competition.country || detail.country || null;
+    detail.unresolved = false;
+    if (payload.season?.id) detail.seasonId = payload.season.id;
+    const prior = knownCompetitions.get(detail.id) || {};
+    knownCompetitions.set(detail.id, { ...prior, ...detail });
+  }
+
+  async function loadCompetitionSeason() {
+    const detail = state.competitionDetail;
+    if (!detail || !detail.seasonId || detail.id.startsWith('legacy:') || !state.workerBase) return;
+    detail.seasonDataLoading = true;
+    detail.seasonDataError = null;
+    renderCompetitionDetailIfVisible();
+    try {
+      const payload = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/seasons/${encodeURIComponent(detail.seasonId)}`);
+      if (state.competitionDetail !== detail) return;
+      detail.seasonData = payload;
+      applyCompetitionIdentity(detail, payload);
+      for (const row of payload?.playerStats?.rows || []) if (row.player?.id) {
+        knownPlayers.set(row.player.id, {
+          playerId: row.player.id,
+          name: row.player.name,
+          photo: row.player.photo,
+          nationality: row.player.nationality,
+        });
+      }
+    } catch (error) {
+      if (state.competitionDetail !== detail) return;
+      detail.seasonDataError = error;
+    }
+    if (state.competitionDetail !== detail) return;
+    detail.seasonDataLoading = false;
+    renderCompetitionDetailIfVisible();
   }
 
   async function loadCompetitionMatches() {
@@ -820,6 +913,7 @@
     }
     try {
       detail.standings = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/seasons/${encodeURIComponent(detail.seasonId)}/standings`);
+      applyCompetitionIdentity(detail, detail.standings);
     } catch (error) {
       detail.standingsError = error;
       if (Array.isArray(error.availableSeasons)) detail.availableSeasons = error.availableSeasons;
@@ -844,7 +938,8 @@
     }
     setPageHeader('leagues');
     const on = isCompetitionFollowing(detail);
-    const seasons = [...new Set([detail.seasonId, ...(detail.availableSeasons || []).map(item => typeof item === 'string' ? item : item.id), ...state.fixtures.filter(row => row.competitionId === detail.id).map(row => row.seasonId)].filter(Boolean))];
+    const catalogSeasons = competitionDirectory().find(item => item.id === detail.id)?.seasons || [];
+    const seasons = [...new Set([detail.seasonId, ...catalogSeasons.map(item => item.id), ...(detail.availableSeasons || []).map(item => typeof item === 'string' ? item : item.id), ...state.fixtures.filter(row => row.competitionId === detail.id).map(row => row.seasonId)].filter(Boolean))];
     const tabs = [
       ['matches', '試合'],
       ['standings', '順位表'],
@@ -853,7 +948,7 @@
       ['teams', 'チーム成績'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="competitionBack" class="back-button" type="button">← リーグ一覧</button><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(detail.id)}" ${String(detail.id).startsWith('legacy:') && !on ? 'disabled' : ''} data-follow-name="${esc(detail.name)}" data-follow-logo="${esc(detail.logo || '')}" data-follow-season="${esc(detail.seasonId || '')}" type="button">${icon('follow',on)} ${on ? 'フォロー中' : 'フォロー'}</button></div>
-      <section class="competition-hero">${detail.logo ? `<img src="${esc(detail.logo)}" alt="">` : '<span class="competition-placeholder" aria-hidden="true"></span>'}<div><div class="eyebrow">${esc(detail.seasonId ? `Season ${seasonLabel(detail.seasonId)}` : 'Competition')}</div><h2>${esc(detail.name)}</h2></div></section>
+      <section class="competition-hero">${detail.logo ? `<img src="${esc(detail.logo)}" data-logo-fallback="competition" alt="">` : '<span class="competition-placeholder" aria-hidden="true"></span>'}<div><div class="eyebrow">${esc(detail.country || (detail.seasonId ? `Season ${seasonLabel(detail.seasonId)}` : 'Competition'))}</div><h2>${esc(detail.name)}</h2></div></section>
       ${seasons.length > 1 ? `<label class="season-select-label" for="competitionSeason">シーズン<select id="competitionSeason" class="season-select">${seasons.map(id => `<option value="${esc(id)}" ${id === detail.seasonId ? 'selected' : ''}>${esc(seasonLabel(id))}</option>`).join('')}</select></label>` : `<p class="season-select-label">シーズン ${detail.seasonId ? esc(seasonLabel(detail.seasonId)) : valueCell(null)} · 別シーズンは未取得</p>`}
       <div class="detail-tabs" role="tablist" aria-label="リーグ詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${detail.tab === tab ? ' is-active' : ''}" id="competition-tab-${tab}" aria-controls="competition-panel" data-competition-tab="${tab}" type="button" role="tab" aria-selected="${detail.tab === tab}">${label}</button>`).join('')}</div>
       <div id="competition-panel" role="tabpanel" aria-labelledby="competition-tab-${detail.tab}">${renderCompetitionTab(detail)}</div>`;
@@ -876,13 +971,16 @@
     bindFixtureRows('competition');
     bindFollowButtons();
     bindTeamRows();
+    bindImageFallbacks();
   }
 
   function renderCompetitionTab(detail) {
     if (detail.tab === 'standings') return renderCompetitionStandings(detail);
     if (detail.tab === 'matches') return renderCompetitionMatches(detail);
-    const labels = { overview: '概要', players: '選手成績', teams: 'チーム成績' };
-    return `<div class="empty-state"><strong>${labels[detail.tab] || 'この項目'}は準備中です</strong>表示項目とAPI契約が確定するまで、未取得値を推測表示しません。</div>`;
+    if (detail.tab === 'overview') return renderCompetitionOverview(detail);
+    if (detail.tab === 'players') return renderCompetitionPlayers(detail);
+    if (detail.tab === 'teams') return renderCompetitionTeams(detail);
+    return '<div class="empty-state"><strong>表示できません</strong>不明なタブです。</div>';
   }
 
   function renderCompetitionDateStrip(detail) {
@@ -914,12 +1012,58 @@
     const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
     if (!detail.seasonId || detail.id.startsWith('legacy:')) return `<div class="notice">順位表 ${valueCell(null, 'not_applicable')}</div>`;
     if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
-    return groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div><div class="standings-card"><div class="standings-row standings-head"><span>#</span><span>クラブ</span><span>試</span><span>差</span><span>勝点</span></div>${(group.table || []).map(standingRow).join('')}</div></section>`).join('');
+    const updated = detail.standings?.generatedAt
+      ? `<p class="data-updated">順位表更新: ${esc(detail.standings.generatedAt)}</p>` : '';
+    return `${updated}${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div><div class="standings-card"><div class="standings-row standings-head"><span>#</span><span>クラブ</span><span>試</span><span>差</span><span>勝点</span></div>${(group.table || []).map(standingRow).join('')}</div></section>`).join('')}`;
   }
 
   function standingRow(row) {
     const team = row?.team || {};
-    return `<div class="standings-row${team.id ? ' is-link' : ''}"${team.id ? ` data-team-id="${esc(team.id)}"` : ''}><span class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</span><span class="standings-team">${team.logo ? `<img src="${esc(team.logo)}" alt="">` : ''}<b>${esc(team.name || team.id || '未取得')}</b></span><span>${valueCell(row?.overall?.played,row?.fieldStates?.played)}</span><span>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</span><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></div>`;
+    return `<div class="standings-row${team.id ? ' is-link' : ''}"${team.id ? ` data-team-id="${esc(team.id)}"` : ''}><span class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</span><span class="standings-team">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(team.name || team.id || '未取得')}</b></span><span>${valueCell(row?.overall?.played,row?.fieldStates?.played)}</span><span>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</span><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></div>`;
+  }
+
+  function competitionSeasonState(detail) {
+    if (!detail.seasonId || detail.id.startsWith('legacy:')) {
+      return '<div class="notice">この大会はAPI-Footballの正規IDに結び付いていません。</div>';
+    }
+    if (detail.seasonDataLoading) return '<div class="notice">シーズン情報を読み込み中…</div>';
+    if (detail.seasonDataError) return errorNotice(detail.seasonDataError);
+    if (!detail.seasonData) return `<div class="notice">${valueCell(null, 'not_fetched')}</div>`;
+    return null;
+  }
+
+  function renderCompetitionOverview(detail) {
+    const unavailable = competitionSeasonState(detail);
+    if (unavailable) return unavailable;
+    const payload = detail.seasonData;
+    const summary = payload.summary || {};
+    const labels = { lineups:'ラインナップ', events:'イベント', teamStats:'チーム成績', playerStats:'選手成績' };
+    return `<div class="competition-summary season-summary"><div><strong>${valueCell(summary.teamCount)}</strong><span>クラブ</span></div><div><strong>${valueCell(summary.fixtureCount)}</strong><span>全試合</span></div><div><strong>${valueCell(summary.completedFixtureCount)}</strong><span>終了</span></div><div><strong>${valueCell(summary.publishedDetailCount)}</strong><span>詳細公開</span></div></div>
+      <section class="detail-card"><div class="section-title"><h2>データ範囲</h2></div><div class="overview-grid"><span>期間</span><strong>${valueCell(payload.season?.startsOn)} ～ ${valueCell(payload.season?.endsOn)}</strong><span>順位表更新</span><strong>${valueCell(summary.standingsUpdatedAt)}</strong><span>試合詳細更新</span><strong>${valueCell(summary.detailUpdatedAt)}</strong></div></section>
+      <section class="detail-card"><div class="section-title"><h2>試合詳細の取得状況</h2><span class="meta">${valueCell(summary.publishedDetailCount)}試合</span></div><div class="coverage-table"><div class="coverage-row coverage-head"><span>項目</span><span>取得</span><span>空</span><span>提供なし</span><span>未取得</span></div>${Object.entries(labels).map(([key,label]) => { const row=payload.detailSections?.[key] || {}; return `<div class="coverage-row"><strong>${label}</strong><span>${valueCell(row.present)}</span><span>${valueCell(row.presentEmpty)}</span><span>${valueCell(row.providerMissing)}</span><span>${valueCell(row.notFetched)}</span></div>`; }).join('')}</div><p class="entity-sub">「提供なし」はAPI-Football応答に該当セクションがなかった試合、「未取得」は取得・判定が完了していない試合です。</p></section>`;
+  }
+
+  function aggregateValue(metric) {
+    return valueCell(metric?.value, metric?.presence);
+  }
+
+  function renderCompetitionPlayers(detail) {
+    const unavailable = competitionSeasonState(detail);
+    if (unavailable) return unavailable;
+    const stats = detail.seasonData?.playerStats || {};
+    const rows = Array.isArray(stats.rows) ? stats.rows : [];
+    if (!rows.length) return stats.presence === 'provider_missing'
+      ? '<div class="notice">API-Footballの保存済み試合詳細に選手成績がありません。</div>'
+      : `<div class="notice">${valueCell(null, stats.presence)}</div>`;
+    return `<p class="data-updated">終了試合の公開済み詳細を集計。値が返っていない項目は0にせず「未取得」と表示します。</p><div class="stats-table-scroll"><div class="player-stats-table"><div class="player-stats-row stats-head"><span>選手</span><span>出場</span><span>先発</span><span>分</span><span>G</span><span>A</span><span>評価</span></div>${rows.map(row => `<div class="player-stats-row"><span class="player-stat-person">${personAvatar({name:row.player?.name,photo:row.player?.photo})}<span><strong>${esc(row.player?.name || '選手名未取得')}</strong><small>${esc(row.team?.name || (row.teamCount > 1 ? `${row.teamCount}クラブ` : 'クラブ未取得'))}</small></span></span><span>${valueCell(row.appearances)}</span><span>${valueCell(row.starts)}</span><span>${aggregateValue(row.minutes)}</span><span>${aggregateValue(row.goals)}</span><span>${aggregateValue(row.assists)}</span><span>${aggregateValue(row.averageRating)}</span></div>`).join('')}</div></div>${stats.limited ? '<p class="notice">表示は上位200選手までです。</p>' : ''}`;
+  }
+
+  function renderCompetitionTeams(detail) {
+    if (detail.standingsLoading) return '<div class="notice">チーム成績を読み込み中…</div>';
+    if (detail.standingsError) return errorNotice(detail.standingsError);
+    const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
+    if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
+    return `<p class="data-updated">順位表スナップショット更新: ${valueCell(detail.standings?.generatedAt)}</p>${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || 'チーム成績')}</h2></div><div class="stats-table-scroll"><div class="team-stats-table"><div class="team-stats-row stats-head"><span>クラブ</span><span>試</span><span>勝</span><span>分</span><span>敗</span><span>得</span><span>失</span><span>差</span><span>勝点</span><span>直近</span></div>${(group.table || []).map(row => `<div class="team-stats-row${row.team?.id ? ' is-link' : ''}"${row.team?.id ? ` data-team-id="${esc(row.team.id)}"` : ''}><span class="standings-team">${row.team?.logo ? `<img src="${esc(row.team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(row.team?.name || 'クラブ未取得')}</b></span><span>${valueCell(row.overall?.played)}</span><span>${valueCell(row.overall?.wins)}</span><span>${valueCell(row.overall?.draws)}</span><span>${valueCell(row.overall?.losses)}</span><span>${valueCell(row.overall?.goalsFor)}</span><span>${valueCell(row.overall?.goalsAgainst)}</span><span>${valueCell(row.goalDifference)}</span><strong>${valueCell(row.points)}</strong><span>${valueCell(row.form)}</span></div>`).join('')}</div></div></section>`).join('')}`;
   }
 
   function renderFollowing() {
@@ -944,7 +1088,7 @@
         : type === 'teams'
           ? ` data-team-id="${esc(item.id)}"`
           : ` data-player-id="${esc(item.id)}"`;
-      return `<div class="entity-row is-link"${linkAttributes}>${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" alt="">` : '<span class="entity-logo"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(type === 'players' ? '選手' : type === 'teams' ? 'クラブ' : '大会')}</div></div><button class="follow-button is-following" data-follow-type="${type}" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">解除</button></div>`;
+      return `<div class="entity-row is-link"${linkAttributes}>${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(type === 'players' ? '選手' : type === 'teams' ? 'クラブ' : '大会')}</div></div><button class="follow-button is-following" data-follow-type="${type}" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">解除</button></div>`;
     }).join('');
   }
 
@@ -1153,7 +1297,7 @@
     const sameSeason = !productSeason || productSeason === currentProductSeason();
     const players = sameSeason ? (state.legacy?.players || []).filter(player => player.currentTeamId === teamId || player.currentMembership?.teamId === teamId).map(player => ({...player,displayStats:player.clubStats?.[teamId] || {}})) : [];
     const hasRoster = sameSeason && (state.legacy?.players || []).some(player => player.currentTeamId || player.currentMembership?.teamId);
-    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" alt="">` : '<span class="entity-logo"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2></div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? `<div class="standings-card">${standingRow(standing)}</div>` : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（追跡データ内）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
+    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2></div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? `<div class="standings-card">${standingRow(standing)}</div>` : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（追跡データ内）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
     bindEntityBack();
     bindFixtureRows('team');
     bindPlayerRows();
@@ -1466,7 +1610,7 @@
   window.addEventListener('hashchange', scheduleRouteApply);
   applyTheme(localStorage.getItem('football-v2-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
-  loadLegacy().then(() => {
+  Promise.all([loadLegacy(), loadCompetitionCatalog()]).then(() => {
     const migrated = router.migrateLegacy(location.search, location.hash, {
       players: allKnownPlayers().map(p => ({ id: p.corePlayerId || p.playerId, name: p.name })),
       teams: allKnownTeams(),
