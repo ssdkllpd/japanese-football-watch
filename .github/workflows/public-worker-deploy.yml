@@ -44,6 +44,7 @@ jobs:
             --output .tmp/public-worker/wrangler.toml
 
       - name: Deploy public read Worker
+        id: deploy
         run: npx --yes wrangler@4 deploy --config .tmp/public-worker/wrangler.toml
 
       - name: Install live-data provider secret
@@ -74,13 +75,100 @@ jobs:
             '{workerOrigin: $workerOrigin, appOrigin: $appOrigin, allowedOriginHealth: true, noOriginDenied: true}' \
             > .tmp/public-worker/evidence/report.json
 
+      - name: Verify every enabled D1 public read path
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence=.tmp/public-worker/evidence
+          worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
+          app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
+          probe_date=$(jq -r '.d1ReadProbes.date' config/public-worker-target.json)
+          competition_id=$(jq -r '.d1ReadProbes.competitionId' config/public-worker-target.json)
+          standings_competition_id=$(jq -r '.d1ReadProbes.standingsCompetitionId' config/public-worker-target.json)
+          standings_season_id=$(jq -r '.d1ReadProbes.standingsSeasonId' config/public-worker-target.json)
+          fixture_id=$(jq -r '.d1ReadProbes.fixtureId' config/public-worker-target.json)
+          competition_path=$(jq -rn --arg value "$competition_id" '$value|@uri')
+          standings_competition_path=$(jq -rn --arg value "$standings_competition_id" '$value|@uri')
+          standings_season_path=$(jq -rn --arg value "$standings_season_id" '$value|@uri')
+          fixture_path=$(jq -rn --arg value "$fixture_id" '$value|@uri')
+
+          probe_d1() {
+            label=$1
+            route=$2
+            curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+              --header "Origin: $app_origin" \
+              --dump-header "$evidence/$label.headers.txt" \
+              --output "$evidence/$label.json" \
+              "$worker_origin$route"
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi "access-control-allow-origin: $app_origin"
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi 'x-jfw-data-source: d1'
+          }
+
+          if jq -e '.d1ReadFlags.D1_DATE_INDEX_ENABLED' config/public-worker-target.json >/dev/null; then
+            probe_d1 date "/api/v2/dates/$probe_date"
+            jq -e --arg date "$probe_date" --arg fixture "$fixture_id" \
+              '.date == $date and any(.fixtures[]?; .fixtureId == $fixture)' \
+              "$evidence/date.json" >/dev/null
+          fi
+
+          if jq -e '.d1ReadFlags.D1_COMPETITION_DATE_INDEX_ENABLED' config/public-worker-target.json >/dev/null; then
+            probe_d1 competition-date "/api/v2/competitions/$competition_path/dates/$probe_date"
+            jq -e --arg date "$probe_date" --arg competition "$competition_id" \
+              --arg fixture "$fixture_id" \
+              '.date == $date and .competition.id == $competition
+                and any(.fixtures[]?; .fixtureId == $fixture)' \
+              "$evidence/competition-date.json" >/dev/null
+          fi
+
+          if jq -e '.d1ReadFlags.D1_STANDINGS_ENABLED' config/public-worker-target.json >/dev/null; then
+            probe_d1 standings "/api/v2/competitions/$standings_competition_path/seasons/$standings_season_path/standings"
+            jq -e --arg competition "$standings_competition_id" --arg season "$standings_season_id" \
+              '.competition.id == $competition and .season.id == $season' \
+              "$evidence/standings.json" >/dev/null
+          fi
+
+          if jq -e '.d1ReadFlags.D1_FIXTURE_DETAIL_ENABLED' config/public-worker-target.json >/dev/null; then
+            probe_d1 fixture "/api/v2/fixtures/$fixture_path"
+            jq -e --arg fixture "$fixture_id" '.fixture.id == $fixture' \
+              "$evidence/fixture.json" >/dev/null
+          fi
+
+          jq -n --arg date "$probe_date" --arg competitionId "$competition_id" \
+            --arg standingsCompetitionId "$standings_competition_id" \
+            --arg standingsSeasonId "$standings_season_id" --arg fixtureId "$fixture_id" \
+            '{passed:true, dataSource:"d1", date:$date, competitionId:$competitionId,
+              standingsCompetitionId:$standingsCompetitionId,
+              standingsSeasonId:$standingsSeasonId, fixtureId:$fixtureId}' \
+            > "$evidence/d1-read-cutover-report.json"
+
+      - name: Roll back all D1 public reads after a failed deployment check
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v2/render-public-wrangler.mjs \
+            --manifest config/public-worker-target.json \
+            --output .tmp/public-worker/wrangler-rollback.toml \
+            --disable-d1-reads
+          npx --yes wrangler@4 deploy --config .tmp/public-worker/wrangler-rollback.toml
+          worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
+          app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+            --header "Origin: $app_origin" \
+            --output .tmp/public-worker/evidence/rollback-health.json \
+            "$worker_origin/health"
+          jq -e '.ok == true and .service == "football-data-v2"' \
+            .tmp/public-worker/evidence/rollback-health.json >/dev/null
+          jq -n '{passed:true, d1ReadFlags:false, reason:"post-deploy-check-failed"}' \
+            > .tmp/public-worker/evidence/rollback-report.json
+
       - name: Upload public deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: public-worker-deployment-${{ github.sha }}
-          path: |
-            .tmp/public-worker/evidence/health.json
-            .tmp/public-worker/evidence/report.json
+          path: .tmp/public-worker/evidence/
           if-no-files-found: warn
           retention-days: 14
