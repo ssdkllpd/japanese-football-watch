@@ -23,7 +23,7 @@ const home = team(1, 'Home Club'), away = team(2, 'Away Club');
 function visible(el,w) { for(let node=el;node;node=node.parentElement){const css=w.getComputedStyle(node);if(node.hidden || css.display === 'none' || css.visibility === 'hidden') return false;}return true;}
 function fixture() { return { id: 'af:fixture:10', fixtureId: 'af:fixture:10', competitionId: 'af:competition:39', competitionName: 'League', seasonId: 'af:season:39:2026', dateJst: '2026-09-01', kickoffUtc: '2026-09-01T12:00:00Z', status: { short: 'FT' }, teams: { home, away }, score: { goals: { home: 0, away: 1 } } }; }
 function bundle() { return { fixture: fixture(), sectionStates: Object.fromEntries(['lineups','events','teamStats','playerStats'].map(key => [key, { presence: 'present' }])), lineups: [home,away].map((t,i) => ({ teamId:t.id, formation:'4-4-2', startXI:[{id:`af:player:${i+1}`,name:`Starter ${i+1}`,number:i+9,position:'F'}], substitutes:[{id:`af:player:${i+3}`,name:`Bench ${i+1}`,number:20}], coach:{ name:`Coach ${i+1}`,photo:`https://photos.test/coach${i}.png` } })), playerStats:[home,away].map((t,i)=>({ teamId:t.id, playerId:`af:player:${i+1}`,playerName:`Starter ${i+1}`,position:'F',values:{rating:7+i},jfwRating:{value:8,factors:{attack:1}} })), teamStats:[{teamId:home.id,values:{shots_on_goal:0,ball_possession:null},fieldStates:{ball_possession:{presence:'not_fetched'}}},{teamId:away.id,values:{shots_on_goal:2,ball_possession:null},fieldStates:{ball_possession:{presence:'not_applicable'}}}], events:[] }; }
-async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},detail=bundle(),feed,storage={},apiBase='https://api.test',publicConfig,search='',request}={}) {
+async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},detail=bundle(),feed,catalog={competitions:[]},seasonDetail={},standings={groups:[]},storage={},apiBase='https://api.test',publicConfig,search='',request}={}) {
  const dom = new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:`https://football.test/${search}${hash}`,runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window, calls=[], scrollCalls=[];
  for(const css of ['app-v2.css','app-v2-league.css','app-v2-wireframe.css']) {const style=w.document.createElement('style');style.textContent=fs.readFileSync(path.join(root,css),'utf8');w.document.head.append(style);}
@@ -33,7 +33,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  if(apiBase) w.FOOTBALL_V2_API_BASE=apiBase;
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
- w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
+ w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
  for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','app-v2-history.js','app-v2-router.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
@@ -205,6 +205,33 @@ test('known competition seasons can change without losing the selected tab',asyn
  select.value='af:season:39:2025';select.dispatchEvent(new app.w.Event('change'));await tick();
  const params=new URLSearchParams(app.w.location.hash.split('?')[1]);assert.equal(params.get('competitionSeason'),'af:season:39:2025');assert.equal(params.get('tab'),'standings');
  assert.equal(app.doc.getElementById('competitionSeason').value,'af:season:39:2025');
+});
+test('catalog identity survives a cold deep link and legacy aliases do not create duplicates',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active',summary:{fixtureCount:380}}]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=overview',catalog,legacy:{players:[{name:'Tracked',league:'Premier League'}]},feed:async()=>({fixtures:[]})});
+ assert.match(app.text(),/Premier League/);assert.doesNotMatch(app.text(),/大会情報は未取得/);
+ assert.equal(app.doc.querySelector('.competition-hero img').src,'https://logos.test/39.png');
+ await app.click('#competitionBack');
+ assert.equal(app.doc.querySelectorAll('[data-competition-id="af:competition:39"]').length,1);
+ assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
+});
+test('overview, player stats and team stats render stored D1 values without inventing missing values',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
+ const seasonDetail={competition:catalog.competitions[0],season:{id:'af:season:39:2026',startsOn:'2026-08-01',endsOn:'2027-05-31'},summary:{teamCount:20,fixtureCount:380,completedFixtureCount:30,publishedDetailCount:29,standingsUpdatedAt:'2026-09-08T02:15:09.068Z',detailUpdatedAt:'2026-09-08T02:00:00.000Z'},detailSections:{lineups:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},events:{present:20,presentEmpty:2,providerMissing:7,notFetched:0},teamStats:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},playerStats:{present:28,presentEmpty:0,providerMissing:0,notFetched:1}},playerStats:{presence:'present',rows:[{player:{id:'af:player:7',name:'Test Player',photo:null},team:{id:'af:team:1',name:'Home Club'},teamCount:1,appearances:3,starts:2,minutes:{value:180,presence:'present'},goals:{value:0,presence:'present'},assists:{value:null,presence:'not_fetched'},averageRating:{value:7.4,presence:'present'}}]}};
+ const standings={competition:catalog.competitions[0],season:{id:'af:season:39:2026'},generatedAt:'2026-09-08T02:15:09.068Z',groups:[{name:'Premier League',table:[{rank:1,team:{id:'af:team:1',name:'Home Club',logo:null},overall:{played:3,wins:2,draws:1,losses:0,goalsFor:5,goalsAgainst:1},goalDifference:4,points:7,form:'WWD'}]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=overview',catalog,seasonDetail,standings,feed:async()=>({fixtures:[]})});
+ await until(()=>/試合詳細の取得状況/.test(app.text()),'season overview did not load');
+ assert.match(app.text(),/提供なし/);assert.match(app.text(),/順位表更新/);assert.doesNotMatch(app.text(),/準備中/);
+ await app.click('[data-competition-tab="players"]');
+ assert.match(app.text(),/Test Player/);assert.match(app.text(),/未取得/);assert.match(app.text(),/0/);
+ await app.click('[data-competition-tab="teams"]');
+ assert.match(app.text(),/Home Club/);assert.match(app.text(),/直近/);assert.doesNotMatch(app.text(),/準備中/);
+});
+test('failed competition logo switches to a stable placeholder',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',logo:'https://logos.test/missing.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026',catalog});
+ const image=app.doc.querySelector('.competition-hero img');image.dispatchEvent(new app.w.Event('error'));
+ assert.equal(image.hidden,true);assert.ok(app.doc.querySelector('.competition-hero .competition-placeholder'));
 });
 test('provider missing and not applicable share the agreed non-applicable label',async t=>{
  const detail=bundle();detail.teamStats[0].fieldStates.ball_possession.presence='provider_missing';

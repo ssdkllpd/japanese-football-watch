@@ -45,6 +45,148 @@
   margin: 9px 0;
 }
 
+.competition-summary.season-summary {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.data-updated {
+  margin: 8px 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 9px 12px;
+  align-items: baseline;
+}
+
+.overview-grid > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.coverage-table {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.coverage-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) repeat(4, minmax(42px, .5fr));
+  gap: 4px;
+  align-items: center;
+  min-height: 38px;
+  padding: 5px 7px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  text-align: center;
+}
+
+.coverage-row:first-child {
+  border-top: 0;
+}
+
+.coverage-row > :first-child {
+  text-align: left;
+}
+
+.coverage-head,
+.stats-head {
+  background: var(--panel2);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.stats-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.player-stats-table {
+  min-width: 670px;
+}
+
+.player-stats-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) repeat(6, 54px);
+  align-items: center;
+  min-height: 48px;
+  padding: 5px 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  text-align: center;
+}
+
+.player-stats-row:first-child,
+.team-stats-row:first-child {
+  border-top: 0;
+}
+
+.player-stat-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+}
+
+.player-stat-person .person-photo {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+}
+
+.player-stat-person strong,
+.player-stat-person small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-stat-person small {
+  color: var(--muted);
+}
+
+.team-stats-table {
+  min-width: 760px;
+}
+
+.team-stats-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) repeat(8, 48px) 64px;
+  align-items: center;
+  min-height: 44px;
+  padding: 5px 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  text-align: center;
+}
+
+.team-stats-row.is-link {
+  cursor: pointer;
+}
+
+.team-stats-row.is-link:hover {
+  background: var(--panel2);
+}
+
+.logo-fallback {
+  display: inline-block;
+  background: var(--panel2);
+}
+
+@media (max-width: 520px) {
+  .competition-summary.season-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .competition-summary > div {
   display: grid;
   place-items: center;
@@ -109,6 +251,12 @@
   width: 23px;
   height: 23px;
   object-fit: contain;
+}
+
+.standings-team > .entity-logo {
+  flex: 0 0 auto;
+  width: 23px;
+  height: 23px;
 }
 
 .standings-team b {

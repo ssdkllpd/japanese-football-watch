@@ -195,10 +195,10 @@ flowchart TD
 | 試合一覧 | `GET /api/v2/dates/{date}` | Phase 1、既存互換 |
 | LIVE | `GET /api/v2/live` | Phase 1、D1 scheduled data へ変更 |
 | 試合詳細 | `GET /api/v2/fixtures/{fixtureId}` | Phase 1、D1/R2 透過 read |
-| リーグ一覧 | `GET /api/v2/competitions` | Phase 1 で追加 |
+| リーグ一覧 | `GET /api/v2/competitions` | 実装済み、D1 canonical identity |
 | リーグ試合 | `GET /api/v2/competitions/{competitionId}/dates/{date}` | Phase 1、既存互換 |
 | 順位表 | `GET /api/v2/competitions/{competitionId}/seasons/{seasonId}/standings` | Phase 1、既存互換 |
-| リーグ概要 | `GET /api/v2/competitions/{competitionId}/seasons/{competitionSeasonId}` | Phase 2 |
+| リーグ概要 | `GET /api/v2/competitions/{competitionId}/seasons/{competitionSeasonId}` | 実装済み、概要・取得状況・選手集計 |
 | クラブ詳細 | `GET /api/v2/teams/{teamId}?productSeason={productSeasonId}` | Phase 2 |
 | クラブ試合 | `GET /api/v2/teams/{teamId}/fixtures?productSeason={productSeasonId}&cursor=...` | Phase 2 |
 | 選手詳細 | `GET /api/v2/players/{playerId}?productSeason={productSeasonId}` | Phase 2 |

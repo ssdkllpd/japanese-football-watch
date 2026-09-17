@@ -201,6 +201,137 @@ LEFT JOIN standings_rows standing
 LEFT JOIN teams team ON team.id = standing.team_id
 ORDER BY group_row.group_order, standing.row_order`;
 
+const COMPETITION_DIRECTORY_SQL = `
+SELECT
+  competition.canonical_id AS competition_id,
+  competition.provider_id AS competition_provider_id,
+  competition.name AS competition_name,
+  competition.country_name AS competition_country,
+  competition.logo_url AS competition_logo,
+  competition.flag_url AS competition_flag,
+  season.canonical_id AS season_id,
+  season.provider_season,
+  season.label AS season_label,
+  season.starts_on,
+  season.ends_on,
+  season.status AS season_status,
+  (SELECT COUNT(*) FROM competition_season_teams member
+    WHERE member.competition_season_id = season.id) AS team_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id) AS fixture_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id
+      AND fixture.status_short IN ('FT', 'AET', 'PEN')) AS completed_fixture_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id
+      AND fixture.published_revision IS NOT NULL) AS published_detail_count,
+  publication.generated_at AS standings_generated_at,
+  (SELECT MAX(revision.published_at)
+    FROM fixtures fixture
+    JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+    WHERE fixture.competition_season_id = season.id) AS detail_updated_at
+FROM competitions competition
+JOIN competition_seasons season ON season.competition_id = competition.id
+LEFT JOIN standings_publications publication
+  ON publication.competition_season_id = season.id
+ORDER BY competition.country_name, competition.name, season.provider_season DESC`;
+
+const COMPETITION_SEASON_SUMMARY_SQL = `
+SELECT
+  competition.canonical_id AS competition_id,
+  competition.provider_id AS competition_provider_id,
+  competition.name AS competition_name,
+  competition.country_name AS competition_country,
+  competition.logo_url AS competition_logo,
+  competition.flag_url AS competition_flag,
+  season.id AS season_row_id,
+  season.canonical_id AS season_id,
+  season.provider_season,
+  season.label AS season_label,
+  season.starts_on,
+  season.ends_on,
+  season.finalized_on,
+  season.status AS season_status,
+  (SELECT COUNT(*) FROM competition_season_teams member
+    WHERE member.competition_season_id = season.id) AS team_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id) AS fixture_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id
+      AND fixture.status_short IN ('FT', 'AET', 'PEN')) AS completed_fixture_count,
+  (SELECT COUNT(*) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id
+      AND fixture.published_revision IS NOT NULL) AS published_detail_count,
+  (SELECT MIN(fixture.kickoff_utc) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id) AS first_kickoff_utc,
+  (SELECT MAX(fixture.kickoff_utc) FROM fixtures fixture
+    WHERE fixture.competition_season_id = season.id) AS last_kickoff_utc,
+  publication.generated_at AS standings_generated_at,
+  (SELECT MAX(revision.published_at)
+    FROM fixtures fixture
+    JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+    WHERE fixture.competition_season_id = season.id) AS detail_updated_at
+FROM competitions competition
+JOIN competition_seasons season ON season.competition_id = competition.id
+LEFT JOIN standings_publications publication
+  ON publication.competition_season_id = season.id
+WHERE competition.canonical_id = ?1 AND season.canonical_id = ?2
+LIMIT 1`;
+
+const COMPETITION_SECTION_COVERAGE_SQL = `
+SELECT state.section_key, state.presence, COUNT(*) AS fixture_count
+FROM competition_seasons season
+JOIN fixtures fixture ON fixture.competition_season_id = season.id
+JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+JOIN section_states state ON state.fixture_revision_id = revision.id
+WHERE season.canonical_id = ?1
+GROUP BY state.section_key, state.presence
+ORDER BY state.section_key, state.presence`;
+
+const COMPETITION_PLAYER_STATS_SQL = `
+SELECT
+  player.canonical_id AS player_id,
+  player.provider_id AS player_provider_id,
+  player.display_name AS player_name,
+  player.nationality,
+  player.photo_url AS player_photo,
+  COUNT(*) AS appearances,
+  SUM(CASE WHEN appearance.appearance_state = 'started' THEN 1 ELSE 0 END) AS starts,
+  COUNT(DISTINCT record.team_id) AS team_count,
+  MIN(team.canonical_id) AS team_id,
+  MIN(team.name) AS team_name,
+  MIN(team.logo_url) AS team_logo,
+  CASE WHEN COUNT(stats.minutes) > 0 THEN SUM(stats.minutes) END AS minutes,
+  COUNT(stats.minutes) AS minutes_observed,
+  CASE WHEN COUNT(stats.goals) > 0 THEN SUM(stats.goals) END AS goals,
+  COUNT(stats.goals) AS goals_observed,
+  CASE WHEN COUNT(stats.assists) > 0 THEN SUM(stats.assists) END AS assists,
+  COUNT(stats.assists) AS assists_observed,
+  CASE WHEN COUNT(stats.provider_rating) > 0 THEN ROUND(AVG(stats.provider_rating), 2) END AS average_rating,
+  COUNT(stats.provider_rating) AS rating_observed,
+  CASE WHEN COUNT(stats.yellow_cards) > 0 THEN SUM(stats.yellow_cards) END AS yellow_cards,
+  COUNT(stats.yellow_cards) AS yellow_cards_observed,
+  CASE WHEN COUNT(stats.red_cards) > 0 THEN SUM(stats.red_cards) END AS red_cards,
+  COUNT(stats.red_cards) AS red_cards_observed
+FROM competition_seasons season
+JOIN fixtures fixture ON fixture.competition_season_id = season.id
+JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+JOIN fixture_player_appearances appearance
+  ON appearance.fixture_revision_id = revision.id
+  AND appearance.appearance_state IN ('started', 'substitute_used')
+JOIN fixture_player_records record
+  ON record.id = appearance.player_record_id AND record.fixture_id = fixture.id
+JOIN players player ON player.id = record.player_id
+JOIN teams team ON team.id = record.team_id
+LEFT JOIN fixture_player_stats stats ON stats.player_appearance_id = appearance.id
+WHERE season.canonical_id = ?1
+GROUP BY player.id
+ORDER BY
+  CASE WHEN COUNT(stats.goals) > 0 THEN SUM(stats.goals) END DESC,
+  CASE WHEN COUNT(stats.assists) > 0 THEN SUM(stats.assists) END DESC,
+  appearances DESC,
+  player.display_name`;
+
 function afId(kind, providerId) {
   if (providerId === null || providerId === undefined || providerId === '') return null;
   return `af:${kind}:${String(providerId)}`;
@@ -614,6 +745,202 @@ export async function buildD1Standings(env, competitionId, requestedSeasonId) {
   return payload;
 }
 
+function seasonDto(row) {
+  return {
+    id: row.season_id,
+    competitionId: row.competition_id,
+    providerSeason: d1NonNegativeIntegerOrNull(row.provider_season, 'provider season'),
+    label: row.season_label ?? null,
+    startsOn: row.starts_on ?? null,
+    endsOn: row.ends_on ?? null,
+    finalizedOn: row.finalized_on ?? null,
+    status: row.season_status ?? null,
+  };
+}
+
+function seasonSummary(row) {
+  return {
+    teamCount: d1NonNegativeIntegerOrNull(row.team_count, 'competition team count'),
+    fixtureCount: d1NonNegativeIntegerOrNull(row.fixture_count, 'competition fixture count'),
+    completedFixtureCount: d1NonNegativeIntegerOrNull(
+      row.completed_fixture_count,
+      'competition completed fixture count',
+    ),
+    publishedDetailCount: d1NonNegativeIntegerOrNull(
+      row.published_detail_count,
+      'competition published detail count',
+    ),
+    firstKickoffUtc: row.first_kickoff_utc ?? null,
+    lastKickoffUtc: row.last_kickoff_utc ?? null,
+    standingsUpdatedAt: row.standings_generated_at ?? null,
+    detailUpdatedAt: row.detail_updated_at ?? null,
+  };
+}
+
+export async function buildD1CompetitionDirectory(env) {
+  const rows = await d1Rows(env, COMPETITION_DIRECTORY_SQL);
+  const competitions = [];
+  let current = null;
+  for (const row of rows) {
+    if (!current || current.id !== row.competition_id) {
+      current = { ...competitionDto(row), seasons: [] };
+      competitions.push(current);
+    }
+    current.seasons.push({
+      ...seasonDto(row),
+      summary: seasonSummary(row),
+    });
+  }
+  return {
+    contractVersion: '2.0.0',
+    competitions,
+  };
+}
+
+function sectionCoverage(rows, publishedDetailCount) {
+  const keys = ['lineups', 'events', 'teamStats', 'playerStats'];
+  const result = Object.fromEntries(keys.map(key => [key, {
+    presence: 'not_fetched',
+    total: publishedDetailCount,
+    present: 0,
+    presentEmpty: 0,
+    notFetched: 0,
+    providerMissing: 0,
+    notApplicable: 0,
+  }]));
+  for (const key of keys) {
+    const counts = result[key];
+    const matching = rows.filter(row => row.section_key === key);
+    let classified = 0;
+    for (const row of matching) {
+      const count = d1NonNegativeIntegerOrNull(row.fixture_count, `${key} coverage count`);
+      classified += count;
+      if (row.presence === 'present') counts.present += count;
+      else if (row.presence === 'present_empty') counts.presentEmpty += count;
+      else if (row.presence === 'not_fetched') counts.notFetched += count;
+      else if (row.presence === 'provider_missing') counts.providerMissing += count;
+      else if (row.presence === 'not_applicable') counts.notApplicable += count;
+      else throw new Error(`D1 ${key} coverage presence is invalid.`);
+    }
+    if (classified > counts.total) throw new Error(`D1 ${key} coverage exceeds published fixture count.`);
+    counts.notFetched += counts.total - classified;
+    if (counts.present + counts.presentEmpty > 0) counts.presence = 'present';
+    else if (counts.providerMissing > 0 && counts.notFetched === 0) counts.presence = 'provider_missing';
+    else if (counts.notApplicable === counts.total && counts.total > 0) counts.presence = 'not_applicable';
+  }
+  return result;
+}
+
+function aggregateMetric(row, valueKey, observedKey, total, label, options = {}) {
+  const observed = d1NonNegativeIntegerOrNull(row[observedKey], `${label} observed count`);
+  let value = numberOrNull(row[valueKey]);
+  if (value !== null && options.integer !== false && !Number.isInteger(value)) {
+    throw new Error(`D1 ${label} aggregate is outside the integer domain.`);
+  }
+  if (value !== null && value < 0) throw new Error(`D1 ${label} aggregate is negative.`);
+  return {
+    value,
+    presence: observed > 0 ? 'present' : 'not_fetched',
+    observed,
+    total,
+  };
+}
+
+function playerAggregate(row) {
+  const appearances = d1NonNegativeIntegerOrNull(row.appearances, 'player appearances');
+  const teamCount = d1NonNegativeIntegerOrNull(row.team_count, 'player team count');
+  return {
+    player: {
+      id: row.player_id,
+      providerId: d1NonNegativeIntegerOrNull(row.player_provider_id, 'player provider ID'),
+      name: row.player_name,
+      nationality: row.nationality ?? null,
+      photo: row.player_photo ?? null,
+    },
+    team: teamCount === 1 ? {
+      id: row.team_id,
+      name: row.team_name,
+      logo: row.team_logo ?? null,
+    } : null,
+    teamCount,
+    appearances,
+    starts: d1NonNegativeIntegerOrNull(row.starts, 'player starts'),
+    minutes: aggregateMetric(row, 'minutes', 'minutes_observed', appearances, 'player minutes'),
+    goals: aggregateMetric(row, 'goals', 'goals_observed', appearances, 'player goals'),
+    assists: aggregateMetric(row, 'assists', 'assists_observed', appearances, 'player assists'),
+    averageRating: aggregateMetric(
+      row,
+      'average_rating',
+      'rating_observed',
+      appearances,
+      'player average rating',
+      { integer: false },
+    ),
+    yellowCards: aggregateMetric(
+      row,
+      'yellow_cards',
+      'yellow_cards_observed',
+      appearances,
+      'player yellow cards',
+    ),
+    redCards: aggregateMetric(
+      row,
+      'red_cards',
+      'red_cards_observed',
+      appearances,
+      'player red cards',
+    ),
+  };
+}
+
+export async function buildD1CompetitionSeason(env, competitionId, requestedSeasonId) {
+  const summaryRows = await d1Rows(
+    env,
+    COMPETITION_SEASON_SUMMARY_SQL,
+    competitionId,
+    requestedSeasonId,
+  );
+  if (summaryRows.length === 0) {
+    const error = new Error('D1 competition season is not stored.');
+    error.code = 'D1_SEASON_NOT_FOUND';
+    throw error;
+  }
+  if (summaryRows.length !== 1) throw new Error('D1 competition-season identity is not unique.');
+  const identity = summaryRows[0];
+  const summary = seasonSummary(identity);
+  const [coverageRows, playerRows] = await Promise.all([
+    d1Rows(env, COMPETITION_SECTION_COVERAGE_SQL, requestedSeasonId),
+    d1Rows(env, COMPETITION_PLAYER_STATS_SQL, requestedSeasonId),
+  ]);
+  const players = playerRows.map(playerAggregate);
+  const detailSections = sectionCoverage(coverageRows, summary.publishedDetailCount);
+  const fieldCoverage = {};
+  for (const key of ['minutes', 'goals', 'assists', 'averageRating', 'yellowCards', 'redCards']) {
+    fieldCoverage[key] = players.reduce((totals, player) => ({
+      observed: totals.observed + player[key].observed,
+      total: totals.total + player[key].total,
+    }), { observed: 0, total: 0 });
+  }
+  return {
+    contractVersion: '2.0.0',
+    competition: competitionDto(identity),
+    season: seasonDto(identity),
+    summary,
+    detailSections,
+    playerStats: {
+      presence: players.length > 0 ? 'present'
+        : detailSections.playerStats.providerMissing === detailSections.playerStats.total
+          && detailSections.playerStats.total > 0 ? 'provider_missing'
+          : detailSections.playerStats.notApplicable === detailSections.playerStats.total
+            && detailSections.playerStats.total > 0 ? 'not_applicable'
+            : 'not_fetched',
+      rows: players,
+      fieldCoverage,
+      limited: false,
+    },
+  };
+}
+
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -648,6 +975,14 @@ function dateResponseCacheKey(date, competitionId) {
 
 function standingsResponseCacheKey(competitionId, requestedSeasonId) {
   return new Request(`https://jfw.internal/cache/standings/${encodeURIComponent(competitionId)}/${encodeURIComponent(requestedSeasonId)}`);
+}
+
+function competitionDirectoryResponseCacheKey() {
+  return new Request('https://jfw.internal/cache/competitions');
+}
+
+function competitionSeasonResponseCacheKey(competitionId, requestedSeasonId) {
+  return new Request(`https://jfw.internal/cache/competition-season/${encodeURIComponent(competitionId)}/${encodeURIComponent(requestedSeasonId)}`);
 }
 
 function fixtureDetailResponseCacheKey(fixtureId) {
@@ -842,6 +1177,56 @@ async function standingsResponse(env, competitionId, requestedSeasonId, context 
     const response = await degradedR2StandingsObject(env, key, competitionId, requestedSeasonId);
     await cachePut(cache, cacheKey, response, context);
     return withHeader(response, 'x-jfw-cache', 'miss');
+  }
+}
+
+async function competitionDirectoryResponse(env, context = null) {
+  const cache = dateResponseCache(env);
+  const cacheKey = competitionDirectoryResponseCacheKey();
+  const cached = await cacheMatch(cache, cacheKey);
+  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
+  try {
+    const payload = await buildD1CompetitionDirectory(env);
+    const response = json(payload, 200, {
+      'cache-control': `public, max-age=${DATE_TTL_SECONDS}`,
+      'x-jfw-data-source': 'd1',
+      'x-jfw-cache': 'miss',
+    });
+    await cachePut(cache, cacheKey, response, context);
+    return response;
+  } catch {
+    return json({ error: 'Competition directory is unavailable' }, 503, {
+      'x-jfw-data-source': 'unavailable',
+      'x-jfw-cache': 'miss',
+    });
+  }
+}
+
+async function competitionSeasonResponse(env, competitionId, requestedSeasonId, context = null) {
+  const cache = dateResponseCache(env);
+  const cacheKey = competitionSeasonResponseCacheKey(competitionId, requestedSeasonId);
+  const cached = await cacheMatch(cache, cacheKey);
+  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
+  try {
+    const payload = await buildD1CompetitionSeason(env, competitionId, requestedSeasonId);
+    const response = json(payload, 200, {
+      'cache-control': `public, max-age=${DATE_TTL_SECONDS}`,
+      'x-jfw-data-source': 'd1',
+      'x-jfw-cache': 'miss',
+    });
+    await cachePut(cache, cacheKey, response, context);
+    return response;
+  } catch (error) {
+    if (error?.code === 'D1_SEASON_NOT_FOUND') {
+      return json({ error: 'Competition season not found' }, 404, {
+        'x-jfw-data-source': 'd1',
+        'x-jfw-cache': 'miss',
+      });
+    }
+    return json({ error: 'Competition season is unavailable' }, 503, {
+      'x-jfw-data-source': 'unavailable',
+      'x-jfw-cache': 'miss',
+    });
   }
 }
 
@@ -1053,6 +1438,7 @@ async function handle(request, env, context) {
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
   if (url.pathname === '/health') return json({ ok: true, service: 'football-data-v2' });
   if (url.pathname === '/api/v2/live') return providerLive(env);
+  if (url.pathname === '/api/v2/competitions') return competitionDirectoryResponse(env, context);
 
   const fixtureMatch = url.pathname.match(/^\/api\/v2\/fixtures\/(.+)$/);
   if (fixtureMatch) return fixtureDetailResponse(env, decodeURIComponent(fixtureMatch[1]), context);
@@ -1076,6 +1462,16 @@ async function handle(request, env, context) {
       env,
       decodeURIComponent(standingsMatch[1]),
       decodeURIComponent(standingsMatch[2]),
+      context,
+    );
+  }
+
+  const competitionSeasonMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/seasons\/([^/]+)$/);
+  if (competitionSeasonMatch) {
+    return competitionSeasonResponse(
+      env,
+      decodeURIComponent(competitionSeasonMatch[1]),
+      decodeURIComponent(competitionSeasonMatch[2]),
       context,
     );
   }
