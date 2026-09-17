@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "jfw-api-football-automation-policy/1",
+  "scheduledSynchronizationEnabled": false,
+  "timeZone": "Asia/Tokyo",
+  "cron": "*/15 * * * *",
+  "competitionSeasons": [
+    { "league": 39, "season": 2026 },
+    { "league": 40, "season": 2026 },
+    { "league": 61, "season": 2026 },
+    { "league": 78, "season": 2026 },
+    { "league": 88, "season": 2026 },
+    { "league": 94, "season": 2026 },
+    { "league": 135, "season": 2026 },
+    { "league": 140, "season": 2026 },
+    { "league": 144, "season": 2026 },
+    { "league": 179, "season": 2026 }
+  ],
+  "discovery": {
+    "lookbackDays": 1,
+    "lookaheadDays": 1,
+    "eligibleAfterKickoffHours": 3
+  },
+  "finalDetailRechecks": [
+    { "stage": "initial", "afterHours": 0 },
+    { "stage": "correction_6h", "afterHours": 6 },
+    { "stage": "correction_24h", "afterHours": 24 },
+    { "stage": "correction_72h", "afterHours": 72 }
+  ],
+  "limits": {
+    "dailyRequestReserve": 100,
+    "minimumRequestIntervalMs": 300,
+    "maxProviderRequestsPerRun": 150,
+    "maxFinalDetailFixturesPerRun": 20,
+    "maxStandingsPerRun": 10,
+    "standingsMinimumIntervalHours": 6
+  }
+}

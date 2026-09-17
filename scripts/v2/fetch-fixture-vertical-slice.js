@@ -71,18 +71,14 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const fixtureId = args.fixture || args.fixtureId;
-  if (!fixtureId) throw new Error('Use --fixture <API-Football fixture id>.');
-  const outputDir = path.resolve(args.out || `.tmp/v2/fixture-${fixtureId}`);
-  const client = createClientFromEnv(process.env);
-  const envelope = await fetchFixtureEnvelope(client, fixtureId);
-  const fetchedAt = new Date().toISOString();
-  const finalStatus = ['FT', 'AET', 'PEN'].includes(String(envelope.fixture?.fixture?.status?.short || '').toUpperCase());
+function writeFixtureEnvelope(outputDir, envelope, options = {}) {
+  const fetchedAt = options.fetchedAt || new Date().toISOString();
+  const finalStatus = ['FT', 'AET', 'PEN'].includes(
+    String(envelope.fixture?.fixture?.status?.short || '').toUpperCase(),
+  );
   const bundle = normalizeFixtureBundle(envelope.fixture, {
     fetchedAt,
-    finalized: finalStatus && flag(args.finalized),
+    finalized: finalStatus && options.finalized === true,
   });
   const errors = validateFixtureBundle(bundle);
   if (errors.length) throw new Error(`Fixture contract validation failed: ${errors.join('; ')}`);
@@ -123,6 +119,17 @@ async function main() {
   writeJson(path.join(outputDir, 'fixture-pointer.json'), pointer);
   writeJson(path.join(outputDir, 'date-index.json'), dateIndex);
   writeJson(path.join(outputDir, 'manifest.json'), manifest);
+  return manifest;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const fixtureId = args.fixture || args.fixtureId;
+  if (!fixtureId) throw new Error('Use --fixture <API-Football fixture id>.');
+  const outputDir = path.resolve(args.out || `.tmp/v2/fixture-${fixtureId}`);
+  const client = createClientFromEnv(process.env);
+  const envelope = await fetchFixtureEnvelope(client, fixtureId);
+  const manifest = writeFixtureEnvelope(outputDir, envelope, { finalized: flag(args.finalized) });
 
   process.stdout.write(`${JSON.stringify({ outputDir, manifest }, null, 2)}\n`);
 }
@@ -139,4 +146,5 @@ module.exports = {
   flag,
   parseArgs,
   responseArray,
+  writeFixtureEnvelope,
 };
