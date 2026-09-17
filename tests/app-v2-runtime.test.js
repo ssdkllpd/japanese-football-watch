@@ -143,6 +143,17 @@ test('old follows migrate to ID-only entries and absence from cache is not delet
  assert.match(app.text(),/参照先は未取得/);assert.doesNotMatch(app.text(),/Old name|削除済み/);
  await app.click('[data-follow-id="af:team:999"]');assert.deepEqual(JSON.parse(app.w.localStorage.getItem('football-v2-follows')).teams,[]);
 });
+test('legacy competition follows migrate to canonical IDs and out-of-scope J1 is discarded',async t=>{
+ const catalog={competitions:[
+  {id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]},
+  {id:'af:competition:78',name:'Bundesliga',seasons:[{id:'af:season:78:2026',status:'active'}]},
+ ]};
+ const storage={'football-v2-follows':{teams:[],players:[],competitions:['legacy:competition:プレミアリーグ','legacy:competition:ブンデスリーガ','legacy:competition:J1']}};
+ const app=await boot(t,{hash:'#/following',catalog,storage});
+ await until(()=>/Premier League/.test(app.text()) && /Bundesliga/.test(app.text()),'canonical followed competitions did not render');
+ assert.deepEqual(JSON.parse(app.w.localStorage.getItem('football-v2-follows')).competitions,['af:competition:39','af:competition:78']);
+ assert.doesNotMatch(app.text(),/J1/);
+});
 test('search closes to the full prior competition route across repeated excursions',async t=>{
  const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=standings'});
  const prior=app.w.location.hash;
@@ -207,13 +218,32 @@ test('known competition seasons can change without losing the selected tab',asyn
  assert.equal(app.doc.getElementById('competitionSeason').value,'af:season:39:2025');
 });
 test('catalog identity survives a cold deep link and legacy aliases do not create duplicates',async t=>{
- const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active',summary:{fixtureCount:380}}]}]};
- const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=overview',catalog,legacy:{players:[{name:'Tracked',league:'Premier League'}]},feed:async()=>({fixtures:[]})});
+ const catalog={competitions:[
+  {id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active',summary:{fixtureCount:380}}]},
+  {id:'af:competition:78',name:'Bundesliga',seasons:[{id:'af:season:78:2026',status:'active'}]},
+  {id:'af:competition:135',name:'Serie A',seasons:[{id:'af:season:135:2026',status:'active'}]},
+ ]};
+ const players=['Premier League','プレミアリーグ','ブンデスリーガ','セリエA','J1'].map((league,index)=>({name:`Tracked ${index}`,league}));
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=overview',catalog,legacy:{players},feed:async()=>({fixtures:[]})});
  assert.match(app.text(),/Premier League/);assert.doesNotMatch(app.text(),/大会情報は未取得/);
  assert.equal(app.doc.querySelector('.competition-hero img').src,'https://logos.test/39.png');
  await app.click('#competitionBack');
+ for(const id of ['39','78','135']) assert.equal(app.doc.querySelectorAll(`[data-competition-id="af:competition:${id}"]`).length,1);
+ assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
+ assert.doesNotMatch(app.text(),/J1/);
+});
+test('legacy date fallback canonicalizes known leagues and does not leak J1 into the directory',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
+ const legacy={topMatches:[
+  {rank:1,league:'プレミアリーグ',match:'Home 1 - 0 Away',ko:'2026-09-01 12:00',status:'verified'},
+  {rank:2,league:'J1',match:'J Home 2 - 1 J Away',ko:'2026-09-01 15:00',status:'verified'},
+ ]};
+ const request=async url=>new URL(url).pathname.includes('/dates/')?{ok:false,status:503,json:async()=>({error:'temporary'})}:null;
+ const app=await boot(t,{catalog,legacy,request});
+ await app.click('[data-page="leagues"]');
  assert.equal(app.doc.querySelectorAll('[data-competition-id="af:competition:39"]').length,1);
  assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
+ assert.doesNotMatch(app.text(),/J1/);
 });
 test('overview, player stats and team stats render stored D1 values without inventing missing values',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};

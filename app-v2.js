@@ -125,11 +125,31 @@
     return configured.replace(/\/+$/, '');
   }
 
+  function canonicalCompetitionId(value) {
+    const raw = String(value || '').trim();
+    if (/^af:competition:\d+$/.test(raw)) return raw;
+    const label = raw.startsWith('legacy:competition:')
+      ? raw.slice('legacy:competition:'.length)
+      : raw;
+    return config.competitionAliases?.[label] || null;
+  }
+
+  function canonicalCompetitionName(id, fallback) {
+    return config.scope?.trackingLeagues?.find(item => item.id === id)?.label || fallback;
+  }
+
+  function isDirectoryCompetitionId(id) {
+    return Boolean(config.scope?.trackingLeagues?.some(item => item.id === id));
+  }
+
   function readFollows() {
     try {
       const raw = JSON.parse(localStorage.getItem('football-v2-follows') || '{}');
       const migrated = Object.fromEntries(['competitions','teams','players'].map(type => [type,
-        [...new Set((Array.isArray(raw[type]) ? raw[type] : []).map(item => typeof item === 'string' ? item : item?.id).filter(id => typeof id === 'string' && id))]
+        [...new Set((Array.isArray(raw[type]) ? raw[type] : [])
+          .map(item => typeof item === 'string' ? item : item?.id)
+          .map(id => type === 'competitions' && String(id || '').startsWith('legacy:competition:') ? canonicalCompetitionId(id) : id)
+          .filter(id => typeof id === 'string' && id))]
       ]));
       localStorage.setItem('football-v2-follows', JSON.stringify(migrated));
       return Object.fromEntries(Object.entries(migrated).map(([type, ids]) => [type, ids.map(id => ({ id }))]));
@@ -743,27 +763,26 @@
   }
 
   function competitionDirectory() {
-    const unique = new Map(knownCompetitions);
+    const unique = new Map([...knownCompetitions].filter(([id]) => isDirectoryCompetitionId(id)));
     for (const player of state.legacy?.players || []) if (player.league) {
-      const canonicalId = config.competitionAliases?.[player.league];
-      if (canonicalId) {
+      const canonicalId = canonicalCompetitionId(player.league);
+      if (canonicalId && isDirectoryCompetitionId(canonicalId)) {
         const prior = unique.get(canonicalId) || {};
         unique.set(canonicalId, {
           ...prior,
           id: canonicalId,
-          name: prior.name || player.league,
+          name: prior.name || canonicalCompetitionName(canonicalId, player.league),
           logo: prior.logo || '',
           seasonId: prior.seasonId || null,
           seasons: prior.seasons || [],
         });
-      } else {
-        const id = `legacy:competition:${player.league}`;
-        unique.set(id, {id,name:player.league,logo:'',seasonId:null,seasons:[]});
       }
     }
-    for (const row of state.fixtures) if (row.competitionId) {
-      const prior = unique.get(row.competitionId) || {};
-      unique.set(row.competitionId, { ...prior, id:row.competitionId, name:competitionKey(row), logo:row.competition?.logo || prior.logo || '', seasonId:row.seasonId || prior.seasonId || null });
+    for (const row of state.fixtures) {
+      const canonicalId = canonicalCompetitionId(row.competitionId) || canonicalCompetitionId(competitionKey(row));
+      if (!canonicalId || !isDirectoryCompetitionId(canonicalId)) continue;
+      const prior = unique.get(canonicalId) || {};
+      unique.set(canonicalId, { ...prior, id:canonicalId, name:prior.name || canonicalCompetitionName(canonicalId, competitionKey(row)), logo:row.competition?.logo || prior.logo || '', seasonId:row.seasonId || prior.seasonId || null });
     }
     return [...unique.values()].sort((a,b) => a.name.localeCompare(b.name,'ja'));
   }
