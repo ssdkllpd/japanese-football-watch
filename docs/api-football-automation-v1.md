@@ -24,10 +24,10 @@ This unit does not yet replace the public request-time live provider path and do
 
 ## Request budget
 
-- Three JST dates are inspected per run: yesterday, today, and tomorrow.
+- Up to three JST dates are inspected per run. The normal window is yesterday, today, and tomorrow; an unfinished earlier discovery resumes from its saved date and catches up over subsequent runs.
 - Before those charged requests, the API-Football `status` endpoint supplies the current daily balance. This endpoint does not count against the daily quota; missing or malformed status data stops discovery.
 - Requests are serialized with at least 300 ms between starts.
-- At most 20 complete fixture details are fetched per run. Each uses five provider requests.
+- At most 20 complete fixture details are fetched per run. Each uses five provider requests. D1 also enforces 20 distinct fixture publications per UTC day globally and one changed publication per fixture per UTC day; due rechecks wait for the next day when necessary.
 - At most ten standings scopes are fetched per run.
 - A run is capped at 150 provider calls including the uncharged status call, and preserves at least 100 reported daily requests.
 - Missing quota headers stop executable planning; they are never treated as unlimited capacity.
@@ -36,15 +36,17 @@ This unit does not yet replace the public request-time live provider path and do
 
 The workflow uses one shared `d1-staging-write` concurrency group and follows this order:
 
-1. Load durable state from R2.
-2. Read the uncharged account status, discover fixtures, and create a deterministic bounded plan.
-3. Verify the exact staging target, then checkpoint every discovered final fixture in R2 with no completed detail stages. A failed or deferred detail remains eligible after the one-day discovery window.
+1. Load durable state from R2 and verify the exact staging target. Read the D1 daily publication budget and checkpoint the oldest unfinished discovery date to R2 before any provider discovery call.
+2. Read the uncharged account status, discover up to three dates starting at the saved date, and create a deterministic bounded plan.
+3. Checkpoint every discovered final fixture and the next discovery date in R2 with no completed detail stages. A failed or deferred detail remains eligible after the one-day discovery window.
 4. Fetch and validate every planned artifact; bind its identity to the D1 Admin Worker plan.
-5. Before replacing any canonical R2 fixture, check that its current overrides cover every correction already stored in D1. Reconcile the provider values with those overrides and publish the canonical fixture and pointer.
+5. Before replacing any canonical R2 fixture, check that its current overrides cover every correction already stored in D1 and that the revision follows the latest D1 revision, including migration publications. Indexed corrections require the same player/team identity. Reconcile provider values with the overrides and publish the canonical fixture and pointer.
 6. Publish through the protected Admin Worker. After the fixtures, rebuild complete generic and competition date indexes from the D1 date rows, publish them to R2, and verify their coverage in D1. Then run `migration_verify`.
 7. Mark detail stages complete and upload durable state only after the Admin Worker succeeds.
 
-A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. Direct `wrangler d1 execute` and migration application are not part of this workflow.
+A failure during discovery retains the saved date for the next run. A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. A changed fixture already published on the same UTC day waits until the next day. Direct `wrangler d1 execute` and migration application are not part of this workflow.
+
+Migration `0007_d1_fixture_publish_budget.sql` and the matching Admin Worker version must be applied to the reviewed staging target before enabling execution. Both manual fixture workflows validate their D1 mirror plans before R2 publication; a fixture with manual overrides requires reviewed Git correction definitions and is blocked before any write until that workflow supports them.
 
 ## Manual review sequence
 

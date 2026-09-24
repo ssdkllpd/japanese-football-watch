@@ -6,6 +6,8 @@ const {
   advanceAutomationState,
   checkpointAutomationDiscovery,
   emptyAutomationState,
+  startAutomationDiscovery,
+  validatePolicy,
   validateState,
 } = require('./api-football-automation-plan');
 
@@ -21,12 +23,17 @@ function main(argv = process.argv.slice(2)) {
     }
     return rows;
   }, []));
-  if (!args.plan || !args.out) throw new Error('Use --plan FILE --state FILE --out FILE.');
+  if (!args.out || (args['start-discovery'] !== 'true' && !args.plan)) {
+    throw new Error('Use --plan FILE or --start-discovery true --policy FILE, with --state FILE --out FILE.');
+  }
   const state = validateState(readJson(args.state, emptyAutomationState()));
-  const plan = readJson(args.plan, null);
-  const next = args.checkpoint === 'true'
-    ? checkpointAutomationDiscovery(state, plan)
-    : advanceAutomationState(state, plan, args.completedAt || Date.now());
+  const plan = args.plan ? readJson(args.plan, null) : null;
+  const next = args['start-discovery'] === 'true'
+    ? startAutomationDiscovery(state,
+      validatePolicy(readJson(args.policy, null)), args.now || Date.now())
+    : args.checkpoint === 'true'
+      ? checkpointAutomationDiscovery(state, plan)
+      : advanceAutomationState(state, plan, args.completedAt || Date.now());
   fs.mkdirSync(path.dirname(path.resolve(args.out)), { recursive: true });
   fs.writeFileSync(path.resolve(args.out), `${JSON.stringify(next, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify({

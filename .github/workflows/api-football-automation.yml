@@ -109,29 +109,6 @@ jobs:
           fi
           test -s .tmp/automation/state.json || { echo 'Automation state is empty.' >&2; exit 1; }
 
-      - name: Discover due work and build a bounded plan
-        id: plan
-        shell: bash
-        env:
-          API_FOOTBALL_MIN_INTERVAL_MS: ${{ steps.gate.outputs.interval_ms }}
-          API_FOOTBALL_DAILY_RESERVE: ${{ steps.gate.outputs.daily_reserve }}
-        run: |
-          set -euo pipefail
-          preview=false
-          if [ '${{ steps.gate.outputs.mode }}' = preview ]; then preview=true; fi
-          node scripts/v2/discover-api-football-automation.js \
-            --policy config/api-football-automation.json \
-            --state .tmp/automation/state.json \
-            --out .tmp/automation/discovery \
-            --preview "$preview"
-          plan=.tmp/automation/discovery/plan.json
-          details=$(jq '.detailFetches | length' "$plan")
-          standings=$(jq '.standingsFetches | length' "$plan")
-          echo "action_count=$((details + standings))" >> "$GITHUB_OUTPUT"
-          echo "daily_remaining=$(jq -r '.quota.dailyRemaining // empty' "$plan")" >> "$GITHUB_OUTPUT"
-          jq '{mode, generatedAt, discoveredFixtureCount, retainedFixtureCount, dueDetailFixtureCount,
-            detailFetches: (.detailFetches | length), standingsFetches: (.standingsFetches | length), quota}' "$plan"
-
       - name: Verify exact reviewed staging target before any write
         if: steps.gate.outputs.mode == 'execute'
         env:
@@ -143,6 +120,44 @@ jobs:
           set -euo pipefail
           test "$D1_ADMIN_PUBLISH_ENABLED" = true || { echo 'D1 admin publishing is disabled.' >&2; exit 1; }
           node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+
+      - name: Read D1 publication budget and checkpoint discovery cursor
+        if: steps.gate.outputs.mode == 'execute'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/d1/read-api-football-automation-budget.mjs --out .tmp/automation/d1-budget.json
+          node scripts/v2/advance-api-football-automation-state.js \
+            --start-discovery true --policy config/api-football-automation.json \
+            --state .tmp/automation/state.json --out .tmp/automation/discovery-start.json
+          if ! cmp -s .tmp/automation/discovery-start.json .tmp/automation/state.json; then
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$AUTOMATION_STATE_KEY" \
+              --file .tmp/automation/discovery-start.json --content-type application/json --remote
+            mv .tmp/automation/discovery-start.json .tmp/automation/state.json
+          fi
+
+      - name: Discover due work and build a bounded plan
+        id: plan
+        shell: bash
+        env:
+          API_FOOTBALL_MIN_INTERVAL_MS: ${{ steps.gate.outputs.interval_ms }}
+          API_FOOTBALL_DAILY_RESERVE: ${{ steps.gate.outputs.daily_reserve }}
+        run: |
+          set -euo pipefail
+          preview=false
+          if [ '${{ steps.gate.outputs.mode }}' = preview ]; then preview=true; fi
+          args=(--policy config/api-football-automation.json \
+            --state .tmp/automation/state.json \
+            --out .tmp/automation/discovery --preview "$preview")
+          if [ "$preview" = false ]; then args+=(--daily-budget .tmp/automation/d1-budget.json); fi
+          node scripts/v2/discover-api-football-automation.js "${args[@]}"
+          plan=.tmp/automation/discovery/plan.json
+          details=$(jq '.detailFetches | length' "$plan")
+          standings=$(jq '.standingsFetches | length' "$plan")
+          echo "action_count=$((details + standings))" >> "$GITHUB_OUTPUT"
+          echo "daily_remaining=$(jq -r '.quota.dailyRemaining // empty' "$plan")" >> "$GITHUB_OUTPUT"
+          jq '{mode, generatedAt, discoveredFixtureCount, retainedFixtureCount, dueDetailFixtureCount,
+            detailFetches: (.detailFetches | length), standingsFetches: (.standingsFetches | length), quota}' "$plan"
 
       - name: Checkpoint discovered final fixtures before fetching details
         if: steps.gate.outputs.mode == 'execute'
@@ -193,7 +208,9 @@ jobs:
             season_id=$(jq -r '.fixture.seasonId' "$dir/fixture.json")
             fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
             node scripts/d1/check-automation-fixture-corrections.mjs \
-              "$fixture_id" "$competition_id" "$season_id" "$fixture_date"
+              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
+            latest_revision=$(jq -er '.latestRevision' "$dir/guard-report.json")
+            same_day_hash=$(jq -r '.sameDayPublishedHash // "-"' "$dir/guard-report.json")
             fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' "$dir/manifest.json")
             pointer_key=$(jq -r '.r2Objects[] | select(.role=="fixture_pointer") | .key' "$dir/manifest.json")
             rm -f "$dir/current-fixture.json"
@@ -209,11 +226,11 @@ jobs:
             if [ -s "$dir/current-fixture.json" ]; then
               node scripts/v2/reconcile-fixture-revision.js "$dir/current-fixture.json" \
                 "$dir/fixture.json" "$dir/reconciled-fixture.json" \
-                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json"
+                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json" "$latest_revision" "$same_day_hash"
             else
               node scripts/v2/reconcile-fixture-revision.js - "$dir/fixture.json" \
                 "$dir/reconciled-fixture.json" \
-                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json"
+                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json" "$latest_revision" "$same_day_hash"
             fi
             mv "$dir/reconciled-fixture.json" "$dir/fixture.json"
 
@@ -267,6 +284,8 @@ jobs:
           name: api-football-automation-${{ github.run_id }}-${{ github.sha }}
           path: |
             .tmp/automation/state.json
+            .tmp/automation/discovery-start.json
+            .tmp/automation/d1-budget.json
             .tmp/automation/checkpoint-state.json
             .tmp/automation/next-state.json
             .tmp/automation/discovery/plan.json

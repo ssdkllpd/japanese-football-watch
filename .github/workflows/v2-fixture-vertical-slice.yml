@@ -123,6 +123,12 @@ jobs:
           fi
           mv "$reconciled" .tmp/v2/fixture/fixture.json
 
+      - name: Validate D1 mirror plan before R2 publication
+        run: |
+          node scripts/d1/create-v2-admin-plan.js \
+            --manifest .tmp/v2/fixture/manifest.json \
+            --output .tmp/v2/fixture/d1-admin-plan.json
+
       - name: Publish canonical fixture bundle
         run: |
           npx --yes wrangler@4 r2 object put "$R2_BUCKET/${{ steps.manifest.outputs.fixture_key }}" \

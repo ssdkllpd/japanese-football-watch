@@ -1,4 +1,5 @@
 import { assertValidDateIndexPayload, dateIndexR2Key } from '../shared/date-index-contract.mjs';
+import { readFixturePublishBudget } from './fixture-publish-budget.mjs';
 
 export const FIXTURE_CORRECTION_GUARD_OPERATION = 'fixture_correction_guard';
 
@@ -22,7 +23,12 @@ export async function verifyStoredFixtureCorrections(env, request) {
   const input = assertFixtureCorrectionGuardRequest(request);
   if (!env.FOOTBALL_DB || !env.FOOTBALL_DATA) throw new Error('Admin fixture guard bindings are unavailable.');
   const scope = await env.FOOTBALL_DB.prepare(`
-    SELECT canonical_id AS fixture_id, date_jst FROM fixtures
+    SELECT canonical_id AS fixture_id, date_jst,
+      (SELECT COALESCE(MAX(revision_no), 0) FROM fixture_revisions
+       WHERE fixture_id = fixtures.id) AS latest_revision,
+      (SELECT content_sha256 FROM fixture_revisions
+       WHERE id = fixtures.published_revision) AS published_hash
+    FROM fixtures
     WHERE date_jst = ? OR canonical_id = ?
   `).bind(input.date, input.fixtureId).all();
   if ((scope.results || []).some(row => row.fixture_id === input.fixtureId
@@ -45,6 +51,21 @@ export async function verifyStoredFixtureCorrections(env, request) {
     WHERE target_kind = 'fixture' AND target_canonical_id = ?
   `).bind(input.fixtureId).all();
   const required = (stored.results || []).map(row => row.field_path);
+  const latestRevision = Number((scope.results || [])
+    .find(row => row.fixture_id === input.fixtureId)?.latest_revision ?? 0);
+  if (!Number.isSafeInteger(latestRevision) || latestRevision < 0) {
+    throw new Error('Stored D1 fixture revision is invalid.');
+  }
+  const budget = await readFixturePublishBudget(env);
+  const alreadyPublishedToday = budget.fixtureIds.includes(input.fixtureId);
+  if (!alreadyPublishedToday && budget.remaining === 0) {
+    throw new Error('D1 fixture publication daily cap reached; publication is blocked.');
+  }
+  const sameDayPublishedHash = alreadyPublishedToday
+    ? (scope.results || []).find(row => row.fixture_id === input.fixtureId)?.published_hash : null;
+  if (alreadyPublishedToday && !/^[0-9a-f]{64}$/.test(sameDayPublishedHash || '')) {
+    throw new Error('D1 fixture publication receipt lacks its published content hash.');
+  }
   if (required.length) {
     const key = `football/v2/competitions/${input.competitionId}`
       + `/seasons/${input.seasonId}/fixtures/${input.fixtureId}.json`;
@@ -63,5 +84,6 @@ export async function verifyStoredFixtureCorrections(env, request) {
   }
   return { schemaVersion: 'jfw-d1-admin-ingest-report/1',
     operation: FIXTURE_CORRECTION_GUARD_OPERATION, fixtureId: input.fixtureId,
-    preservedCorrections: required.length };
+    preservedCorrections: required.length, latestRevision,
+    sameDayPublishedHash: sameDayPublishedHash || null };
 }

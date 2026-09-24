@@ -26,6 +26,10 @@ test('automation serializes with every staging writer and never executes D1 dire
 });
 
 test('durable state advances only after Admin Worker verification', () => {
+  assert.ok(workflow.indexOf('read-api-football-automation-budget.mjs')
+    < workflow.indexOf('discover-api-football-automation.js'));
+  assert.ok(workflow.indexOf('--start-discovery true')
+    < workflow.indexOf('discover-api-football-automation.js'));
   const admin = workflow.indexOf('request-admin-ingest.mjs');
   const advance = workflow.lastIndexOf('advance-api-football-automation-state.js');
   const upload = workflow.lastIndexOf('$R2_BUCKET/$AUTOMATION_STATE_KEY');
@@ -38,6 +42,7 @@ test('durable state advances only after Admin Worker verification', () => {
 
 test('preview performs no R2 or D1 writes', () => {
   const writeSteps = [
+    'Read D1 publication budget and checkpoint discovery cursor',
     'Reconcile and publish finalized fixture objects to R2',
     'Publish standings objects to R2',
     'Publish through the protected Admin Worker and verify',

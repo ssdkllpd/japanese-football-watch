@@ -48,9 +48,12 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
     normalizeFixtureBundle(raw, { fetchedAt: observedAt, finalized: true }),
     [{ path: 'fixture.referee', value: 'Verified Referee',
       correctedProviderValue: 'Provider Referee', reason: 'reviewed source',
+      sourceUrl: 'https://example.test/fixture/9001', verifiedAt: observedAt },
+    { path: 'fixture.score.goals.home', value: 2,
+      correctedProviderValue: 0, reason: 'reviewed score',
       sourceUrl: 'https://example.test/fixture/9001', verifiedAt: observedAt }],
   );
-  existing.overrides['fixture.referee'].reconciledAt = observedAt;
+  for (const override of Object.values(existing.overrides)) override.reconciledAt = observedAt;
   const objects = new Map([[r2FixtureKey(existing), JSON.stringify(existing)]]);
   const env = {
     ADMIN_INGEST_TOKEN: 'offline-token', FOOTBALL_DB: createLocalD1(db),
@@ -81,7 +84,19 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
   objects.delete(r2FixtureKey(existing));
   await assert.rejects(() => checkFixtureCorrections(guardArgs), /no canonical R2 fixture/);
   objects.set(r2FixtureKey(existing), JSON.stringify(existing));
-  assert.equal((await checkFixtureCorrections(guardArgs)).preservedCorrections, 1);
+  const sameDay = await checkFixtureCorrections(guardArgs);
+  assert.equal(sameDay.preservedCorrections, 2);
+  assert.equal(sameDay.latestRevision, 1);
+  assert.match(sameDay.sameDayPublishedHash, /^[0-9a-f]{64}$/);
+  assert.throws(() => reconcileFixtureRevision(existing, normalizeFixtureBundle({
+    ...raw, goals: { home: 0, away: 1 },
+  }, { fetchedAt: observedAt, finalized: true }), {
+    latestD1Revision: sameDay.latestRevision,
+    sameDayPublishedHash: sameDay.sameDayPublishedHash,
+  }), /changed detail must wait for the next UTC day/);
+  // A prior UTC publication day permits the correction recheck in this scenario.
+  db.prepare('UPDATE fixture_detail_publish_days SET date_utc = ?')
+    .run(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   db.exec(`
     INSERT INTO fixtures(canonical_id,source_id,provider_id,competition_season_id,
       home_team_id,away_team_id,kickoff_utc,date_jst,status_short,status_long,ingestion_state)
@@ -91,6 +106,7 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
   `);
   const date = '2026-09-17';
   const baseline = await buildD1DateIndexesForPublication(env, date);
+  assert.equal(baseline.generic.fixtures[0].score.goals.home, 2);
   objects.set(dateIndexR2Key(date), JSON.stringify(baseline.generic));
   objects.set(competitionDateIndexR2Key('af:competition:39', date), JSON.stringify(baseline.competitions[0]));
   await publishDateIndexCoverageFromR2(env, {
@@ -98,8 +114,9 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
     date, competitionIds: ['af:competition:39'],
   });
   assert.equal((await buildD1DateFeed(env, date)).fixtures.length, 2);
+  assert.equal((await buildD1DateFeed(env, date)).fixtures[0].score.goals.home, 2);
 
-  raw.goals.home = 1;
+  raw.goals.away = 1;
   const fixtureDir = path.join(root, 'fixtures', '9001');
   writeFixtureEnvelope(fixtureDir, { fixture: raw, quota: {} }, {
     fetchedAt: '2026-09-17T10:00:00.000Z', finalized: true,
@@ -128,11 +145,12 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
   assert.deepEqual(report.results.map(item => item.operation), [
     'fixture_publish', 'date_index_refresh', 'migration_verify',
   ]);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM correction_states').get().n, 1);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM correction_states').get().n, 2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM date_index_coverages').get().n, 1);
   assert.equal((await buildD1DateFeed(env, date)).fixtures.length, 2);
   assert.equal((await buildD1DateFeed(env, date, 'af:competition:39')).fixtures.length, 2);
   assert.equal(JSON.parse(objects.get(dateIndexR2Key(date))).fixtures.length, 2);
+  assert.equal(JSON.parse(objects.get(dateIndexR2Key(date))).fixtures[0].score.goals.home, 2);
 
   // A prior run can publish the fixture but fail before refreshing coverage.
   db.prepare('DELETE FROM date_index_coverages WHERE date_jst = ?').run(date);

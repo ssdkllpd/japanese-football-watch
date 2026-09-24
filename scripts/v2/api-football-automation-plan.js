@@ -105,12 +105,15 @@ function validatePolicy(policy) {
 }
 
 function emptyAutomationState() {
-  return { schemaVersion: STATE_VERSION, fixtures: {}, standings: {}, lastSuccessfulRunAt: null };
+  return { schemaVersion: STATE_VERSION, fixtures: {}, standings: {},
+    lastSuccessfulRunAt: null, pendingDiscoveryDate: null };
 }
 
 function validateState(value) {
-  const state = value || emptyAutomationState();
-  exactKeys(state, ['schemaVersion', 'fixtures', 'standings', 'lastSuccessfulRunAt'], 'Automation state');
+  const state = value && !Object.hasOwn(value, 'pendingDiscoveryDate')
+    ? { ...value, pendingDiscoveryDate: null } : value || emptyAutomationState();
+  exactKeys(state, ['schemaVersion', 'fixtures', 'standings', 'lastSuccessfulRunAt',
+    'pendingDiscoveryDate'], 'Automation state');
   if (state.schemaVersion !== STATE_VERSION) throw new Error(`Automation state schemaVersion must be ${STATE_VERSION}.`);
   for (const key of ['fixtures', 'standings']) {
     if (!state[key] || typeof state[key] !== 'object' || Array.isArray(state[key])) {
@@ -119,6 +122,9 @@ function validateState(value) {
   }
   if (state.lastSuccessfulRunAt !== null && !Number.isFinite(Date.parse(state.lastSuccessfulRunAt))) {
     throw new Error('Automation state lastSuccessfulRunAt must be null or a timestamp.');
+  }
+  if (state.pendingDiscoveryDate !== null && !realDate(state.pendingDiscoveryDate)) {
+    throw new Error('Automation state pendingDiscoveryDate must be null or a real JST date.');
   }
   for (const [fixtureId, fixture] of Object.entries(state.fixtures)) {
     exactKeys(fixture, [
@@ -179,6 +185,12 @@ function shiftDate(date, days) {
   return dateJst(base);
 }
 
+function realDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return false;
+  const instant = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(instant.getTime()) && instant.toISOString().slice(0, 10) === value;
+}
+
 function discoveryDates(policy, now) {
   const center = dateJst(now);
   const result = [];
@@ -186,6 +198,22 @@ function discoveryDates(policy, now) {
     result.push(shiftDate(center, offset));
   }
   return result;
+}
+
+function startAutomationDiscovery(state, policy, now) {
+  const next = structuredClone(validateState(state));
+  validatePolicy(policy);
+  next.pendingDiscoveryDate ||= discoveryDates(policy, now)[0];
+  return validateState(next);
+}
+
+function plannedDiscoveryDates(policy, state, now) {
+  const normal = discoveryDates(policy, now);
+  const first = state.pendingDiscoveryDate || normal[0];
+  const dates = [];
+  for (let date = first; date <= normal.at(-1) && dates.length < normal.length;
+    date = shiftDate(date, 1)) dates.push(date);
+  return dates;
 }
 
 function canonicalFixture(row) {
@@ -237,12 +265,13 @@ function compareText(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function planAutomation({ policy, state, fixturesByDate, now, quota = {}, preview = false }) {
+function planAutomation({ policy, state, fixturesByDate, now, quota = {}, preview = false,
+  dailyBudget = null }) {
   validatePolicy(policy);
-  validateState(state);
+  state = validateState(state);
   const nowDate = new Date(now || Date.now());
   if (Number.isNaN(nowDate.getTime())) throw new Error('Automation plan now is invalid.');
-  const dates = discoveryDates(policy, nowDate);
+  const dates = plannedDiscoveryDates(policy, state, nowDate);
   const expectedDates = Object.keys(fixturesByDate || {}).sort();
   if (JSON.stringify(expectedDates) !== JSON.stringify([...dates].sort())) {
     throw new Error('Provider discovery dates differ from the policy window.');
@@ -295,6 +324,22 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   if (enabled && remaining === null) {
     throw new Error('API-Football daily remaining quota is required before planning automated work.');
   }
+  const dateUtc = nowDate.toISOString().slice(0, 10);
+  if (dailyBudget && (dailyBudget.dateUtc !== dateUtc
+    || !Array.isArray(dailyBudget.fixtureIds)
+    || dailyBudget.fixtureIds.length > 20
+    || dailyBudget.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))
+    || new Set(dailyBudget.fixtureIds).size !== dailyBudget.fixtureIds.length)) {
+    throw new Error('D1 daily fixture publication budget is invalid or stale.');
+  }
+  if (enabled && !preview && !dailyBudget) {
+    throw new Error('D1 daily fixture publication budget is required for execution.');
+  }
+  const publishedToday = new Set(dailyBudget?.fixtureIds || []);
+  const statePublishedToday = Object.values(state.fixtures)
+    .filter(fixture => fixture.lastDetailFetchedAt?.slice(0, 10) === dateUtc);
+  for (const fixture of statePublishedToday) publishedToday.add(fixture.fixtureId);
+  let publishCapacity = Math.max(0, 20 - publishedToday.size);
   let requestCapacity = policy.limits.maxProviderRequestsPerRun - discoveryRequestCount;
   if (remaining !== null) requestCapacity = Math.min(
     requestCapacity,
@@ -303,8 +348,12 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const detailFetches = [];
   for (const candidate of candidates) {
     if (detailFetches.length >= policy.limits.maxFinalDetailFixturesPerRun || requestCapacity < 5) break;
+    if (state.fixtures[candidate.fixture.fixtureId]?.lastDetailFetchedAt?.slice(0, 10) === dateUtc) continue;
+    const recoveryOnly = publishedToday.has(candidate.fixture.fixtureId);
+    if (!recoveryOnly && publishCapacity === 0) continue;
     detailFetches.push({ ...candidate.fixture, recheckStage: candidate.stage.stage, dueAt: candidate.stage.dueAt });
     requestCapacity -= 5;
+    if (!recoveryOnly) publishCapacity -= 1;
   }
   const competitionScopes = new Map(policy.competitionSeasons.map(item => [item.league, item]));
   const standingsFetches = [];
@@ -329,6 +378,8 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     mode: policy.scheduledSynchronizationEnabled ? 'enabled' : preview ? 'preview' : 'disabled',
     generatedAt: nowDate.toISOString(),
     discoveryDates: dates,
+    nextDiscoveryDate: dates.at(-1) < discoveryDates(policy, nowDate).at(-1)
+      ? shiftDate(dates.at(-1), 1) : null,
     discoveredFixtureCount: discoveredFixtures.length,
     retainedFixtureCount: fixtures.length - discoveredFixtures.length,
     excludedFixtureCount,
@@ -341,16 +392,21 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
       reserve: policy.limits.dailyRequestReserve,
       estimatedProviderRequests,
       requestCapacityRemaining: Math.max(0, requestCapacity),
+      fixturePublishesRemaining: publishCapacity,
     },
   };
 }
 
 function checkpointAutomationDiscovery(state, plan) {
-  validateState(state);
+  state = validateState(state);
   if (plan?.schemaVersion !== PLAN_VERSION || !Array.isArray(plan.pendingFixtures)) {
     throw new Error('Automation discovery checkpoint plan is invalid.');
   }
   const next = structuredClone(state);
+  if (plan.nextDiscoveryDate !== null && !realDate(plan.nextDiscoveryDate)) {
+    throw new Error('Automation discovery continuation date is invalid.');
+  }
+  next.pendingDiscoveryDate = plan.nextDiscoveryDate;
   for (const fixture of plan.pendingFixtures) {
     if (next.fixtures[fixture.fixtureId]) continue;
     if (!FINAL_STATUSES.has(fixture.status)
@@ -377,7 +433,7 @@ function checkpointAutomationDiscovery(state, plan) {
 }
 
 function advanceAutomationState(state, plan, completedAt) {
-  validateState(state);
+  state = validateState(state);
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`Automation plan schemaVersion must be ${PLAN_VERSION}.`);
   const timestamp = new Date(completedAt || Date.now()).toISOString();
   const next = structuredClone(state);
@@ -413,9 +469,11 @@ module.exports = {
   canonicalFixture,
   dateJst,
   discoveryDates,
+  plannedDiscoveryDates,
   emptyAutomationState,
   planAutomation,
   shiftDate,
+  startAutomationDiscovery,
   validatePolicy,
   validateState,
 };

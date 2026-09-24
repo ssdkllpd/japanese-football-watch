@@ -10,6 +10,8 @@ const {
   discoveryDates,
   emptyAutomationState,
   planAutomation,
+  plannedDiscoveryDates,
+  startAutomationDiscovery,
   validatePolicy,
 } = require('../scripts/v2/api-football-automation-plan');
 
@@ -79,13 +81,19 @@ test('final fixture correction stages become due at 0, 6, 24 and 72 hours withou
 
   Object.assign(args, input({}, '2026-09-17T16:00:00.000Z'), { state: args.state });
   plan = planAutomation(args);
+  assert.equal(plan.detailFetches.length, 0);
+  Object.assign(args, input({}, '2026-09-18T00:00:00.000Z'), { state: args.state });
+  plan = planAutomation(args);
   assert.equal(plan.detailFetches[0].recheckStage, 'correction_6h');
-  args.state = advanceAutomationState(args.state, plan, '2026-09-17T16:01:00Z');
+  args.state = advanceAutomationState(args.state, plan, '2026-09-18T00:01:00Z');
 
   Object.assign(args, input({}, '2026-09-18T10:00:00.000Z'), { state: args.state });
   plan = planAutomation(args);
+  assert.equal(plan.detailFetches.length, 0);
+  Object.assign(args, input({}, '2026-09-19T00:00:00.000Z'), { state: args.state });
+  plan = planAutomation(args);
   assert.equal(plan.detailFetches[0].recheckStage, 'correction_24h');
-  args.state = advanceAutomationState(args.state, plan, '2026-09-18T10:01:00Z');
+  args.state = advanceAutomationState(args.state, plan, '2026-09-19T00:01:00Z');
 
   Object.assign(args, input({}, '2026-09-20T10:00:00.000Z'), { state: args.state });
   plan = planAutomation(args);
@@ -107,6 +115,47 @@ test('planner enforces the 20-fixture hard cap and deterministic kickoff/id orde
       const rightItem = plan.detailFetches.find(item => item.fixtureId === right);
       return leftItem.kickoffUtc.localeCompare(rightItem.kickoffUtc) || left.localeCompare(right);
     }));
+});
+
+test('D1 daily receipts bound successive runs and allow the next UTC day', () => {
+  const rows = { '2026-09-17': Array.from({ length: 25 }, (_, index) =>
+    fixture(100 + index, 39, 'FT', '2026-09-17T06:00:00Z')) };
+  const args = input(rows);
+  const enabled = { ...policy(), scheduledSynchronizationEnabled: true };
+  args.policy = enabled;
+  args.preview = false;
+  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: [] };
+  const first = planAutomation(args);
+  assert.equal(first.detailFetches.length, 20);
+  args.dailyBudget.fixtureIds = first.detailFetches.map(item => item.fixtureId);
+  assert.deepEqual(planAutomation(args).detailFetches.map(item => item.fixtureId),
+    first.detailFetches.map(item => item.fixtureId)); // recovery of already published details
+  args.state = advanceAutomationState(checkpointAutomationDiscovery(args.state, first), first,
+    '2026-09-17T12:01:00Z');
+  assert.equal(planAutomation(args).detailFetches.length, 0);
+  const next = input({}, '2026-09-18T12:00:00.000Z', enabled);
+  next.preview = false;
+  next.state = args.state;
+  next.dailyBudget = { dateUtc: '2026-09-18', fixtureIds: [] };
+  assert.equal(planAutomation(next).detailFetches.length, 20);
+});
+
+test('unfinished discovery remains anchored across JST midnight and advances in bounded batches', () => {
+  const before = startAutomationDiscovery(emptyAutomationState(), policy(), '2026-09-17T14:59:00Z');
+  assert.equal(before.pendingDiscoveryDate, '2026-09-16');
+  assert.deepEqual(plannedDiscoveryDates(policy(), before, '2026-09-17T15:01:00Z'),
+    ['2026-09-16', '2026-09-17', '2026-09-18']);
+  const after = input({}, '2026-09-17T15:01:00Z');
+  after.state = before;
+  after.fixturesByDate = Object.fromEntries(plannedDiscoveryDates(policy(), before, after.now)
+    .map(date => [date, date === '2026-09-16'
+      ? [fixture(9001, 39, 'FT', '2026-09-16T06:00:00Z')] : []]));
+  const plan = planAutomation(after);
+  assert.equal(plan.detailFetches[0].fixtureId, 'af:fixture:9001');
+  const checkpoint = checkpointAutomationDiscovery(before, plan);
+  assert.equal(checkpoint.pendingDiscoveryDate, '2026-09-19');
+  assert.deepEqual(plannedDiscoveryDates(policy(), checkpoint, '2026-09-17T15:01:00Z'),
+    ['2026-09-19']);
 });
 
 test('discovery checkpoint retains unselected fixtures and failed details beyond the JST window', () => {

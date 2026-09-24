@@ -31,6 +31,11 @@ import {
   verifyStoredFixtureCorrections,
 } from './fixture-correction-guard.mjs';
 import {
+  FIXTURE_PUBLISH_BUDGET_OPERATION,
+  assertFixturePublishBudgetRequest,
+  readFixturePublishBudget,
+} from './fixture-publish-budget.mjs';
+import {
   MIGRATION_VERIFY_OPERATION,
   assertMigrationVerifyRequest,
   verifyMigrationState,
@@ -92,6 +97,7 @@ function assertRequest(value) {
   }
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
   if (value.operation === FIXTURE_CORRECTION_GUARD_OPERATION) return assertFixtureCorrectionGuardRequest(value);
+  if (value.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) return assertFixturePublishBudgetRequest(value);
   if (value.operation === DATE_INDEX_REFRESH_OPERATION) return assertDateIndexRefreshRequest(value);
   if (value.operation === DATE_INDEX_COVERAGE_OPERATION
     || value.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
@@ -350,6 +356,8 @@ export async function handleAdminIngest(request, env) {
       report = await refreshDateIndexesFromD1(env, input);
     } else if (input.operation === FIXTURE_CORRECTION_GUARD_OPERATION) {
       report = await verifyStoredFixtureCorrections(env, input);
+    } else if (input.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) {
+      report = await readFixturePublishBudget(env);
     } else if (input.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
       report = await publishMajorLeagueDateCoverageFromR2(env, input);
     } else if (input.operation === MIGRATION_VERIFY_OPERATION) {

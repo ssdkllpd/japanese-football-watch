@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createClientFromEnv } = require('../api-football/client');
 const {
-  discoveryDates,
+  plannedDiscoveryDates,
   emptyAutomationState,
   planAutomation,
   validatePolicy,
@@ -39,7 +39,7 @@ async function discoverAutomation(options) {
   const policy = validatePolicy(options.policy);
   const state = validateState(options.state || emptyAutomationState());
   const now = new Date(options.now || Date.now());
-  const dates = discoveryDates(policy, now);
+  const dates = plannedDiscoveryDates(policy, state, now);
   const fixturesByDate = {};
   const statusQuota = await options.client.refreshDailyQuota();
   let quota = statusQuota;
@@ -51,7 +51,7 @@ async function discoverAutomation(options) {
   return {
     plan: planAutomation({
       policy, state, fixturesByDate, now,
-      quota, preview: options.preview === true,
+      quota, preview: options.preview === true, dailyBudget: options.dailyBudget || null,
     }),
     fixturesByDate,
   };
@@ -69,6 +69,8 @@ async function main() {
   const result = await discoverAutomation({
     policy, state, client: createClientFromEnv(process.env),
     now: args.now || Date.now(), preview: String(args.preview || '').toLowerCase() === 'true',
+    dailyBudget: args['daily-budget']
+      ? readJson(path.resolve(args['daily-budget']), null, 'D1 daily publication budget') : null,
   });
   writeJson(path.join(outputDir, 'plan.json'), result.plan);
   for (const [date, rows] of Object.entries(result.fixturesByDate)) {

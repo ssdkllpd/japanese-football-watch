@@ -90,7 +90,8 @@ function database() {
 
 function databaseState(db) {
   const tables = db.prepare(`SELECT name FROM sqlite_schema
-    WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'd1_migrations'
+    WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+      AND name NOT IN ('d1_migrations', 'fixture_detail_publish_days')
     ORDER BY name`).all().map(row => row.name);
   return Object.fromEntries(tables.map(name => {
     const rows = db.prepare(`SELECT * FROM ${name}`).all()

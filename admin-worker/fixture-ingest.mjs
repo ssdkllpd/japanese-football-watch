@@ -1,5 +1,9 @@
 import fixtureImporterModule from '../scripts/d1/fixture-bundle-importer.js';
 import fixturePublishLimitsModule from '../scripts/d1/fixture-publish-limits.js';
+import {
+  dailyFixturePublishStatement,
+  readFixturePublishBudget,
+} from './fixture-publish-budget.mjs';
 
 const {
   PLAYER_STAT_COLUMNS,
@@ -825,6 +829,12 @@ export async function publishFixtureFromR2(env, input) {
       imported: false, reason: 'already_published', revision: context.fixture.revision,
     };
   }
+  if ([FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation)) {
+    const budget = await readFixturePublishBudget(env);
+    if (budget.remaining === 0 || budget.fixtureIds.includes(input.fixtureId)) {
+      throw new Error('D1 fixture publication daily cap or per-fixture limit reached.');
+    }
+  }
   const statements = [];
   addMasterStatements(env.FOOTBALL_DB, statements, context, catalog);
   addFixtureHeaderStatements(env.FOOTBALL_DB, statements, context, contentSha256, checked.previousRevisionId);
@@ -833,8 +843,14 @@ export async function publishFixtureFromR2(env, input) {
   addRemainingDetailStatements(env.FOOTBALL_DB, statements, context);
   addIntegrityStatement(env.FOOTBALL_DB, statements, context, boundedAppearances);
   addPublishStatements(env.FOOTBALL_DB, statements, context, checked.previousRevisionId);
+  if ([FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation)) {
+    statements.push(dailyFixturePublishStatement(
+      env.FOOTBALL_DB, input.fixtureId, context.fixture.revision,
+    ));
+  }
   const preflightBudget = FIXTURE_PREFLIGHT_QUERY_BUDGET
-    + Number(input.requireStableDate === true) + Number(input.preserveCorrections === true);
+    + Number(input.requireStableDate === true) + Number(input.preserveCorrections === true)
+    + Number([FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation));
   const maxStatements = MAX_D1_QUERIES_PER_INVOCATION - preflightBudget;
   if (statements.length > maxStatements) {
     throw new Error(`Fixture publish exceeds the D1 query budget (${statements.length + preflightBudget}/${MAX_D1_QUERIES_PER_INVOCATION}).`);
