@@ -18,17 +18,18 @@ This unit automates two existing, already reviewed data paths for the ten config
 1. Standings are refreshed at most once per competition every six hours.
 2. A fixture that API-Football reports as `FT`, `AET`, or `PEN` becomes eligible three hours after kickoff. Its complete detail is fetched at the initial stage and rechecked 6, 24, and 72 hours later for provider corrections.
 
-The 15-minute workflow trigger is a discovery cadence, not a promise to write every 15 minutes. No due work produces no R2 or D1 write.
+The 15-minute workflow trigger is a discovery cadence, not a promise to publish every 15 minutes. Newly discovered final fixtures may be checkpointed in R2 even when their detail is deferred; no due work publishes no fixture or standings object.
 
 This unit does not yet replace the public request-time live provider path and does not publish basic scheduled fixture changes. Those are separate activation units because a basic date-feed response must never replace an existing rich fixture bundle. Until that merge rule and the compact live projection are implemented and reviewed, the current paths remain unchanged.
 
 ## Request budget
 
 - Three JST dates are inspected per run: yesterday, today, and tomorrow.
+- Before those charged requests, the API-Football `status` endpoint supplies the current daily balance. This endpoint does not count against the daily quota; missing or malformed status data stops discovery.
 - Requests are serialized with at least 300 ms between starts.
 - At most 20 complete fixture details are fetched per run. Each uses five provider requests.
 - At most ten standings scopes are fetched per run.
-- A run is capped at 150 provider requests and preserves at least 100 reported daily requests.
+- A run is capped at 150 provider calls including the uncharged status call, and preserves at least 100 reported daily requests.
 - Missing quota headers stop executable planning; they are never treated as unlimited capacity.
 
 ## Publication order
@@ -36,15 +37,14 @@ This unit does not yet replace the public request-time live provider path and do
 The workflow uses one shared `d1-staging-write` concurrency group and follows this order:
 
 1. Load durable state from R2.
-2. Discover and create a deterministic bounded plan.
-3. Fetch and validate every planned artifact without publishing anything.
-4. Bind artifact identities to the D1 Admin Worker plan.
-5. Verify the exact staging target.
-6. Reconcile fixture revisions and publish canonical R2 objects.
-7. Publish through the protected Admin Worker, including `migration_verify`.
-8. Advance and upload durable automation state only after the Admin Worker succeeds.
+2. Read the uncharged account status, discover fixtures, and create a deterministic bounded plan.
+3. Verify the exact staging target, then checkpoint every discovered final fixture in R2 with no completed detail stages. A failed or deferred detail remains eligible after the one-day discovery window.
+4. Fetch and validate every planned artifact; bind its identity to the D1 Admin Worker plan.
+5. Before replacing any canonical R2 fixture, check that its current overrides cover every correction already stored in D1. Reconcile the provider values with those overrides and publish the canonical fixture and pointer.
+6. Publish through the protected Admin Worker. After the fixtures, rebuild complete generic and competition date indexes from the D1 date rows, publish them to R2, and verify their coverage in D1. Then run `migration_verify`.
+7. Mark detail stages complete and upload durable state only after the Admin Worker succeeds.
 
-A failure before step 6 performs no data write. A failure during or after R2 publication leaves durable state unchanged, so the same work is retried. Fixture revision reconciliation and standings keys make that retry idempotent. Direct `wrangler d1 execute` and migration application are not part of this workflow.
+A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. Direct `wrangler d1 execute` and migration application are not part of this workflow.
 
 ## Manual review sequence
 

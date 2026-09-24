@@ -148,6 +148,7 @@ function validateState(value) {
     if (JSON.stringify(fixture.completedStages) !== JSON.stringify(expectedStages)) {
       throw new Error(`Automation state fixture ${fixtureId} completedStages must be a prefix.`);
     }
+    if (fixture.lastDetailFetchedAt === null && fixture.completedStages.length === 0) continue;
     if (!Number.isFinite(Date.parse(fixture.lastDetailFetchedAt))) {
       throw new Error(`Automation state fixture ${fixtureId} has invalid lastDetailFetchedAt.`);
     }
@@ -288,7 +289,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     .sort((left, right) => compareText(left.stage.dueAt, right.stage.dueAt)
       || compareText(left.fixture.kickoffUtc, right.fixture.kickoffUtc)
       || compareText(left.fixture.fixtureId, right.fixture.fixtureId));
-  const discoveryRequestCount = dates.length;
+  const discoveryRequestCount = dates.length + 1; // includes the quota-free status call
   const remaining = Number.isSafeInteger(quota.dailyRemaining) ? quota.dailyRemaining : null;
   const enabled = policy.scheduledSynchronizationEnabled || preview;
   if (enabled && remaining === null) {
@@ -332,6 +333,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     retainedFixtureCount: fixtures.length - discoveredFixtures.length,
     excludedFixtureCount,
     dueDetailFixtureCount: candidates.length,
+    pendingFixtures: discoveredFixtures.filter(fixture => FINAL_STATUSES.has(fixture.status)),
     detailFetches: activeDetails,
     standingsFetches: activeStandings,
     quota: {
@@ -341,6 +343,37 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
       requestCapacityRemaining: Math.max(0, requestCapacity),
     },
   };
+}
+
+function checkpointAutomationDiscovery(state, plan) {
+  validateState(state);
+  if (plan?.schemaVersion !== PLAN_VERSION || !Array.isArray(plan.pendingFixtures)) {
+    throw new Error('Automation discovery checkpoint plan is invalid.');
+  }
+  const next = structuredClone(state);
+  for (const fixture of plan.pendingFixtures) {
+    if (next.fixtures[fixture.fixtureId]) continue;
+    if (!FINAL_STATUSES.has(fixture.status)
+      || fixture.fixtureId !== `af:fixture:${fixture.providerFixtureId}`
+      || fixture.competitionId !== `af:competition:${fixture.league}`
+      || fixture.seasonId !== `af:season:${fixture.league}:${fixture.season}`
+      || !Number.isFinite(Date.parse(fixture.kickoffUtc))) {
+      throw new Error(`Discovered fixture has invalid checkpoint metadata: ${fixture.fixtureId}.`);
+    }
+    next.fixtures[fixture.fixtureId] = {
+      providerFixtureId: fixture.providerFixtureId,
+      fixtureId: fixture.fixtureId,
+      competitionId: fixture.competitionId,
+      seasonId: fixture.seasonId,
+      league: fixture.league,
+      season: fixture.season,
+      kickoffUtc: fixture.kickoffUtc,
+      lastStatus: fixture.status,
+      completedStages: [],
+      lastDetailFetchedAt: null,
+    };
+  }
+  return validateState(next);
 }
 
 function advanceAutomationState(state, plan, completedAt) {
@@ -376,6 +409,7 @@ module.exports = {
   POLICY_VERSION,
   STATE_VERSION,
   advanceAutomationState,
+  checkpointAutomationDiscovery,
   canonicalFixture,
   dateJst,
   discoveryDates,

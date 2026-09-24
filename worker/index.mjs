@@ -108,6 +108,13 @@ LEFT JOIN fixtures fixture
 ${FIXTURE_INDEX_JOINS_SQL}
 ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
 
+const UNCOVERED_DATE_FIXTURES_SQL = `
+SELECT ${FIXTURE_INDEX_COLUMNS_SQL}
+FROM fixtures fixture
+${FIXTURE_INDEX_JOINS_SQL}
+WHERE fixture.date_jst = ?1
+ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
+
 const COMPETITION_SQL = `
 SELECT canonical_id, provider_id, name, country_name, logo_url, flag_url
 FROM competitions
@@ -578,6 +585,32 @@ function fixtureIndexEntryFromD1(row) {
     competition,
     competitionName: competition.name,
   };
+}
+
+export async function buildD1DateIndexesForPublication(env, date, extraCompetitionIds = []) {
+  const rows = await d1Rows(env, UNCOVERED_DATE_FIXTURES_SQL, date);
+  const generatedAt = new Date().toISOString();
+  const fixtures = rows.map(fixtureIndexEntryFromD1);
+  const generic = {
+    contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date, fixtures, generatedAt,
+  };
+  assertValidDateIndexPayload(generic, { expectedDate: date, expectedCompetitionId: null });
+  const competitionIds = [...new Set([
+    ...fixtures.map(fixture => fixture.competitionId), ...extraCompetitionIds,
+  ])].sort();
+  const competitions = [];
+  for (const competitionId of competitionIds) {
+    const competition = fixtures.find(fixture => fixture.competitionId === competitionId)?.competition
+      || competitionDto((await d1Rows(env, COMPETITION_SQL, competitionId))[0]);
+    if (!competition?.id) throw new Error(`D1 date index competition is missing: ${competitionId}.`);
+    const payload = {
+      contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date, competition,
+      fixtures: fixtures.filter(fixture => fixture.competitionId === competitionId), generatedAt,
+    };
+    assertValidDateIndexPayload(payload, { expectedDate: date, expectedCompetitionId: competitionId });
+    competitions.push(payload);
+  }
+  return { generic, competitions };
 }
 
 export async function buildD1DateFeed(

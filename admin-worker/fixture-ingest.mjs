@@ -50,6 +50,7 @@ export function assertFixtureRequest(input) {
   const allowed = new Set([
     'schemaVersion', 'operation', 'fixtureId', 'competitionId', 'seasonId',
     'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
+    'requireStableDate', 'preserveCorrections',
   ]);
   if (input.operation === FIXTURE_MIGRATION_OPERATION) {
     for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) allowed.add(key);
@@ -64,6 +65,9 @@ export function assertFixtureRequest(input) {
   }
   if (input.reuseStoredCatalog !== undefined && input.reuseStoredCatalog !== true) {
     throw new Error('reuseStoredCatalog must be true when supplied.');
+  }
+  for (const key of ['requireStableDate', 'preserveCorrections']) {
+    if (input[key] !== undefined && input[key] !== true) throw new Error(`${key} must be true when supplied.`);
   }
   if (input.reuseStoredCatalog === true) {
     if (input.catalog !== undefined) throw new Error('Stored catalog reuse must not include a catalog.');
@@ -791,6 +795,24 @@ export async function publishFixtureFromR2(env, input) {
     ? await storedCatalog(env.FOOTBALL_DB, input) : input.catalog;
   const context = validateBundle(payload, catalog);
   assertCorrectionDefinitions(context.normalized, input.correctionDefinitions);
+  if (input.requireStableDate === true) {
+    const existing = await first(env.FOOTBALL_DB,
+      'SELECT date_jst FROM fixtures WHERE canonical_id = ?', [input.fixtureId]);
+    if (existing && existing.date_jst !== context.fixture.dateJst) {
+      throw new Error('Automation fixture changed its stored JST date; date coverage requires a separate migration.');
+    }
+  }
+  if (input.preserveCorrections === true) {
+    const existing = await env.FOOTBALL_DB.prepare(`
+      SELECT field_path FROM correction_states
+      WHERE target_kind = 'fixture' AND target_canonical_id = ?
+    `).bind(input.fixtureId).all();
+    for (const row of existing.results || []) {
+      if (!Object.hasOwn(context.normalized.overrides || {}, row.field_path)) {
+        throw new Error(`Automation would remove a stored manual correction: ${row.field_path}.`);
+      }
+    }
+  }
   const boundedAppearances = assertFixtureCardinality(context);
   await assertExistingIdentities(env.FOOTBALL_DB, context.source, context);
   const sourceSha256 = await sha256(raw);
@@ -811,9 +833,11 @@ export async function publishFixtureFromR2(env, input) {
   addRemainingDetailStatements(env.FOOTBALL_DB, statements, context);
   addIntegrityStatement(env.FOOTBALL_DB, statements, context, boundedAppearances);
   addPublishStatements(env.FOOTBALL_DB, statements, context, checked.previousRevisionId);
-  const maxStatements = MAX_D1_QUERIES_PER_INVOCATION - FIXTURE_PREFLIGHT_QUERY_BUDGET;
+  const preflightBudget = FIXTURE_PREFLIGHT_QUERY_BUDGET
+    + Number(input.requireStableDate === true) + Number(input.preserveCorrections === true);
+  const maxStatements = MAX_D1_QUERIES_PER_INVOCATION - preflightBudget;
   if (statements.length > maxStatements) {
-    throw new Error(`Fixture publish exceeds the D1 query budget (${statements.length + FIXTURE_PREFLIGHT_QUERY_BUDGET}/${MAX_D1_QUERIES_PER_INVOCATION}).`);
+    throw new Error(`Fixture publish exceeds the D1 query budget (${statements.length + preflightBudget}/${MAX_D1_QUERIES_PER_INVOCATION}).`);
   }
   await env.FOOTBALL_DB.batch(statements);
   return {

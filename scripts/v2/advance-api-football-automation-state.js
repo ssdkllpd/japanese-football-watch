@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   advanceAutomationState,
+  checkpointAutomationDiscovery,
   emptyAutomationState,
   validateState,
 } = require('./api-football-automation-plan');
@@ -23,7 +24,9 @@ function main(argv = process.argv.slice(2)) {
   if (!args.plan || !args.out) throw new Error('Use --plan FILE --state FILE --out FILE.');
   const state = validateState(readJson(args.state, emptyAutomationState()));
   const plan = readJson(args.plan, null);
-  const next = advanceAutomationState(state, plan, args.completedAt || Date.now());
+  const next = args.checkpoint === 'true'
+    ? checkpointAutomationDiscovery(state, plan)
+    : advanceAutomationState(state, plan, args.completedAt || Date.now());
   fs.mkdirSync(path.dirname(path.resolve(args.out)), { recursive: true });
   fs.writeFileSync(path.resolve(args.out), `${JSON.stringify(next, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify({

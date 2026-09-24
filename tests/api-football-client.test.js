@@ -9,6 +9,8 @@ const {
   extractQuota,
   hasApiErrors,
 } = require('../scripts/api-football/client');
+const { discoverAutomation, } = require('../scripts/v2/discover-api-football-automation');
+const policy = require('../config/api-football-automation.json');
 
 function headers(values = {}) {
   const normalized = Object.fromEntries(
@@ -149,6 +151,28 @@ test('client stops before consuming the protected daily reserve', async () => {
   await client.get('fixtures');
   await assert.rejects(() => client.get('fixtures/events'), /daily reserve reached/);
   assert.equal(calls, 1);
+});
+
+test('free status quota check blocks discovery before the first charged request at reserve', async () => {
+  let charged = 0;
+  let statusCalls = 0;
+  const client = new ApiFootballClient({
+    apiKey: 'secret', dailyReserve: 100,
+    fetchImpl: async url => {
+      if (new URL(url).pathname === '/status') {
+        statusCalls += 1;
+        return { ok: true, status: 200, headers: headers(),
+          async json() { return { errors: [], response: { requests: { current: 6900, limit_day: 7000 } } }; } };
+      }
+      charged += 1;
+      throw new Error('Unexpected charged API request');
+    },
+  });
+  await assert.rejects(() => discoverAutomation({
+    policy, state: null, client, preview: true, now: '2026-09-17T12:00:00Z',
+  }), /daily reserve reached/);
+  assert.equal(statusCalls, 1);
+  assert.equal(charged, 0);
 });
 
 test('client fails closed when a protected response omits its quota header', async () => {

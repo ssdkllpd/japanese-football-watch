@@ -38,6 +38,7 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     throw new Error('Automation plan is invalid.');
   }
   const fixtures = [];
+  const dates = new Map();
   const fixtureIds = new Set();
   for (const item of automationPlan.detailFetches) {
     if (!Number.isSafeInteger(item?.providerFixtureId) || item.providerFixtureId <= 0) {
@@ -80,13 +81,18 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     }
     if (pointer.fixtureId !== item.fixtureId || pointer.key !== fixtureObject.key
       || dateIndex.date !== bundle.fixture.dateJst
+      || dateIndex.contractVersion !== '2.0.0'
       || !Array.isArray(dateIndex.fixtures) || dateIndex.fixtures.length !== 1
       || dateIndex.fixtures[0]?.fixtureId !== item.fixtureId) {
       throw new Error(`Fixture ${item.fixtureId} pointer or date index is invalid.`);
     }
     if (fixtureIds.has(fixture.fixtureId)) throw new Error(`Automation artifacts duplicate ${fixture.fixtureId}.`);
     fixtureIds.add(fixture.fixtureId);
+    fixture.requireStableDate = true;
+    fixture.preserveCorrections = true;
     fixtures.push(fixture);
+    if (!dates.has(bundle.fixture.dateJst)) dates.set(bundle.fixture.dateJst, []);
+    dates.get(bundle.fixture.dateJst).push(fixture.fixtureId);
   }
 
   const standings = [];
@@ -133,6 +139,8 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     schemaVersion: ADMIN_PLAN_VERSION,
     fixtures,
     standings,
+    dateIndexRefreshes: [...dates].sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, fixtureIds]) => ({ date, fixtureIds: fixtureIds.sort() })),
     dateIndexCoverages: [],
     expectedTotals: null,
   };

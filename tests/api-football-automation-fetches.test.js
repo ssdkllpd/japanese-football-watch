@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { executeAutomationFetches } = require('../scripts/v2/execute-api-football-automation-fetches');
+const { mergeDateIndex } = require('../scripts/v2/merge-date-index');
 
 function plan() {
   return {
@@ -66,6 +67,14 @@ test('automation fetch executor completes and validates every artifact before pu
     path.join(root, 'fixtures', '9001', 'fixture.json'), 'utf8',
   )).fixture.ingestionState, 'finalized');
   assert.ok(fs.existsSync(path.join(root, 'standings', '39-2026', 'manifest.json')));
+  const index = JSON.parse(fs.readFileSync(
+    path.join(root, 'fixtures', '9001', 'date-index.json'), 'utf8',
+  ));
+  const merged = await mergeDateIndex(null, index, {
+    expectedCompetitionId: null, mode: 'upsert',
+  });
+  assert.equal(merged.contractVersion, '2.0.0');
+  assert.equal(merged.fixtures[0].fixtureId, 'af:fixture:9001');
 });
 
 test('automation fetch executor rejects a fixture that regresses from final status', async t => {

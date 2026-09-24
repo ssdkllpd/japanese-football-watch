@@ -90,7 +90,8 @@ class ApiFootballClient {
   }
 
   async performGet(path, params = {}) {
-    if (this.lastQuota?.dailyRemaining !== null
+    const isStatus = cleanEndpoint(path) === 'status';
+    if (!isStatus && this.lastQuota?.dailyRemaining !== null
       && this.lastQuota?.dailyRemaining !== undefined
       && this.lastQuota.dailyRemaining <= this.dailyReserve) {
       throw new ApiFootballError(
@@ -113,7 +114,7 @@ class ApiFootballClient {
 
     const quota = extractQuota(response.headers);
     this.lastQuota = quota;
-    if (this.dailyReserve > 0 && quota.dailyRemaining === null) {
+    if (!isStatus && this.dailyReserve > 0 && quota.dailyRemaining === null) {
       throw new ApiFootballError('API-Football omitted the daily remaining quota required by the reserve policy.', {
         status: response.status,
         quota,
@@ -163,6 +164,26 @@ class ApiFootballClient {
     );
     this.requestQueue = request.catch(() => undefined);
     return request;
+  }
+
+  async refreshDailyQuota() {
+    // API-Sports documents /status as exempt from the daily request quota.
+    const status = await this.get('status');
+    const requests = status.data?.response?.requests;
+    const used = Number(requests?.current);
+    const limit = Number(requests?.limit_day);
+    if (!Number.isSafeInteger(used) || used < 0 || !Number.isSafeInteger(limit)
+      || limit < used) {
+      throw new ApiFootballError('API-Football status omitted a valid daily request balance.');
+    }
+    const remaining = limit - used;
+    this.lastQuota = {
+      ...status.quota,
+      dailyLimit: limit,
+      dailyRemaining: status.quota.dailyRemaining === null
+        ? remaining : Math.min(status.quota.dailyRemaining, remaining),
+    };
+    return this.lastQuota;
   }
 }
 

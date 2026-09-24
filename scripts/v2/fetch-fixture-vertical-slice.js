@@ -93,7 +93,7 @@ function writeFixtureEnvelope(outputDir, envelope, options = {}) {
     updatedAt: fetchedAt,
   };
   const dateIndex = {
-    contractVersion: bundle.contractVersion,
+    contractVersion: '2.0.0',
     timeZone: bundle.fixture.productTimeZone,
     date: bundle.fixture.dateJst,
     fixtures: [fixtureIndexEntry(bundle)],

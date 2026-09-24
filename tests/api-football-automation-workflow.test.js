@@ -27,9 +27,12 @@ test('automation serializes with every staging writer and never executes D1 dire
 
 test('durable state advances only after Admin Worker verification', () => {
   const admin = workflow.indexOf('request-admin-ingest.mjs');
-  const advance = workflow.indexOf('advance-api-football-automation-state.js');
+  const advance = workflow.lastIndexOf('advance-api-football-automation-state.js');
   const upload = workflow.lastIndexOf('$R2_BUCKET/$AUTOMATION_STATE_KEY');
   assert.ok(admin > 0 && advance > admin && upload > advance);
+  assert.ok(workflow.indexOf('--checkpoint true') < workflow.indexOf('execute-api-football-automation-fetches.js'));
+  assert.ok(workflow.indexOf('check-automation-fixture-corrections.mjs')
+    < workflow.indexOf('r2 object put "$R2_BUCKET/$fixture_key"'));
   assert.match(workflow, /steps\.gate\.outputs\.mode == 'execute'/);
 });
 

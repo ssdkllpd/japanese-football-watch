@@ -41,7 +41,8 @@ async function discoverAutomation(options) {
   const now = new Date(options.now || Date.now());
   const dates = discoveryDates(policy, now);
   const fixturesByDate = {};
-  let quota = {};
+  const statusQuota = await options.client.refreshDailyQuota();
+  let quota = statusQuota;
   for (const date of dates) {
     const result = await options.client.get('fixtures', { date, timezone: policy.timeZone });
     fixturesByDate[date] = Array.isArray(result?.data?.response) ? result.data.response : [];

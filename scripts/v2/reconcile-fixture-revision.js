@@ -2,7 +2,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { validateFixtureBundle } = require('./fixture-contract');
+const { applyManualCorrections, validateFixtureBundle } = require('./fixture-contract');
+const { correctionDefinitions } = require('../d1/fixture-bundle-importer');
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -35,7 +36,7 @@ function assertBundle(bundle, label) {
 
 function reconcileFixtureRevision(current, incoming) {
   assertBundle(incoming, 'Incoming');
-  const next = structuredClone(incoming);
+  let next = structuredClone(incoming);
   if (!current) {
     next.fixture.revision = 1;
     return { bundle: next, changed: true, reason: 'initial_revision' };
@@ -45,6 +46,23 @@ function reconcileFixtureRevision(current, incoming) {
   for (const field of ['id', 'competitionId', 'seasonId', 'providerId']) {
     if (current.fixture[field] !== incoming.fixture[field]) {
       throw new Error(`Current and incoming fixture ${field} differ.`);
+    }
+  }
+  const corrections = Object.entries(current.overrides || {}).map(([fieldPath, override]) => ({
+    path: fieldPath,
+    value: override.value,
+    correctedProviderValue: override.correctedProviderValue,
+    reason: override.reason,
+    sourceUrl: override.sourceUrl,
+    verifiedAt: override.verifiedAt,
+  }));
+  if (corrections.length) {
+    if (Object.keys(next.overrides || {}).length) {
+      throw new Error('Incoming fixture must not contain unreviewed corrections.');
+    }
+    next = applyManualCorrections(next, corrections);
+    for (const override of Object.values(next.overrides)) {
+      override.reconciledAt = next.fixture.reconciledAt;
     }
   }
   next.fixture.revision = current.fixture.revision;
@@ -72,7 +90,7 @@ function writeJson(filePath, value) {
 }
 
 function main(argv = process.argv.slice(2)) {
-  const [currentPath, incomingPath, outputPath] = argv;
+  const [currentPath, incomingPath, outputPath, correctionPath] = argv;
   if (!currentPath || !incomingPath || !outputPath) {
     throw new Error('Usage: reconcile-fixture-revision.js CURRENT_OR_- INCOMING OUTPUT');
   }
@@ -80,6 +98,13 @@ function main(argv = process.argv.slice(2)) {
   const incoming = readJson(path.resolve(incomingPath), 'Incoming fixture');
   const result = reconcileFixtureRevision(current, incoming);
   writeJson(path.resolve(outputPath), result.bundle);
+  if (correctionPath) {
+    writeJson(path.resolve(correctionPath), {
+      schemaVersion: 'd1-fixture-correction-definitions/1',
+      fixtureId: result.bundle.fixture.id,
+      definitions: correctionDefinitions(result.bundle),
+    });
+  }
   process.stdout.write(`${JSON.stringify({
     fixtureId: result.bundle.fixture.id,
     revision: result.bundle.fixture.revision,

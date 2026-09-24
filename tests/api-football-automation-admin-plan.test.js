@@ -46,7 +46,7 @@ function workspace(t) {
     key: 'football/v2/competitions/af:competition:39/seasons/af:season:39:2026/fixtures/af:fixture:9001.json',
   }));
   fs.writeFileSync(path.join(fixtureDir, 'date-index.json'), JSON.stringify({
-    date: '2026-08-22', fixtures: [{ fixtureId: 'af:fixture:9001' }],
+    contractVersion: '2.0.0', date: '2026-08-22', fixtures: [{ fixtureId: 'af:fixture:9001' }],
   }));
   fs.writeFileSync(path.join(fixtureDir, 'manifest.json'), JSON.stringify({
     r2Objects: [
@@ -85,6 +85,9 @@ test('automation admin plan binds fetched artifacts to the reviewed plan scopes'
     competitionId: 'af:competition:39', seasonId: 'af:season:39:2026',
   }]);
   assert.deepEqual(plan.dateIndexCoverages, []);
+  assert.deepEqual(plan.dateIndexRefreshes, [{ date: '2026-08-22', fixtureIds: ['af:fixture:9001'] }]);
+  assert.equal(plan.fixtures[0].preserveCorrections, true);
+  assert.equal(plan.fixtures[0].requireStableDate, true);
   assert.equal(plan.expectedTotals, null);
   assert.ok(fs.existsSync(path.join(root, 'd1-corrections', 'af_fixture_9001.json')));
 });

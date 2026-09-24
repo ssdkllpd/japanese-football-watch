@@ -6,6 +6,7 @@ const path = require('node:path');
 const test = require('node:test');
 const {
   advanceAutomationState,
+  checkpointAutomationDiscovery,
   discoveryDates,
   emptyAutomationState,
   planAutomation,
@@ -108,6 +109,20 @@ test('planner enforces the 20-fixture hard cap and deterministic kickoff/id orde
     }));
 });
 
+test('discovery checkpoint retains unselected fixtures and failed details beyond the JST window', () => {
+  const before = input({
+    '2026-09-16': [fixture(9001, 39, 'FT', '2026-09-16T12:00:00Z')],
+  }, '2026-09-17T14:45:00Z');
+  const selected = planAutomation(before);
+  assert.deepEqual(selected.detailFetches.map(item => item.fixtureId), ['af:fixture:9001']);
+  const checkpoint = checkpointAutomationDiscovery(before.state, selected);
+  assert.deepEqual(checkpoint.fixtures['af:fixture:9001'].completedStages, []);
+  assert.equal(checkpoint.fixtures['af:fixture:9001'].lastDetailFetchedAt, null);
+  const after = input({}, '2026-09-17T15:00:00Z');
+  after.state = checkpoint;
+  assert.deepEqual(planAutomation(after).detailFetches.map(item => item.fixtureId), ['af:fixture:9001']);
+});
+
 test('quota reserve reduces work rather than crossing the protected remaining count', () => {
   const rows = { '2026-09-17': [
     fixture(1, 39, 'FT', '2026-09-17T06:00:00Z'),
@@ -118,7 +133,7 @@ test('quota reserve reduces work rather than crossing the protected remaining co
   const plan = planAutomation(args);
   assert.equal(plan.detailFetches.length, 1);
   assert.equal(plan.standingsFetches.length, 0);
-  assert.equal(plan.quota.estimatedProviderRequests, 8);
+  assert.equal(plan.quota.estimatedProviderRequests, 9);
 });
 
 test('standings refresh independently every six hours, including matchless leagues', () => {
