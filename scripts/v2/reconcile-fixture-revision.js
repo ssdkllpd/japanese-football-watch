@@ -35,30 +35,47 @@ function assertBundle(bundle, label) {
   }
 }
 
-function assertIndexedCorrectionIdentity(current, incoming, fieldPath, correctedProviderValue) {
-  const parts = fieldPath.split('.');
-  if (parts[0] === 'events' && /^(0|[1-9]\d*)$/.test(parts[1] || '')) {
+function eventIdentity(event, correctedPaths) {
+  if (!event || typeof event !== 'object') return null;
+  const identity = structuredClone(event);
+  // Event IDs are generated from array positions. Provider fetch timestamps
+  // and every corrected field are also unsuitable for identifying an event.
+  delete identity.id;
+  delete identity.provenance;
+  for (const path of correctedPaths) {
+    const parts = path.split('.').slice(2);
+    if (!parts.length) return null;
+    let target = identity;
+    for (const part of parts.slice(0, -1)) target = target?.[part];
+    if (!target || !Object.hasOwn(target, parts.at(-1))) return null;
+    delete target[parts.at(-1)];
+  }
+  return Object.keys(identity).length ? stableStringify(identity) : null;
+}
+
+function assertEventCorrectionIdentity(current, incoming, corrections) {
+  const byIndex = new Map();
+  for (const correction of corrections) {
+    const parts = correction.path.split('.');
+    if (parts[0] !== 'events' || !/^(0|[1-9]\d*)$/.test(parts[1] || '')) continue;
     const index = Number(parts[1]);
-    const prior = structuredClone(current.events?.[index]);
-    const next = incoming.events?.[index];
-    if (!prior || !next) throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
-    // Provider event IDs contain the array index, so they cannot identify a reordered event.
-    if (parts.length > 2) {
-      let target = prior;
-      for (const part of parts.slice(2, -1)) target = target?.[part];
-      if (!target || !Object.hasOwn(target, parts.at(-1))) {
-        throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
-      }
-      target[parts.at(-1)] = correctedProviderValue;
-    }
-    const eventContent = event => {
-      const { id, provenance, ...fields } = event;
-      return fields;
-    };
-    if (stableStringify(eventContent(prior)) !== stableStringify(eventContent(next))) {
-      throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
+    if (!byIndex.has(index)) byIndex.set(index, []);
+    byIndex.get(index).push(correction.path);
+  }
+  for (const [index, paths] of byIndex) {
+    const identity = eventIdentity(current.events?.[index], paths);
+    const incomingIdentity = eventIdentity(incoming.events?.[index], paths);
+    // Indistinguishable events cannot safely carry an index-based correction.
+    const unique = events => events.filter(event => eventIdentity(event, paths) === identity).length === 1;
+    if (!identity || identity !== incomingIdentity
+      || !unique(current.events) || !unique(incoming.events)) {
+      throw new Error(`Correction ${paths[0]} changed its indexed event or is ambiguous; manual review is required.`);
     }
   }
+}
+
+function assertIndexedCorrectionIdentity(current, incoming, fieldPath) {
+  const parts = fieldPath.split('.');
   let previous = current;
   let next = incoming;
   for (const part of parts) {
@@ -69,8 +86,10 @@ function assertIndexedCorrectionIdentity(current, incoming, fieldPath, corrected
       const priorItem = previous[Number(part)];
       const nextItem = next[Number(part)];
       const identity = item => item?.playerId ?? item?.teamId ?? item?.id;
-      if (typeof identity(priorItem) !== 'string' || !identity(priorItem)
-        || identity(priorItem) !== identity(nextItem)) {
+      const eventIndex = previous === current.events && next === incoming.events;
+      if (!priorItem || !nextItem || (!eventIndex
+        && (typeof identity(priorItem) !== 'string' || !identity(priorItem)
+          || identity(priorItem) !== identity(nextItem)))) {
         throw new Error(`Correction ${fieldPath} changed its indexed identity; manual review is required.`);
       }
     }
@@ -118,9 +137,8 @@ function reconcileFixtureRevision(current, incoming, options = {}) {
     if (Object.keys(next.overrides || {}).length) {
       throw new Error('Incoming fixture must not contain unreviewed corrections.');
     }
-    for (const correction of corrections) {
-      assertIndexedCorrectionIdentity(current, next, correction.path, correction.correctedProviderValue);
-    }
+    assertEventCorrectionIdentity(current, next, corrections);
+    for (const correction of corrections) assertIndexedCorrectionIdentity(current, next, correction.path);
     next = applyManualCorrections(next, corrections);
     for (const override of Object.values(next.overrides)) {
       override.reconciledAt = next.fixture.reconciledAt;

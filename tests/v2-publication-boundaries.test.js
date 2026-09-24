@@ -115,6 +115,48 @@ test('reordered same-player events cannot inherit an indexed correction', () => 
   assert.throws(() => reconcileFixtureRevision(current, normalize(raw)), /changed its indexed event/);
 });
 
+test('multiple corrections on one unchanged event remain active', () => {
+  const raw = rawFixture(9302);
+  raw.events = [{ type: 'Goal', detail: 'Normal Goal', comments: null,
+    time: { elapsed: 10 }, team: { id: 40 }, player: { id: 1001 }, assist: { id: null } }];
+  const corrections = [
+    { path: 'events.0.relatedPlayerId', value: 'af:player:1002', correctedProviderValue: null },
+    { path: 'events.0.comments', value: 'Verified goal', correctedProviderValue: null },
+  ].map(item => ({ ...item, reason: 'independent source',
+    sourceUrl: 'https://example.test/review', verifiedAt: observedAt }));
+  const current = applyManualCorrections(normalize(raw), corrections);
+  const result = reconcileFixtureRevision(current, normalize(raw));
+  assert.equal(result.changed, false);
+  assert.equal(result.bundle.events[0].relatedPlayerId, 'af:player:1002');
+  assert.equal(result.bundle.events[0].comments, 'Verified goal');
+  assert.deepEqual(Object.values(result.bundle.overrides).map(item => item.status), ['active', 'active']);
+
+  raw.events[0].assist.id = 1002;
+  const caughtUp = reconcileFixtureRevision(current, normalize(raw));
+  assert.equal(caughtUp.bundle.overrides['events.0.relatedPlayerId'].status, 'provider_caught_up');
+  assert.equal(caughtUp.bundle.overrides['events.0.comments'].status, 'active');
+
+  raw.events[0].assist.id = 1003;
+  const conflict = reconcileFixtureRevision(current, normalize(raw));
+  assert.equal(conflict.bundle.overrides['events.0.relatedPlayerId'].status, 'review_required');
+  assert.equal(conflict.bundle.fixture.ingestionState, 'needs_review');
+});
+
+test('a corrected event actor can catch up, while indistinguishable events remain blocked', () => {
+  const raw = rawFixture(9303);
+  const goal = { type: 'Goal', detail: 'Normal Goal', time: { elapsed: 10 },
+    team: { id: 40 }, player: { id: 1001 }, assist: { id: null } };
+  raw.events = [goal];
+  const current = corrected(normalize(raw), 'events.0.playerId', 'af:player:1001', 'af:player:1002');
+  raw.events[0].player.id = 1002;
+  assert.equal(reconcileFixtureRevision(current, normalize(raw))
+    .bundle.overrides['events.0.playerId'].status, 'provider_caught_up');
+
+  raw.events = [goal, structuredClone(goal)];
+  const ambiguous = corrected(normalize(raw), 'events.0.relatedPlayerId', null, 'af:player:1002');
+  assert.throws(() => reconcileFixtureRevision(ambiguous, normalize(raw)), /ambiguous/);
+});
+
 test('manual publication refuses the day’s used fixture and the daily cap before any R2 write', async () => {
   const { assertManualPublishBudget } = await import('../scripts/d1/check-v2-manual-publish-budget.mjs');
   const dateUtc = new Date().toISOString().slice(0, 10);
