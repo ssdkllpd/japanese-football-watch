@@ -87,12 +87,18 @@ test('automation recheck keeps corrections and complete D1/R2 date feeds', async
   const sameDay = await checkFixtureCorrections(guardArgs);
   assert.equal(sameDay.preservedCorrections, 2);
   assert.equal(sameDay.latestRevision, 1);
-  assert.match(sameDay.sameDayPublishedHash, /^[0-9a-f]{64}$/);
+  assert.match(sameDay.sameDayCanonicalHash, /^[0-9a-f]{64}$/);
+  assert.equal(reconcileFixtureRevision(existing, normalizeFixtureBundle(raw, {
+    fetchedAt: observedAt, finalized: true,
+  }), {
+    latestD1Revision: sameDay.latestRevision,
+    sameDayCanonicalHash: sameDay.sameDayCanonicalHash,
+  }).changed, false);
   assert.throws(() => reconcileFixtureRevision(existing, normalizeFixtureBundle({
     ...raw, goals: { home: 0, away: 1 },
   }, { fetchedAt: observedAt, finalized: true }), {
     latestD1Revision: sameDay.latestRevision,
-    sameDayPublishedHash: sameDay.sameDayPublishedHash,
+    sameDayCanonicalHash: sameDay.sameDayCanonicalHash,
   }), /changed detail must wait for the next UTC day/);
   // A prior UTC publication day permits the correction recheck in this scenario.
   db.prepare('UPDATE fixture_detail_publish_days SET date_utc = ?')

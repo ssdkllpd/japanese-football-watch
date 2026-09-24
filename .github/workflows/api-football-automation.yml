@@ -210,7 +210,7 @@ jobs:
             node scripts/d1/check-automation-fixture-corrections.mjs \
               "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
             latest_revision=$(jq -er '.latestRevision' "$dir/guard-report.json")
-            same_day_hash=$(jq -r '.sameDayPublishedHash // "-"' "$dir/guard-report.json")
+            same_day_hash=$(jq -r '.sameDayCanonicalHash // "-"' "$dir/guard-report.json")
             fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' "$dir/manifest.json")
             pointer_key=$(jq -r '.r2Objects[] | select(.role=="fixture_pointer") | .key' "$dir/manifest.json")
             rm -f "$dir/current-fixture.json"

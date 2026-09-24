@@ -1,5 +1,6 @@
 import { assertValidDateIndexPayload, dateIndexR2Key } from '../shared/date-index-contract.mjs';
 import { readFixturePublishBudget } from './fixture-publish-budget.mjs';
+import { canonicalFixtureHashes } from './fixture-ingest.mjs';
 
 export const FIXTURE_CORRECTION_GUARD_OPERATION = 'fixture_correction_guard';
 
@@ -66,11 +67,12 @@ export async function verifyStoredFixtureCorrections(env, request) {
   if (alreadyPublishedToday && !/^[0-9a-f]{64}$/.test(sameDayPublishedHash || '')) {
     throw new Error('D1 fixture publication receipt lacks its published content hash.');
   }
-  if (required.length) {
+  let sameDayCanonicalHash = null;
+  if (required.length || alreadyPublishedToday) {
     const key = `football/v2/competitions/${input.competitionId}`
       + `/seasons/${input.seasonId}/fixtures/${input.fixtureId}.json`;
     const current = await env.FOOTBALL_DATA.get(key);
-    if (!current) throw new Error('Stored manual corrections have no canonical R2 fixture; publication is blocked.');
+    if (!current) throw new Error('Published fixture or stored manual corrections have no canonical R2 fixture; publication is blocked.');
     let payload;
     try { payload = JSON.parse(await current.text()); } catch {
       throw new Error('Canonical R2 fixture with stored corrections is invalid JSON.');
@@ -81,9 +83,16 @@ export async function verifyStoredFixtureCorrections(env, request) {
       || required.some(fieldPath => !Object.hasOwn(payload.overrides || {}, fieldPath))) {
       throw new Error('Canonical R2 fixture omits stored manual corrections; publication is blocked.');
     }
+    if (alreadyPublishedToday) {
+      const hashes = await canonicalFixtureHashes(env, input, payload);
+      if (hashes.publishedHash !== sameDayPublishedHash) {
+        throw new Error('Canonical R2 fixture differs from today’s published D1 revision.');
+      }
+      sameDayCanonicalHash = hashes.canonicalHash;
+    }
   }
   return { schemaVersion: 'jfw-d1-admin-ingest-report/1',
     operation: FIXTURE_CORRECTION_GUARD_OPERATION, fixtureId: input.fixtureId,
     preservedCorrections: required.length, latestRevision,
-    sameDayPublishedHash: sameDayPublishedHash || null };
+    sameDayCanonicalHash };
 }

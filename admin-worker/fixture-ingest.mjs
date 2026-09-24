@@ -119,6 +119,17 @@ async function storedCatalog(database, input) {
   };
 }
 
+// The guard must use the same catalog and normalization as publication when
+// comparing an already published fixture with its canonical R2 source.
+export async function canonicalFixtureHashes(env, input, payload) {
+  const catalog = await storedCatalog(env.FOOTBALL_DB, input);
+  const normalized = validateBundle(payload, catalog).normalized;
+  return {
+    canonicalHash: await sha256(stableStringify(payload)),
+    publishedHash: await sha256(stableStringify(normalized)),
+  };
+}
+
 function expectedFixtureKey(input) {
   if (input.operation === FIXTURE_MIGRATION_OPERATION) return input.artifactKey;
   return `football/v2/competitions/${input.competitionId}/seasons/${input.seasonId}/fixtures/${input.fixtureId}.json`;

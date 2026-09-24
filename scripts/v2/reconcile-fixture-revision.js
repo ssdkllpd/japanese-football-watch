@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { applyManualCorrections, validateFixtureBundle } = require('./fixture-contract');
 const { correctionDefinitions } = require('../d1/fixture-bundle-importer');
-const { normalizeFixtureBundle } = require('../d1/fixture-shadow-compare');
 const { sha256 } = require('../d1/fixed-snapshot');
 
 function canonicalize(value) {
@@ -36,8 +35,30 @@ function assertBundle(bundle, label) {
   }
 }
 
-function assertIndexedCorrectionIdentity(current, incoming, fieldPath) {
+function assertIndexedCorrectionIdentity(current, incoming, fieldPath, correctedProviderValue) {
   const parts = fieldPath.split('.');
+  if (parts[0] === 'events' && /^(0|[1-9]\d*)$/.test(parts[1] || '')) {
+    const index = Number(parts[1]);
+    const prior = structuredClone(current.events?.[index]);
+    const next = incoming.events?.[index];
+    if (!prior || !next) throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
+    // Provider event IDs contain the array index, so they cannot identify a reordered event.
+    if (parts.length > 2) {
+      let target = prior;
+      for (const part of parts.slice(2, -1)) target = target?.[part];
+      if (!target || !Object.hasOwn(target, parts.at(-1))) {
+        throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
+      }
+      target[parts.at(-1)] = correctedProviderValue;
+    }
+    const eventContent = event => {
+      const { id, provenance, ...fields } = event;
+      return fields;
+    };
+    if (stableStringify(eventContent(prior)) !== stableStringify(eventContent(next))) {
+      throw new Error(`Correction ${fieldPath} changed its indexed event; manual review is required.`);
+    }
+  }
   let previous = current;
   let next = incoming;
   for (const part of parts) {
@@ -66,9 +87,8 @@ function reconcileFixtureRevision(current, incoming, options = {}) {
     throw new Error('Latest D1 fixture revision is invalid.');
   }
   let next = structuredClone(incoming);
-  if (options.sameDayPublishedHash) {
-    if (!current || sha256(stableStringify(normalizeFixtureBundle(current)))
-      !== options.sameDayPublishedHash) {
+  if (options.sameDayCanonicalHash) {
+    if (!current || sha256(stableStringify(current)) !== options.sameDayCanonicalHash) {
       throw new Error('Canonical R2 fixture does not match today’s published D1 revision.');
     }
   }
@@ -99,7 +119,7 @@ function reconcileFixtureRevision(current, incoming, options = {}) {
       throw new Error('Incoming fixture must not contain unreviewed corrections.');
     }
     for (const correction of corrections) {
-      assertIndexedCorrectionIdentity(current, next, correction.path);
+      assertIndexedCorrectionIdentity(current, next, correction.path, correction.correctedProviderValue);
     }
     next = applyManualCorrections(next, corrections);
     for (const override of Object.values(next.overrides)) {
@@ -110,7 +130,7 @@ function reconcileFixtureRevision(current, incoming, options = {}) {
   if (stableStringify(revisionContent(current)) === stableStringify(revisionContent(next))) {
     return { bundle: structuredClone(current), changed: false, reason: 'content_unchanged' };
   }
-  if (options.sameDayPublishedHash) {
+  if (options.sameDayCanonicalHash) {
     throw new Error('Fixture already published today; changed detail must wait for the next UTC day.');
   }
   if (current.fixture.revision === Number.MAX_SAFE_INTEGER) {
@@ -135,7 +155,7 @@ function writeJson(filePath, value) {
 
 function main(argv = process.argv.slice(2)) {
   const [currentPath, incomingPath, outputPath, correctionPath, latestD1Revision,
-    sameDayPublishedHash] = argv;
+    sameDayCanonicalHash] = argv;
   if (!currentPath || !incomingPath || !outputPath) {
     throw new Error('Usage: reconcile-fixture-revision.js CURRENT_OR_- INCOMING OUTPUT');
   }
@@ -143,7 +163,7 @@ function main(argv = process.argv.slice(2)) {
   const incoming = readJson(path.resolve(incomingPath), 'Incoming fixture');
   const result = reconcileFixtureRevision(current, incoming, {
     latestD1Revision: latestD1Revision === undefined ? 0 : Number(latestD1Revision),
-    sameDayPublishedHash: sameDayPublishedHash === '-' ? null : sameDayPublishedHash,
+    sameDayCanonicalHash: sameDayCanonicalHash === '-' ? null : sameDayCanonicalHash,
   });
   writeJson(path.resolve(outputPath), result.bundle);
   if (correctionPath) {

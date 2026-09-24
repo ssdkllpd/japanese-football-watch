@@ -117,7 +117,10 @@ test('fixture publishers mirror to D1 only after R2 publication from protected j
     assert.match(workflow, /if: steps\.target\.outputs\.enabled == 'true'/);
     assert.match(workflow, /environment: d1-staging/);
     const r2Job = workflow.slice(workflow.indexOf(sourceJob), workflow.indexOf(mirrorJob));
-    assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false, name);
+    const budgetCheck = r2Job.indexOf('check-v2-manual-publish-budget.mjs');
+    assert.equal(budgetCheck > preflightPlan && budgetCheck < firstR2Put, true, name);
+    assert.match(r2Job, /environment: d1-staging/);
+    assert.match(r2Job, /D1_ADMIN_PUBLISH_ENABLED.*true/);
     assert.equal(workflow.includes('d1 execute'), false, name);
   }
 });
