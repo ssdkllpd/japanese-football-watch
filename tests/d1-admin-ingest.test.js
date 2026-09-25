@@ -559,24 +559,39 @@ test('reconciliation rejects array corrections when provider player order change
   assert.equal(reconcileFixtureRevision(current, original).bundle.playerStats[0].values.goals, 2);
 });
 
-test('D1 fixture publication budget enforces twenty distinct fixtures per UTC day', async t => {
+test('D1 fixture publication budget enforces 240 distinct fixtures per UTC day', async t => {
   const db = database();
   t.after(() => db.close());
   const { readFixturePublishBudget } = await import('../admin-worker/fixture-publish-budget.mjs');
   const today = new Date().toISOString().slice(0, 10);
   const insert = db.prepare(`INSERT INTO fixture_detail_publish_days
     (date_utc, fixture_id, revision_no, published_at) VALUES (?, ?, 1, ?)`);
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index < 240; index += 1) {
     insert.run(today, `af:fixture:${index + 1}`, new Date().toISOString());
   }
   const budget = await readFixturePublishBudget({ FOOTBALL_DB: createLocalD1(db) });
   assert.equal(budget.remaining, 0);
-  assert.equal(budget.fixtureIds.length, 20);
-  assert.throws(() => insert.run(today, 'af:fixture:21', new Date().toISOString()), /daily cap reached/);
-  db.prepare('DELETE FROM fixture_detail_publish_days WHERE fixture_id = ?').run('af:fixture:20');
+  assert.equal(budget.fixtureIds.length, 240);
+  assert.throws(() => insert.run(today, 'af:fixture:241', new Date().toISOString()), /daily cap reached/);
+  db.prepare('DELETE FROM fixture_detail_publish_days WHERE fixture_id = ?').run('af:fixture:240');
   assert.throws(() => insert.run(today, 'af:fixture:1', new Date().toISOString()), /UNIQUE constraint/);
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   assert.doesNotThrow(() => insert.run(tomorrow, 'af:fixture:1', new Date().toISOString()));
+});
+
+test('capacity migration preserves the existing UTC-day ledger and unique fixture identities', t => {
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  applyMigrations(db, root, { through: '0007_d1_fixture_publish_budget.sql' });
+  const insert = db.prepare(`INSERT INTO fixture_detail_publish_days
+    (date_utc, fixture_id, revision_no, published_at) VALUES ('2026-09-25', ?, 1, '2026-09-25T06:00:00Z')`);
+  for (let id = 1; id <= 20; id += 1) insert.run(`af:fixture:${id}`);
+  assert.throws(() => insert.run('af:fixture:21'), /daily cap reached/);
+  db.exec(migrations[7]);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_detail_publish_days').get().count, 20);
+  assert.throws(() => insert.run('af:fixture:1'), /UNIQUE constraint/);
+  for (let id = 21; id <= 240; id += 1) insert.run(`af:fixture:${id}`);
+  assert.throws(() => insert.run('af:fixture:241'), /daily cap reached/);
 });
 
 test('fixture admin preflight rejects provider identity replacement and cardinality overflow', async t => {

@@ -10,11 +10,13 @@ function checkManualBackfillBudget(before, current, plan) {
     || before.dateUtc !== current.dateUtc
     || before.dateUtc !== plan.generatedAt?.slice(0, 10)
     || !Array.isArray(before.fixtureIds) || !Array.isArray(current.fixtureIds)
-    || before.fixtureIds.length > 20 || current.fixtureIds.length > 20
+    || before.fixtureIds.length > 240 || current.fixtureIds.length > 240
+    || before.remaining !== 240 - before.fixtureIds.length
+    || current.remaining !== 240 - current.fixtureIds.length
     || JSON.stringify([...before.fixtureIds].sort()) !== JSON.stringify([...current.fixtureIds].sort())
     || new Set(plan.detailFetches.map(item => item.fixtureId)).size !== plan.detailFetches.length
     || plan.detailFetches.some(item => current.fixtureIds.includes(item.fixtureId))
-    || current.fixtureIds.length + plan.detailFetches.length > 20) {
+    || current.fixtureIds.length + plan.detailFetches.length > 240) {
     throw new Error('D1 publication budget changed or the planned batch exceeds the daily cap.');
   }
 }

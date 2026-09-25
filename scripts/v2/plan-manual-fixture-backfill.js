@@ -38,7 +38,8 @@ async function planManualFixtureBackfill({ policy, inventory, dailyBudget, clien
   const todayJst = dateJst(nowDate);
   const todayUtc = nowDate.toISOString().slice(0, 10);
   if (dailyBudget?.dateUtc !== todayUtc || !Array.isArray(dailyBudget.fixtureIds)
-    || dailyBudget.fixtureIds.length > 20
+    || dailyBudget.fixtureIds.length > 240
+    || dailyBudget.remaining !== 240 - dailyBudget.fixtureIds.length
     || new Set(dailyBudget.fixtureIds).size !== dailyBudget.fixtureIds.length
     || dailyBudget.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))) {
     throw new Error('D1 daily publication budget is missing or stale.');
@@ -90,7 +91,7 @@ async function planManualFixtureBackfill({ policy, inventory, dailyBudget, clien
       seasonId: `af:season:${scope.league}:${scope.season}`,
     })) : [];
   const detailBudget = capacity - standingsFetches.length;
-  const publishCapacity = Math.max(0, 20 - dailyBudget.fixtureIds.length);
+  const publishCapacity = Math.max(0, dailyBudget.remaining);
   const maxDetails = Math.min(policy.limits.maxFinalDetailFixturesPerRun,
     publishCapacity, Math.floor(detailBudget / 5));
   const detailFetches = missing.slice(0, maxDetails).map(fixture => ({

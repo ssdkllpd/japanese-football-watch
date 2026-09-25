@@ -14,7 +14,8 @@ const now = new Date('2026-09-25T06:00:00Z');
 const fixture = (id, league, status = 'FT', date = '2026-09-20T12:00:00Z') => ({
   fixture: { id, date, status: { short: status } }, league: { id: league, season: 2026 },
 });
-const budget = (ids = []) => ({ dateUtc: '2026-09-25', operation: 'fixture_publish_budget', fixtureIds: ids });
+const budget = (ids = []) => ({ dateUtc: '2026-09-25', operation: 'fixture_publish_budget',
+  fixtureIds: ids, remaining: 240 - ids.length });
 const inventory = ids => [{ success: true, results: ids.map(id => ({
   canonical_id: `af:fixture:${id}`, total: ids.length,
 })) }];
@@ -53,7 +54,7 @@ test('backfill plans only unpublished final fixtures through today, without refe
   assert.equal(plan.quota.estimatedProviderRequests, 26);
 });
 
-test('backfill is capped at 20 distinct publications per UTC day and resumes from D1 on the next run', async () => {
+test('backfill publishes 20 per run and resumes on the same UTC day', async () => {
   const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index + 1, 39));
   const args = { policy, inventory: inventory([]), dailyBudget: budget(),
     client: fakeClient({ 39: fixtures }), now, preview: false };
@@ -64,14 +65,27 @@ test('backfill is capped at 20 distinct publications per UTC day and resumes fro
     first.detailFetches.map(item => item.providerFixtureId),
   ), dailyBudget: budget(first.detailFetches.map(item => item.fixtureId)),
   client: fakeClient({ 39: fixtures }) });
-  assert.equal(second.detailFetches.length, 0);
-  assert.equal(second.remainingAfterBatch, 5);
+  assert.equal(second.detailFetches.length, 5);
+  assert.equal(second.remainingAfterBatch, 0);
   const nextDay = await planManualFixtureBackfill({ ...args,
     inventory: inventory(first.detailFetches.map(item => item.providerFixtureId)),
     dailyBudget: { ...budget(), dateUtc: '2026-09-26' },
     now: new Date('2026-09-26T06:00:00Z'), client: fakeClient({ 39: fixtures }),
   });
   assert.deepEqual(nextDay.detailFetches.map(item => item.providerFixtureId), [21, 22, 23, 24, 25]);
+});
+
+test('daily ledger stops at 240 and rejects an old Admin Worker budget', async () => {
+  const ids = Array.from({ length: 235 }, (_, index) => `af:fixture:${index + 1}`);
+  const fixtures = Array.from({ length: 20 }, (_, index) => fixture(index + 236, 39));
+  const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dailyBudget: budget(ids), client: fakeClient({ 39: fixtures }), now });
+  assert.equal(plan.detailFetches.length, 5);
+  assert.equal(plan.quota.fixturePublishesRemaining, 0);
+  assert.doesNotThrow(() => checkManualBackfillBudget(budget(ids), budget(ids), plan));
+  await assert.rejects(() => planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dailyBudget: { ...budget(ids), remaining: 0 }, client: fakeClient({ 39: fixtures }), now }),
+  /publication budget is missing or stale/);
 });
 
 test('incomplete D1 inventory and malformed season discovery fail closed', async () => {
