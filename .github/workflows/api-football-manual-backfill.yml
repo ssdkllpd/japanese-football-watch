@@ -15,9 +15,23 @@ on:
         description: For execute, enter RUN API-FOOTBALL BACKFILL
         required: false
         type: string
+      auto_continue:
+        description: Continue verified batches automatically within the daily limits
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      batches_left:
+        description: Maximum number of batches including this run (1-12)
+        required: true
+        default: '12'
+        type: string
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: d1-staging-write
@@ -54,9 +68,11 @@ jobs:
         env:
           REQUESTED_MODE: ${{ inputs.mode }}
           CONFIRMATION: ${{ inputs.confirmation }}
+          BATCHES_LEFT: ${{ inputs.batches_left }}
         run: |
           set -euo pipefail
           test "$REQUESTED_MODE" = preview || test "$REQUESTED_MODE" = execute
+          [[ "$BATCHES_LEFT" =~ ^([1-9]|1[0-2])$ ]]
           if [ "$REQUESTED_MODE" = execute ]; then
             test "$CONFIRMATION" = 'RUN API-FOOTBALL BACKFILL'
             test "$D1_ADMIN_PUBLISH_ENABLED" = true
@@ -268,3 +284,26 @@ jobs:
             .tmp/manual-backfill/d1/admin-report.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Queue the next verified batch
+        if: success() && github.ref == 'refs/heads/main' && inputs.mode == 'execute' && inputs.auto_continue == 'true' && steps.plan.outputs.fixture_count != '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BATCHES_LEFT: ${{ inputs.batches_left }}
+        run: |
+          set -euo pipefail
+          jq -e '.passed == true and .summary.failed == 0' \
+            .tmp/manual-backfill/d1/admin-report.json >/dev/null
+          if [ "$BATCHES_LEFT" -le 1 ] || ! jq -e \
+            '.remainingAfterBatch > 0 and .quota.fixturePublishesRemaining > 0' \
+            .tmp/manual-backfill/plan.json >/dev/null; then
+            echo 'Backfill chain complete or bounded by the current daily capacity.'
+            exit 0
+          fi
+          gh workflow run api-football-manual-backfill.yml \
+            --repo "$GITHUB_REPOSITORY" --ref main \
+            -f mode=execute \
+            -f confirmation='RUN API-FOOTBALL BACKFILL' \
+            -f auto_continue=true \
+            -f batches_left="$((BATCHES_LEFT - 1))"

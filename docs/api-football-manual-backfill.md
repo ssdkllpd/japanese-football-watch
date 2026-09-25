@@ -33,12 +33,15 @@ rebuild used by automation.
    `detailFetches`, `remainingAfterBatch`, and provider quota. Preview performs
    API reads and artifact validation without R2 or D1 writes.
 3. Run it again with `mode=execute` and exact confirmation
-   `RUN API-FOOTBALL BACKFILL`. Check `admin-report.json` and that the run
-   succeeds. Each execute run fetches its own current D1 and provider inventory.
-4. Repeat `execute` while `remainingAfterBatch` is positive and
-   `quota.fixturePublishesRemaining` is positive; up to 20 newly published
-   fixtures are added per run. If the daily capacity is exhausted, resume after
-   the next UTC day starts (09:00 JST). A final preview with
+   `RUN API-FOOTBALL BACKFILL`. Leave `auto_continue=true` and
+   `batches_left=12` to queue subsequent batches automatically after each
+   successful Admin verification and artifact upload. Each execute run fetches
+   its own current D1 and provider inventory. A failed run stops the chain.
+4. The chain stops when no unpublished eligible fixtures remain, when the
+   UTC-day publication capacity is exhausted, or after at most 12 batches.
+   Each batch adds up to 20 newly published fixtures. If the daily capacity
+   is exhausted, resume after the next UTC day starts (09:00 JST). Set
+   `auto_continue=false` when one batch is desired. A final preview with
    `missingFixtureCount=0` confirms the eligible finished matches are present.
 
 Matches still live, not yet confirmed final by the provider, or within three
