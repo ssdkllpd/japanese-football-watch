@@ -327,7 +327,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const dateUtc = nowDate.toISOString().slice(0, 10);
   if (dailyBudget && (dailyBudget.dateUtc !== dateUtc
     || !Array.isArray(dailyBudget.fixtureIds)
-    || dailyBudget.fixtureIds.length > 20
+    || dailyBudget.fixtureIds.length > 240
     || dailyBudget.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))
     || new Set(dailyBudget.fixtureIds).size !== dailyBudget.fixtureIds.length)) {
     throw new Error('D1 daily fixture publication budget is invalid or stale.');

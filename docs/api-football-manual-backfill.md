@@ -13,9 +13,11 @@ The workflow prints the count and IDs still missing from D1.
 
 For each run it plans at most 20 new fixture details, five API requests each,
 and up to ten standings. API-Football's daily balance retains a reserve of 100;
-the plan is capped at 150 requests. D1 enforces a shared 20 distinct fixtures
-per UTC day across manual and automated writers. Running again on the same day
-does not exceed that cap. After successful publication, D1 becomes the resume
+the plan is capped at 150 requests. Migration `0008` and the corresponding
+Admin Worker raise D1's shared ledger limit to 240 distinct fixtures per UTC
+day across all writers. Ordinary scheduled synchronization still plans no more
+than 20 distinct publications per UTC day. Repeated manual runs can use the
+remaining daily capacity. After successful publication, D1 becomes the resume
 checkpoint; a later run recomputes the remaining difference. Partial failure
 does not mark unpublished fixtures complete. A pending R2 checkpoint allows
 the next execute run to repair date indexes for any fixtures that reached D1
@@ -23,7 +25,9 @@ before a failure. The workflow uses the existing
 correction guard, canonical R2 reconciliation, Admin Worker, and date-index
 rebuild used by automation.
 
-1. Review and merge this workflow and planner.
+1. Apply migration `0008` and deploy the matching Admin Worker by running
+   **D1 Staging Provision** after merging this change. Check that it succeeds
+   before executing another manual backfill. This is a staging-only deployment.
 2. In GitHub Actions, select **API-Football Manual Backfill**, choose `preview`,
    and inspect the artifact `plan.json` for `missingFixtureCount`,
    `detailFetches`, `remainingAfterBatch`, and provider quota. Preview performs
@@ -31,8 +35,10 @@ rebuild used by automation.
 3. Run it again with `mode=execute` and exact confirmation
    `RUN API-FOOTBALL BACKFILL`. Check `admin-report.json` and that the run
    succeeds. Each execute run fetches its own current D1 and provider inventory.
-4. Repeat at most once per UTC day while `remainingAfterBatch` is positive and
-   the D1 publication limit is exhausted. A final preview with
+4. Repeat `execute` while `remainingAfterBatch` is positive and
+   `quota.fixturePublishesRemaining` is positive; up to 20 newly published
+   fixtures are added per run. If the daily capacity is exhausted, resume after
+   the next UTC day starts (09:00 JST). A final preview with
    `missingFixtureCount=0` confirms the eligible finished matches are present.
 
 Matches still live, not yet confirmed final by the provider, or within three

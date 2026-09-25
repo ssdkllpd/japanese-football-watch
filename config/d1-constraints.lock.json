@@ -28,6 +28,10 @@
     {
       "name": "0007_d1_fixture_publish_budget.sql",
       "sha256": "d2078f10d80c40819a088673e6f10108419b9b714e5336284b33b89428fc3ca3"
+    },
+    {
+      "name": "0008_d1_backfill_publication_capacity.sql",
+      "sha256": "23fd97ed95157574d29e77d64adea04f0e489033149d64f35a47541e47f34faa"
     }
   ],
   "tables": {

@@ -1,5 +1,5 @@
 export const FIXTURE_PUBLISH_BUDGET_OPERATION = 'fixture_publish_budget';
-export const MAX_DAILY_FIXTURE_PUBLISHES = 20;
+export const MAX_DAILY_FIXTURE_PUBLISHES = 240;
 
 export function assertFixturePublishBudgetRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)

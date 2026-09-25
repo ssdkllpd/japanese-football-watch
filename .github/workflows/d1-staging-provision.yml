@@ -41,6 +41,7 @@ jobs:
             echo "D1_DATABASE_NAME=$D1_DATABASE_NAME"
             echo "D1_DATABASE_ID=$D1_DATABASE_ID"
             echo "R2_BUCKET=$R2_BUCKET"
+            echo "ADMIN_INGEST_URL=$ADMIN_INGEST_URL"
           } >> "$GITHUB_ENV"
 
       - name: Validate protected credentials and render configuration
@@ -48,6 +49,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
           test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }
+          node scripts/d1/check-schema-lock.mjs
           node scripts/d1/render-admin-wrangler.mjs --output .tmp/d1-admin-wrangler.toml
 
       - name: Apply reviewed D1 migrations
@@ -64,6 +66,11 @@ jobs:
           printf '%s' "$ADMIN_INGEST_TOKEN" |
           npx --yes wrangler@4 secret put ADMIN_INGEST_TOKEN
           --config .tmp/d1-admin-wrangler.toml
+
+      - name: Verify deployed publication budget
+        run: |
+          node scripts/d1/read-api-football-automation-budget.mjs --out .tmp/d1-budget.json
+          jq -e '.remaining + (.fixtureIds | length) == 240' .tmp/d1-budget.json >/dev/null
 
       - name: Confirm public flags were not changed
         run: |
