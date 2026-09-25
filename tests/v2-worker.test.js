@@ -308,7 +308,7 @@ test('enabled date endpoint builds the response from bounded D1 queries', async 
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(queryCount, 1);
+  assert.equal(queryCount, 2);
   const queryPlan = database.prepare(`EXPLAIN QUERY PLAN ${dateQuery}`)
     .all('2026-08-22')
     .map(row => row.detail)
@@ -338,7 +338,7 @@ test('competition-date D1 flag is independent and preserves competition metadata
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(queryCount, 2);
+  assert.equal(queryCount, 3);
   const fixtureQueryPlan = database.prepare(`EXPLAIN QUERY PLAN ${prepared[1]}`)
     .all('af:competition:39', '2026-08-22')
     .map(row => row.detail)
@@ -553,7 +553,7 @@ test('enabled D1 date path uses the edge response cache after one bounded read',
   assert.equal(second.status, 200);
   assert.equal(second.headers.get('x-jfw-cache'), 'hit');
   assert.equal(second.headers.get('access-control-expose-headers'), 'x-jfw-data-source, x-jfw-cache');
-  assert.equal(queryCount, 1);
+  assert.equal(queryCount, 2);
   assert.deepEqual(await second.json(), await first.json());
 });
 

@@ -108,6 +108,24 @@ LEFT JOIN fixtures fixture
 ${FIXTURE_INDEX_JOINS_SQL}
 ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
 
+const UNCOVERED_DATE_FIXTURES_SQL = `
+SELECT ${FIXTURE_INDEX_COLUMNS_SQL}
+FROM fixtures fixture
+${FIXTURE_INDEX_JOINS_SQL}
+WHERE fixture.date_jst = ?1
+ORDER BY fixture.kickoff_utc, fixture.canonical_id`;
+
+const DATE_FIXTURE_CORRECTIONS_SQL = `
+SELECT correction.target_canonical_id AS fixture_id, competition.canonical_id AS competition_id,
+  correction.field_path,
+  correction.applied_value_json
+FROM correction_states correction
+JOIN fixtures fixture ON fixture.canonical_id = correction.target_canonical_id
+JOIN competition_seasons season ON season.id = fixture.competition_season_id
+JOIN competitions competition ON competition.id = season.competition_id
+WHERE fixture.date_jst = ?1 AND correction.target_kind = 'fixture'
+  AND correction.status = 'active'`;
+
 const COMPETITION_SQL = `
 SELECT canonical_id, provider_id, name, country_name, logo_url, flag_url
 FROM competitions
@@ -580,6 +598,58 @@ function fixtureIndexEntryFromD1(row) {
   };
 }
 
+async function applyD1DateFixtureCorrections(env, date, fixtures, competitionId = null) {
+  const byId = new Map(fixtures.map(fixture => [fixture.fixtureId, fixture]));
+  const corrections = await d1Rows(env, DATE_FIXTURE_CORRECTIONS_SQL, date);
+  for (const correction of corrections) {
+    if (competitionId !== null && correction.competition_id !== competitionId) continue;
+    const fixture = byId.get(correction.fixture_id);
+    if (!fixture) throw new Error(`Date index correction fixture is missing: ${correction.fixture_id}.`);
+    const parts = correction.field_path.split('.');
+    if (parts.shift() !== 'fixture' || !['status', 'score', 'teams'].includes(parts[0])) {
+      continue; // Referee, venue, and other detail-only fields have no index projection.
+    }
+    let target = fixture;
+    for (const part of parts.slice(0, -1)) {
+      if (!target || !Object.hasOwn(target, part)) {
+        throw new Error(`Date index correction path is missing: ${correction.field_path}.`);
+      }
+      target = target[part];
+    }
+    if (!target || !Object.hasOwn(target, parts.at(-1))) {
+      throw new Error(`Date index correction path is missing: ${correction.field_path}.`);
+    }
+    target[parts.at(-1)] = JSON.parse(correction.applied_value_json);
+  }
+  return fixtures;
+}
+
+export async function buildD1DateIndexesForPublication(env, date, extraCompetitionIds = []) {
+  const rows = await d1Rows(env, UNCOVERED_DATE_FIXTURES_SQL, date);
+  const generatedAt = new Date().toISOString();
+  const fixtures = await applyD1DateFixtureCorrections(env, date, rows.map(fixtureIndexEntryFromD1));
+  const generic = {
+    contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date, fixtures, generatedAt,
+  };
+  assertValidDateIndexPayload(generic, { expectedDate: date, expectedCompetitionId: null });
+  const competitionIds = [...new Set([
+    ...fixtures.map(fixture => fixture.competitionId), ...extraCompetitionIds,
+  ])].sort();
+  const competitions = [];
+  for (const competitionId of competitionIds) {
+    const competition = fixtures.find(fixture => fixture.competitionId === competitionId)?.competition
+      || competitionDto((await d1Rows(env, COMPETITION_SQL, competitionId))[0]);
+    if (!competition?.id) throw new Error(`D1 date index competition is missing: ${competitionId}.`);
+    const payload = {
+      contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date, competition,
+      fixtures: fixtures.filter(fixture => fixture.competitionId === competitionId), generatedAt,
+    };
+    assertValidDateIndexPayload(payload, { expectedDate: date, expectedCompetitionId: competitionId });
+    competitions.push(payload);
+  }
+  return { generic, competitions };
+}
+
 export async function buildD1DateFeed(
   env,
   date,
@@ -614,9 +684,9 @@ export async function buildD1DateFeed(
       || row.coverage_generated_at !== generatedAt)) {
     throw new Error('D1 date coverage metadata is inconsistent.');
   }
-  const fixtures = fixtureRows
+  const fixtures = await applyD1DateFixtureCorrections(env, date, fixtureRows
     .filter(row => row.fixture_id !== null)
-    .map(fixtureIndexEntryFromD1);
+    .map(fixtureIndexEntryFromD1), competitionId);
   if (fixtures.length !== expectedCount || new Set(fixtures.map(fixture => fixture.fixtureId)).size !== expectedCount) {
     throw new Error('D1 date coverage fixture count does not match stored fixtures.');
   }

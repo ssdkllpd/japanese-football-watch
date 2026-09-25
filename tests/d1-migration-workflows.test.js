@@ -107,14 +107,20 @@ test('fixture publishers mirror to D1 only after R2 publication from protected j
   ]) {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', name), 'utf8');
     const lastR2Put = workflow.lastIndexOf('r2 object put');
-    const plan = workflow.indexOf('create-v2-admin-plan.js');
+    const preflightPlan = workflow.indexOf('create-v2-admin-plan.js');
+    const plan = workflow.lastIndexOf('create-v2-admin-plan.js');
     const publish = workflow.indexOf('request-admin-ingest.mjs');
-    assert.equal(lastR2Put > 0 && plan > lastR2Put && publish > plan, true, name);
+    const firstR2Put = workflow.indexOf('r2 object put');
+    assert.equal(preflightPlan > 0 && preflightPlan < firstR2Put
+      && lastR2Put > firstR2Put && plan > lastR2Put && publish > plan, true, name);
     assert.match(workflow, /id: target/);
     assert.match(workflow, /if: steps\.target\.outputs\.enabled == 'true'/);
     assert.match(workflow, /environment: d1-staging/);
     const r2Job = workflow.slice(workflow.indexOf(sourceJob), workflow.indexOf(mirrorJob));
-    assert.equal(r2Job.includes('ADMIN_INGEST_TOKEN'), false, name);
+    const budgetCheck = r2Job.indexOf('check-v2-manual-publish-budget.mjs');
+    assert.equal(budgetCheck > preflightPlan && budgetCheck < firstR2Put, true, name);
+    assert.match(r2Job, /environment: d1-staging/);
+    assert.match(r2Job, /D1_ADMIN_PUBLISH_ENABLED.*true/);
     assert.equal(workflow.includes('d1 execute'), false, name);
   }
 });

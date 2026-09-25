@@ -35,17 +35,46 @@ class ApiFootballError extends Error {
 }
 
 class ApiFootballClient {
-  constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
+  constructor({
+    apiKey,
+    baseUrl = DEFAULT_BASE_URL,
+    fetchImpl = globalThis.fetch,
+    minimumIntervalMs = 0,
+    dailyReserve = 0,
+    initialDailyRemaining = null,
+    sleepImpl = delay => new Promise(resolve => setTimeout(resolve, delay)),
+    nowImpl = Date.now,
+  } = {}) {
     if (!apiKey || !String(apiKey).trim()) {
       throw new ApiFootballError('API_FOOTBALL_KEY is not configured.');
     }
     if (typeof fetchImpl !== 'function') {
       throw new ApiFootballError('A Fetch API implementation is required.');
     }
+    if (!Number.isSafeInteger(minimumIntervalMs) || minimumIntervalMs < 0) {
+      throw new ApiFootballError('minimumIntervalMs must be a non-negative safe integer.');
+    }
+    if (!Number.isSafeInteger(dailyReserve) || dailyReserve < 0) {
+      throw new ApiFootballError('dailyReserve must be a non-negative safe integer.');
+    }
+    if (initialDailyRemaining !== null
+      && (!Number.isSafeInteger(initialDailyRemaining) || initialDailyRemaining < 0)) {
+      throw new ApiFootballError('initialDailyRemaining must be null or a non-negative safe integer.');
+    }
+    if (typeof sleepImpl !== 'function' || typeof nowImpl !== 'function') {
+      throw new ApiFootballError('sleepImpl and nowImpl must be functions.');
+    }
 
     this.apiKey = String(apiKey).trim();
     this.baseUrl = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
     this.fetchImpl = fetchImpl;
+    this.minimumIntervalMs = minimumIntervalMs;
+    this.dailyReserve = dailyReserve;
+    this.sleepImpl = sleepImpl;
+    this.nowImpl = nowImpl;
+    this.lastRequestStartedAt = null;
+    this.lastQuota = initialDailyRemaining === null ? null : { dailyRemaining: initialDailyRemaining };
+    this.requestQueue = Promise.resolve();
   }
 
   buildUrl(path, params = {}) {
@@ -60,7 +89,21 @@ class ApiFootballClient {
     return url;
   }
 
-  async get(path, params = {}) {
+  async performGet(path, params = {}) {
+    const isStatus = cleanEndpoint(path) === 'status';
+    if (!isStatus && this.lastQuota?.dailyRemaining !== null
+      && this.lastQuota?.dailyRemaining !== undefined
+      && this.lastQuota.dailyRemaining <= this.dailyReserve) {
+      throw new ApiFootballError(
+        `API-Football daily reserve reached (${this.lastQuota.dailyRemaining} remaining; reserve ${this.dailyReserve}).`,
+        { quota: this.lastQuota },
+      );
+    }
+    if (this.lastRequestStartedAt !== null) {
+      const waitMs = this.minimumIntervalMs - (this.nowImpl() - this.lastRequestStartedAt);
+      if (waitMs > 0) await this.sleepImpl(waitMs);
+    }
+    this.lastRequestStartedAt = this.nowImpl();
     const url = this.buildUrl(path, params);
     const response = await this.fetchImpl(url, {
       method: 'GET',
@@ -70,6 +113,13 @@ class ApiFootballClient {
     });
 
     const quota = extractQuota(response.headers);
+    this.lastQuota = quota;
+    if (!isStatus && this.dailyReserve > 0 && quota.dailyRemaining === null) {
+      throw new ApiFootballError('API-Football omitted the daily remaining quota required by the reserve policy.', {
+        status: response.status,
+        quota,
+      });
+    }
     let payload;
 
     try {
@@ -106,6 +156,35 @@ class ApiFootballClient {
       },
     };
   }
+
+  get(path, params = {}) {
+    const request = this.requestQueue.then(
+      () => this.performGet(path, params),
+      () => this.performGet(path, params),
+    );
+    this.requestQueue = request.catch(() => undefined);
+    return request;
+  }
+
+  async refreshDailyQuota() {
+    // API-Sports documents /status as exempt from the daily request quota.
+    const status = await this.get('status');
+    const requests = status.data?.response?.requests;
+    const used = Number(requests?.current);
+    const limit = Number(requests?.limit_day);
+    if (!Number.isSafeInteger(used) || used < 0 || !Number.isSafeInteger(limit)
+      || limit < used) {
+      throw new ApiFootballError('API-Football status omitted a valid daily request balance.');
+    }
+    const remaining = limit - used;
+    this.lastQuota = {
+      ...status.quota,
+      dailyLimit: limit,
+      dailyRemaining: status.quota.dailyRemaining === null
+        ? remaining : Math.min(status.quota.dailyRemaining, remaining),
+    };
+    return this.lastQuota;
+  }
 }
 
 function cleanEndpoint(path) {
@@ -113,9 +192,19 @@ function cleanEndpoint(path) {
 }
 
 function createClientFromEnv(env = process.env, options = {}) {
+  const minimumIntervalMs = env.API_FOOTBALL_MIN_INTERVAL_MS === undefined
+    ? 0 : toInt(env.API_FOOTBALL_MIN_INTERVAL_MS);
+  const dailyReserve = env.API_FOOTBALL_DAILY_RESERVE === undefined
+    ? 0 : toInt(env.API_FOOTBALL_DAILY_RESERVE);
+  const initialDailyRemaining = env.API_FOOTBALL_INITIAL_DAILY_REMAINING === undefined
+    || env.API_FOOTBALL_INITIAL_DAILY_REMAINING === ''
+    ? null : toInt(env.API_FOOTBALL_INITIAL_DAILY_REMAINING);
   return new ApiFootballClient({
     apiKey: env.API_FOOTBALL_KEY,
     baseUrl: env.API_FOOTBALL_BASE_URL || DEFAULT_BASE_URL,
+    minimumIntervalMs,
+    dailyReserve,
+    initialDailyRemaining,
     ...options,
   });
 }

@@ -7,6 +7,8 @@ const test = require('node:test');
 const { DatabaseSync } = require('node:sqlite');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
 const { correctionDefinitions } = require('../scripts/d1/fixture-bundle-importer');
+const { applyManualCorrections } = require('../scripts/v2/fixture-contract');
+const { reconcileFixtureRevision } = require('../scripts/v2/reconcile-fixture-revision');
 const { FixtureRepository } = require('../scripts/d1/fixture-repository');
 const { compareFixtureBundles } = require('../scripts/d1/fixture-shadow-compare');
 const { applyMigrations, migrationFiles } = require('../scripts/d1/migration-inventory');
@@ -524,6 +526,8 @@ test('failed fixture replacement rolls back lifecycle and public pointer changes
   assert.deepEqual({ ...afterFailure }, { ...publishedBefore, lifecycle_state: 'published' });
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 1);
 
+  db.prepare('UPDATE fixture_detail_publish_days SET date_utc = ?')
+    .run(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   response = await admin.default.fetch(
     request(fixtureIngestBody(replacement)), fixtureEnv(db, replacement),
   );
@@ -535,6 +539,44 @@ test('failed fixture replacement rolls back lifecycle and public pointer changes
     { revision_no: 1, lifecycle_state: 'superseded' },
     { revision_no: 2, lifecycle_state: 'published' },
   ]);
+});
+
+test('reconciliation rejects array corrections when provider player order changes', () => {
+  const original = fixturePayload();
+  const second = structuredClone(original.playerStats[0]);
+  second.playerId = 'af:player:1002';
+  second.playerProviderId = 1002;
+  second.playerName = 'Second Player';
+  original.playerStats.push(second);
+  const current = applyManualCorrections(original, [{
+    path: 'playerStats.0.values.goals', value: 2, correctedProviderValue: 1,
+    reason: 'reviewed goal', sourceUrl: 'https://example.test/goal',
+    verifiedAt: original.fixture.reconciledAt,
+  }]);
+  const incoming = structuredClone(original);
+  incoming.playerStats.reverse();
+  assert.throws(() => reconcileFixtureRevision(current, incoming), /changed its indexed identity/);
+  assert.equal(reconcileFixtureRevision(current, original).bundle.playerStats[0].values.goals, 2);
+});
+
+test('D1 fixture publication budget enforces twenty distinct fixtures per UTC day', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const { readFixturePublishBudget } = await import('../admin-worker/fixture-publish-budget.mjs');
+  const today = new Date().toISOString().slice(0, 10);
+  const insert = db.prepare(`INSERT INTO fixture_detail_publish_days
+    (date_utc, fixture_id, revision_no, published_at) VALUES (?, ?, 1, ?)`);
+  for (let index = 0; index < 20; index += 1) {
+    insert.run(today, `af:fixture:${index + 1}`, new Date().toISOString());
+  }
+  const budget = await readFixturePublishBudget({ FOOTBALL_DB: createLocalD1(db) });
+  assert.equal(budget.remaining, 0);
+  assert.equal(budget.fixtureIds.length, 20);
+  assert.throws(() => insert.run(today, 'af:fixture:21', new Date().toISOString()), /daily cap reached/);
+  db.prepare('DELETE FROM fixture_detail_publish_days WHERE fixture_id = ?').run('af:fixture:20');
+  assert.throws(() => insert.run(today, 'af:fixture:1', new Date().toISOString()), /UNIQUE constraint/);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  assert.doesNotThrow(() => insert.run(tomorrow, 'af:fixture:1', new Date().toISOString()));
 });
 
 test('fixture admin preflight rejects provider identity replacement and cardinality overflow', async t => {

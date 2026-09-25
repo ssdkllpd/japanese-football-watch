@@ -27,6 +27,13 @@ test('fixture revision reconciliation starts at one and ignores an untrusted inc
   assert.equal(result.reason, 'initial_revision');
 });
 
+test('missing canonical R2 fixture continues after the latest migrated D1 revision', () => {
+  const result = reconcileFixtureRevision(null, bundle({ revision: 1 }), { latestD1Revision: 4 });
+  assert.equal(result.bundle.fixture.revision, 5);
+  assert.throws(() => reconcileFixtureRevision(bundle({ revision: 3 }), bundle(),
+    { latestD1Revision: 4 }), /older than D1/);
+});
+
 test('fixture revision reconciliation preserves the revision only for identical canonical content', () => {
   const current = bundle({
     revision: 7, reconciledAt: '2026-08-21T22:00:00.000Z',

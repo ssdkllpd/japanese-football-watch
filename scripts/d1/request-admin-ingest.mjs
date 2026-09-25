@@ -76,6 +76,7 @@ function validatePlan(plan, directory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
   const allowed = new Set([
     'schemaVersion', 'fixedSnapshot', 'standings', 'fixtures', 'dateIndexCoverages',
+    'dateIndexRefreshes',
     'expectedTotals',
   ]);
   const unknown = Object.keys(plan || {}).filter(key => !allowed.has(key));
@@ -91,6 +92,10 @@ function validatePlan(plan, directory) {
     throw new Error('dateIndexCoverages must be an array when supplied.');
   }
   const dateIndexCoverages = plan.dateIndexCoverages || [];
+  const dateIndexRefreshes = plan.dateIndexRefreshes || [];
+  if (!Array.isArray(dateIndexRefreshes) || dateIndexRefreshes.length > 20) {
+    throw new Error('dateIndexRefreshes exceeds the fixture batch limit.');
+  }
   if (plan.fixtures.length > 500 || plan.standings.length > 100
     || dateIndexCoverages.length > 64) {
     throw new Error('Admin ingest plan exceeds the migration verification scope limits.');
@@ -133,6 +138,8 @@ function validatePlan(plan, directory) {
     else request.catalog = resolveArtifact(
       directory, item.catalogPath, `fixtures[${index}].catalogPath`,
     );
+    if (item.requireStableDate === true) request.requireStableDate = true;
+    if (item.preserveCorrections === true) request.preserveCorrections = true;
     requests.push(request);
   }
   for (const [index, item] of plan.standings.entries()) {
@@ -166,12 +173,31 @@ function validatePlan(plan, directory) {
       competitionIds,
     });
   }
+  for (const [index, item] of dateIndexRefreshes.entries()) {
+    realDate(item?.date, `dateIndexRefreshes[${index}].date`);
+    if (!Array.isArray(item.fixtureIds) || item.fixtureIds.length === 0
+      || item.fixtureIds.length > 20 || new Set(item.fixtureIds).size !== item.fixtureIds.length) {
+      throw new Error(`dateIndexRefreshes[${index}].fixtureIds is invalid.`);
+    }
+    for (const fixtureId of item.fixtureIds) {
+      canonical(fixtureId, /^af:fixture:\d+$/, `dateIndexRefreshes[${index}].fixtureIds`);
+      if (!plan.fixtures.some(fixture => fixture.fixtureId === fixtureId)) {
+        throw new Error(`Date refresh contains a fixture absent from the publish plan: ${fixtureId}.`);
+      }
+    }
+    requests.push({
+      schemaVersion: REQUEST_VERSION, operation: 'date_index_refresh',
+      date: item.date, fixtureIds: [...item.fixtureIds].sort(),
+    });
+  }
   const identities = requests.map(item => {
     if (item.operation === 'fixture_publish') return `${item.operation}\t${item.fixtureId}`;
     if (item.operation === 'fixed_snapshot_publish') {
       return `${item.operation}\t${item.artifactSha256}\t${item.productSeasonId}`;
     }
-    if (item.operation === 'date_index_coverage_publish') return `${item.operation}\t${item.date}`;
+    if (item.operation === 'date_index_coverage_publish' || item.operation === 'date_index_refresh') {
+      return `${item.operation}\t${item.date}`;
+    }
     return `${item.operation}\t${item.competitionId}\t${item.seasonId}`;
   });
   if (new Set(identities).size !== identities.length) throw new Error('Admin ingest plan contains duplicate scopes.');
@@ -220,7 +246,9 @@ function requestIdentity(request) {
   if (request.operation === 'fixed_snapshot_publish') {
     return `${request.productSeasonId}/${request.artifactSha256}`;
   }
-  if (request.operation === 'date_index_coverage_publish') return request.date;
+  if (request.operation === 'date_index_coverage_publish' || request.operation === 'date_index_refresh') {
+    return request.date;
+  }
   if (request.operation === 'migration_verify') return 'declared-plan';
   return `${request.competitionId}/${request.seasonId}`;
 }

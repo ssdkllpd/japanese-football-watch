@@ -1,0 +1,297 @@
+name: API-Football Automation
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview fetches without publishing, or execute the reviewed plan
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - execute
+      confirmation:
+        description: For execute, enter RUN API-FOOTBALL AUTOMATION
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-staging-write
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    if: github.event_name != 'schedule' || vars.API_FOOTBALL_AUTOMATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    environment: d1-staging
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      AUTOMATION_STATE_KEY: automation/api-football/state-v1.json
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce activation and manual execution gates
+        id: gate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_MODE: ${{ inputs.mode || 'execute' }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          REPOSITORY_ENABLED: ${{ vars.API_FOOTBALL_AUTOMATION_ENABLED }}
+        run: |
+          set -euo pipefail
+          node -e "require('./scripts/v2/api-football-automation-plan').validatePolicy(require('./config/api-football-automation.json'))"
+          policy_enabled=$(jq -r '.scheduledSynchronizationEnabled' config/api-football-automation.json)
+          if [ "$EVENT_NAME" = schedule ]; then
+            test "$REPOSITORY_ENABLED" = true || { echo 'Repository automation switch is disabled.' >&2; exit 1; }
+            test "$policy_enabled" = true || { echo 'Reviewed automation policy is disabled.' >&2; exit 1; }
+            mode=execute
+          else
+            mode="$REQUESTED_MODE"
+            case "$mode" in
+              preview) ;;
+              execute)
+                test "$policy_enabled" = true || { echo 'Reviewed automation policy is disabled.' >&2; exit 1; }
+                test "$CONFIRMATION" = 'RUN API-FOOTBALL AUTOMATION' || { echo 'Exact execute confirmation is required.' >&2; exit 1; }
+                ;;
+              *) echo 'Unknown workflow mode.' >&2; exit 1 ;;
+            esac
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "interval_ms=$(jq -r '.limits.minimumRequestIntervalMs' config/api-football-automation.json)" >> "$GITHUB_OUTPUT"
+          echo "daily_reserve=$(jq -r '.limits.dailyRequestReserve' config/api-football-automation.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY secret is required.' >&2; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN secret is required.' >&2; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID secret is required.' >&2; exit 1; }
+          test -n "$R2_BUCKET" || { echo 'R2_BUCKET variable is required.' >&2; exit 1; }
+          if [ '${{ steps.gate.outputs.mode }}' = execute ]; then
+            test -n "$ADMIN_INGEST_URL" || { echo 'ADMIN_INGEST_URL variable is required.' >&2; exit 1; }
+            test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN secret is required.' >&2; exit 1; }
+          fi
+
+      - name: Load durable automation state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/automation
+          get_log=.tmp/automation/state-get.log
+          if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/$AUTOMATION_STATE_KEY" \
+            --file .tmp/automation/state.json --remote >"$get_log" 2>&1; then
+            if grep -Eqi 'not found|does not exist|404' "$get_log"; then
+              node -e "const fs=require('node:fs');const {emptyAutomationState}=require('./scripts/v2/api-football-automation-plan');fs.writeFileSync('.tmp/automation/state.json',JSON.stringify(emptyAutomationState(),null,2)+'\\n')"
+            else
+              cat "$get_log" >&2
+              exit 1
+            fi
+          fi
+          test -s .tmp/automation/state.json || { echo 'Automation state is empty.' >&2; exit 1; }
+
+      - name: Verify exact reviewed staging target before any write
+        if: steps.gate.outputs.mode == 'execute'
+        env:
+          D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          test "$D1_ADMIN_PUBLISH_ENABLED" = true || { echo 'D1 admin publishing is disabled.' >&2; exit 1; }
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+
+      - name: Read D1 publication budget and checkpoint discovery cursor
+        if: steps.gate.outputs.mode == 'execute'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/d1/read-api-football-automation-budget.mjs --out .tmp/automation/d1-budget.json
+          node scripts/v2/advance-api-football-automation-state.js \
+            --start-discovery true --policy config/api-football-automation.json \
+            --state .tmp/automation/state.json --out .tmp/automation/discovery-start.json
+          if ! cmp -s .tmp/automation/discovery-start.json .tmp/automation/state.json; then
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$AUTOMATION_STATE_KEY" \
+              --file .tmp/automation/discovery-start.json --content-type application/json --remote
+            mv .tmp/automation/discovery-start.json .tmp/automation/state.json
+          fi
+
+      - name: Discover due work and build a bounded plan
+        id: plan
+        shell: bash
+        env:
+          API_FOOTBALL_MIN_INTERVAL_MS: ${{ steps.gate.outputs.interval_ms }}
+          API_FOOTBALL_DAILY_RESERVE: ${{ steps.gate.outputs.daily_reserve }}
+        run: |
+          set -euo pipefail
+          preview=false
+          if [ '${{ steps.gate.outputs.mode }}' = preview ]; then preview=true; fi
+          args=(--policy config/api-football-automation.json \
+            --state .tmp/automation/state.json \
+            --out .tmp/automation/discovery --preview "$preview")
+          if [ "$preview" = false ]; then args+=(--daily-budget .tmp/automation/d1-budget.json); fi
+          node scripts/v2/discover-api-football-automation.js "${args[@]}"
+          plan=.tmp/automation/discovery/plan.json
+          details=$(jq '.detailFetches | length' "$plan")
+          standings=$(jq '.standingsFetches | length' "$plan")
+          echo "action_count=$((details + standings))" >> "$GITHUB_OUTPUT"
+          echo "daily_remaining=$(jq -r '.quota.dailyRemaining // empty' "$plan")" >> "$GITHUB_OUTPUT"
+          jq '{mode, generatedAt, discoveredFixtureCount, retainedFixtureCount, dueDetailFixtureCount,
+            detailFetches: (.detailFetches | length), standingsFetches: (.standingsFetches | length), quota}' "$plan"
+
+      - name: Checkpoint discovered final fixtures before fetching details
+        if: steps.gate.outputs.mode == 'execute'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v2/advance-api-football-automation-state.js \
+            --plan .tmp/automation/discovery/plan.json \
+            --state .tmp/automation/state.json \
+            --checkpoint true \
+            --out .tmp/automation/checkpoint-state.json
+          if ! cmp -s .tmp/automation/checkpoint-state.json .tmp/automation/state.json; then
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$AUTOMATION_STATE_KEY" \
+              --file .tmp/automation/checkpoint-state.json --content-type application/json --remote
+            mv .tmp/automation/checkpoint-state.json .tmp/automation/state.json
+          fi
+
+      - name: Fetch every planned artifact before publishing
+        if: steps.plan.outputs.action_count != '0'
+        shell: bash
+        env:
+          API_FOOTBALL_MIN_INTERVAL_MS: ${{ steps.gate.outputs.interval_ms }}
+          API_FOOTBALL_DAILY_RESERVE: ${{ steps.gate.outputs.daily_reserve }}
+          API_FOOTBALL_INITIAL_DAILY_REMAINING: ${{ steps.plan.outputs.daily_remaining }}
+        run: |
+          set -euo pipefail
+          node scripts/v2/execute-api-football-automation-fetches.js \
+            --plan .tmp/automation/discovery/plan.json \
+            --out .tmp/automation/artifacts
+
+      - name: Bind fetched artifacts to the D1 plan
+        if: steps.plan.outputs.action_count != '0'
+        run: |
+          node scripts/d1/create-api-football-automation-admin-plan.js \
+            --plan .tmp/automation/discovery/plan.json \
+            --artifacts .tmp/automation/artifacts \
+            --output .tmp/automation/d1/admin-plan.json
+
+      - name: Reconcile and publish finalized fixture objects to R2
+        if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r provider_id; do
+            dir=".tmp/automation/artifacts/fixtures/$provider_id"
+            fixture_id=$(jq -r '.fixtureId' "$dir/manifest.json")
+            competition_id=$(jq -r '.fixture.competitionId' "$dir/fixture.json")
+            season_id=$(jq -r '.fixture.seasonId' "$dir/fixture.json")
+            fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
+            node scripts/d1/check-automation-fixture-corrections.mjs \
+              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
+            latest_revision=$(jq -er '.latestRevision' "$dir/guard-report.json")
+            same_day_hash=$(jq -r '.sameDayCanonicalHash // "-"' "$dir/guard-report.json")
+            fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' "$dir/manifest.json")
+            pointer_key=$(jq -r '.r2Objects[] | select(.role=="fixture_pointer") | .key' "$dir/manifest.json")
+            rm -f "$dir/current-fixture.json"
+            fixture_log="$dir/current-fixture-get.log"
+            if ! npx --yes wrangler@4 r2 object get "$R2_BUCKET/$fixture_key" \
+              --file "$dir/current-fixture.json" --remote >"$fixture_log" 2>&1; then
+              grep -Eqi 'not found|does not exist|404' "$fixture_log" || { cat "$fixture_log" >&2; exit 1; }
+              rm -f "$dir/current-fixture.json"
+            fi
+            if [ -e "$dir/current-fixture.json" ] && [ ! -s "$dir/current-fixture.json" ]; then
+              echo 'R2 returned an empty fixture object.' >&2; exit 1
+            fi
+            if [ -s "$dir/current-fixture.json" ]; then
+              node scripts/v2/reconcile-fixture-revision.js "$dir/current-fixture.json" \
+                "$dir/fixture.json" "$dir/reconciled-fixture.json" \
+                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json" "$latest_revision" "$same_day_hash"
+            else
+              node scripts/v2/reconcile-fixture-revision.js - "$dir/fixture.json" \
+                "$dir/reconciled-fixture.json" \
+                ".tmp/automation/d1/d1-corrections/af_fixture_${provider_id}.json" "$latest_revision" "$same_day_hash"
+            fi
+            mv "$dir/reconciled-fixture.json" "$dir/fixture.json"
+
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$fixture_key" \
+              --file "$dir/fixture.json" --content-type application/json --remote
+            npx --yes wrangler@4 r2 object put "$R2_BUCKET/$pointer_key" \
+              --file "$dir/fixture-pointer.json" --content-type application/json --remote
+          done < <(jq -r '.detailFetches[].providerFixtureId' .tmp/automation/discovery/plan.json)
+
+      - name: Publish standings objects to R2
+        if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -c '.standingsFetches[]' .tmp/automation/discovery/plan.json | while IFS= read -r scope; do
+            league=$(jq -r '.league' <<<"$scope")
+            season=$(jq -r '.season' <<<"$scope")
+            dir=".tmp/automation/artifacts/standings/$league-$season"
+            jq -c '.r2Objects[]' "$dir/manifest.json" | while IFS= read -r object; do
+              key=$(jq -r '.key' <<<"$object")
+              file=$(jq -r '.file' <<<"$object")
+              npx --yes wrangler@4 r2 object put "$R2_BUCKET/$key" \
+                --file "$dir/$file" --content-type application/json --remote
+            done
+          done
+
+      - name: Publish through the protected Admin Worker and verify
+        if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
+        run: |
+          node scripts/d1/request-admin-ingest.mjs \
+            --url "$ADMIN_INGEST_URL" \
+            --plan .tmp/automation/d1/admin-plan.json \
+            --report .tmp/automation/d1/admin-report.json
+
+      - name: Advance durable state only after successful verification
+        if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v2/advance-api-football-automation-state.js \
+            --plan .tmp/automation/discovery/plan.json \
+            --state .tmp/automation/state.json \
+            --out .tmp/automation/next-state.json
+          npx --yes wrangler@4 r2 object put "$R2_BUCKET/$AUTOMATION_STATE_KEY" \
+            --file .tmp/automation/next-state.json --content-type application/json --remote
+
+      - name: Upload bounded automation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-football-automation-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            .tmp/automation/state.json
+            .tmp/automation/discovery-start.json
+            .tmp/automation/d1-budget.json
+            .tmp/automation/checkpoint-state.json
+            .tmp/automation/next-state.json
+            .tmp/automation/discovery/plan.json
+            .tmp/automation/discovery/discovery/*.json
+            .tmp/automation/artifacts/**/manifest.json
+            .tmp/automation/d1/admin-plan.json
+            .tmp/automation/d1/admin-report.json
+          if-no-files-found: warn
+          retention-days: 14

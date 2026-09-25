@@ -24,6 +24,10 @@
     {
       "name": "0006_d1_date_index_coverage_timestamp.sql",
       "sha256": "bd34153a6f075cc3dbd465cc95c25c7dbc44d3de150070ebe0e19b8431711573"
+    },
+    {
+      "name": "0007_d1_fixture_publish_budget.sql",
+      "sha256": "d2078f10d80c40819a088673e6f10108419b9b714e5336284b33b89428fc3ca3"
     }
   ],
   "tables": {
