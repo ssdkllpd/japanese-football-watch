@@ -131,6 +131,13 @@ test('manual workflow keeps a separate execution gate and read-only preview', ()
   assert.match(workflow, /verify-d1-target\.mjs/);
   assert.match(workflow, /check-manual-backfill-budget\.js/);
   assert.match(workflow, /manual-backfill-checkpoint\.js recover/);
+  assert.match(workflow, /actions: write/);
+  assert.match(workflow, /\[\[ "\$BATCHES_LEFT" =~ \^\(\[1-9\]\|1\[0-2\]\)\$ \]\]/);
+  assert.match(workflow, /inputs\.auto_continue == 'true'/);
+  assert.match(workflow, /remainingAfterBatch > 0 and \.quota\.fixturePublishesRemaining > 0/);
+  assert.match(workflow, /gh workflow run api-football-manual-backfill\.yml/);
+  assert.ok(workflow.indexOf('- name: Queue the next verified batch')
+    > workflow.indexOf('- name: Upload bounded backfill evidence'));
   assert.ok(workflow.indexOf('Checkpoint this batch before any fixture or index write')
     < workflow.indexOf('Reconcile and publish selected fixture bundles to R2'));
   for (const name of ['Reconcile and publish selected fixture bundles to R2',
