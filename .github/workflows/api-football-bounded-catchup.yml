@@ -1,0 +1,52 @@
+name: API-Football Bounded Catch-up
+
+on:
+  schedule:
+    # One batch after the UTC quota reset; avoid the top-of-hour GitHub load.
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview the scheduled path without writes
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  window:
+    runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.check.outputs.active }}
+    steps:
+      - name: Bound the scheduled catch-up to the international break
+        id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%F)
+          if [ "$EVENT_NAME" = workflow_dispatch ] || \
+            { [[ "$today" > '2026-09-29' ]] && [[ "$today" < '2026-10-08' ]]; }; then
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+            echo 'Catch-up window closed; no provider or database request.'
+          fi
+
+  batch:
+    needs: window
+    if: needs.window.outputs.active == 'true'
+    uses: ./.github/workflows/api-football-manual-backfill.yml
+    with:
+      mode: ${{ github.event_name == 'workflow_dispatch' && 'preview' || 'execute' }}
+      confirmation: ${{ github.event_name == 'workflow_dispatch' && '' || 'RUN API-FOOTBALL BACKFILL' }}
+      auto_continue: 'false'
+      batches_left: '1'
+    secrets: inherit
