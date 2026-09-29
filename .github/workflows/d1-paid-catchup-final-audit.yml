@@ -1,0 +1,61 @@
+name: D1 Paid Catch-up Final Audit (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/d1-paid-catchup-final-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read only D1 inventory and paid usage
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          mkdir -p .tmp/paid-final-audit
+          node scripts/d1/render-admin-wrangler.mjs --output .tmp/paid-final-audit/wrangler.toml
+          scopes="'af:season:39:2026','af:season:40:2026','af:season:61:2026','af:season:78:2026','af:season:88:2026','af:season:94:2026','af:season:135:2026','af:season:140:2026','af:season:144:2026','af:season:179:2026'"
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/paid-final-audit/wrangler.toml \
+            --command "SELECT COUNT(*) AS stored, SUM(CASE WHEN revision.lifecycle_state='published' THEN 1 ELSE 0 END) AS published FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id LEFT JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE season.canonical_id IN ($scopes)" \
+            > .tmp/paid-final-audit/counts.json
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/paid-final-audit/wrangler.toml \
+            --command "SELECT fixture.canonical_id, fixture.date_jst FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id LEFT JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE season.canonical_id IN ($scopes) AND (revision.id IS NULL OR revision.lifecycle_state!='published') ORDER BY fixture.canonical_id" \
+            > .tmp/paid-final-audit/unpublished.json
+          jq -e '.[0].success==true and .[0].results[0].stored >= .[0].results[0].published' .tmp/paid-final-audit/counts.json >/dev/null
+          jq -e '.[0].success==true and (.[0].results | type)=="array"' .tmp/paid-final-audit/unpublished.json >/dev/null
+          echo 'D1 inventory:'
+          jq '.[0].results[0]' .tmp/paid-final-audit/counts.json
+          echo 'Unpublished fixture IDs and stored JST dates:'
+          jq '.[0].results' .tmp/paid-final-audit/unpublished.json
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/paid-final-audit/usage.json
+      - name: Upload read only audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paid-catchup-final-audit-${{ github.run_id }}
+          path: .tmp/paid-final-audit/*.json
+          if-no-files-found: warn
+          retention-days: 14
