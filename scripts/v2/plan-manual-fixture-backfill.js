@@ -167,14 +167,14 @@ async function main() {
     }
     return items;
   }, []));
-  if (!args.policy || !args.inventory || !args.storedDates || !args.budget || !args.out
+  if (!args.policy || !args.inventory || !args['stored-dates'] || !args.budget || !args.out
     || !['true', 'false'].includes(args.preview)) {
     throw new Error('Use --policy FILE --inventory FILE --stored-dates FILE --budget FILE --out FILE --preview true|false.');
   }
   const plan = await planManualFixtureBackfill({
     policy: JSON.parse(fs.readFileSync(args.policy, 'utf8')),
     inventory: JSON.parse(fs.readFileSync(args.inventory, 'utf8')),
-    dateInventory: JSON.parse(fs.readFileSync(args.storedDates, 'utf8')),
+    dateInventory: JSON.parse(fs.readFileSync(args['stored-dates'], 'utf8')),
     dailyBudget: JSON.parse(fs.readFileSync(args.budget, 'utf8')),
     client: createClientFromEnv(process.env), preview: args.preview === 'true',
   });
