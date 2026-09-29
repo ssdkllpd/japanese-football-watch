@@ -22,9 +22,13 @@ For each run it plans at most 20 new fixture details, five API requests each,
 and up to ten standings. API-Football's daily balance retains a reserve of 100;
 the plan is capped at 150 requests. Migration `0008` and the corresponding
 Admin Worker raise D1's shared ledger limit to 240 distinct fixtures per UTC
-day across all writers. Ordinary scheduled synchronization still plans no more
-than 20 distinct publications per UTC day. Repeated manual runs can use the
-remaining daily capacity. After successful publication, D1 becomes the resume
+day across all writers. This ledger is not a Cloudflare rows-written quota.
+The manual planner and its pre-write check enforce the reviewed Free-plan model
+of at most 20 detail publications per UTC day across the shared ledger, even
+when chained runs have additional provider requests available. This is a
+conservative planning bound, not a measurement of Cloudflare's account-wide
+rows written; other D1 writers still require monitoring. After successful
+publication, D1 becomes the resume
 checkpoint; a later run recomputes the remaining difference. Partial failure
 does not mark unpublished fixtures complete. A pending R2 checkpoint allows
 the next execute run to repair date indexes for any fixtures that reached D1

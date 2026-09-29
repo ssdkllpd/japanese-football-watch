@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const { PLAN_VERSION } = require('./api-football-automation-plan');
+const MAX_DAILY_DETAIL_PUBLISHES = 20;
 
 function checkManualBackfillBudget(before, current, plan) {
   if (plan?.schemaVersion !== PLAN_VERSION || !Array.isArray(plan.detailFetches)
@@ -16,7 +17,7 @@ function checkManualBackfillBudget(before, current, plan) {
     || JSON.stringify([...before.fixtureIds].sort()) !== JSON.stringify([...current.fixtureIds].sort())
     || new Set(plan.detailFetches.map(item => item.fixtureId)).size !== plan.detailFetches.length
     || plan.detailFetches.some(item => current.fixtureIds.includes(item.fixtureId))
-    || current.fixtureIds.length + plan.detailFetches.length > 240) {
+    || current.fixtureIds.length + plan.detailFetches.length > MAX_DAILY_DETAIL_PUBLISHES) {
     throw new Error('D1 publication budget changed or the planned batch exceeds the daily cap.');
   }
 }

@@ -8,6 +8,9 @@ const {
 } = require('./api-football-automation-plan');
 
 const FINAL_STATUSES = new Set(['FT', 'AET', 'PEN']);
+// The shared 240-fixture ledger is an application ceiling, not the D1 Free
+// rows-written budget. The reviewed D1 model reserves 20 detail writes/day.
+const MAX_DAILY_DETAIL_PUBLISHES = 20;
 
 function publishedFixtureIds(inventory) {
   if (!Array.isArray(inventory) || inventory.length !== 1 || inventory[0]?.success === false
@@ -123,7 +126,8 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
       seasonId: `af:season:${scope.league}:${scope.season}`,
     })) : [];
   const detailBudget = capacity - standingsFetches.length;
-  const publishCapacity = Math.max(0, dailyBudget.remaining);
+  const publishCapacity = Math.max(0, Math.min(dailyBudget.remaining,
+    MAX_DAILY_DETAIL_PUBLISHES - dailyBudget.fixtureIds.length));
   const maxDetails = Math.min(policy.limits.maxFinalDetailFixturesPerRun,
     publishCapacity, Math.floor(detailBudget / 5));
   const detailFetches = eligible.slice(0, maxDetails).map(fixture => ({
