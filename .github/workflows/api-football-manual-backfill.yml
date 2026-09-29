@@ -94,6 +94,10 @@ jobs:
             --config .tmp/manual-backfill/wrangler.toml \
             --command "SELECT fixture.canonical_id, COUNT(*) OVER () AS total FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE season.canonical_id IN ($scopes) AND revision.lifecycle_state='published' ORDER BY fixture.canonical_id" \
             > .tmp/manual-backfill/published.json
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/manual-backfill/wrangler.toml \
+            --command "SELECT fixture.canonical_id, fixture.date_jst, COUNT(*) OVER () AS total FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id WHERE season.canonical_id IN ($scopes) ORDER BY fixture.canonical_id" \
+            > .tmp/manual-backfill/stored-dates.json
           node scripts/d1/read-api-football-automation-budget.mjs \
             --out .tmp/manual-backfill/budget.json
 
@@ -140,6 +144,7 @@ jobs:
           node scripts/v2/plan-manual-fixture-backfill.js \
             --policy config/api-football-automation.json \
             --inventory .tmp/manual-backfill/published.json \
+            --stored-dates .tmp/manual-backfill/stored-dates.json \
             --budget .tmp/manual-backfill/budget.json \
             --out .tmp/manual-backfill/plan.json \
             --preview "${{ inputs.mode == 'preview' }}"
@@ -176,6 +181,21 @@ jobs:
             .tmp/manual-backfill/current-budget.json \
             .tmp/manual-backfill/plan.json
 
+      - name: Check every fixture guard before R2 writes
+        if: inputs.mode == 'execute' && steps.plan.outputs.fixture_count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r provider_id; do
+            dir=".tmp/manual-backfill/artifacts/fixtures/$provider_id"
+            fixture_id=$(jq -r '.fixtureId' "$dir/manifest.json")
+            competition_id=$(jq -r '.fixture.competitionId' "$dir/fixture.json")
+            season_id=$(jq -r '.fixture.seasonId' "$dir/fixture.json")
+            fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
+            node scripts/d1/check-automation-fixture-corrections.mjs \
+              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
+          done < <(jq -r '.detailFetches[].providerFixtureId' .tmp/manual-backfill/plan.json)
+
       - name: Checkpoint this batch before any fixture or index write
         if: inputs.mode == 'execute' && steps.plan.outputs.fixture_count != '0'
         shell: bash
@@ -198,9 +218,6 @@ jobs:
             fixture_id=$(jq -r '.fixtureId' "$dir/manifest.json")
             competition_id=$(jq -r '.fixture.competitionId' "$dir/fixture.json")
             season_id=$(jq -r '.fixture.seasonId' "$dir/fixture.json")
-            fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
-            node scripts/d1/check-automation-fixture-corrections.mjs \
-              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
             latest_revision=$(jq -er '.latestRevision' "$dir/guard-report.json")
             same_day_hash=$(jq -r '.sameDayCanonicalHash // "-"' "$dir/guard-report.json")
             fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' "$dir/manifest.json")
@@ -275,6 +292,7 @@ jobs:
           path: |
             .tmp/manual-backfill/plan.json
             .tmp/manual-backfill/budget.json
+            .tmp/manual-backfill/stored-dates.json
             .tmp/manual-backfill/current-budget.json
             .tmp/manual-backfill/prior-checkpoint.json
             .tmp/manual-backfill/checkpoint.json
