@@ -23,6 +23,14 @@ on:
         options:
           - 'true'
           - 'false'
+      billing_mode:
+        description: Free 20/day or Paid bounded 120/day with monthly usage gate
+        required: true
+        default: free
+        type: choice
+        options:
+          - free
+          - paid
       batches_left:
         description: Maximum number of batches including this run (1-12)
         required: true
@@ -30,6 +38,10 @@ on:
         type: string
   workflow_call:
     inputs:
+      billing_mode:
+        required: false
+        type: string
+        default: free
       mode:
         required: true
         type: string
@@ -70,6 +82,7 @@ jobs:
       BACKFILL_CHECKPOINT_KEY: automation/api-football/manual-backfill-checkpoint-v1.json
       API_FOOTBALL_MIN_INTERVAL_MS: '300'
       API_FOOTBALL_DAILY_RESERVE: '100'
+      JFW_MANUAL_DETAIL_DAILY_CAP: ${{ inputs.billing_mode == 'paid' && '120' || '20' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,10 +96,12 @@ jobs:
           REQUESTED_MODE: ${{ inputs.mode }}
           CONFIRMATION: ${{ inputs.confirmation }}
           BATCHES_LEFT: ${{ inputs.batches_left }}
+          BILLING_MODE: ${{ inputs.billing_mode }}
         run: |
           set -euo pipefail
           test "$REQUESTED_MODE" = preview || test "$REQUESTED_MODE" = execute
           [[ "$BATCHES_LEFT" =~ ^([1-9]|1[0-2])$ ]]
+          test "$BILLING_MODE" = free || test "$BILLING_MODE" = paid
           if [ "$REQUESTED_MODE" = execute ]; then
             test "$CONFIRMATION" = 'RUN API-FOOTBALL BACKFILL'
             test "$D1_ADMIN_PUBLISH_ENABLED" = true
@@ -96,6 +111,10 @@ jobs:
           test -n "$ADMIN_INGEST_URL" && test -n "$R2_BUCKET"
           node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
           node -e "require('./scripts/v2/api-football-automation-plan').validatePolicy(require('./config/api-football-automation.json'))"
+
+      - name: Guard Paid D1 monthly usage before any staging write
+        if: inputs.mode == 'execute' && inputs.billing_mode == 'paid'
+        run: node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/manual-backfill/paid-usage-start.json
 
       - name: Read published fixture IDs and current publication budget
         shell: bash
@@ -194,6 +213,10 @@ jobs:
             .tmp/manual-backfill/budget.json \
             .tmp/manual-backfill/current-budget.json \
             .tmp/manual-backfill/plan.json
+
+      - name: Recheck Paid D1 monthly usage before publication
+        if: inputs.mode == 'execute' && inputs.billing_mode == 'paid' && steps.plan.outputs.action_count != '0'
+        run: node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/manual-backfill/paid-usage-current.json
 
       - name: Check every fixture guard before R2 writes
         if: inputs.mode == 'execute' && steps.plan.outputs.fixture_count != '0'
@@ -308,6 +331,8 @@ jobs:
             .tmp/manual-backfill/budget.json
             .tmp/manual-backfill/stored-dates.json
             .tmp/manual-backfill/current-budget.json
+            .tmp/manual-backfill/paid-usage-start.json
+            .tmp/manual-backfill/paid-usage-current.json
             .tmp/manual-backfill/prior-checkpoint.json
             .tmp/manual-backfill/checkpoint.json
             .tmp/manual-backfill/recovery-dates.json
@@ -323,6 +348,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BATCHES_LEFT: ${{ inputs.batches_left }}
+          BILLING_MODE: ${{ inputs.billing_mode }}
         run: |
           set -euo pipefail
           jq -e '.passed == true and .summary.failed == 0' \
@@ -338,4 +364,5 @@ jobs:
             -f mode=execute \
             -f confirmation='RUN API-FOOTBALL BACKFILL' \
             -f auto_continue=true \
+            -f billing_mode="$BILLING_MODE" \
             -f batches_left="$((BATCHES_LEFT - 1))"

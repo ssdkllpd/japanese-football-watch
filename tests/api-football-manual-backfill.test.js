@@ -98,6 +98,23 @@ test('shared ledger count constrains the Free-plan detail budget and rejects sta
   /publication budget is missing or stale/);
 });
 
+test('Paid bulk mode retains a 20-fixture batch while allowing verified continuation', async () => {
+  const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index + 1, 39));
+  const paid = await planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dateInventory: dateInventory({}), dailyBudget: budget(), client: fakeClient({ 39: fixtures }),
+    now, preview: false, detailDailyCap: 120 });
+  assert.equal(paid.detailFetches.length, 20);
+  assert.equal(paid.quota.fixturePublishesRemaining, 100);
+  const ids = paid.detailFetches.map(item => item.fixtureId);
+  const next = await planManualFixtureBackfill({ policy,
+    inventory: inventory(paid.detailFetches.map(item => item.providerFixtureId)),
+    dateInventory: dateInventory({}), dailyBudget: budget(ids),
+    client: fakeClient({ 39: fixtures }), now, preview: false, detailDailyCap: 120 });
+  assert.equal(next.detailFetches.length, 5);
+  assert.doesNotThrow(() => checkManualBackfillBudget(budget(ids), budget(ids), next, 120));
+  assert.throws(() => checkManualBackfillBudget(budget(ids), budget(ids), next), /daily cap/);
+});
+
 test('incomplete D1 inventory and malformed season discovery fail closed', async () => {
   assert.throws(() => publishedFixtureIds([{ results: [{ canonical_id: 'af:fixture:1', total: 2 }] }]),
     /incomplete/);

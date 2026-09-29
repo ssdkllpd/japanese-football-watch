@@ -1,0 +1,23 @@
+name: API-Football Paid Bounded Catch-up
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/api-football-paid-catchup.yml
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  batch:
+    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    uses: ./.github/workflows/api-football-manual-backfill.yml
+    with:
+      mode: execute
+      confirmation: RUN API-FOOTBALL BACKFILL
+      auto_continue: 'true'
+      batches_left: '6'
+      billing_mode: paid
+    secrets: inherit
