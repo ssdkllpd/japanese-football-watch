@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 const { planManualFixtureBackfill, publishedFixtureIds, storedFixtureDates } = require('../scripts/v2/plan-manual-fixture-backfill');
 const { checkManualBackfillBudget } = require('../scripts/v2/check-manual-backfill-budget');
@@ -127,6 +128,17 @@ test('malformed stored dates cannot silently bypass the reschedule guard', async
   await assert.rejects(() => planManualFixtureBackfill({ policy, inventory: inventory([]),
     dateInventory: null, dailyBudget: budget(), client: fakeClient({}), now }),
   /date inventory is missing/);
+});
+
+test('the workflow stored-dates CLI argument reaches file loading', () => {
+  const script = path.join(__dirname, '..', 'scripts/v2/plan-manual-fixture-backfill.js');
+  const result = spawnSync(process.execPath, [script,
+    '--policy', 'missing-policy.json', '--inventory', 'missing-inventory.json',
+    '--stored-dates', 'missing-stored-dates.json', '--budget', 'missing-budget.json',
+    '--out', 'missing-plan.json', '--preview', 'true'], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ENOENT.*missing-policy\.json/);
+  assert.doesNotMatch(result.stderr, /Use --policy FILE/);
 });
 
 test('budget change during fetch aborts publication before any R2 writes', async () => {
