@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { planManualFixtureBackfill, publishedFixtureIds } = require('../scripts/v2/plan-manual-fixture-backfill');
+const { planManualFixtureBackfill, publishedFixtureIds, storedFixtureDates } = require('../scripts/v2/plan-manual-fixture-backfill');
 const { checkManualBackfillBudget } = require('../scripts/v2/check-manual-backfill-budget');
 const { recoveryDates } = require('../scripts/v2/manual-backfill-checkpoint');
 
@@ -18,6 +18,9 @@ const budget = (ids = []) => ({ dateUtc: '2026-09-25', operation: 'fixture_publi
   fixtureIds: ids, remaining: 240 - ids.length });
 const inventory = ids => [{ success: true, results: ids.map(id => ({
   canonical_id: `af:fixture:${id}`, total: ids.length,
+})) }];
+const dateInventory = dates => [{ success: true, results: Object.entries(dates).map(([id, date]) => ({
+  canonical_id: `af:fixture:${id}`, date_jst: date, total: Object.keys(dates).length,
 })) }];
 
 function fakeClient(rowsByLeague, balance = 7000) {
@@ -43,7 +46,8 @@ test('backfill plans only unpublished final fixtures through today, without refe
     78: [fixture(4, 78, 'FT', '2026-09-25T04:00:00Z')],
   });
   const plan = await planManualFixtureBackfill({
-    policy, inventory: inventory([1]), dailyBudget: budget(), client, now, preview: true,
+    policy, inventory: inventory([1]), dateInventory: dateInventory({ 1: '2026-09-20' }),
+    dailyBudget: budget(), client, now, preview: true,
   });
   assert.equal(client.calls.length, 10);
   assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:2']);
@@ -56,7 +60,7 @@ test('backfill plans only unpublished final fixtures through today, without refe
 
 test('backfill publishes 20 per run and resumes on the same UTC day', async () => {
   const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index + 1, 39));
-  const args = { policy, inventory: inventory([]), dailyBudget: budget(),
+  const args = { policy, inventory: inventory([]), dateInventory: dateInventory({}), dailyBudget: budget(),
     client: fakeClient({ 39: fixtures }), now, preview: false };
   const first = await planManualFixtureBackfill(args);
   assert.equal(first.detailFetches.length, 20);
@@ -79,27 +83,52 @@ test('daily ledger stops at 240 and rejects an old Admin Worker budget', async (
   const ids = Array.from({ length: 235 }, (_, index) => `af:fixture:${index + 1}`);
   const fixtures = Array.from({ length: 20 }, (_, index) => fixture(index + 236, 39));
   const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
-    dailyBudget: budget(ids), client: fakeClient({ 39: fixtures }), now });
+    dateInventory: dateInventory({}), dailyBudget: budget(ids), client: fakeClient({ 39: fixtures }), now });
   assert.equal(plan.detailFetches.length, 5);
   assert.equal(plan.quota.fixturePublishesRemaining, 0);
   assert.doesNotThrow(() => checkManualBackfillBudget(budget(ids), budget(ids), plan));
   await assert.rejects(() => planManualFixtureBackfill({ policy, inventory: inventory([]),
-    dailyBudget: { ...budget(ids), remaining: 0 }, client: fakeClient({ 39: fixtures }), now }),
+    dateInventory: dateInventory({}), dailyBudget: { ...budget(ids), remaining: 0 },
+    client: fakeClient({ 39: fixtures }), now }),
   /publication budget is missing or stale/);
 });
 
 test('incomplete D1 inventory and malformed season discovery fail closed', async () => {
   assert.throws(() => publishedFixtureIds([{ results: [{ canonical_id: 'af:fixture:1', total: 2 }] }]),
     /incomplete/);
+  assert.throws(() => storedFixtureDates([{ results: [{ canonical_id: 'af:fixture:1',
+    date_jst: '2026-09-20', total: 2 }] }]), /incomplete/);
   await assert.rejects(() => planManualFixtureBackfill({
-    policy, inventory: inventory([]), dailyBudget: budget(), now,
+    policy, inventory: inventory([]), dateInventory: dateInventory({}), dailyBudget: budget(), now,
     client: fakeClient({ 39: [] }),
   }), /discovery is incomplete/);
 });
 
+test('rescheduled fixture is deferred while other final fixtures continue', async () => {
+  const client = fakeClient({ 88: [fixture(1552173, 88, 'FT', '2026-09-18T18:00:00Z'),
+    fixture(1552174, 88, 'FT', '2026-09-20T12:00:00Z')] });
+  const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dateInventory: dateInventory({ 1552173: '2026-09-20', 1552174: '2026-09-20' }),
+    dailyBudget: budget(), client, now });
+  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:1552174']);
+  assert.equal(plan.missingFixtureCount, 2);
+  assert.equal(plan.remainingAfterBatch, 0);
+  assert.deepEqual(plan.deferredDateChanges, [{ fixtureId: 'af:fixture:1552173',
+    storedDateJst: '2026-09-20', providerDateJst: '2026-09-19' }]);
+});
+
+test('malformed stored dates cannot silently bypass the reschedule guard', async () => {
+  assert.throws(() => storedFixtureDates(dateInventory({ 1552173: '2026-02-30' })),
+    /invalid or duplicate/);
+  await assert.rejects(() => planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dateInventory: null, dailyBudget: budget(), client: fakeClient({}), now }),
+  /date inventory is missing/);
+});
+
 test('budget change during fetch aborts publication before any R2 writes', async () => {
   const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
-    dailyBudget: budget(), now, client: fakeClient({ 39: [fixture(1, 39)] }) });
+    dateInventory: dateInventory({}), dailyBudget: budget(), now,
+    client: fakeClient({ 39: [fixture(1, 39)] }) });
   assert.doesNotThrow(() => checkManualBackfillBudget(budget(), budget(), plan));
   assert.throws(() => checkManualBackfillBudget(budget(), budget(['af:fixture:42']), plan),
     /budget changed/);
@@ -130,6 +159,9 @@ test('manual workflow keeps a separate execution gate and read-only preview', ()
   assert.match(workflow, /RUN API-FOOTBALL BACKFILL/);
   assert.match(workflow, /verify-d1-target\.mjs/);
   assert.match(workflow, /check-manual-backfill-budget\.js/);
+  assert.match(workflow, /--stored-dates \.tmp\/manual-backfill\/stored-dates\.json/);
+  assert.ok(workflow.indexOf('Check every fixture guard before R2 writes')
+    < workflow.indexOf('Checkpoint this batch before any fixture or index write'));
   assert.match(workflow, /manual-backfill-checkpoint\.js recover/);
   assert.match(workflow, /actions: write/);
   assert.match(workflow, /\[\[ "\$BATCHES_LEFT" =~ \^\(\[1-9\]\|1\[0-2\]\)\$ \]\]/);

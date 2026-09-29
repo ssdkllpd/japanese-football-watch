@@ -10,6 +10,13 @@ three hours elapsed since kickoff. An existing published detail is skipped;
 the archival snapshot and migrated 365 details are not fetched again. `NS`,
 live, postponed, and other nonfinal statuses are counted but not published.
 The workflow prints the count and IDs still missing from D1.
+It also compares each unpublished fixture's provider JST date with the stored D1
+date. A moved fixture is listed in `deferredDateChanges` with both dates and is
+excluded from the batch until a separate reviewed date migration can rebuild
+both affected date indexes. Other eligible fixtures continue. The plan's
+`remainingAfterBatch` counts eligible fixtures only; `missingFixtureCount`
+still includes deferred moves. Every selected fixture is checked against the
+Admin Worker guard before the first R2 write in its batch.
 
 For each run it plans at most 20 new fixture details, five API requests each,
 and up to ten standings. API-Football's daily balance retains a reserve of 100;
@@ -30,7 +37,7 @@ rebuild used by automation.
    before executing another manual backfill. This is a staging-only deployment.
 2. In GitHub Actions, select **API-Football Manual Backfill**, choose `preview`,
    and inspect the artifact `plan.json` for `missingFixtureCount`,
-   `detailFetches`, `remainingAfterBatch`, and provider quota. Preview performs
+   `detailFetches`, `deferredDateChanges`, `remainingAfterBatch`, and provider quota. Preview performs
    API reads and artifact validation without R2 or D1 writes.
 3. Run it again with `mode=execute` and exact confirmation
    `RUN API-FOOTBALL BACKFILL`. Leave `auto_continue=true` and
@@ -43,6 +50,8 @@ rebuild used by automation.
    is exhausted, resume after the next UTC day starts (09:00 JST). Set
    `auto_continue=false` when one batch is desired. A final preview with
    `missingFixtureCount=0` confirms the eligible finished matches are present.
+   If `remainingAfterBatch=0` but `missingFixtureCount>0`, handle the listed
+   date changes separately; do not treat the stopped chain as fully current.
 
 Matches still live, not yet confirmed final by the provider, or within three
 hours of kickoff remain outside this backfill. The separate automation's
