@@ -28,6 +28,20 @@ on:
         required: true
         default: '12'
         type: string
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+      confirmation:
+        required: false
+        type: string
+      auto_continue:
+        required: true
+        type: string
+      batches_left:
+        required: true
+        type: string
 
 permissions:
   contents: read
