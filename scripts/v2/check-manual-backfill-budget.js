@@ -2,9 +2,10 @@
 
 const fs = require('node:fs');
 const { PLAN_VERSION } = require('./api-football-automation-plan');
-const MAX_DAILY_DETAIL_PUBLISHES = 20;
+const { resolveDetailDailyCap } = require('./manual-backfill-daily-cap');
 
-function checkManualBackfillBudget(before, current, plan) {
+function checkManualBackfillBudget(before, current, plan, detailDailyCap = 20) {
+  detailDailyCap = resolveDetailDailyCap(detailDailyCap);
   if (plan?.schemaVersion !== PLAN_VERSION || !Array.isArray(plan.detailFetches)
     || !before || !current || before.operation !== 'fixture_publish_budget'
     || current.operation !== 'fixture_publish_budget'
@@ -17,7 +18,7 @@ function checkManualBackfillBudget(before, current, plan) {
     || JSON.stringify([...before.fixtureIds].sort()) !== JSON.stringify([...current.fixtureIds].sort())
     || new Set(plan.detailFetches.map(item => item.fixtureId)).size !== plan.detailFetches.length
     || plan.detailFetches.some(item => current.fixtureIds.includes(item.fixtureId))
-    || current.fixtureIds.length + plan.detailFetches.length > MAX_DAILY_DETAIL_PUBLISHES) {
+    || current.fixtureIds.length + plan.detailFetches.length > detailDailyCap) {
     throw new Error('D1 publication budget changed or the planned batch exceeds the daily cap.');
   }
 }
@@ -26,7 +27,8 @@ if (require.main === module) {
   try {
     const [before, current, plan] = process.argv.slice(2).map(file =>
       JSON.parse(fs.readFileSync(file, 'utf8')));
-    checkManualBackfillBudget(before, current, plan);
+    checkManualBackfillBudget(before, current, plan,
+      process.env.JFW_MANUAL_DETAIL_DAILY_CAP || 20);
   } catch (error) { console.error(error?.message || error); process.exitCode = 1; }
 }
 

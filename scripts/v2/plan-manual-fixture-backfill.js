@@ -9,8 +9,8 @@ const {
 
 const FINAL_STATUSES = new Set(['FT', 'AET', 'PEN']);
 // The shared 240-fixture ledger is an application ceiling, not the D1 Free
-// rows-written budget. The reviewed D1 model reserves 20 detail writes/day.
-const MAX_DAILY_DETAIL_PUBLISHES = 20;
+// rows-written budget. Free defaults to 20; the Paid bulk path uses a separate monthly gate.
+const { resolveDetailDailyCap } = require('./manual-backfill-daily-cap');
 
 function publishedFixtureIds(inventory) {
   if (!Array.isArray(inventory) || inventory.length !== 1 || inventory[0]?.success === false
@@ -58,7 +58,8 @@ function storedFixtureDates(inventory) {
 }
 
 async function planManualFixtureBackfill({ policy, inventory, dateInventory, dailyBudget, client,
-  now = new Date(), preview = true }) {
+  now = new Date(), preview = true, detailDailyCap = 20 }) {
+  detailDailyCap = resolveDetailDailyCap(detailDailyCap);
   validatePolicy(policy);
   const nowDate = new Date(now);
   if (Number.isNaN(nowDate.getTime())) throw new Error('Backfill time is invalid.');
@@ -127,7 +128,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     })) : [];
   const detailBudget = capacity - standingsFetches.length;
   const publishCapacity = Math.max(0, Math.min(dailyBudget.remaining,
-    MAX_DAILY_DETAIL_PUBLISHES - dailyBudget.fixtureIds.length));
+    detailDailyCap - dailyBudget.fixtureIds.length));
   const maxDetails = Math.min(policy.limits.maxFinalDetailFixturesPerRun,
     publishCapacity, Math.floor(detailBudget / 5));
   const detailFetches = eligible.slice(0, maxDetails).map(fixture => ({
@@ -177,6 +178,7 @@ async function main() {
     dateInventory: JSON.parse(fs.readFileSync(args['stored-dates'], 'utf8')),
     dailyBudget: JSON.parse(fs.readFileSync(args.budget, 'utf8')),
     client: createClientFromEnv(process.env), preview: args.preview === 'true',
+    detailDailyCap: process.env.JFW_MANUAL_DETAIL_DAILY_CAP || 20,
   });
   fs.mkdirSync(path.dirname(path.resolve(args.out)), { recursive: true });
   fs.writeFileSync(args.out, `${JSON.stringify(plan, null, 2)}\n`);
