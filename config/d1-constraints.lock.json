@@ -32,6 +32,10 @@
     {
       "name": "0008_d1_backfill_publication_capacity.sql",
       "sha256": "23fd97ed95157574d29e77d64adea04f0e489033149d64f35a47541e47f34faa"
+    },
+    {
+      "name": "0009_d1_schedule_refresh_pending.sql",
+      "sha256": "de27a5a2616de797e07116cb9a84d4c72ea4a48cb64e5eceb4aea2ce3fe0bbb5"
     }
   ],
   "tables": {
