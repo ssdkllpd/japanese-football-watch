@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 27581)
-Total output lines: 1644
-
 (() => {
   'use strict';
 
@@ -811,7 +808,208 @@ Total output lines: 1644
   }
 
   function seasonLabel(canonicalSeasonId) {
-    return String(can…2581 tokens truncated…' : ''}" data-competition-date="${date}" type="button"><span class="dow">${esc(date === todayJst() ? '今日' : parts.dow)}</span><span class="day">${esc(parts.day)}</span></button>`;
+    return String(canonicalSeasonId || '').split(':').at(-1) || '—';
+  }
+
+  function bindCompetitionRows() {
+    main.querySelectorAll('[data-competition-id]').forEach(row => row.addEventListener('click', () => openCompetition({
+      id: row.dataset.competitionId,
+      name: row.dataset.competitionName,
+      logo: row.dataset.competitionLogo || '',
+      seasonId: row.dataset.competitionSeason || null,
+    })));
+  }
+
+  function openCompetition(item, options = {}) {
+    state.page = 'leagues';
+    syncNav();
+    state.detail = null;
+    if (!item.unresolved) knownCompetitions.set(item.id, item);
+    state.competitionDetail = {
+      ...item,
+      seasonId: options.seasonId || item.seasonId || null,
+      date: options.date || state.date,
+      tab: options.tab || 'matches',
+      fixtures: [],
+      matchesLoading: false,
+      matchesError: null,
+      matchesPresence: 'not_fetched',
+      standings: null,
+      standingsLoading: false,
+      standingsError: null,
+      seasonData: null,
+      seasonDataLoading: false,
+      seasonDataError: null,
+    };
+    if (!options.routeDriven) {
+
+      setRoute(router.competitionHash(item.id, state.competitionDetail.seasonId, state.competitionDetail.tab));
+    }
+    renderCompetitionDetail();
+    loadCompetitionMatches();
+    loadCompetitionStandings();
+    loadCompetitionSeason();
+  }
+
+  function applyCompetitionIdentity(detail, payload) {
+    if (!detail || !payload?.competition) return;
+    const competition = payload.competition;
+    detail.name = competition.name || detail.name;
+    detail.logo = competition.logo || detail.logo || '';
+    detail.country = competition.country || detail.country || null;
+    detail.unresolved = false;
+    if (payload.season?.id) detail.seasonId = payload.season.id;
+    const prior = knownCompetitions.get(detail.id) || {};
+    knownCompetitions.set(detail.id, { ...prior, ...detail });
+  }
+
+  async function loadCompetitionSeason() {
+    const detail = state.competitionDetail;
+    if (!detail || !detail.seasonId || detail.id.startsWith('legacy:') || !state.workerBase) return;
+    detail.seasonDataLoading = true;
+    detail.seasonDataError = null;
+    renderCompetitionDetailIfVisible();
+    try {
+      const payload = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/seasons/${encodeURIComponent(detail.seasonId)}`);
+      if (state.competitionDetail !== detail) return;
+      detail.seasonData = payload;
+      applyCompetitionIdentity(detail, payload);
+      for (const row of payload?.playerStats?.rows || []) if (row.player?.id) {
+        knownPlayers.set(row.player.id, {
+          playerId: row.player.id,
+          name: row.player.name,
+          photo: row.player.photo,
+          nationality: row.player.nationality,
+        });
+      }
+    } catch (error) {
+      if (state.competitionDetail !== detail) return;
+      detail.seasonDataError = error;
+    }
+    if (state.competitionDetail !== detail) return;
+    detail.seasonDataLoading = false;
+    renderCompetitionDetailIfVisible();
+  }
+
+  async function loadCompetitionMatches() {
+    const detail = state.competitionDetail;
+    if (!detail) return;
+    const loadSequence = ++state.competitionLoadSequence;
+    const requestedDate = detail.date;
+    detail.matchesLoading = true;
+    detail.matchesError = null;
+    renderCompetitionDetailIfVisible();
+    const cached = state.fixtures.filter(row => row.competitionId === detail.id && row.dateJst === requestedDate);
+    let fixtures = cached;
+    let presence = cached.length ? 'present' : 'not_fetched';
+    let matchesError = null;
+    if (state.workerBase && !detail.id.startsWith('legacy:')) {
+      try {
+        const index = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/dates/${encodeURIComponent(requestedDate)}`);
+        fixtures = Array.isArray(index?.fixtures) ? index.fixtures : [];
+        presence = Array.isArray(index?.fixtures) ? 'present' : 'not_fetched';
+      } catch (error) {
+        matchesError = error;
+      }
+    }
+    if (loadSequence !== state.competitionLoadSequence || state.competitionDetail !== detail) return;
+    rememberFixtures(fixtures);
+    detail.fixtures = fixtures;
+    detail.matchesPresence = presence;
+    detail.matchesError = matchesError;
+    detail.matchesLoading = false;
+    renderCompetitionDetailIfVisible();
+  }
+
+  async function loadCompetitionStandings() {
+    const detail = state.competitionDetail;
+    if (!detail || !detail.seasonId || detail.id.startsWith('legacy:')) return;
+    detail.standingsLoading = true;
+    detail.standingsError = null;
+    renderCompetitionDetailIfVisible();
+    if (!state.workerBase) {
+      detail.standingsLoading = false;
+      detail.standingsError = {code:'not_fetched'};
+      renderCompetitionDetailIfVisible();
+      return;
+    }
+    try {
+      detail.standings = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/seasons/${encodeURIComponent(detail.seasonId)}/standings`);
+      applyCompetitionIdentity(detail, detail.standings);
+    } catch (error) {
+      detail.standingsError = error;
+      if (Array.isArray(error.availableSeasons)) detail.availableSeasons = error.availableSeasons;
+    }
+    if (state.competitionDetail !== detail) return;
+    for (const group of detail.standings?.groups || []) for (const row of group.table || []) if (row.team?.id) {
+      knownStandings.set(row.team.id,{...row,seasonId:detail.seasonId,competitionId:detail.id});knownTeams.set(row.team.id,row.team);
+    }
+    detail.standingsLoading = false;
+    renderCompetitionDetailIfVisible();
+  }
+
+  function renderCompetitionDetailIfVisible() {
+    if (router.parseHash(location.hash).kind === 'competition' && state.competitionDetail) renderCompetitionDetail();
+  }
+
+  function renderCompetitionDetail() {
+    const detail = state.competitionDetail;
+    if (!detail) {
+      renderLeagues();
+      return;
+    }
+    setPageHeader('leagues');
+    const on = isCompetitionFollowing(detail);
+    const catalogSeasons = competitionDirectory().find(item => item.id === detail.id)?.seasons || [];
+    const seasons = [...new Set([detail.seasonId, ...catalogSeasons.map(item => item.id), ...(detail.availableSeasons || []).map(item => typeof item === 'string' ? item : item.id), ...state.fixtures.filter(row => row.competitionId === detail.id).map(row => row.seasonId)].filter(Boolean))];
+    const tabs = [
+      ['matches', '試合'],
+      ['standings', '順位表'],
+      ['overview', '概要'],
+      ['players', '選手成績'],
+      ['teams', 'チーム成績'],
+    ];
+    main.innerHTML = `<div class="detail-top"><button id="competitionBack" class="back-button" type="button">← リーグ一覧</button><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(detail.id)}" ${String(detail.id).startsWith('legacy:') && !on ? 'disabled' : ''} data-follow-name="${esc(detail.name)}" data-follow-logo="${esc(detail.logo || '')}" data-follow-season="${esc(detail.seasonId || '')}" type="button">${icon('follow',on)} ${on ? 'フォロー中' : 'フォロー'}</button></div>
+      <section class="competition-hero">${detail.logo ? `<img src="${esc(detail.logo)}" data-logo-fallback="competition" alt="">` : '<span class="competition-placeholder" aria-hidden="true"></span>'}<div><div class="eyebrow">${esc(detail.country || (detail.seasonId ? `Season ${seasonLabel(detail.seasonId)}` : 'Competition'))}</div><h2>${esc(detail.name)}</h2></div></section>
+      ${seasons.length > 1 ? `<label class="season-select-label" for="competitionSeason">シーズン<select id="competitionSeason" class="season-select">${seasons.map(id => `<option value="${esc(id)}" ${id === detail.seasonId ? 'selected' : ''}>${esc(seasonLabel(id))}</option>`).join('')}</select></label>` : `<p class="season-select-label">シーズン ${detail.seasonId ? esc(seasonLabel(detail.seasonId)) : valueCell(null)} · 別シーズンは未取得</p>`}
+      <div class="detail-tabs" role="tablist" aria-label="リーグ詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${detail.tab === tab ? ' is-active' : ''}" id="competition-tab-${tab}" aria-controls="competition-panel" data-competition-tab="${tab}" type="button" role="tab" aria-selected="${detail.tab === tab}">${label}</button>`).join('')}</div>
+      <div id="competition-panel" role="tabpanel" aria-labelledby="competition-tab-${detail.tab}">${renderCompetitionTab(detail)}</div>`;
+    $('competitionSeason')?.addEventListener('change', event => {
+      setRoute(router.competitionHash(detail.id,event.target.value,detail.tab,detail.date), {replace:true});
+      applyCurrentRoute();
+    });
+    $('competitionBack').addEventListener('click', () => goBack('#/competitions'));
+    main.querySelectorAll('[data-competition-tab]').forEach(button => button.addEventListener('click', () => {
+      detail.tab = button.dataset.competitionTab;
+      setRoute(router.competitionHash(detail.id, detail.seasonId, detail.tab, detail.date), { replace: true });
+      renderCompetitionDetail();
+    }));
+    main.querySelectorAll('[data-competition-date]').forEach(button => button.addEventListener('click', () => {
+      detail.date = button.dataset.competitionDate;
+      setRoute(router.competitionHash(detail.id, detail.seasonId, detail.tab, detail.date), { replace: true });
+      renderCompetitionDetail();
+      loadCompetitionMatches();
+    }));
+    bindFixtureRows('competition');
+    bindFollowButtons();
+    bindTeamRows();
+    bindImageFallbacks();
+  }
+
+  function renderCompetitionTab(detail) {
+    if (detail.tab === 'standings') return renderCompetitionStandings(detail);
+    if (detail.tab === 'matches') return renderCompetitionMatches(detail);
+    if (detail.tab === 'overview') return renderCompetitionOverview(detail);
+    if (detail.tab === 'players') return renderCompetitionPlayers(detail);
+    if (detail.tab === 'teams') return renderCompetitionTeams(detail);
+    return '<div class="empty-state"><strong>表示できません</strong>不明なタブです。</div>';
+  }
+
+  function renderCompetitionDateStrip(detail) {
+    return `<div class="date-strip">${[-2, -1, 0, 1, 2].map(offset => {
+      const date = shiftDate(detail.date, offset);
+      const parts = dateParts(date);
+      return `<button class="date-button${offset === 0 ? ' is-active' : ''}" data-competition-date="${date}" type="button"><span class="dow">${esc(date === todayJst() ? '今日' : parts.dow)}</span><span class="day">${esc(parts.day)}</span></button>`;
     }).join('')}</div>`;
   }
 
