@@ -53,22 +53,28 @@ export async function refreshDateIndexesFromD1(env, request) {
     expectedDate: input.date, expectedCompetitionId: null,
   });
   const departed = new Map((input.departedFixtures || []).map(item => [item.fixtureId, item.date]));
+  const departedCompetitions = [];
   for (const [fixtureId, destination] of departed) {
     const row = await env.FOOTBALL_DB.prepare(`
-      SELECT fixture.date_jst, revision.lifecycle_state
+      SELECT fixture.date_jst, revision.lifecycle_state,
+        competition.canonical_id AS competition_id
       FROM fixtures fixture
       JOIN fixture_revisions revision ON revision.id = fixture.published_revision
         AND revision.fixture_id = fixture.id
+      JOIN competition_seasons season ON season.id = fixture.competition_season_id
+      JOIN competitions competition ON competition.id = season.competition_id
       WHERE fixture.canonical_id = ?
     `).bind(fixtureId).first();
     if (row?.date_jst !== destination || row.lifecycle_state !== 'published') {
       throw new Error('Declared relocated fixture is not published on the destination date.');
     }
+    departedCompetitions.push(row.competition_id);
   }
   const { generic, competitions } = await buildD1DateIndexesForPublication(
     env, input.date, [
       ...(prior.results || []).map(row => row.competition_id),
       ...(previous?.fixtures || []).map(item => item.competitionId),
+      ...departedCompetitions,
     ],
   );
   const currentIds = new Set(generic.fixtures.map(fixture => fixture.fixtureId));

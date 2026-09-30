@@ -43,7 +43,7 @@ test('two changed JST dates rebuild both feeds and recover after a partial R2 fa
       'NS','Not Started','scheduled');
   `);
   const objects = new Map();
-  let failDatePut = false;
+  let failedKey = null;
   const env = {
     ADMIN_INGEST_TOKEN: 'offline-token', FOOTBALL_DB: createLocalD1(db),
     FOOTBALL_DATA: {
@@ -51,8 +51,8 @@ test('two changed JST dates rebuild both feeds and recover after a partial R2 fa
         async text() { return raw; },
       }; },
       async put(key, raw) {
-        if (failDatePut && key === dateIndexR2Key('2026-09-20')) {
-          failDatePut = false;
+        if (key === failedKey) {
+          failedKey = null;
           throw new Error('one interrupted R2 publication');
         }
         objects.set(key, raw);
@@ -115,7 +115,7 @@ test('two changed JST dates rebuild both feeds and recover after a partial R2 fa
   }
   const checkpoint = checkpointFromArtifacts({ schemaVersion: 'jfw-api-football-automation-plan/1',
     detailFetches }, root);
-  failDatePut = true;
+  failedKey = dateIndexR2Key('2026-09-20');
   const report = await executeAdminIngestPlan(plan, {
     url: 'https://offline.example.test', token: 'offline-token',
     planDirectory: path.join(root, 'd1'),
@@ -157,10 +157,16 @@ test('two changed JST dates rebuild both feeds and recover after a partial R2 fa
     }] }),
   }), env);
   assert.equal(undeclared.ok, false);
-  const oldResult = await handleAdminIngest(new Request('https://offline.example.test/admin/v1/ingest', {
+  const oldRequest = () => new Request('https://offline.example.test/admin/v1/ingest', {
     method: 'POST', headers: { authorization: 'Bearer offline-token' },
     body: JSON.stringify(oldDate),
-  }), env);
+  });
+  failedKey = competitionDateIndexR2Key('af:competition:88', dates[0]);
+  const interrupted = await handleAdminIngest(oldRequest(), env);
+  assert.equal(interrupted.ok, false);
+  assert.equal(JSON.parse(objects.get(dateIndexR2Key(dates[0]))).fixtures.length, 0);
+  assert.equal(JSON.parse(objects.get(competitionDateIndexR2Key('af:competition:88', dates[0]))).fixtures.length, 1);
+  const oldResult = await handleAdminIngest(oldRequest(), env);
   assert.equal(oldResult.ok, true, await oldResult.text());
   assert.equal(JSON.parse(objects.get(dateIndexR2Key(dates[0]))).fixtures.length, 0);
   assert.equal(JSON.parse(objects.get(competitionDateIndexR2Key('af:competition:88', dates[0]))).fixtures.length, 0);
