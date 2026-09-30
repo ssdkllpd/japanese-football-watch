@@ -88,9 +88,9 @@ async function planScheduleSync({ client, inventory }) {
     throw new Error('Provider quota fell below the reserved balance.');
   }
   changes.sort((a, b) => a.fixtureId.localeCompare(b.fixtureId));
-  if (changes.length > 20) throw new Error('More than 20 schedule changes need a reviewed batch.');
   return { schemaVersion: 'jfw-fixture-schedule-plan/1', generatedAt: new Date().toISOString(),
-    scanned: seen.size, changes, held, dailyRemaining: responseQuota.dailyRemaining };
+    scanned: seen.size, changes, held, executable: changes.length <= 20,
+    dailyRemaining: responseQuota.dailyRemaining };
 }
 
 if (require.main === module) {
@@ -101,7 +101,8 @@ if (require.main === module) {
     .then(result => {
       fs.writeFileSync(outputFile, `${JSON.stringify(result, null, 2)}\n`);
       process.stdout.write(`${JSON.stringify({ scanned: result.scanned, changes: result.changes.length,
-        held: result.held.length, dailyRemaining: result.dailyRemaining })}\n`);
+        held: result.held.length, executable: result.executable,
+        dailyRemaining: result.dailyRemaining })}\n`);
     }).catch(error => { console.error(error); process.exitCode = 1; });
 }
 
