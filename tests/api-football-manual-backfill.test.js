@@ -126,16 +126,17 @@ test('incomplete D1 inventory and malformed season discovery fail closed', async
   }), /discovery is incomplete/);
 });
 
-test('rescheduled fixture is deferred while other final fixtures continue', async () => {
+test('rescheduled final fixtures retain their previous date and enter the bounded batch', async () => {
   const client = fakeClient({ 88: [fixture(1552173, 88, 'FT', '2026-09-18T18:00:00Z'),
     fixture(1552174, 88, 'FT', '2026-09-20T12:00:00Z')] });
   const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
     dateInventory: dateInventory({ 1552173: '2026-09-20', 1552174: '2026-09-20' }),
     dailyBudget: budget(), client, now });
-  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:1552174']);
+  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:1552173', 'af:fixture:1552174']);
+  assert.equal(plan.detailFetches[0].previousDateJst, '2026-09-20');
   assert.equal(plan.missingFixtureCount, 2);
   assert.equal(plan.remainingAfterBatch, 0);
-  assert.deepEqual(plan.deferredDateChanges, [{ fixtureId: 'af:fixture:1552173',
+  assert.deepEqual(plan.dateChanges, [{ fixtureId: 'af:fixture:1552173',
     storedDateJst: '2026-09-20', providerDateJst: '2026-09-19' }]);
 });
 
@@ -211,4 +212,17 @@ test('manual workflow keeps a separate execution gate and read-only preview', ()
     assert.ok(start > 0);
     assert.match(workflow.slice(start, start + 150), /inputs\.mode == 'execute'/);
   }
+});
+
+test('one-shot date relocation deploys the matching Admin Worker before a single Paid batch', () => {
+  const root = path.join(__dirname, '..', '.github', 'workflows');
+  const rollout = fs.readFileSync(path.join(root, 'api-football-date-relocation-rollout.yml'), 'utf8');
+  const provision = fs.readFileSync(path.join(root, 'd1-staging-provision.yml'), 'utf8');
+  assert.match(provision, /workflow_call:/);
+  assert.match(rollout, /uses: \.\/\.github\/workflows\/d1-staging-provision\.yml/);
+  assert.match(rollout, /needs: deploy-admin/);
+  assert.match(rollout, /uses: \.\/\.github\/workflows\/api-football-manual-backfill\.yml/);
+  assert.match(rollout, /auto_continue: 'false'/);
+  assert.match(rollout, /batches_left: '1'/);
+  assert.match(rollout, /billing_mode: paid/);
 });

@@ -2,6 +2,7 @@ name: D1 Staging Provision
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

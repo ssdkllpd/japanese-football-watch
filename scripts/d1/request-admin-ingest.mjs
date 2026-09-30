@@ -93,7 +93,7 @@ function validatePlan(plan, directory) {
   }
   const dateIndexCoverages = plan.dateIndexCoverages || [];
   const dateIndexRefreshes = plan.dateIndexRefreshes || [];
-  if (!Array.isArray(dateIndexRefreshes) || dateIndexRefreshes.length > 20) {
+  if (!Array.isArray(dateIndexRefreshes) || dateIndexRefreshes.length > 40) {
     throw new Error('dateIndexRefreshes exceeds the fixture batch limit.');
   }
   if (plan.fixtures.length > 500 || plan.standings.length > 100
@@ -139,6 +139,13 @@ function validatePlan(plan, directory) {
       directory, item.catalogPath, `fixtures[${index}].catalogPath`,
     );
     if (item.requireStableDate === true) request.requireStableDate = true;
+    if (item.expectedPreviousDate !== undefined) {
+      realDate(item.expectedPreviousDate, `fixtures[${index}].expectedPreviousDate`);
+      if (item.requireStableDate === true || item.preserveCorrections !== true) {
+        throw new Error('Fixture relocation must preserve corrections and allow the declared date change.');
+      }
+      request.expectedPreviousDate = item.expectedPreviousDate;
+    }
     if (item.preserveCorrections === true) request.preserveCorrections = true;
     requests.push(request);
   }
@@ -175,7 +182,7 @@ function validatePlan(plan, directory) {
   }
   for (const [index, item] of dateIndexRefreshes.entries()) {
     realDate(item?.date, `dateIndexRefreshes[${index}].date`);
-    if (!Array.isArray(item.fixtureIds) || item.fixtureIds.length === 0
+    if (!Array.isArray(item.fixtureIds)
       || item.fixtureIds.length > 20 || new Set(item.fixtureIds).size !== item.fixtureIds.length) {
       throw new Error(`dateIndexRefreshes[${index}].fixtureIds is invalid.`);
     }
@@ -185,10 +192,38 @@ function validatePlan(plan, directory) {
         throw new Error(`Date refresh contains a fixture absent from the publish plan: ${fixtureId}.`);
       }
     }
+    const departedFixtures = item.departedFixtures || [];
+    if (!Array.isArray(departedFixtures) || departedFixtures.length > 20
+      || (item.fixtureIds.length === 0 && departedFixtures.length === 0)
+      || new Set(departedFixtures.map(entry => entry?.fixtureId)).size !== departedFixtures.length) {
+      throw new Error('Date refresh relocation declarations are invalid.');
+    }
+    for (const entry of departedFixtures) {
+      canonical(entry?.fixtureId, /^af:fixture:\d+$/, 'departedFixtures.fixtureId');
+      realDate(entry?.date, 'departedFixtures.date');
+      const fixture = plan.fixtures.find(value => value.fixtureId === entry.fixtureId);
+      if (!fixture || fixture.expectedPreviousDate !== item.date
+        || entry.date === item.date
+        || !dateIndexRefreshes.some(value => value.date === entry.date
+          && value.fixtureIds.includes(entry.fixtureId))) {
+        throw new Error('Date refresh relocation is not bound to a published fixture and destination.');
+      }
+    }
     requests.push({
       schemaVersion: REQUEST_VERSION, operation: 'date_index_refresh',
       date: item.date, fixtureIds: [...item.fixtureIds].sort(),
+      ...(departedFixtures.length ? { departedFixtures: [...departedFixtures].sort(
+        (a, b) => a.fixtureId.localeCompare(b.fixtureId)) } : {}),
     });
+  }
+  for (const fixture of plan.fixtures) {
+    if (!fixture.expectedPreviousDate) continue;
+    const relocations = dateIndexRefreshes.flatMap(item => (item.departedFixtures || [])
+      .filter(entry => entry.fixtureId === fixture.fixtureId
+        && item.date === fixture.expectedPreviousDate));
+    if (relocations.length !== 1) {
+      throw new Error(`Relocated fixture lacks exactly one previous-date refresh: ${fixture.fixtureId}.`);
+    }
   }
   const identities = requests.map(item => {
     if (item.operation === 'fixture_publish') return `${item.operation}\t${item.fixtureId}`;

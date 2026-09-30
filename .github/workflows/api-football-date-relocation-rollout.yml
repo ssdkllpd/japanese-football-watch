@@ -1,0 +1,28 @@
+name: API-Football Date Relocation Rollout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/api-football-date-relocation-rollout.yml
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  deploy-admin:
+    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    uses: ./.github/workflows/d1-staging-provision.yml
+    secrets: inherit
+
+  catch-up:
+    needs: deploy-admin
+    uses: ./.github/workflows/api-football-manual-backfill.yml
+    with:
+      mode: execute
+      confirmation: RUN API-FOOTBALL BACKFILL
+      auto_continue: 'false'
+      batches_left: '1'
+      billing_mode: paid
+    secrets: inherit

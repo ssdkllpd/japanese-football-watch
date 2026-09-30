@@ -9,15 +9,27 @@ import { publishDateIndexCoverageFromR2 } from './date-index-coverage-ingest.mjs
 export const DATE_INDEX_REFRESH_OPERATION = 'date_index_refresh';
 
 export function assertDateIndexRefreshRequest(value) {
+  const keys = Object.keys(value || {}).sort().join(',');
   if (!value || typeof value !== 'object' || Array.isArray(value)
-    || Object.keys(value).sort().join(',') !== 'date,fixtureIds,operation,schemaVersion'
+    || !['date,fixtureIds,operation,schemaVersion',
+      'date,departedFixtures,fixtureIds,operation,schemaVersion'].includes(keys)
     || value.operation !== DATE_INDEX_REFRESH_OPERATION
     || !/^\d{4}-\d{2}-\d{2}$/.test(String(value.date || ''))
     || new Date(`${value.date}T00:00:00Z`).toISOString().slice(0, 10) !== value.date
-    || !Array.isArray(value.fixtureIds) || value.fixtureIds.length === 0
+    || !Array.isArray(value.fixtureIds)
     || value.fixtureIds.length > 20
     || value.fixtureIds.some(id => !/^af:fixture:\d+$/.test(String(id)))
-    || new Set(value.fixtureIds).size !== value.fixtureIds.length) {
+    || new Set(value.fixtureIds).size !== value.fixtureIds.length
+    || (value.departedFixtures !== undefined && (!Array.isArray(value.departedFixtures)
+      || value.departedFixtures.length === 0 || value.departedFixtures.length > 20
+      || value.departedFixtures.some(item => !item || typeof item !== 'object'
+        || Object.keys(item).sort().join(',') !== 'date,fixtureId'
+        || !/^af:fixture:\d+$/.test(String(item.fixtureId))
+        || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.date))
+        || new Date(`${item.date}T00:00:00Z`).toISOString().slice(0, 10) !== item.date
+        || item.date === value.date)
+      || new Set(value.departedFixtures.map(item => item.fixtureId)).size !== value.departedFixtures.length))
+    || (value.fixtureIds.length === 0 && !value.departedFixtures?.length)) {
     throw new Error('Admin date index refresh request is invalid.');
   }
   return value;
@@ -34,20 +46,39 @@ export async function refreshDateIndexesFromD1(env, request) {
     JOIN competitions competition ON competition.id = coverage.competition_id
     WHERE coverage.date_jst = ?
   `).bind(input.date).all();
+  const key = dateIndexR2Key(input.date);
+  const existing = await env.FOOTBALL_DATA.get(key);
+  const previous = existing ? JSON.parse(await existing.text()) : null;
+  if (previous) assertValidDateIndexPayload(previous, {
+    expectedDate: input.date, expectedCompetitionId: null,
+  });
+  const departed = new Map((input.departedFixtures || []).map(item => [item.fixtureId, item.date]));
+  for (const [fixtureId, destination] of departed) {
+    const row = await env.FOOTBALL_DB.prepare(`
+      SELECT fixture.date_jst, revision.lifecycle_state
+      FROM fixtures fixture
+      JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+        AND revision.fixture_id = fixture.id
+      WHERE fixture.canonical_id = ?
+    `).bind(fixtureId).first();
+    if (row?.date_jst !== destination || row.lifecycle_state !== 'published') {
+      throw new Error('Declared relocated fixture is not published on the destination date.');
+    }
+  }
   const { generic, competitions } = await buildD1DateIndexesForPublication(
-    env, input.date, (prior.results || []).map(row => row.competition_id),
+    env, input.date, [
+      ...(prior.results || []).map(row => row.competition_id),
+      ...(previous?.fixtures || []).map(item => item.competitionId),
+    ],
   );
   const currentIds = new Set(generic.fixtures.map(fixture => fixture.fixtureId));
   if (input.fixtureIds.some(id => !currentIds.has(id))) {
     throw new Error('Declared refreshed fixture is missing from the D1 date.');
   }
-  const key = dateIndexR2Key(input.date);
-  const existing = await env.FOOTBALL_DATA.get(key);
-  if (existing) {
-    const previous = JSON.parse(await existing.text());
-    assertValidDateIndexPayload(previous, { expectedDate: input.date, expectedCompetitionId: null });
-    if (previous.fixtures.some(fixture => !currentIds.has(fixture.fixtureId))) {
-      throw new Error('Existing date index contains fixtures absent from D1; full publication is unsafe.');
+  if (previous) {
+    const removed = previous.fixtures.filter(fixture => !currentIds.has(fixture.fixtureId));
+    if (removed.some(fixture => !departed.has(fixture.fixtureId))) {
+      throw new Error('Existing date index contains undeclared fixtures absent from D1; full publication is unsafe.');
     }
   }
   const artifacts = [

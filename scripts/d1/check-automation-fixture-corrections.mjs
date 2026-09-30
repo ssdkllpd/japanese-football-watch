@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 export async function checkFixtureCorrections({ url, token, fixtureId, competitionId, seasonId, date,
+  previousDate,
   fetchImpl = fetch }) {
   const endpoint = new URL(url);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password) {
@@ -16,6 +17,7 @@ export async function checkFixtureCorrections({ url, token, fixtureId, competiti
     body: JSON.stringify({
       schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_correction_guard',
       fixtureId, competitionId, seasonId, date,
+      ...(previousDate ? { previousDate } : {}),
     }),
   });
   const result = await response.json();
@@ -26,11 +28,11 @@ export async function checkFixtureCorrections({ url, token, fixtureId, competiti
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [fixtureId, competitionId, seasonId, date] = process.argv.slice(2);
+  const [fixtureId, competitionId, seasonId, date, previousDate] = process.argv.slice(2);
   checkFixtureCorrections({
     url: process.env.ADMIN_INGEST_URL,
     token: process.env.ADMIN_INGEST_TOKEN,
-    fixtureId, competitionId, seasonId, date,
+    fixtureId, competitionId, seasonId, date, previousDate,
   }).then(report => process.stdout.write(`${JSON.stringify(report)}\n`))
     .catch(error => { console.error(error?.message || error); process.exitCode = 1; });
 }

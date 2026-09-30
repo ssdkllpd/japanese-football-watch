@@ -107,13 +107,13 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   }
   missing.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc)
     || a.providerFixtureId - b.providerFixtureId);
-  const deferredDateChanges = missing.filter(fixture => storedDates.has(fixture.fixtureId)
+  const dateChanges = missing.filter(fixture => storedDates.has(fixture.fixtureId)
     && storedDates.get(fixture.fixtureId) !== dateJst(fixture.kickoffUtc))
     .map(fixture => ({ fixtureId: fixture.fixtureId,
       storedDateJst: storedDates.get(fixture.fixtureId),
       providerDateJst: dateJst(fixture.kickoffUtc) }));
-  const deferredIds = new Set(deferredDateChanges.map(item => item.fixtureId));
-  const eligible = missing.filter(fixture => !deferredIds.has(fixture.fixtureId));
+  const previousDates = new Map(dateChanges.map(item => [item.fixtureId, item.storedDateJst]));
+  const eligible = missing;
   const remaining = client.lastQuota?.dailyRemaining;
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
     throw new Error('API-Football daily remaining quota is unavailable.');
@@ -133,6 +133,8 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     publishCapacity, Math.floor(detailBudget / 5));
   const detailFetches = eligible.slice(0, maxDetails).map(fixture => ({
     ...fixture, recheckStage: 'initial',
+    ...(previousDates.has(fixture.fixtureId)
+      ? { previousDateJst: previousDates.get(fixture.fixtureId) } : {}),
     dueAt: new Date(Date.parse(fixture.kickoffUtc)
       + policy.discovery.eligibleAfterKickoffHours * 3600000).toISOString(),
   }));
@@ -148,7 +150,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     deferredRecentCount,
     missingFixtureCount: missing.length,
     missingFixtureIds: missing.map(item => item.fixtureId),
-    deferredDateChanges,
+    dateChanges,
     remainingAfterBatch: eligible.length - detailFetches.length,
     detailFetches,
     standingsFetches,
@@ -186,7 +188,7 @@ async function main() {
     mode: plan.mode, finalFixtureCount: plan.finalFixtureCount,
     alreadyPublishedCount: plan.alreadyPublishedCount,
     missingFixtureCount: plan.missingFixtureCount,
-    deferredDateChanges: plan.deferredDateChanges,
+    dateChanges: plan.dateChanges,
     batchFixtureCount: plan.detailFetches.length,
     remainingAfterBatch: plan.remainingAfterBatch,
     standingsCount: plan.standingsFetches.length,

@@ -11,12 +11,12 @@ the archival snapshot and migrated 365 details are not fetched again. `NS`,
 live, postponed, and other nonfinal statuses are counted but not published.
 The workflow prints the count and IDs still missing from D1.
 It also compares each unpublished fixture's provider JST date with the stored D1
-date. A moved fixture is listed in `deferredDateChanges` with both dates and is
-excluded from the batch until a separate reviewed date migration can rebuild
-both affected date indexes. Other eligible fixtures continue. The plan's
-`remainingAfterBatch` counts eligible fixtures only; `missingFixtureCount`
-still includes deferred moves. Every selected fixture is checked against the
-Admin Worker guard before the first R2 write in its batch.
+date. A moved final fixture is listed in `dateChanges` with both dates and
+enters the bounded batch. Before R2 publication, the Admin Worker verifies its
+previous date. After D1 publication it rebuilds and verifies both affected
+generic and competition date indexes. A pending checkpoint repairs either date
+after partial failure; an undeclared disappearance from an existing index is
+still blocked. Every selected fixture is guarded before the first R2 write.
 
 For each run it plans at most 20 new fixture details, five API requests each,
 and up to ten standings. API-Football's daily balance retains a reserve of 100;
@@ -39,9 +39,11 @@ rebuild used by automation.
 1. Apply migration `0008` and deploy the matching Admin Worker by running
    **D1 Staging Provision** after merging this change. Check that it succeeds
    before executing another manual backfill. This is a staging-only deployment.
+   The one-shot date relocation rollout deploys the reviewed Admin Worker
+   before its single Paid bounded catch-up batch.
 2. In GitHub Actions, select **API-Football Manual Backfill**, choose `preview`,
    and inspect the artifact `plan.json` for `missingFixtureCount`,
-   `detailFetches`, `deferredDateChanges`, `remainingAfterBatch`, and provider quota. Preview performs
+   `detailFetches`, `dateChanges`, `remainingAfterBatch`, and provider quota. Preview performs
    API reads and artifact validation without R2 or D1 writes.
 3. Run it again with `mode=execute` and exact confirmation
    `RUN API-FOOTBALL BACKFILL`. Leave `auto_continue=true` and
@@ -54,8 +56,8 @@ rebuild used by automation.
    is exhausted, resume after the next UTC day starts (09:00 JST). Set
    `auto_continue=false` when one batch is desired. A final preview with
    `missingFixtureCount=0` confirms the eligible finished matches are present.
-   If `remainingAfterBatch=0` but `missingFixtureCount>0`, handle the listed
-   date changes separately; do not treat the stopped chain as fully current.
+   If `remainingAfterBatch=0` but `missingFixtureCount>0`, inspect the plan
+   and failed runs; do not treat the stopped chain as fully current.
 
 Matches still live, not yet confirmed final by the provider, or within three
 hours of kickoff remain outside this backfill. The separate automation's

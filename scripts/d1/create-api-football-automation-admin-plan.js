@@ -39,6 +39,10 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
   }
   const fixtures = [];
   const dates = new Map();
+  function dateScope(date) {
+    if (!dates.has(date)) dates.set(date, { fixtureIds: [], departedFixtures: [] });
+    return dates.get(date);
+  }
   const fixtureIds = new Set();
   for (const item of automationPlan.detailFetches) {
     if (!Number.isSafeInteger(item?.providerFixtureId) || item.providerFixtureId <= 0) {
@@ -88,11 +92,20 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     }
     if (fixtureIds.has(fixture.fixtureId)) throw new Error(`Automation artifacts duplicate ${fixture.fixtureId}.`);
     fixtureIds.add(fixture.fixtureId);
-    fixture.requireStableDate = true;
+    if (item.previousDateJst !== undefined) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.previousDateJst)
+        || new Date(`${item.previousDateJst}T00:00:00Z`).toISOString().slice(0, 10) !== item.previousDateJst
+        || item.previousDateJst === bundle.fixture.dateJst) {
+        throw new Error(`Fixture ${item.fixtureId} previous date is invalid.`);
+      }
+      fixture.expectedPreviousDate = item.previousDateJst;
+      dateScope(item.previousDateJst).departedFixtures.push({
+        fixtureId: item.fixtureId, date: bundle.fixture.dateJst,
+      });
+    } else fixture.requireStableDate = true;
     fixture.preserveCorrections = true;
     fixtures.push(fixture);
-    if (!dates.has(bundle.fixture.dateJst)) dates.set(bundle.fixture.dateJst, []);
-    dates.get(bundle.fixture.dateJst).push(fixture.fixtureId);
+    dateScope(bundle.fixture.dateJst).fixtureIds.push(fixture.fixtureId);
   }
 
   const standings = [];
@@ -140,7 +153,10 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     fixtures,
     standings,
     dateIndexRefreshes: [...dates].sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, fixtureIds]) => ({ date, fixtureIds: fixtureIds.sort() })),
+      .map(([date, scope]) => ({ date, fixtureIds: scope.fixtureIds.sort(),
+        ...(scope.departedFixtures.length ? { departedFixtures: scope.departedFixtures.sort(
+          (a, b) => a.fixtureId.localeCompare(b.fixtureId)) } : {}),
+      })),
     dateIndexCoverages: [],
     expectedTotals: null,
   };
