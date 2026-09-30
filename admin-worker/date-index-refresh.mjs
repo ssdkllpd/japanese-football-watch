@@ -12,7 +12,8 @@ export function assertDateIndexRefreshRequest(value) {
   const keys = Object.keys(value || {}).sort().join(',');
   if (!value || typeof value !== 'object' || Array.isArray(value)
     || !['date,fixtureIds,operation,schemaVersion',
-      'date,departedFixtures,fixtureIds,operation,schemaVersion'].includes(keys)
+      'date,departedFixtures,fixtureIds,operation,schemaVersion',
+      'date,fixtureIds,operation,scheduledDepartures,schemaVersion'].includes(keys)
     || value.operation !== DATE_INDEX_REFRESH_OPERATION
     || !/^\d{4}-\d{2}-\d{2}$/.test(String(value.date || ''))
     || new Date(`${value.date}T00:00:00Z`).toISOString().slice(0, 10) !== value.date
@@ -29,7 +30,16 @@ export function assertDateIndexRefreshRequest(value) {
         || new Date(`${item.date}T00:00:00Z`).toISOString().slice(0, 10) !== item.date
         || item.date === value.date)
       || new Set(value.departedFixtures.map(item => item.fixtureId)).size !== value.departedFixtures.length))
-    || (value.fixtureIds.length === 0 && !value.departedFixtures?.length)) {
+    || (value.scheduledDepartures !== undefined && (!Array.isArray(value.scheduledDepartures)
+      || value.scheduledDepartures.length === 0 || value.scheduledDepartures.length > 20
+      || value.scheduledDepartures.some(item => !item || typeof item !== 'object'
+        || Object.keys(item).sort().join(',') !== 'date,fixtureId'
+        || !/^af:fixture:\d+$/.test(String(item.fixtureId))
+        || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.date))
+        || new Date(`${item.date}T00:00:00Z`).toISOString().slice(0, 10) !== item.date
+        || item.date === value.date)
+      || new Set(value.scheduledDepartures.map(item => item.fixtureId)).size !== value.scheduledDepartures.length))
+    || (value.fixtureIds.length === 0 && !value.departedFixtures?.length && !value.scheduledDepartures?.length)) {
     throw new Error('Admin date index refresh request is invalid.');
   }
   return value;
@@ -52,21 +62,31 @@ export async function refreshDateIndexesFromD1(env, request) {
   if (previous) assertValidDateIndexPayload(previous, {
     expectedDate: input.date, expectedCompetitionId: null,
   });
-  const departed = new Map((input.departedFixtures || []).map(item => [item.fixtureId, item.date]));
+  const departed = new Map([...(input.departedFixtures || []), ...(input.scheduledDepartures || [])]
+    .map(item => [item.fixtureId, item.date]));
   const departedCompetitions = [];
   for (const [fixtureId, destination] of departed) {
     const row = await env.FOOTBALL_DB.prepare(`
-      SELECT fixture.date_jst, revision.lifecycle_state,
+      SELECT fixture.date_jst, fixture.published_revision, revision.lifecycle_state,
         competition.canonical_id AS competition_id
       FROM fixtures fixture
-      JOIN fixture_revisions revision ON revision.id = fixture.published_revision
+      LEFT JOIN fixture_revisions revision ON revision.id = fixture.published_revision
         AND revision.fixture_id = fixture.id
       JOIN competition_seasons season ON season.id = fixture.competition_season_id
       JOIN competitions competition ON competition.id = season.competition_id
       WHERE fixture.canonical_id = ?
     `).bind(fixtureId).first();
-    if (row?.date_jst !== destination || row.lifecycle_state !== 'published') {
-      throw new Error('Declared relocated fixture is not published on the destination date.');
+    const scheduled = (input.scheduledDepartures || []).some(item => item.fixtureId === fixtureId);
+    if (row?.date_jst !== destination
+      || (scheduled ? row.published_revision !== null : row.lifecycle_state !== 'published')) {
+      throw new Error('Declared relocated fixture is not on the destination date with the expected publication state.');
+    }
+    if (scheduled) {
+      const checkpoint = await env.FOOTBALL_DB.prepare(`
+        SELECT fixture_id FROM fixture_schedule_refresh_pending
+        WHERE fixture_id = ? AND old_date_jst = ? AND new_date_jst = ?
+      `).bind(fixtureId, input.date, destination).first();
+      if (!checkpoint) throw new Error('Schedule departure lacks a durable pending repair.');
     }
     departedCompetitions.push(row.competition_id);
   }
