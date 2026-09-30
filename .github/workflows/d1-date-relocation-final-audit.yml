@@ -1,0 +1,79 @@
+name: D1 Date Relocation Final Audit (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/d1-date-relocation-final-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read exact D1 publication and both date coverages
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          mkdir -p .tmp/date-relocation-audit
+          node scripts/d1/render-admin-wrangler.mjs --output .tmp/date-relocation-audit/wrangler.toml
+          scopes="'af:season:39:2026','af:season:40:2026','af:season:61:2026','af:season:78:2026','af:season:88:2026','af:season:94:2026','af:season:135:2026','af:season:140:2026','af:season:144:2026','af:season:179:2026'"
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/date-relocation-audit/wrangler.toml \
+            --command "SELECT COUNT(*) AS stored, SUM(CASE WHEN revision.lifecycle_state='published' THEN 1 ELSE 0 END) AS published FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id LEFT JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE season.canonical_id IN ($scopes)" \
+            > .tmp/date-relocation-audit/counts.json
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/date-relocation-audit/wrangler.toml \
+            --command "SELECT fixture.canonical_id, fixture.date_jst, revision.lifecycle_state FROM fixtures fixture LEFT JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE fixture.canonical_id IN ('af:fixture:1552171','af:fixture:1552173') ORDER BY fixture.canonical_id" \
+            > .tmp/date-relocation-audit/fixtures.json
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/date-relocation-audit/wrangler.toml \
+            --command "SELECT coverage.date_jst, coverage.fixture_count FROM date_index_coverages coverage WHERE coverage.date_jst IN ('2026-09-19','2026-09-20') ORDER BY coverage.date_jst" \
+            > .tmp/date-relocation-audit/generic-coverage.json
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
+            --config .tmp/date-relocation-audit/wrangler.toml \
+            --command "SELECT coverage.date_jst, competition.canonical_id, coverage.fixture_count FROM competition_date_index_coverages coverage JOIN competitions competition ON competition.id=coverage.competition_id WHERE coverage.date_jst IN ('2026-09-19','2026-09-20') AND competition.canonical_id='af:competition:88' ORDER BY coverage.date_jst" \
+            > .tmp/date-relocation-audit/competition-coverage.json
+          jq -e '.[0].success==true and .[0].results[0].published==575' .tmp/date-relocation-audit/counts.json >/dev/null
+          jq -e '.[0].success==true and .[0].results==[
+            {canonical_id:"af:fixture:1552171",date_jst:"2026-09-20",lifecycle_state:"published"},
+            {canonical_id:"af:fixture:1552173",date_jst:"2026-09-19",lifecycle_state:"published"}]' \
+            .tmp/date-relocation-audit/fixtures.json >/dev/null
+          jq -e '.[0].success==true and (.[0].results | map(.date_jst))==["2026-09-19","2026-09-20"]' \
+            .tmp/date-relocation-audit/generic-coverage.json >/dev/null
+          jq -e '.[0].success==true and (.[0].results | map(.date_jst))==["2026-09-19","2026-09-20"]' \
+            .tmp/date-relocation-audit/competition-coverage.json >/dev/null
+          echo 'Published and stored:'
+          jq '.[0].results[0]' .tmp/date-relocation-audit/counts.json
+          echo 'Relocated fixtures:'
+          jq '.[0].results' .tmp/date-relocation-audit/fixtures.json
+          echo 'Generic and competition coverage:'
+          jq '.[0].results' .tmp/date-relocation-audit/generic-coverage.json
+          jq '.[0].results' .tmp/date-relocation-audit/competition-coverage.json
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/date-relocation-audit/usage.json
+      - name: Upload read only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: date-relocation-final-audit-${{ github.run_id }}
+          path: .tmp/date-relocation-audit/*.json
+          if-no-files-found: warn
+          retention-days: 14
