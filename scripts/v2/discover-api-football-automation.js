@@ -52,6 +52,7 @@ async function discoverAutomation(options) {
     plan: planAutomation({
       policy, state, fixturesByDate, now,
       quota, preview: options.preview === true, dailyBudget: options.dailyBudget || null,
+      storedDates: options.storedDates || null,
     }),
     fixturesByDate,
   };
@@ -69,6 +70,8 @@ async function main() {
   const result = await discoverAutomation({
     policy, state, client: createClientFromEnv(process.env),
     now: args.now || Date.now(), preview: String(args.preview || '').toLowerCase() === 'true',
+    storedDates: args['stored-dates']
+      ? readJson(path.resolve(args['stored-dates']), null, 'D1 stored dates')?.[0]?.results : null,
     dailyBudget: args['daily-budget']
       ? readJson(path.resolve(args['daily-budget']), null, 'D1 daily publication budget') : null,
   });

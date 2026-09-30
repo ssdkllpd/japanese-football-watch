@@ -36,6 +36,10 @@
     {
       "name": "0009_d1_schedule_refresh_pending.sql",
       "sha256": "de27a5a2616de797e07116cb9a84d4c72ea4a48cb64e5eceb4aea2ce3fe0bbb5"
+    },
+    {
+      "name": "0010_d1_schedule_repair_token.sql",
+      "sha256": "02fdbcad231d9b41cd67e83a5318ec4064267bb3296028448fedb8622b0ec99a"
     }
   ],
   "tables": {
