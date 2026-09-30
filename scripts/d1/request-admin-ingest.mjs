@@ -72,7 +72,7 @@ function resolveArtifact(root, relativePath, label) {
   return JSON.parse(fs.readFileSync(real, 'utf8'));
 }
 
-function validatePlan(plan, directory) {
+export function validatePlan(plan, directory) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
   const allowed = new Set([
     'schemaVersion', 'fixedSnapshot', 'standings', 'fixtures', 'dateIndexCoverages',

@@ -1,3 +1,4 @@
+import { repairFixtureSchedule } from './fixture-schedule-ingest.mjs';
 import fixtureImporterModule from '../scripts/d1/fixture-bundle-importer.js';
 import fixturePublishLimitsModule from '../scripts/d1/fixture-publish-limits.js';
 import {
@@ -20,7 +21,7 @@ const FIXTURE_MIGRATION_SCHEMA = 'jfw-d1-fixture-migration-artifact/1';
 const SCORE_KINDS = ['halftime', 'fulltime', 'extratime', 'penalty'];
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const MAX_D1_QUERIES_PER_INVOCATION = 50;
-const FIXTURE_PREFLIGHT_QUERY_BUDGET = 12;
+const FIXTURE_PREFLIGHT_QUERY_BUDGET = 13;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -791,6 +792,15 @@ async function preflight(database, context, contentSha256) {
 export async function publishFixtureFromR2(env, input) {
   if (!env.FOOTBALL_DB || !env.FOOTBALL_DATA) throw new Error('Admin ingest bindings are unavailable.');
   assertFixtureRequest(input);
+  const queued = await first(env.FOOTBALL_DB,
+    'SELECT fixture_id FROM fixture_schedule_refresh_pending WHERE fixture_id = ?', [input.fixtureId]);
+  if (queued) {
+    await repairFixtureSchedule(env);
+    if (await first(env.FOOTBALL_DB,
+      'SELECT fixture_id FROM fixture_schedule_refresh_pending WHERE fixture_id = ?', [input.fixtureId])) {
+      throw new Error('Finish the earlier schedule repairs before publishing this fixture.');
+    }
+  }
   const sourceR2Key = expectedFixtureKey(input);
   const object = await env.FOOTBALL_DATA.get(sourceR2Key);
   if (!object) {

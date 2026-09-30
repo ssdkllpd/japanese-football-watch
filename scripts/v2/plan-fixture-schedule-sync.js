@@ -5,13 +5,13 @@ const { createClientFromEnv } = require('../api-football/client');
 const { canonicalFixture } = require('./api-football-automation-plan');
 const policy = require('../../config/api-football-automation.json');
 
-const MUTABLE = new Set(['NS', 'TBD', 'PST']);
+const MUTABLE = new Set(['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO', 'SUSP', 'INT']);
 
 function inventoryRows(json) {
   if (!Array.isArray(json) || json.length !== 1 || json[0]?.success === false
     || !Array.isArray(json[0]?.results)) throw new Error('D1 schedule inventory failed.');
   const rows = json[0].results;
-  if (rows.length < 3000 || rows.some(row => row.total !== rows.length)) {
+  if (rows.length === 0 || rows.some(row => row.total !== rows.length)) {
     throw new Error('D1 schedule inventory is incomplete.');
   }
   const ids = new Set();
@@ -28,7 +28,9 @@ function inventoryRows(json) {
 }
 
 async function planScheduleSync({ client, inventory }) {
-  const stored = inventoryRows(inventory);
+  const scopes = new Set(policy.competitionSeasons.map(item => `af:season:${item.league}:${item.season}`));
+  const stored = inventoryRows(inventory).filter(row => scopes.has(row.season_id));
+  if (!stored.length) throw new Error('D1 schedule inventory has no configured fixtures.');
   const byId = new Map(stored.map(row => [row.fixture_id, row]));
   const seen = new Set();
   const changes = [];
@@ -69,7 +71,9 @@ async function planScheduleSync({ client, inventory }) {
         || old.status_short !== fixture.status;
       if (!different) continue;
       if (old.published_revision !== null && old.published_revision !== undefined) {
-        held.push({ fixtureId: fixture.fixtureId, reason: 'published_detail_requires_reconciliation' });
+        held.push({ fixtureId: fixture.fixtureId, reason: 'published_detail_requires_reconciliation',
+          storedKickoffUtc: old.kickoff_utc, providerKickoffUtc: fixture.kickoffUtc,
+          storedStatus: old.status_short, providerStatus: fixture.status });
       } else if (!MUTABLE.has(old.status_short) || !MUTABLE.has(fixture.status)) {
         held.push({ fixtureId: fixture.fixtureId, reason: 'non_schedule_status' });
       } else {
@@ -82,14 +86,22 @@ async function planScheduleSync({ client, inventory }) {
     }
   }
   const missing = stored.filter(row => !seen.has(row.fixture_id));
-  if (missing.length) throw new Error(`${missing.length} stored fixtures disappeared from full-season discovery.`);
+  held.push(...missing.map(row => ({ fixtureId: row.fixture_id,
+    reason: 'provider_fixture_missing', storedKickoffUtc: row.kickoff_utc, storedStatus: row.status_short })));
   if (!Number.isSafeInteger(responseQuota?.dailyRemaining)
     || responseQuota.dailyRemaining < policy.limits.dailyRequestReserve) {
     throw new Error('Provider quota fell below the reserved balance.');
   }
-  changes.sort((a, b) => a.fixtureId.localeCompare(b.fixtureId));
+  const now = Date.now();
+  function urgency(item) {
+    const dates = [Date.parse(item.oldKickoffUtc), Date.parse(item.newKickoffUtc)];
+    const future = dates.filter(date => date >= now);
+    return future.length ? Math.min(...future) : Math.max(...dates);
+  }
+  changes.sort((a, b) => urgency(a) - urgency(b) || a.fixtureId.localeCompare(b.fixtureId));
   return { schemaVersion: 'jfw-fixture-schedule-plan/1', generatedAt: new Date().toISOString(),
-    scanned: seen.size, changes, held, executable: changes.length <= 20,
+    scanned: seen.size, changes, held, executable: true, batchSize: Math.min(20, changes.length),
+    remainingAfterBatch: Math.max(0, changes.length - 20),
     dailyRemaining: responseQuota.dailyRemaining };
 }
 

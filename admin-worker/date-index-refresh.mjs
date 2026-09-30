@@ -78,7 +78,8 @@ export async function refreshDateIndexesFromD1(env, request) {
     `).bind(fixtureId).first();
     const scheduled = (input.scheduledDepartures || []).some(item => item.fixtureId === fixtureId);
     if (row?.date_jst !== destination
-      || (scheduled ? row.published_revision !== null : row.lifecycle_state !== 'published')) {
+      || (scheduled ? row.published_revision !== null && row.lifecycle_state !== 'published'
+        : row.lifecycle_state !== 'published')) {
       throw new Error('Declared relocated fixture is not on the destination date with the expected publication state.');
     }
     if (scheduled) {

@@ -2,7 +2,7 @@ name: API-Football Schedule Sync
 
 on:
   schedule:
-    - cron: '37 1 * * *'
+    - cron: '37 1,5,9,13,17,21 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -30,6 +30,7 @@ jobs:
     if: always() && (needs.provision.result == 'success' || github.event_name == 'workflow_dispatch' && inputs.mode == 'preview') && (github.event_name != 'schedule' || vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED == 'true')
     concurrency:
       group: d1-staging-write
+      queue: max
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 50
@@ -80,13 +81,24 @@ jobs:
           node scripts/d1/render-admin-wrangler.mjs --output .tmp/schedule-sync/wrangler.toml
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/schedule-sync/wrangler.toml \
-            --command "SELECT fixture.canonical_id AS fixture_id, competition.canonical_id AS competition_id, season.canonical_id AS season_id, fixture.kickoff_utc, fixture.status_short, fixture.published_revision, COUNT(*) OVER () AS total FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id JOIN competitions competition ON competition.id=season.competition_id WHERE season.canonical_id IN ('af:season:39:2026','af:season:40:2026','af:season:61:2026','af:season:78:2026','af:season:88:2026','af:season:94:2026','af:season:135:2026','af:season:140:2026','af:season:144:2026','af:season:179:2026') ORDER BY fixture.canonical_id" \
+            --command "$(node --input-type=module -e 'import {SCHEDULE_INVENTORY_SQL} from "./scripts/d1/capture-schedule-audit.mjs";console.log(SCHEDULE_INVENTORY_SQL)')" \
             > .tmp/schedule-sync/inventory.json
       - name: Compare all ten provider seasons to stored schedule
         run: node scripts/v2/plan-fixture-schedule-sync.js .tmp/schedule-sync/inventory.json .tmp/schedule-sync/plan.json
+      - name: Summarize held fixtures and remaining changes
+        shell: bash
+        run: |
+          node scripts/v2/summarize-schedule-plan.js .tmp/schedule-sync/plan.json >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish changed unpublished schedules and repair date indexes
         if: github.event_name == 'schedule' || inputs.mode == 'execute'
         run: node scripts/d1/execute-fixture-schedule-plan.mjs execute .tmp/schedule-sync/plan.json
+      - name: Verify selected changes, preserved fixtures, R2 and public samples
+        if: github.event_name == 'schedule' || inputs.mode == 'execute'
+        run: |
+          node scripts/d1/capture-schedule-audit.mjs .tmp/schedule-sync/plan.json \
+            .tmp/schedule-sync/inventory.json .tmp/schedule-sync/audit
+
       - name: Upload schedule evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -94,6 +106,8 @@ jobs:
           name: schedule-sync-${{ github.run_id }}
           path: |
             .tmp/schedule-sync/plan.json
+            .tmp/schedule-sync/inventory.json
             .tmp/schedule-sync/usage.json
+            .tmp/schedule-sync/audit/*.json
           if-no-files-found: warn
           retention-days: 14

@@ -31,7 +31,7 @@ if (mode === 'repair') {
 if (mode !== 'execute' || !planFile) throw new Error('Use repair or execute PLAN.json.');
 const plan = JSON.parse(fs.readFileSync(planFile, 'utf8'));
 if (plan.schemaVersion !== 'jfw-fixture-schedule-plan/1'
-  || !Array.isArray(plan.changes) || plan.changes.length > 240
+  || !Array.isArray(plan.changes) || (option === '--all' && plan.changes.length > 240)
   || (option !== undefined && option !== '--all')) throw new Error('Invalid schedule plan.');
 const selected = option === '--all' ? plan.changes : plan.changes.slice(0, 20);
 for (const [index, request] of selected.entries()) {
@@ -41,4 +41,4 @@ for (const [index, request] of selected.entries()) {
   if (outcome.repaired !== request.fixtureId) throw new Error('Schedule repair identity mismatch.');
 }
 console.log(JSON.stringify({ updated: selected.length,
-  remaining: plan.changes.length - selected.length, held: plan.held.length }));
+  remaining: plan.changes.length - selected.length, held: (plan.held || []).length }));

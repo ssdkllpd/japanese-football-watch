@@ -1,0 +1,95 @@
+import { createHash } from 'node:crypto';
+import { assertValidDateIndexPayload } from '../../shared/date-index-contract.mjs';
+
+export const jstDate = value => new Date(Date.parse(value) + 9 * 3600000).toISOString().slice(0, 10);
+const digest = ids => createHash('sha256').update(`${[...ids].sort().join('\n')}\n`).digest('hex');
+const fields = ['fixture_id', 'competition_id', 'season_id', 'kickoff_utc', 'date_jst',
+  'status_short', 'status_long', 'status_elapsed', 'ingestion_state', 'published_revision'];
+const labels = { NS: 'Not Started', TBD: 'Time to be defined', PST: 'Postponed',
+  CANC: 'Cancelled', ABD: 'Abandoned', AWD: 'Technical Loss', WO: 'Walkover',
+  SUSP: 'Match Suspended', INT: 'Match Interrupted' };
+function identityMap(rows, label) {
+  if (!Array.isArray(rows)) throw new Error(`${label} is missing.`);
+  const map = new Map();
+  for (const row of rows) {
+    if (!/^af:fixture:\d+$/.test(row.fixture_id) || map.has(row.fixture_id)
+      || fields.some(field => !Object.hasOwn(row, field))) throw new Error(`${label} is incomplete or duplicated.`);
+    map.set(row.fixture_id, row);
+  }
+  return map;
+}
+export function affectedScheduleScopes(changes, before, after) {
+  const dates = new Set(changes.flatMap(item => [jstDate(item.oldKickoffUtc), jstDate(item.newKickoffUtc)]));
+  const scopes = new Map();
+  for (const date of [...dates].sort()) {
+    scopes.set(`all/${date}`, { date, competitionId: null });
+    const competitions = new Set([...before, ...after].filter(row => row.date_jst === date)
+      .map(row => row.competition_id));
+    for (const item of changes) if ([jstDate(item.oldKickoffUtc), jstDate(item.newKickoffUtc)].includes(date)) competitions.add(item.competitionId);
+    for (const competitionId of [...competitions].sort()) scopes.set(`${competitionId}/${date}`, { date, competitionId });
+  }
+  return scopes;
+}
+function verifyPayload(payload, scope, rows, label) {
+  assertValidDateIndexPayload(payload, { expectedDate: scope.date, expectedCompetitionId: scope.competitionId });
+  const actual = new Map(payload.fixtures.map(item => [item.fixtureId, item]));
+  if (actual.size !== rows.length) throw new Error(`${label} fixture count differs from D1.`);
+  for (const row of rows) {
+    const item = actual.get(row.fixture_id);
+    if (!item || item.kickoffUtc !== new Date(row.kickoff_utc).toISOString()
+      || item.dateJst !== row.date_jst || item.competitionId !== row.competition_id
+      || item.seasonId !== row.season_id || item.status.short !== row.status_short
+      || item.status.long !== row.status_long || item.status.elapsed !== row.status_elapsed
+      || item.ingestionState !== row.ingestion_state) throw new Error(`${label} payload differs from D1: ${row.fixture_id}.`);
+  }
+}
+export function auditScheduleSync({ changes, before, after, pending, genericCoverages,
+  competitionCoverages, r2, publicSamples, inventoryEnd }) {
+  if (!Array.isArray(changes) || !Array.isArray(pending) || pending.length) throw new Error('Schedule changes are invalid or a repair remains pending.');
+  const original = identityMap(before, 'Before inventory');
+  const current = identityMap(after, 'After inventory');
+  const ending = identityMap(inventoryEnd, 'End inventory');
+  const changed = new Map(changes.map(item => [item.fixtureId, item]));
+  if (changed.size !== changes.length || current.size !== original.size || ending.size !== current.size) throw new Error('Audit fixture identities differ.');
+  for (const [id, prior] of original) {
+    const row = current.get(id);
+    const end = ending.get(id);
+    if (!row || !end || fields.some(field => row[field] !== end[field])) throw new Error(`Inventory changed during audit: ${id}.`);
+    const change = changed.get(id);
+    if (!change) {
+      if (fields.some(field => prior[field] !== row[field])) throw new Error(`Unselected or held fixture was changed: ${id}.`);
+      continue;
+    }
+    if (prior.kickoff_utc !== change.oldKickoffUtc || prior.status_short !== change.oldStatus
+      || prior.published_revision !== null || row.published_revision !== null
+      || row.kickoff_utc !== new Date(change.newKickoffUtc).toISOString()
+      || row.date_jst !== jstDate(change.newKickoffUtc) || row.status_short !== change.newStatus
+      || row.status_long !== labels[change.newStatus] || row.status_elapsed !== null
+      || row.ingestion_state !== 'scheduled' || row.competition_id !== change.competitionId
+      || row.season_id !== change.seasonId) throw new Error(`Selected fixture differs from the declared change: ${id}.`);
+  }
+  if ([...changed.keys()].some(id => !original.has(id))) throw new Error('A selected fixture is absent from the baseline.');
+  const scopes = affectedScheduleScopes(changes, before, after);
+  const generic = new Map(genericCoverages.map(row => [row.date_jst, row]));
+  const competitions = new Map(competitionCoverages.map(row => [`${row.competition_id}/${row.date_jst}`, row]));
+  for (const [key, scope] of scopes) {
+    const rows = after.filter(row => row.date_jst === scope.date && (!scope.competitionId || row.competition_id === scope.competitionId));
+    const coverage = scope.competitionId ? competitions.get(key) : generic.get(scope.date);
+    if (!coverage || coverage.fixture_count !== rows.length || coverage.fixture_id_digest !== digest(rows.map(row => row.fixture_id))) throw new Error(`Coverage differs from all-competition D1 inventory: ${key}.`);
+    if (!Object.hasOwn(r2 || {}, key)) throw new Error(`R2 evidence is missing: ${key}.`);
+    verifyPayload(r2[key], scope, rows, `R2 ${key}`);
+  }
+  if (!Array.isArray(publicSamples) || (scopes.size && publicSamples.length === 0)) throw new Error('Public Worker samples are missing.');
+  const sampled = new Set();
+  for (const sample of publicSamples) {
+    const scope = scopes.get(sample.scope);
+    if (!scope || sampled.has(sample.scope) || sample.status !== 200) throw new Error('Public Worker sample failed or is outside the audit.');
+    sampled.add(sample.scope);
+    verifyPayload(sample.payload, scope, after.filter(row => row.date_jst === scope.date
+      && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`);
+  }
+  return { schemaVersion: 'jfw-schedule-audit-report/2', passed: true,
+    verifiedChanges: changes.length, verifiedPreservedFixtures: original.size - changes.length,
+    verifiedR2Scopes: scopes.size, verifiedPublicSamples: publicSamples.length,
+    pendingRepairs: 0, providerFreshnessVerified: false, browserUiVerified: false };
+}
