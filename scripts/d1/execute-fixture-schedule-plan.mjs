@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { checkPaidBackfillCapacity } from './check-paid-backfill-capacity.mjs';
 
 const endpoint = new URL(process.env.ADMIN_INGEST_URL);
 if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
@@ -18,7 +19,7 @@ async function send(request) {
 }
 
 const repair = { schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_schedule_repair' };
-const [mode, planFile] = process.argv.slice(2);
+const [mode, planFile, option] = process.argv.slice(2);
 if (mode === 'repair') {
   // Drain previous partial publications before planning from the current D1 inventory.
   for (let count = 0; count < 20; count += 1) {
@@ -30,10 +31,14 @@ if (mode === 'repair') {
 if (mode !== 'execute' || !planFile) throw new Error('Use repair or execute PLAN.json.');
 const plan = JSON.parse(fs.readFileSync(planFile, 'utf8'));
 if (plan.schemaVersion !== 'jfw-fixture-schedule-plan/1'
-  || !Array.isArray(plan.changes) || plan.changes.length > 20) throw new Error('Invalid schedule plan.');
-for (const request of plan.changes) {
+  || !Array.isArray(plan.changes) || plan.changes.length > 240
+  || (option !== undefined && option !== '--all')) throw new Error('Invalid schedule plan.');
+const selected = option === '--all' ? plan.changes : plan.changes.slice(0, 20);
+for (const [index, request] of selected.entries()) {
+  if (index % 20 === 0) await checkPaidBackfillCapacity(process.env);
   await send(request);
   const outcome = await send(repair);
   if (outcome.repaired !== request.fixtureId) throw new Error('Schedule repair identity mismatch.');
 }
-console.log(JSON.stringify({ updated: plan.changes.length, held: plan.held.length }));
+console.log(JSON.stringify({ updated: selected.length,
+  remaining: plan.changes.length - selected.length, held: plan.held.length }));
