@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 
 export async function repairManualBackfillDates(dates, { url, token, fetchImpl = fetch }) {
-  if (!Array.isArray(dates) || dates.length > 20 || !token) {
+  if (!Array.isArray(dates) || dates.length > 40 || !token) {
     throw new Error('Manual backfill recovery list or Admin token is invalid.');
   }
   const endpoint = new URL(url);
@@ -15,17 +15,24 @@ export async function repairManualBackfillDates(dates, { url, token, fetchImpl =
   endpoint.hash = '';
   for (const item of dates) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(item?.date)
-      || !Array.isArray(item.fixtureIds) || item.fixtureIds.length === 0
+      || !Array.isArray(item.fixtureIds)
       || item.fixtureIds.length > 20
       || new Set(item.fixtureIds).size !== item.fixtureIds.length
-      || item.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))) {
+      || item.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))
+      || (item.fixtureIds.length === 0 && !item.departedFixtures?.length)
+      || (item.departedFixtures !== undefined && (!Array.isArray(item.departedFixtures)
+        || item.departedFixtures.length > 20
+        || item.departedFixtures.some(entry => !/^af:fixture:\d+$/.test(entry?.fixtureId)
+          || !/^\d{4}-\d{2}-\d{2}$/.test(entry?.date) || entry.date === item.date)
+        || new Set(item.departedFixtures.map(entry => entry.fixtureId)).size !== item.departedFixtures.length))) {
       throw new Error('Manual backfill recovery date has invalid identities.');
     }
     const response = await fetchImpl(endpoint.toString(), {
       method: 'POST', redirect: 'error',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ schemaVersion: 'jfw-d1-admin-ingest/1',
-        operation: 'date_index_refresh', date: item.date, fixtureIds: item.fixtureIds }),
+        operation: 'date_index_refresh', date: item.date, fixtureIds: item.fixtureIds,
+        ...(item.departedFixtures?.length ? { departedFixtures: item.departedFixtures } : {}) }),
     });
     const result = await response.json().catch(() => null);
     if (!response.ok || result?.ok !== true

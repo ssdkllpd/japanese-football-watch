@@ -229,8 +229,12 @@ jobs:
             competition_id=$(jq -r '.fixture.competitionId' "$dir/fixture.json")
             season_id=$(jq -r '.fixture.seasonId' "$dir/fixture.json")
             fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
+            previous_date=$(jq -r --arg id "$fixture_id" \
+              '.detailFetches[] | select(.fixtureId==$id) | .previousDateJst // empty' \
+              .tmp/manual-backfill/plan.json)
             node scripts/d1/check-automation-fixture-corrections.mjs \
-              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" > "$dir/guard-report.json"
+              "$fixture_id" "$competition_id" "$season_id" "$fixture_date" "$previous_date" \
+              > "$dir/guard-report.json"
           done < <(jq -r '.detailFetches[].providerFixtureId' .tmp/manual-backfill/plan.json)
 
       - name: Checkpoint this batch before any fixture or index write

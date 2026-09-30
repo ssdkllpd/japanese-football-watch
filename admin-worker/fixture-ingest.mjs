@@ -55,6 +55,7 @@ export function assertFixtureRequest(input) {
     'schemaVersion', 'operation', 'fixtureId', 'competitionId', 'seasonId',
     'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
     'requireStableDate', 'preserveCorrections',
+    'expectedPreviousDate',
   ]);
   if (input.operation === FIXTURE_MIGRATION_OPERATION) {
     for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) allowed.add(key);
@@ -72,6 +73,11 @@ export function assertFixtureRequest(input) {
   }
   for (const key of ['requireStableDate', 'preserveCorrections']) {
     if (input[key] !== undefined && input[key] !== true) throw new Error(`${key} must be true when supplied.`);
+  }
+  if (input.expectedPreviousDate !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(input.expectedPreviousDate)
+    || new Date(`${input.expectedPreviousDate}T00:00:00Z`).toISOString().slice(0, 10) !== input.expectedPreviousDate
+    || input.requireStableDate === true || input.preserveCorrections !== true)) {
+    throw new Error('Fixture date relocation declaration is invalid.');
   }
   if (input.reuseStoredCatalog === true) {
     if (input.catalog !== undefined) throw new Error('Stored catalog reuse must not include a catalog.');
@@ -817,6 +823,14 @@ export async function publishFixtureFromR2(env, input) {
       throw new Error('Automation fixture changed its stored JST date; date coverage requires a separate migration.');
     }
   }
+  if (input.expectedPreviousDate !== undefined) {
+    const existing = await first(env.FOOTBALL_DB,
+      'SELECT date_jst FROM fixtures WHERE canonical_id = ?', [input.fixtureId]);
+    if (!existing || ![input.expectedPreviousDate, context.fixture.dateJst].includes(existing.date_jst)
+      || input.expectedPreviousDate === context.fixture.dateJst) {
+      throw new Error('Fixture relocation does not match the declared previous and destination dates.');
+    }
+  }
   if (input.preserveCorrections === true) {
     const existing = await env.FOOTBALL_DB.prepare(`
       SELECT field_path FROM correction_states
@@ -861,6 +875,7 @@ export async function publishFixtureFromR2(env, input) {
   }
   const preflightBudget = FIXTURE_PREFLIGHT_QUERY_BUDGET
     + Number(input.requireStableDate === true) + Number(input.preserveCorrections === true)
+    + Number(input.expectedPreviousDate !== undefined)
     + Number([FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation));
   const maxStatements = MAX_D1_QUERIES_PER_INVOCATION - preflightBudget;
   if (statements.length > maxStatements) {

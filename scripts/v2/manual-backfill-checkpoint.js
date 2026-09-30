@@ -23,7 +23,13 @@ function checkpointFromArtifacts(plan, root) {
       || !/^\d{4}-\d{2}-\d{2}$/.test(artifact.fixture.dateJst)) {
       throw new Error(`Manual backfill checkpoint artifact differs: ${item.fixtureId}.`);
     }
-    return { fixtureId: item.fixtureId, dateJst: artifact.fixture.dateJst };
+    if (item.previousDateJst !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(item.previousDateJst)
+      || new Date(`${item.previousDateJst}T00:00:00Z`).toISOString().slice(0, 10) !== item.previousDateJst
+      || item.previousDateJst === artifact.fixture.dateJst)) {
+      throw new Error(`Manual backfill checkpoint previous date is invalid: ${item.fixtureId}.`);
+    }
+    return { fixtureId: item.fixtureId, dateJst: artifact.fixture.dateJst,
+      ...(item.previousDateJst ? { previousDateJst: item.previousDateJst } : {}) };
   });
   if (new Set(fixtures.map(item => item.fixtureId)).size !== fixtures.length) {
     throw new Error('Manual backfill checkpoint duplicates a fixture.');
@@ -41,6 +47,10 @@ function recoveryDates(checkpoint, inventory) {
   const { publishedFixtureIds } = require('./plan-manual-fixture-backfill');
   const published = publishedFixtureIds(inventory);
   const dates = new Map();
+  function scope(date) {
+    if (!dates.has(date)) dates.set(date, { fixtureIds: [], departedFixtures: [] });
+    return dates.get(date);
+  }
   const seen = new Set();
   for (const item of checkpoint.fixtures) {
     if (!/^af:fixture:\d+$/.test(item?.fixtureId)
@@ -50,12 +60,22 @@ function recoveryDates(checkpoint, inventory) {
       throw new Error('Manual backfill checkpoint has invalid fixture metadata.');
     }
     seen.add(item.fixtureId);
+    if (item.previousDateJst !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(item.previousDateJst)
+      || new Date(`${item.previousDateJst}T00:00:00Z`).toISOString().slice(0, 10) !== item.previousDateJst
+      || item.previousDateJst === item.dateJst)) {
+      throw new Error('Manual backfill checkpoint previous date is invalid.');
+    }
     if (!published.has(item.fixtureId)) continue;
-    if (!dates.has(item.dateJst)) dates.set(item.dateJst, []);
-    dates.get(item.dateJst).push(item.fixtureId);
+    scope(item.dateJst).fixtureIds.push(item.fixtureId);
+    if (item.previousDateJst) scope(item.previousDateJst).departedFixtures.push({
+      fixtureId: item.fixtureId, date: item.dateJst,
+    });
   }
   return [...dates].sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, fixtureIds]) => ({ date, fixtureIds: fixtureIds.sort() }));
+    .map(([date, value]) => ({ date, fixtureIds: value.fixtureIds.sort(),
+      ...(value.departedFixtures.length ? { departedFixtures: value.departedFixtures.sort(
+        (a, b) => a.fixtureId.localeCompare(b.fixtureId)) } : {}),
+    }));
 }
 
 function main() {

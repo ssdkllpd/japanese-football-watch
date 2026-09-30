@@ -5,16 +5,21 @@ import { canonicalFixtureHashes } from './fixture-ingest.mjs';
 export const FIXTURE_CORRECTION_GUARD_OPERATION = 'fixture_correction_guard';
 
 export function assertFixtureCorrectionGuardRequest(value) {
+  const keys = Object.keys(value || {}).sort().join(',');
   if (!value || typeof value !== 'object' || Array.isArray(value)
-    || Object.keys(value).sort().join(',')
-      !== 'competitionId,date,fixtureId,operation,schemaVersion,seasonId'
+    || !['competitionId,date,fixtureId,operation,schemaVersion,seasonId',
+      'competitionId,date,fixtureId,operation,previousDate,schemaVersion,seasonId'].includes(keys)
     || value.operation !== FIXTURE_CORRECTION_GUARD_OPERATION
     || !/^af:fixture:\d+$/.test(String(value.fixtureId || ''))
     || !/^af:competition:\d+$/.test(String(value.competitionId || ''))
     || !/^af:season:\d+:\d+$/.test(String(value.seasonId || ''))
     || !/^\d{4}-\d{2}-\d{2}$/.test(String(value.date || ''))
     || Number.isNaN(Date.parse(`${value.date}T00:00:00Z`))
-    || new Date(`${value.date}T00:00:00Z`).toISOString().slice(0, 10) !== value.date) {
+    || new Date(`${value.date}T00:00:00Z`).toISOString().slice(0, 10) !== value.date
+    || (value.previousDate !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(value.previousDate)
+      || Number.isNaN(Date.parse(`${value.previousDate}T00:00:00Z`))
+      || new Date(`${value.previousDate}T00:00:00Z`).toISOString().slice(0, 10) !== value.previousDate
+      || value.previousDate === value.date))) {
     throw new Error('Automation fixture correction guard request is invalid.');
   }
   return value;
@@ -33,11 +38,31 @@ export async function verifyStoredFixtureCorrections(env, request) {
     WHERE date_jst = ? OR canonical_id = ?
   `).bind(input.date, input.fixtureId).all();
   if ((scope.results || []).some(row => row.fixture_id === input.fixtureId
-    && row.date_jst !== input.date)) {
+    && row.date_jst !== (input.previousDate || input.date))) {
     throw new Error('Automation fixture changed its stored JST date; publication is blocked.');
+  }
+  if (input.previousDate && !(scope.results || []).some(row => row.fixture_id === input.fixtureId
+    && row.date_jst === input.previousDate)) {
+    throw new Error('Declared previous JST date is not stored; publication is blocked.');
   }
   const storedIds = new Set((scope.results || [])
     .filter(row => row.date_jst === input.date).map(row => row.fixture_id));
+  if (input.previousDate) {
+    const former = await env.FOOTBALL_DB.prepare(`
+      SELECT canonical_id AS fixture_id FROM fixtures WHERE date_jst = ?
+    `).bind(input.previousDate).all();
+    const formerIds = new Set((former.results || []).map(row => row.fixture_id));
+    const oldIndex = await env.FOOTBALL_DATA.get(dateIndexR2Key(input.previousDate));
+    if (oldIndex) {
+      const previous = JSON.parse(await oldIndex.text());
+      assertValidDateIndexPayload(previous, {
+        expectedDate: input.previousDate, expectedCompetitionId: null,
+      });
+      if (previous.fixtures.some(item => !formerIds.has(item.fixtureId))) {
+        throw new Error('Previous date index has fixtures absent from D1; publication is blocked.');
+      }
+    }
+  }
   const oldIndex = await env.FOOTBALL_DATA.get(dateIndexR2Key(input.date));
   if (oldIndex) {
     const previous = JSON.parse(await oldIndex.text());
