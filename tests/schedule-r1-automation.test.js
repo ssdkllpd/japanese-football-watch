@@ -93,7 +93,7 @@ test('A01 D1 date snapshot declares relocation and the finalized result converge
       planDirectory: path.join(root, `d1-${run}`), fetchImpl: async (u, i) => { const r = await handleAdminIngest(new Request(u, i), ctx.env);
         if (!r.ok) lastReject = (await r.clone().json()).detail; return r; } })
       .catch(e => ({ thrown: e.message }));
-    
+
     runs.push({ detail, requireStableDate: admin.fixtures.map(f => f.requireStableDate === true),
       passed: report.passed, rejectDetail: lastReject, error: report.thrown || (JSON.stringify(report).match(/[A-Z][a-z]+ fixture changed its stored JST date[^"]*|"detail":"[^"]*"|"error":"[^"]*"/) || [JSON.stringify(report).slice(0,300)])[0] });
     // state only advances after success (workflow step order); keep state unchanged on failure
