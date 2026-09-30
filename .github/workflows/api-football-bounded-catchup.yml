@@ -1,9 +1,7 @@
 name: API-Football Bounded Catch-up
 
 on:
-  schedule:
-    # One batch after the UTC quota reset; avoid the top-of-hour GitHub load.
-    - cron: '17 0 * * *'
+  # Scheduled writes paused while schedule consistency fixes are reviewed.
   workflow_dispatch:
     inputs:
       mode:
