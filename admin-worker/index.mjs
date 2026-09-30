@@ -26,6 +26,10 @@ import {
   refreshDateIndexesFromD1,
 } from './date-index-refresh.mjs';
 import {
+  SCHEDULE_UPDATE_OPERATION, SCHEDULE_REPAIR_OPERATION,
+  assertScheduleRequest, updateFixtureSchedule, repairFixtureSchedule,
+} from './fixture-schedule-ingest.mjs';
+import {
   FIXTURE_CORRECTION_GUARD_OPERATION,
   assertFixtureCorrectionGuardRequest,
   verifyStoredFixtureCorrections,
@@ -99,6 +103,9 @@ function assertRequest(value) {
   if (value.operation === FIXTURE_CORRECTION_GUARD_OPERATION) return assertFixtureCorrectionGuardRequest(value);
   if (value.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) return assertFixturePublishBudgetRequest(value);
   if (value.operation === DATE_INDEX_REFRESH_OPERATION) return assertDateIndexRefreshRequest(value);
+  if (value.operation === SCHEDULE_UPDATE_OPERATION || value.operation === SCHEDULE_REPAIR_OPERATION) {
+    return assertScheduleRequest(value);
+  }
   if (value.operation === DATE_INDEX_COVERAGE_OPERATION
     || value.operation === MAJOR_LEAGUE_DATE_COVERAGE_OPERATION) {
     return assertDateIndexCoverageRequest(value);
@@ -354,6 +361,10 @@ export async function handleAdminIngest(request, env) {
       report = await publishDateIndexCoverageFromR2(env, input);
     } else if (input.operation === DATE_INDEX_REFRESH_OPERATION) {
       report = await refreshDateIndexesFromD1(env, input);
+    } else if (input.operation === SCHEDULE_UPDATE_OPERATION) {
+      report = await updateFixtureSchedule(env, input);
+    } else if (input.operation === SCHEDULE_REPAIR_OPERATION) {
+      report = await repairFixtureSchedule(env);
     } else if (input.operation === FIXTURE_CORRECTION_GUARD_OPERATION) {
       report = await verifyStoredFixtureCorrections(env, input);
     } else if (input.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) {

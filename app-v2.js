@@ -397,8 +397,10 @@
 
   function fixtureRow(row) {
     const short = statusShort(row);
-    const time = isLive(row) ? `<span class="live-time">${esc(row?.status?.elapsed ? `${row.status.elapsed}′` : short || 'LIVE')}</span>` : (row.kickoffDisplay || formatKickoff(row.kickoffUtc));
-    const status = isLive(row) ? short || 'LIVE' : (isFinal(row) ? '終了' : (isCancelled(row) ? '中止' : short === 'PST' ? '延期' : short || '予定'));
+    const time = short === 'PST' || short === 'TBD' ? '日程未定'
+      : isLive(row) ? `<span class="live-time">${esc(row?.status?.elapsed ? `${row.status.elapsed}′` : short || 'LIVE')}</span>`
+        : (row.kickoffDisplay || formatKickoff(row.kickoffUtc));
+    const status = isLive(row) ? short || 'LIVE' : (isFinal(row) ? '終了' : (isCancelled(row) ? '中止' : short === 'PST' ? '延期' : short === 'TBD' ? '日程未定' : short || '予定'));
     return `<article class="fixture-row" role="button" tabindex="0" data-fixture="${esc(row.fixtureId)}">
       <div class="fixture-time">${time}</div>
       <div class="teams">
@@ -547,7 +549,7 @@
       ['ratings', '選手評価'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div>
-      <section class="detail-card score-hero"><div class="score-meta">${esc(comp)} · ${esc(row.round || '節は未取得')} · ${esc(row.dateJst || '日付は未取得')} ${esc(formatKickoff(row.kickoffUtc))} JST</div><div class="score-grid"><div class="score-team">${homeLogo}<strong>${esc(home.name || 'Home')}</strong>${followTeamButton(home)}</div><div class="score-value">${valueCell(row?.score?.goals?.home)} - ${valueCell(row?.score?.goals?.away)}</div><div class="score-team">${awayLogo}<strong>${esc(away.name || 'Away')}</strong>${followTeamButton(away)}</div></div></section>
+      <section class="detail-card score-hero"><div class="score-meta">${esc(comp)} · ${esc(row.round || '節は未取得')} · ${['PST', 'TBD'].includes(statusShort(row)) ? '日程未定' : `${esc(row.dateJst || '日付は未取得')} ${esc(formatKickoff(row.kickoffUtc))} JST`}</div><div class="score-grid"><div class="score-team">${homeLogo}<strong>${esc(home.name || 'Home')}</strong>${followTeamButton(home)}</div><div class="score-value">${valueCell(row?.score?.goals?.home)} - ${valueCell(row?.score?.goals?.away)}</div><div class="score-team">${awayLogo}<strong>${esc(away.name || 'Away')}</strong>${followTeamButton(away)}</div></div></section>
       <p class="entity-sub">更新: ${row.reconciledAt || row.provenance?.fetchedAt ? esc(row.reconciledAt || row.provenance.fetchedAt) : valueCell(null)} · ${watchLabel(row)} · ${attentionLabel(row)}</p>${renderAnnotations(bundle.annotations)}
       <div class="detail-tabs" role="tablist" aria-label="試合詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${state.detailTab === tab ? ' is-active' : ''}" id="fixture-tab-${tab}" aria-controls="fixture-panel" data-detail-tab="${tab}" type="button" role="tab" aria-selected="${state.detailTab === tab}">${label}</button>`).join('')}</div>
       <div id="fixture-panel" role="tabpanel" aria-labelledby="fixture-tab-${state.detailTab}">${detail.loading ? '<div class="notice">試合詳細を読み込み中…</div>' : renderDetailBody(detail)}</div>`;
@@ -614,6 +616,7 @@
     else if (isFinal(row)) label = '終了';
     else if (isCancelled(row)) label = '中止';
     else if (statusShort(row) === 'PST') label = '延期';
+    else if (statusShort(row) === 'TBD') label = '日程未定';
     return `<section class="detail-card fixture-state-card"><div><span>状態</span><strong>${esc(label)}</strong></div><div><span>ステータス</span><strong>${esc(statusShort(row) || row.ingestionState || '未取得')}</strong></div><div><span>節</span><strong>${valueCell(row.round)}</strong></div><div><span>データ更新</span><strong>${valueCell(row.reconciledAt || row.provenance?.fetchedAt)}</strong></div></section>`;
   }
 
