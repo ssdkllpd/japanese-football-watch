@@ -136,6 +136,7 @@ test('cancelled and postponed statuses stay exclusive from final styling',async 
  const app=await boot(t,{feed:()=>({fixtures:rows})});
  assert.equal(app.doc.querySelectorAll('.status-pill.is-cancelled').length,4);assert.equal(app.doc.querySelectorAll('.status-pill.is-final').length,0);
  assert.match(app.doc.querySelector('[data-fixture="af:fixture:4"]').textContent,/延期/);
+ assert.match(app.doc.querySelector('[data-fixture="af:fixture:4"]').textContent,/日程未定/);
 });
 test('old follows migrate to ID-only entries and absence from cache is not deletion',async t=>{
  const app=await boot(t,{hash:'#/following',storage:{'football-v2-follows':{teams:[{id:'af:team:999',name:'Old name',logo:'old.png'}],players:[],competitions:[]}}});
