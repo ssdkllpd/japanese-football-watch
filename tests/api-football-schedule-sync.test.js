@@ -42,6 +42,14 @@ test('complete season scan selects only changed unpublished fixtures and holds r
   data.get(39).pop();
   await assert.rejects(() => planScheduleSync({ client, inventory: [{ results: rows, success: true }] }),
     /disappeared/);
+  data.get(39).push({ fixture: { id: 390341, date: '2026-10-01T10:00:00Z',
+    status: { short: 'NS' } }, league: { id: 39, season: 2026 } });
+  for (let index = 3; index < 25; index += 1) {
+    data.get(39)[index].fixture.date = '2026-10-03T10:00:00Z';
+  }
+  const oversized = await planScheduleSync({ client, inventory: [{ results: rows, success: true }] });
+  assert.equal(oversized.executable, false);
+  assert.equal(oversized.changes.length, 24);
 });
 
 test('schedule relocation survives interrupted index write, retries, and a second move', async t => {
