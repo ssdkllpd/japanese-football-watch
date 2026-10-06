@@ -8,7 +8,7 @@ import { executeAdminIngestPlan, validatePlan } from './request-admin-ingest.mjs
 export async function executeAutomationAdminPlan(plan, options) {
   validatePlan(plan, options.planDirectory);
   const ready = options.readyFixtures ? new Set(options.readyFixtures) : null;
-  const outcomes = [];
+  const outcomes = (plan.quarantined || []).map(item => ({ ...item, passed:false }));
   const successfulFixtures = [];
   const successfulStandings = [];
   const empty = { schemaVersion: plan.schemaVersion, fixtures: [], standings: [],
@@ -25,7 +25,7 @@ export async function executeAutomationAdminPlan(plan, options) {
         ? [{ date: scope.date, fixtureIds, ...(departures.length ? { departedFixtures: departures } : {}) }] : [];
     });
     const report = await executeAdminIngestPlan({ ...empty, fixtures: [fixture],
-      dateIndexRefreshes: refreshes }, options);
+      dateIndexRefreshes: refreshes }, { ...options, repairDates: true });
     outcomes.push({ identity: fixture.fixtureId, passed: report.passed, report });
     if (report.passed) successfulFixtures.push(fixture.fixtureId);
   }

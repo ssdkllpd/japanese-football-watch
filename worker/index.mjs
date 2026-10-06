@@ -124,7 +124,8 @@ JOIN fixtures fixture ON fixture.canonical_id = correction.target_canonical_id
 JOIN competition_seasons season ON season.id = fixture.competition_season_id
 JOIN competitions competition ON competition.id = season.competition_id
 WHERE fixture.date_jst = ?1 AND correction.target_kind = 'fixture'
-  AND correction.status = 'active'`;
+  AND correction.status = 'active'
+ORDER BY correction.target_canonical_id,correction.field_path`;
 
 const COMPETITION_SQL = `
 SELECT canonical_id, provider_id, name, country_name, logo_url, flag_url
@@ -635,10 +636,14 @@ export async function buildD1DateIndexesForPublication(env, date, extraCompetiti
   const competitionIds = [...new Set([
     ...fixtures.map(fixture => fixture.competitionId), ...extraCompetitionIds,
   ])].sort();
+  const absentIds=competitionIds.filter(id=>!fixtures.some(fixture=>fixture.competitionId===id));
+  const extraRows=absentIds.length ? await d1Rows(env,
+    'SELECT canonical_id,provider_id,name,country_name,logo_url,flag_url FROM competitions WHERE canonical_id IN (SELECT value FROM json_each(?))',JSON.stringify(absentIds)) : [];
+  const extra=new Map(extraRows.map(row=>[row.canonical_id,competitionDto(row)]));
   const competitions = [];
   for (const competitionId of competitionIds) {
     const competition = fixtures.find(fixture => fixture.competitionId === competitionId)?.competition
-      || competitionDto((await d1Rows(env, COMPETITION_SQL, competitionId))[0]);
+      || extra.get(competitionId);
     if (!competition?.id) throw new Error(`D1 date index competition is missing: ${competitionId}.`);
     const payload = {
       contractVersion: '2.0.0', timeZone: 'Asia/Tokyo', date, competition,
@@ -1188,13 +1193,13 @@ async function degradedR2StandingsObject(env, key, competitionId, requestedSeaso
   });
 }
 
-async function dateIndexResponse(env, date, competitionId = null, context = null) {
+async function dateIndexResponse(env, date, competitionId = null, context = null, fresh = false) {
   const flag = competitionId === null
     ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
   const r2Key = competitionId === null
     ? dateIndexKey(date) : competitionDateIndexKey(competitionId, date);
   if (!enabled(env, flag)) return r2JsonObject(env, r2Key);
-  const cache = dateResponseCache(env);
+  const cache = fresh ? null : dateResponseCache(env);
   const cacheKey = dateResponseCacheKey(date, competitionId);
   const cached = await cacheMatch(cache, cacheKey);
   if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
@@ -1204,7 +1209,7 @@ async function dateIndexResponse(env, date, competitionId = null, context = null
       return r2JsonObject(env, r2Key, { 'x-jfw-data-source': 'r2-not-migrated' });
     }
     const response = json(feed, 200, {
-      'cache-control': `public, max-age=${DATE_TTL_SECONDS}`,
+      'cache-control': fresh ? 'no-store' : `public, max-age=${DATE_TTL_SECONDS}`,
       'x-jfw-data-source': 'd1',
       'x-jfw-cache': 'miss',
     });
@@ -1514,7 +1519,7 @@ async function handle(request, env, context) {
   if (fixtureMatch) return fixtureDetailResponse(env, decodeURIComponent(fixtureMatch[1]), context);
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
-  if (dateMatch) return dateIndexResponse(env, dateMatch[1], null, context);
+  if (dateMatch) return dateIndexResponse(env, dateMatch[1], null, context, url.searchParams.get('fresh') === '1');
 
   const competitionDateMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (competitionDateMatch) {
@@ -1523,6 +1528,7 @@ async function handle(request, env, context) {
       competitionDateMatch[2],
       decodeURIComponent(competitionDateMatch[1]),
       context,
+      url.searchParams.get('fresh') === '1',
     );
   }
 

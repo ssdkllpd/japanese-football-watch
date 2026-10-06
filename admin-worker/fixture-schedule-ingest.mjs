@@ -41,7 +41,7 @@ export function assertScheduleRequest(value) {
 }
 
 async function pending(database) {
-  const result = await database.prepare(`SELECT fixture_id, old_date_jst, new_date_jst, repair_token
+  const result = await database.prepare(`SELECT fixture_id, old_date_jst, new_date_jst, repair_token, registered_dates_json
     FROM fixture_schedule_refresh_pending ORDER BY changed_at, fixture_id LIMIT 1`).first();
   return result || null;
 }
@@ -49,21 +49,41 @@ async function pending(database) {
 export async function repairFixtureSchedule(env) {
   const database = env.FOOTBALL_DB;
   const record = await pending(database);
-  if (!record) return { operation: SCHEDULE_REPAIR_OPERATION, repaired: null };
+  if (!record) {
+    const queued = await database.prepare('SELECT date_jst FROM date_index_repair_queue ORDER BY changed_at,date_jst LIMIT 1').first();
+    if (!queued) return { operation: SCHEDULE_REPAIR_OPERATION, repaired: null };
+    await refreshDateIndexesFromD1(env, { schemaVersion: VERSION, operation: 'date_index_refresh', date: queued.date_jst, fixtureIds: [] });
+    return { operation: SCHEDULE_REPAIR_OPERATION, repaired: `date:${queued.date_jst}` };
+  }
   const row = await database.prepare(`SELECT fixture.date_jst, fixture.published_revision, revision.lifecycle_state
     FROM fixtures fixture LEFT JOIN fixture_revisions revision
       ON revision.id = fixture.published_revision AND revision.fixture_id = fixture.id
     WHERE fixture.canonical_id = ?`).bind(record.fixture_id).first();
-  if (!row || row.date_jst !== record.new_date_jst || (row.published_revision !== null && row.lifecycle_state !== 'published')) {
+  if (!row || (row.published_revision !== null && row.lifecycle_state !== 'published')) {
     throw new Error('Pending schedule repair differs from the stored fixture.');
   }
-  const base = { schemaVersion: VERSION, operation: 'date_index_refresh' };
-  if (record.old_date_jst !== record.new_date_jst) {
-    await refreshDateIndexesFromD1(env, { ...base, date: record.old_date_jst,
-      fixtureIds: [], scheduledDepartures: [{ fixtureId: record.fixture_id, date: record.new_date_jst }] });
+  // Include the intermediate destination and current date after a later writer moved it again.
+  const dates = [...new Set([record.old_date_jst, record.new_date_jst, row.date_jst])];
+  const registered = JSON.parse(record.registered_dates_json);
+  const additions = dates.filter(date => !registered.includes(date));
+  if (additions.length) {
+    const token=crypto.randomUUID();
+    await database.batch([
+      database.prepare(`INSERT INTO date_index_repair_queue(date_jst,repair_token,changed_at)
+        SELECT value,?,? FROM json_each(?) WHERE true
+        ON CONFLICT(date_jst) DO NOTHING`).bind(token,new Date().toISOString(),JSON.stringify(additions)),
+      database.prepare(`UPDATE fixture_schedule_refresh_pending SET registered_dates_json=?
+        WHERE fixture_id=? AND repair_token=?`).bind(JSON.stringify([...new Set([...registered,...dates])]),record.fixture_id,record.repair_token),
+    ]);
   }
-  await refreshDateIndexesFromD1(env, { ...base, date: record.new_date_jst,
-    fixtureIds: [record.fixture_id] });
+  // One date per invocation keeps legacy A->B->C recovery within the D1 budget.
+  const queued = await database.prepare(`SELECT date_jst FROM date_index_repair_queue
+    WHERE date_jst IN (SELECT value FROM json_each(?)) ORDER BY changed_at,date_jst LIMIT 1`)
+    .bind(JSON.stringify(dates)).first();
+  if (queued) await refreshDateIndexesFromD1(env, { schemaVersion: VERSION, operation:'date_index_refresh',date:queued.date_jst,fixtureIds:[] });
+  const remaining = await database.prepare(`SELECT date_jst FROM date_index_repair_queue
+    WHERE date_jst IN (SELECT value FROM json_each(?)) LIMIT 1`).bind(JSON.stringify(dates)).first();
+  if (remaining) return { operation:SCHEDULE_REPAIR_OPERATION,repaired:record.fixture_id,partial:true };
   await database.prepare(`DELETE FROM fixture_schedule_refresh_pending
     WHERE fixture_id = ? AND old_date_jst = ? AND new_date_jst = ? AND repair_token = ?`)
     .bind(record.fixture_id, record.old_date_jst, record.new_date_jst, record.repair_token).run();
@@ -114,9 +134,15 @@ export async function updateFixtureSchedule(env, request) {
         input.fixtureId, existing.date_jst, newDate, repairToken),
   ];
   const results = await database.batch(statements);
-  if (results.length !== 2 || results.some(result => result.success === false || result.meta?.changes !== 1)) {
+  if (results.length !== 2 || results.some(result => result.success === false)) {
     throw new Error('Schedule update is stale or the pending repair slot is occupied.');
   }
+  const committed = await database.prepare(`SELECT fixture.canonical_id FROM fixtures fixture
+    JOIN fixture_schedule_refresh_pending repair ON repair.fixture_id=fixture.canonical_id
+    WHERE fixture.canonical_id=? AND fixture.kickoff_utc=? AND fixture.date_jst=?
+      AND fixture.status_short=? AND repair.repair_token=?`)
+    .bind(input.fixtureId,new Date(input.newKickoffUtc).toISOString(),newDate,input.newStatus,repairToken).first();
+  if (!committed) throw new Error('Schedule update is stale or the pending repair slot is occupied.');
   return { operation: SCHEDULE_UPDATE_OPERATION, fixtureId: input.fixtureId,
     oldDate: existing.date_jst, newDate };
 }

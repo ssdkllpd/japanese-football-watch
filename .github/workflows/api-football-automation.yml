@@ -210,7 +210,7 @@ jobs:
         if: steps.plan.outputs.action_count != '0'
         run: |
           node scripts/d1/create-api-football-automation-admin-plan.js \
-            --plan .tmp/automation/discovery/plan.json \
+            --plan .tmp/automation/artifacts/fetched-plan.json \
             --artifacts .tmp/automation/artifacts \
             --output .tmp/automation/d1/admin-plan.json
 
@@ -223,7 +223,7 @@ jobs:
           : > .tmp/automation/quarantined-fixtures.txt
           while IFS= read -r provider_id; do
             export provider_id
-            if bash -euo pipefail <<'FIXTURE_SCRIPT'
+            cat > .tmp/automation/fixture-step.sh <<'FIXTURE_SCRIPT'
           dir=".tmp/automation/artifacts/fixtures/$provider_id"
           fixture_id=$(jq -r '.fixtureId' "$dir/manifest.json")
           competition_id=$(jq -r '.fixture.competitionId' "$dir/fixture.json")
@@ -231,7 +231,7 @@ jobs:
           fixture_date=$(jq -r '.fixture.dateJst' "$dir/fixture.json")
           node scripts/d1/check-automation-fixture-corrections.mjs \
             "$fixture_id" "$competition_id" "$season_id" "$fixture_date" \
-            "$(jq -r --arg id "$fixture_id" '.detailFetches[] | select(.fixtureId==$id) | .previousDateJst // empty' .tmp/automation/discovery/plan.json)" > "$dir/guard-report.json"
+            "$(jq -r --arg id "$fixture_id" '.fixtures[] | select(.fixtureId==$id) | .expectedPreviousDate // empty' .tmp/automation/d1/admin-plan.json)" > "$dir/guard-report.json"
           latest_revision=$(jq -er '.latestRevision' "$dir/guard-report.json")
           same_day_hash=$(jq -r '.sameDayCanonicalHash // "-"' "$dir/guard-report.json")
           fixture_key=$(jq -r '.r2Objects[] | select(.role=="fixture") | .key' "$dir/manifest.json")
@@ -262,22 +262,22 @@ jobs:
           npx --yes wrangler@4 r2 object put "$R2_BUCKET/$pointer_key" \
             --file "$dir/fixture-pointer.json" --content-type application/json --remote
           FIXTURE_SCRIPT
-            then
+            if bash -euo pipefail .tmp/automation/fixture-step.sh </dev/null; then
               echo "$provider_id" >> .tmp/automation/ready-fixtures.txt
             else
               echo "::warning::Fixture $provider_id was quarantined; other fixtures will continue."
               echo "$provider_id" >> .tmp/automation/quarantined-fixtures.txt
             fi
-          done < <(jq -r '.detailFetches[].providerFixtureId' .tmp/automation/discovery/plan.json)
+          done < <(jq -r '.fixtures[].fixtureId | sub("af:fixture:";"")' .tmp/automation/d1/admin-plan.json)
 
       - name: Publish standings objects to R2
         if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
         shell: bash
         run: |
           set -euo pipefail
-          jq -c '.standingsFetches[]' .tmp/automation/discovery/plan.json | while IFS= read -r scope; do
-            league=$(jq -r '.league' <<<"$scope")
-            season=$(jq -r '.season' <<<"$scope")
+          jq -c '.standings[]' .tmp/automation/d1/admin-plan.json | while IFS= read -r scope; do
+            league=$(jq -r '.competitionId | split(":") | .[2]' <<<"$scope")
+            season=$(jq -r '.seasonId | split(":") | .[3]' <<<"$scope")
             dir=".tmp/automation/artifacts/standings/$league-$season"
             jq -c '.r2Objects[]' "$dir/manifest.json" | while IFS= read -r object; do
               key=$(jq -r '.key' <<<"$object")
@@ -313,6 +313,7 @@ jobs:
         if: steps.gate.outputs.mode == 'execute' && steps.plan.outputs.action_count != '0'
         shell: bash
         run: |
+          jq -e '.quarantined | length == 0' .tmp/automation/artifacts/fetch-report.json >/dev/null
           test ! -s .tmp/automation/quarantined-fixtures.txt
           jq -e '.passed == true' .tmp/automation/d1/admin-report.json >/dev/null
 
@@ -322,6 +323,8 @@ jobs:
         with:
           name: api-football-automation-${{ github.run_id }}-${{ github.sha }}
           path: |
+            .tmp/automation/artifacts/fetch-report.json
+            .tmp/automation/artifacts/fetched-plan.json
             .tmp/automation/state.json
             .tmp/automation/discovery-start.json
             .tmp/automation/d1-budget.json

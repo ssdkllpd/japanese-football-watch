@@ -30,6 +30,14 @@ function readJson(filePath, fallback, label) {
   }
 }
 
+function readStoredDates(file) {
+  const value = readJson(file, null, 'D1 stored dates');
+  if (!Array.isArray(value) || value.length !== 1 || value[0]?.success !== true || !Array.isArray(value[0]?.results)) {
+    throw new Error('D1 stored dates query failed or is missing.');
+  }
+  return value[0].results;
+}
+
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
@@ -71,7 +79,7 @@ async function main() {
     policy, state, client: createClientFromEnv(process.env),
     now: args.now || Date.now(), preview: String(args.preview || '').toLowerCase() === 'true',
     storedDates: args['stored-dates']
-      ? readJson(path.resolve(args['stored-dates']), null, 'D1 stored dates')?.[0]?.results : null,
+      ? readStoredDates(path.resolve(args['stored-dates'])) : null,
     dailyBudget: args['daily-budget']
       ? readJson(path.resolve(args['daily-budget']), null, 'D1 daily publication budget') : null,
   });
@@ -86,4 +94,4 @@ if (require.main === module) {
   main().catch(error => { console.error(error?.stack || error); process.exitCode = 1; });
 }
 
-module.exports = { discoverAutomation, parseArgs, readJson, writeJson };
+module.exports = { readStoredDates, discoverAutomation, parseArgs, readJson, writeJson };

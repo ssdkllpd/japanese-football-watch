@@ -40,6 +40,10 @@
     {
       "name": "0010_d1_schedule_repair_token.sql",
       "sha256": "02fdbcad231d9b41cd67e83a5318ec4064267bb3296028448fedb8622b0ec99a"
+    },
+    {
+      "name": "0011_d1_date_repair_journal.sql",
+      "sha256": "153c18094bb2a4fd68df963619144fec12e22b147b1e8071e7af23faf812922c"
     }
   ],
   "tables": {

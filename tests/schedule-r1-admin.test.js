@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  setup, baseline, update, jst, r2Ids, r2Payload, feedOrError, pendingRows, fixtureRow,
+  drain, setup, baseline, update, jst, r2Ids, r2Payload, feedOrError, pendingRows, fixtureRow,
   dateIndexR2Key, competitionDateIndexR2Key,
 } from './helpers/schedule-harness.mjs';
 
@@ -15,7 +15,7 @@ test('terminal and interrupted states reach the stored header and both date inde
     const ctx = setup([{ id: 9001, league: 39, kickoff: '2026-10-01T10:00:00.000Z' }]);
     await baseline(ctx, ['2026-10-01']);
     assert.equal((await ctx.send(update(9001, 39, '2026-10-01T10:00:00.000Z', '2026-10-01T10:00:00.000Z', 'NS', status))).status, 200);
-    assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+    assert.equal((await drain(ctx)).status, 200);
     assert.equal(fixtureRow(ctx, 9001).status_short, status);
     assert.equal(r2Payload(ctx, G('2026-10-01')).fixtures[0].status.short, status);
     assert.equal(r2Payload(ctx, C(39, '2026-10-01')).fixtures[0].status.short, status);
@@ -41,10 +41,10 @@ test('an old repair cannot delete a newer same-date checkpoint', async () => {
       return statement.bind(...params).run();
     } }) };
   };
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await ctx.send({operation:'fixture_schedule_repair'})).status, 200);
   assert.equal(pendingRows(ctx).length, 1);
   assert.notEqual(ctx.db.prepare('SELECT repair_token FROM fixture_schedule_refresh_pending').get().repair_token, firstToken);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.equal(pendingRows(ctx).length, 0);
   assert.equal(r2Payload(ctx, G('2026-10-01')).fixtures[0].kickoffUtc, '2026-10-01T12:00:00.000Z');
   ctx.db.close();
@@ -58,7 +58,7 @@ test('S01 same JST date time change: D1 feed and R2 payload get the new kickoff 
   await baseline(ctx, ['2026-10-03']);
   const before = ctx.db.prepare("SELECT fixture_id_digest FROM date_index_coverages WHERE date_jst='2026-10-03'").get().fixture_id_digest;
   assert.equal((await ctx.send(update(1001, 39, '2026-10-03T10:00:00.000Z', '2026-10-03T14:00:00.000Z'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   const feed = await feedOrError(ctx, '2026-10-03');
   assert.deepEqual(feed.ids, [F(1002), F(1001)]);
   const r2 = r2Payload(ctx, G('2026-10-03'));
@@ -78,7 +78,7 @@ test('S02 UTC date changes but JST date does not', async () => {
   await baseline(ctx, ['2026-10-04']);
   assert.equal((await ctx.send(update(1101, 39, '2026-10-03T16:00:00.000Z', '2026-10-04T01:00:00.000Z'))).status, 200);
   assert.deepEqual(pendingRows(ctx), [{ fixture_id: F(1101), old_date_jst: '2026-10-04', new_date_jst: '2026-10-04' }]);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Payload(ctx, G('2026-10-04')).fixtures.map(f => f.kickoffUtc), ['2026-10-04T01:00:00.000Z']);
   assert.equal(ctx.objects.has(G('2026-10-03')), false);
 });
@@ -91,7 +91,7 @@ test('S03 UTC date same, JST date changes (14:00Z -> 15:30Z) moves generic + com
   ]);
   await baseline(ctx, ['2026-10-03', '2026-10-04']);
   assert.equal((await ctx.send(update(1201, 39, '2026-10-03T14:00:00.000Z', '2026-10-03T15:30:00.000Z'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Ids(ctx, G('2026-10-03')), [F(1202)]);
   assert.deepEqual(r2Ids(ctx, C(39, '2026-10-03')), [F(1202)]);
   assert.deepEqual(r2Ids(ctx, G('2026-10-04')), [F(1201), F(1203)]);
@@ -105,7 +105,7 @@ test('S04 year boundary 2026-12-31T14:59:59Z -> 15:00:00Z moves to 2027-01-01', 
   await baseline(ctx, ['2026-12-31', '2027-01-01']);
   assert.equal(jst('2026-12-31T15:00:00.000Z'), '2027-01-01');
   assert.equal((await ctx.send(update(1301, 140, '2026-12-31T14:59:59.000Z', '2026-12-31T15:00:00.000Z'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Ids(ctx, G('2026-12-31')), []);
   assert.deepEqual(r2Ids(ctx, C(140, '2026-12-31')), []);
   assert.deepEqual(r2Ids(ctx, G('2027-01-01')), [F(1301)]);
@@ -130,7 +130,7 @@ test('S06 A->B->C and A->B->A converge with no stale list entry and no pending',
   const k = d => `${d}T10:00:00.000Z`;
   for (const [a, b] of [[days[0], days[1]], [days[1], days[2]], [days[2], days[1]], [days[1], days[0]]]) {
     assert.equal((await ctx.send(update(1501, 39, k(a), k(b)))).status, 200);
-    assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+    assert.equal((await drain(ctx)).status, 200);
   }
   assert.deepEqual(r2Ids(ctx, G(days[0])), [F(1501), F(1502)]);
   for (const d of days.slice(1)) {
@@ -149,9 +149,9 @@ test('S07 swap two fixtures between dates; last fixture of a competition leaves 
   ]);
   await baseline(ctx, ['2026-10-10', '2026-10-11']);
   assert.equal((await ctx.send(update(1601, 39, '2026-10-10T10:00:00.000Z', '2026-10-11T09:00:00.000Z'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.equal((await ctx.send(update(1602, 140, '2026-10-11T10:00:00.000Z', '2026-10-10T09:00:00.000Z'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Ids(ctx, G('2026-10-10')), [F(1602)]);
   assert.deepEqual(r2Ids(ctx, C(39, '2026-10-10')), []);           // emptied, not left stale
   assert.deepEqual(r2Ids(ctx, C(140, '2026-10-10')), [F(1602)]);
@@ -171,11 +171,11 @@ test('S08 R2 put failure at every repair boundary, repeated repair converges', a
     await baseline(ctx, ['2026-10-01', '2026-10-02']);
     assert.equal((await ctx.send(update(1701, 39, '2026-10-01T10:00:00.000Z', '2026-10-02T12:00:00.000Z'))).status, 200);
     ctx.faults.failPutKeys.add(failing);
-    assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 422, failing);
+    assert.equal((await drain(ctx)).status, 422, failing);
     assert.equal(pendingRows(ctx).length, 1);
     // blocked second update while pending
     assert.equal((await ctx.send(update(1702, 39, '2026-10-02T10:00:00.000Z', '2026-10-04T10:00:00.000Z'))).status, 422);
-    for (let i = 0; i < 3; i += 1) assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+    for (let i = 0; i < 3; i += 1) assert.equal((await drain(ctx)).status, 200);
     assert.deepEqual(r2Ids(ctx, G('2026-10-01')), []);
     assert.deepEqual(r2Ids(ctx, C(39, '2026-10-01')), []);
     assert.deepEqual(r2Ids(ctx, G('2026-10-02')), [F(1702), F(1701)]);
@@ -194,9 +194,9 @@ test('S09 crash after all R2 puts and coverage but before pending DELETE: re-run
     if (armed && /DELETE FROM fixture_schedule_refresh_pending/.test(sql)) { armed = false; throw new Error('injected crash'); }
     return realPrepare(sql);
   };
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 422);
+  assert.equal((await drain(ctx)).status, 422);
   assert.equal(pendingRows(ctx).length, 1);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Ids(ctx, G('2026-10-02')), [F(1801)]);
   assert.deepEqual(pendingRows(ctx), []);
 });
@@ -237,7 +237,7 @@ test('S11 [PUBLISH DURING PENDING] repair converges after result publication', a
     VALUES((SELECT id FROM fixtures WHERE canonical_id='af:fixture:2001'),1,'published','d1','${'c'.repeat(64)}','2026-10-02T13:00:00.000Z','2026-10-02T13:00:00.000Z');
     UPDATE fixtures SET published_revision=(SELECT id FROM fixture_revisions WHERE revision_no=1) WHERE canonical_id='af:fixture:2001';`);
   const results = [];
-  for (let i = 0; i < 3; i += 1) results.push((await ctx.send({ operation: 'fixture_schedule_repair' })).status);
+  for (let i = 0; i < 3; i += 1) results.push((await drain(ctx)).status);
   const other = await ctx.send(update(2002, 39, '2026-10-08T10:00:00.000Z', '2026-10-09T10:00:00.000Z'));
   const oldFeed = await feedOrError(ctx, '2026-10-01');
   const newFeed = await feedOrError(ctx, '2026-10-02');
@@ -268,7 +268,9 @@ test('S12 two concurrent updates for different fixtures reserve at most one pend
   db.prepare = realPrepare; db.batch = realBatch;
   let drained = 0;
   while ((await ctx.send({ operation: 'fixture_schedule_repair' })).body.report?.repaired) drained += 1;
-  assert.equal(drained, pend.length);
+  assert.equal(pend.length,1);
+  assert.equal([a,b].filter(result=>result.status===200).length,1);
+  assert.equal(drained,2,'the winning fixture has two date repairs');
   assert.equal(r2Ids(ctx, G('2026-10-01')).length, 1);
   // Exactly one concurrent update may reserve the repair slot.: "A second change is refused until that repair is complete."
   assert.ok(pend.length <= 1, `design claim violated: ${pend.length} pending rows`);
@@ -278,12 +280,12 @@ test('S13 NS -> PST keeps last confirmed kickoff/date; PST -> NS moves to new da
   const ctx = setup([{ id: 2201, league: 39, kickoff: '2026-10-01T10:00:00.000Z' }]);
   await baseline(ctx, ['2026-10-01', '2026-11-20']);
   assert.equal((await ctx.send(update(2201, 39, '2026-10-01T10:00:00.000Z', '2026-10-01T10:00:00.000Z', 'NS', 'PST'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   const f = (await feedOrError(ctx, '2026-10-01')).feed.fixtures[0];
   assert.equal(f.status.short, 'PST');
   assert.equal(r2Payload(ctx, G('2026-10-01')).fixtures[0].status.short, 'PST');
   assert.equal((await ctx.send(update(2201, 39, '2026-10-01T10:00:00.000Z', '2026-11-20T15:00:00.000Z', 'PST', 'NS'))).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   assert.deepEqual(r2Ids(ctx, G('2026-10-01')), []);
   assert.deepEqual(r2Ids(ctx, G('2026-11-21')), [F(2201)]); // 15:00Z -> JST 11-21
   assert.deepEqual((await feedOrError(ctx, '2026-11-21')).ids, [F(2201)]);

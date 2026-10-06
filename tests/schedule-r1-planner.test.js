@@ -42,7 +42,7 @@ test('P01 cancellation, abandonment and suspended headers are propagated; rich r
   const w = world();
   const cases = { 390001: 'CANC', 390002: 'ABD', 390003: 'AWD', 390004: 'WO', 390005: 'FT', 390006: '1H', 390007: 'SUSP', 390008: 'INT' };
   for (const [id, st] of Object.entries(cases)) find(w, Number(id)).fixture.status.short = st;
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.equal(plan.changes.length, 6);
   assert.deepEqual(plan.held.map(h => h.reason), Array(2).fill('non_schedule_status'));
 });
@@ -51,7 +51,7 @@ test('P02 PST with a placeholder kickoff produces BOTH a change (old kickoff kep
   const w = world();
   const row = find(w, 400010); row.fixture.status.short = 'PST'; row.fixture.date = '2026-12-31T00:00:00+00:00';
   const tbd = find(w, 400011); tbd.fixture.status.short = 'TBD'; tbd.fixture.date = '2026-10-17T00:00:00+00:00';
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.deepEqual(plan.changes.map(c => c.fixtureId), ['af:fixture:400010', 'af:fixture:400011']);
   assert.ok(plan.changes.every(c => c.newKickoffUtc === '2026-10-10T10:00:00.000Z'));
   // TBD (date known, time open) is kept on the OLD date until NS: by spec, not an error.
@@ -64,7 +64,7 @@ test('P03 the nearest kickoffs are selected before later changes', async () => {
   for (let i = 0; i < 20; i += 1) ids.push([390100 + i, '2026-11-20T10:00:00.000Z']);
   for (let i = 0; i < 5; i += 1) ids.push([940100 + i, '2026-10-01T10:00:00.000Z']); // league 94 -> 'af:fixture:94...' sorts after 'af:fixture:39...'
   for (const [id, k] of ids) find(w, id).fixture.date = k;
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   const firstBatch = plan.changes.slice(0, 20).map(c => c.fixtureId); // executor: plan.changes.slice(0, 20)
   const nearest = ids.slice(20).map(([id]) => `af:fixture:${id}`);
   // Independent expectation: nearest-kickoff changes should not be deferred behind later ones.
@@ -94,32 +94,32 @@ test('P05 a missing provider fixture is held while unrelated changes continue', 
   const w = world();
   w.provider.get(39).splice(5, 1);                  // provider dropped / replaced one fixture ID
   find(w, 400020).fixture.date = '2026-10-12T10:00:00.000Z'; // an unrelated legitimate change
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.ok(plan.held.some(item => item.fixtureId === 'af:fixture:390005' && item.reason === 'provider_fixture_missing'));
   assert.ok(plan.changes.some(item => item.fixtureId === 'af:fixture:400020'));
 });
 
 test('P06 paging, empty, quota and 429/5xx all fail closed before any write', async () => {
   const w = world();
-  await assert.rejects(planScheduleSync({ client: client(w.provider, { paging: l => (l === 61 ? 2 : 1) }), inventory: inv(w.rows) }), /incomplete/);
+  await assert.rejects(planScheduleSync({ client: client(w.provider, { paging: l => (l === 61 ? 2 : 1) }), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' }), /incomplete/);
   const empty = world(); empty.provider.set(78, []);
   await assert.rejects(planScheduleSync({ client: client(empty.provider), inventory: inv(empty.rows) }), /incomplete/);
-  await assert.rejects(planScheduleSync({ client: client(w.provider, { quota: 110 }), inventory: inv(w.rows) }), /quota/);
-  await assert.rejects(planScheduleSync({ client: client(w.provider, { fail: l => (l === 135 ? new Error('HTTP 429') : null) }), inventory: inv(w.rows) }), /429/);
+  await assert.rejects(planScheduleSync({ client: client(w.provider, { quota: 110 }), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' }), /quota/);
+  await assert.rejects(planScheduleSync({ client: client(w.provider, { fail: l => (l === 135 ? new Error('HTTP 429') : null) }), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' }), /429/);
   // quota ends below reserve (100): 111 start, 10 calls
-  await assert.rejects(planScheduleSync({ client: client(w.provider, { quota: 105 }), inventory: inv(w.rows) }), /quota/);
+  await assert.rejects(planScheduleSync({ client: client(w.provider, { quota: 105 }), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' }), /quota/);
 });
 
 test('P07 a complete configured inventory below 3000 rows can be scanned', async () => {
   const w = world({ perLeague: 299 });
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.equal(plan.scanned, 2990);
 });
 
 test('P08 new provider ID is only held; duplicate across leagues and scope change fail closed', async () => {
   const w = world();
   w.provider.get(39).push({ fixture: { id: 399999, date: '2026-10-10T10:00:00Z', status: { short: 'NS' } }, league: { id: 39, season: 2026 } });
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.deepEqual(plan.held, [{ fixtureId: 'af:fixture:399999', reason: 'new_fixture_requires_catalog' }]);
   const d = world(); d.provider.get(40).push(structuredClone(d.provider.get(39)[0])); d.provider.get(40).at(-1).league.id = 40;
   await assert.rejects(planScheduleSync({ client: client(d.provider), inventory: inv(d.rows) }), /duplicated|scope/);
@@ -129,6 +129,6 @@ test('P09 timezone notation: +01:00 provider offsets and epoch comparison', asyn
   const w = world();
   find(w, 610001).fixture.date = '2026-10-10T11:00:00+01:00'; // same instant -> no change
   find(w, 610002).fixture.date = '2026-10-25T02:30:00+02:00'; // CEST end day -> 00:30Z
-  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows) });
+  const plan = await planScheduleSync({ client: client(w.provider), inventory: inv(w.rows), now: '2026-09-30T03:00:00Z' });
   assert.deepEqual(plan.changes.map(c => [c.fixtureId, c.newKickoffUtc]), [['af:fixture:610002', '2026-10-25T00:30:00.000Z']]);
 });

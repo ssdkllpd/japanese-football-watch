@@ -27,7 +27,7 @@ function inventoryRows(json) {
   return rows;
 }
 
-async function planScheduleSync({ client, inventory }) {
+async function planScheduleSync({ client, inventory, now = Date.now() }) {
   const scopes = new Set(policy.competitionSeasons.map(item => `af:season:${item.league}:${item.season}`));
   const stored = inventoryRows(inventory).filter(row => scopes.has(row.season_id));
   if (!stored.length) throw new Error('D1 schedule inventory has no configured fixtures.');
@@ -86,17 +86,23 @@ async function planScheduleSync({ client, inventory }) {
     }
   }
   const missing = stored.filter(row => !seen.has(row.fixture_id));
+  for (const scope of policy.competitionSeasons) {
+    const scoped = stored.filter(row => row.season_id === `af:season:${scope.league}:${scope.season}`);
+    const lost = scoped.filter(row => !seen.has(row.fixture_id));
+    if (lost.length > Math.max(2, Math.floor(scoped.length * 0.05))) throw new Error(`Season ${scope.league}:${scope.season} has excessive missing fixtures; response may be partial.`);
+  }
   held.push(...missing.map(row => ({ fixtureId: row.fixture_id,
     reason: 'provider_fixture_missing', storedKickoffUtc: row.kickoff_utc, storedStatus: row.status_short })));
   if (!Number.isSafeInteger(responseQuota?.dailyRemaining)
     || responseQuota.dailyRemaining < policy.limits.dailyRequestReserve) {
     throw new Error('Provider quota fell below the reserved balance.');
   }
-  const now = Date.now();
+  now = Number(new Date(now));
+  if (!Number.isFinite(now)) throw new Error('Schedule clock is invalid.');
   function urgency(item) {
     const dates = [Date.parse(item.oldKickoffUtc), Date.parse(item.newKickoffUtc)];
     const future = dates.filter(date => date >= now);
-    return future.length ? Math.min(...future) : Math.max(...dates);
+    return future.length ? Math.min(...future) : Number.POSITIVE_INFINITY;
   }
   changes.sort((a, b) => urgency(a) - urgency(b) || a.fixtureId.localeCompare(b.fixtureId));
   return { schemaVersion: 'jfw-fixture-schedule-plan/1', generatedAt: new Date().toISOString(),

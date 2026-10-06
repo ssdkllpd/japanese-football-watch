@@ -1,4 +1,3 @@
-import { repairFixtureSchedule } from './fixture-schedule-ingest.mjs';
 import fixtureImporterModule from '../scripts/d1/fixture-bundle-importer.js';
 import fixturePublishLimitsModule from '../scripts/d1/fixture-publish-limits.js';
 import {
@@ -795,11 +794,9 @@ export async function publishFixtureFromR2(env, input) {
   const queued = await first(env.FOOTBALL_DB,
     'SELECT fixture_id FROM fixture_schedule_refresh_pending WHERE fixture_id = ?', [input.fixtureId]);
   if (queued) {
-    await repairFixtureSchedule(env);
-    if (await first(env.FOOTBALL_DB,
-      'SELECT fixture_id FROM fixture_schedule_refresh_pending WHERE fixture_id = ?', [input.fixtureId])) {
-      throw new Error('Finish the earlier schedule repairs before publishing this fixture.');
-    }
+    const error = new Error('Finish the earlier schedule repairs before publishing this fixture.');
+    error.status = 409;
+    throw error;
   }
   const sourceR2Key = expectedFixtureKey(input);
   const object = await env.FOOTBALL_DATA.get(sourceR2Key);

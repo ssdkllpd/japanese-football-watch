@@ -1,4 +1,4 @@
-// Regression harness adapted from the user-supplied independent Claude reproduction.
+// Regression harness adapted from the user-supplied SCHED-R2 Claude reproduction.
 // Real node:sqlite with the repository migrations; R2 is an in-memory map with
 // per-key fault injection. Expectations in the tests are written from explicit
 // inputs, never from planner / refresh output.
@@ -112,6 +112,44 @@ export function fixtureRow(ctx, id) {
   const r = ctx.db.prepare('SELECT kickoff_utc, date_jst, status_short, published_revision FROM fixtures WHERE canonical_id = ?')
     .get(`af:fixture:${id}`);
   return r ? { ...r } : null;
+}
+
+// ---- re-review additions ----
+import fs from 'node:fs';
+import os from 'node:os';
+const { writeFixtureEnvelope } = require(path.join(ROOT, 'scripts/v2/fetch-fixture-vertical-slice.js'));
+const { createAutomationAdminPlan } = require(path.join(ROOT, 'scripts/d1/create-api-football-automation-admin-plan.js'));
+export { createAutomationAdminPlan };
+export const coverage = (ctx, date) => {
+  const g = ctx.db.prepare('SELECT fixture_count FROM date_index_coverages WHERE date_jst = ?').get(date);
+  const c = ctx.db.prepare(`SELECT c.canonical_id AS id, v.fixture_count AS n FROM competition_date_index_coverages v
+    JOIN competitions c ON c.id = v.competition_id WHERE v.date_jst = ? ORDER BY 1`).all(date).map(r => `${r.id}=${r.n}`);
+  return { generic: g ? g.fixture_count : null, competitions: c };
+};
+export function tmpRoot(tag) { return fs.mkdtempSync(path.join(os.tmpdir(), `jfw-${tag}-`)); }
+// Write a finalized provider bundle for a fixture into R2 + artifact directory; returns the raw provider row.
+export function finalBundle(ctx, root, id, league, kickoff, { putR2 = true, status = 'FT' } = {}) {
+  const raw = { fixture: { id, date: kickoff, status: { short: status, long: 'Match Finished', elapsed: 90 } },
+    league: { id: league, season: 2026, name: 'L', country: 'C' },
+    teams: { home: { id: 40, name: 'Home' }, away: { id: 50, name: 'Away' } },
+    goals: { home: 1, away: 0 }, score: {}, events: [], lineups: [], players: [], statistics: [] };
+  const dir = path.join(root, 'fixtures', String(id));
+  writeFixtureEnvelope(dir, { fixture: raw, quota: {} }, { fetchedAt: '2026-10-04T06:00:00.000Z', finalized: true });
+  const bundle = JSON.parse(fs.readFileSync(path.join(dir, 'fixture.json'), 'utf8'));
+  if (putR2) ctx.objects.set(`football/v2/competitions/af:competition:${league}/seasons/af:season:${league}:2026/fixtures/af:fixture:${id}.json`, JSON.stringify(bundle));
+  return raw;
+}
+export const adminFetch = ctx => (u, i) => handleAdminIngest(new Request(u, i), ctx.env);
+// Count D1 round-trips (each first/all/run and each batch) made through the binding.
+export function countD1(ctx) {
+  const db = ctx.env.FOOTBALL_DB; const counter = { single: 0, batches: 0, batchStatements: 0 };
+  const realPrepare = db.prepare.bind(db); const realBatch = db.batch.bind(db);
+  const wrap = s => ({ bind: (...a) => wrap(s.bind(...a)), first: (...a) => { counter.single += 1; return s.first(...a); },
+    all: () => { counter.single += 1; return s.all(); }, run: () => { counter.single += 1; return s.run(); }, _inner: s });
+  db.prepare = sql => wrap(realPrepare(sql));
+  db.batch = st => { counter.batches += 1; counter.batchStatements += st.length; return realBatch(st.map(x => x._inner || x)); };
+  counter.restore = () => { db.prepare = realPrepare; db.batch = realBatch; };
+  return counter;
 }
 
 export async function drain(ctx) {

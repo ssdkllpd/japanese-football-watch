@@ -9,12 +9,20 @@ export const SCHEDULE_INVENTORY_SQL = `SELECT fixture.canonical_id AS fixture_id
   competition.canonical_id AS competition_id, season.canonical_id AS season_id,
   fixture.kickoff_utc, fixture.date_jst, fixture.status_short, fixture.status_long,
   fixture.status_elapsed, fixture.ingestion_state, fixture.published_revision,
+  json_object('home',json_object('id',home.canonical_id,'providerId',home.provider_id,'name',home.name,'logo',home.logo_url,'winner',home_winner),
+    'away',json_object('id',away.canonical_id,'providerId',away.provider_id,'name',away.name,'logo',away.logo_url,'winner',away_winner)) AS teams_json,
+  json_object('goals',json_object('home',fixture.home_goals,'away',fixture.away_goals),
+    'halftime',json_object('home',(SELECT home_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='halftime'),'away',(SELECT away_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='halftime')),'fulltime',json_object('home',(SELECT home_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='fulltime'),'away',(SELECT away_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='fulltime')),'extratime',json_object('home',(SELECT home_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='extratime'),'away',(SELECT away_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='extratime')),'penalty',json_object('home',(SELECT home_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='penalty'),'away',(SELECT away_value FROM fixture_score_parts WHERE fixture_id=fixture.id AND score_kind='penalty'))) AS score_json,
+  json_object('id',competition.canonical_id,'providerId',competition.provider_id,'name',competition.name,
+    'country',competition.country_name,'logo',competition.logo_url,'flag',competition.flag_url) AS competition_json,
   COUNT(*) OVER () AS total FROM fixtures fixture
   JOIN competition_seasons season ON season.id=fixture.competition_season_id
-  JOIN competitions competition ON competition.id=season.competition_id ORDER BY fixture.canonical_id`;
+  JOIN competitions competition ON competition.id=season.competition_id
+  JOIN teams home ON home.id=fixture.home_team_id JOIN teams away ON away.id=fixture.away_team_id
+  ORDER BY fixture.canonical_id`;
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 export function d1AuditRows(value) {
-  if (!Array.isArray(value) || value.length !== 1 || value[0]?.success === false || !Array.isArray(value[0]?.results)) throw new Error('D1 audit query failed.');
+  if (!Array.isArray(value) || value.length !== 1 || value[0]?.success !== true || !Array.isArray(value[0]?.results)) throw new Error('D1 audit query failed.');
   return value[0].results;
 }
 async function main() {
@@ -36,6 +44,9 @@ async function main() {
   const before = d1AuditRows(read(beforeFile));
   const after = query('inventory', SCHEDULE_INVENTORY_SQL);
   const pending = query('pending', 'SELECT fixture_id,old_date_jst,new_date_jst,changed_at FROM fixture_schedule_refresh_pending ORDER BY fixture_id');
+  const dateRepairs = query('date-repairs', 'SELECT date_jst,repair_token FROM date_index_repair_queue ORDER BY date_jst');
+  const correctionSql = "SELECT target_canonical_id,field_path,status,applied_value_json FROM correction_states WHERE target_kind='fixture' AND (field_path LIKE 'fixture.status%' OR field_path LIKE 'fixture.teams%' OR field_path LIKE 'fixture.score%') ORDER BY target_canonical_id,field_path";
+  const corrections = query('corrections', correctionSql);
   const genericCoverages = query('generic-coverages', 'SELECT date_jst,fixture_count,fixture_id_digest FROM date_index_coverages ORDER BY date_jst');
   const competitionCoverages = query('competition-coverages', 'SELECT c.canonical_id AS competition_id,coverage.date_jst,coverage.fixture_count,coverage.fixture_id_digest FROM competition_date_index_coverages coverage JOIN competitions c ON c.id=coverage.competition_id ORDER BY c.canonical_id,coverage.date_jst');
   const scopes = affectedScheduleScopes(changes, before, after);
@@ -55,7 +66,7 @@ async function main() {
   for (const scopeKey of sampleKeys) {
     const scope = scopes.get(scopeKey);
     const route = scope.competitionId ? `/api/v2/competitions/${encodeURIComponent(scope.competitionId)}/dates/${scope.date}` : `/api/v2/dates/${scope.date}`;
-    const response = await fetch(new URL(route, target.workerOrigin), { headers: { Origin: target.appOrigin },
+    const response = await fetch(new URL(`${route}?fresh=1`, target.workerOrigin), { headers: { Origin: target.appOrigin },
       redirect: 'error', signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`Public Worker read refused (${response.status}); audit incomplete.`);
     const sample = { scope: scopeKey, status: response.status, payload: await response.json() };
@@ -63,8 +74,10 @@ async function main() {
     publicSamples.push(sample);
   }
   const inventoryEnd = query('inventory-end', SCHEDULE_INVENTORY_SQL);
+  if (JSON.stringify(query('corrections-end',correctionSql)) !== JSON.stringify(corrections)) throw new Error('Corrections changed during audit.');
+  if (JSON.stringify(query('date-repairs-end','SELECT date_jst,repair_token FROM date_index_repair_queue ORDER BY date_jst')) !== JSON.stringify(dateRepairs)) throw new Error('Date repairs changed during audit.');
   const report = auditScheduleSync({ changes, before, after, pending, genericCoverages,
-    competitionCoverages, r2, publicSamples, inventoryEnd });
+    competitionCoverages, r2, publicSamples, inventoryEnd, corrections, dateRepairs });
   fs.writeFileSync(path.join(root, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report));
 }

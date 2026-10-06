@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { setup, baseline, update, dateIndexR2Key, competitionDateIndexR2Key } from './helpers/schedule-harness.mjs';
+import { drain, setup, baseline, update, dateIndexR2Key, competitionDateIndexR2Key } from './helpers/schedule-harness.mjs';
 import { auditScheduleSync, affectedScheduleScopes } from '../scripts/d1/audit-fixture-schedule-sync.mjs';
 import { SCHEDULE_INVENTORY_SQL } from '../scripts/d1/capture-schedule-audit.mjs';
 
@@ -14,7 +14,7 @@ async function evidence() {
   const before = ctx.db.prepare(SCHEDULE_INVENTORY_SQL).all();
   const change = update(5101, 39, '2026-10-01T10:00:00.000Z', '2026-10-02T10:00:00.000Z');
   assert.equal((await ctx.send(change)).status, 200);
-  assert.equal((await ctx.send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain(ctx)).status, 200);
   const after = ctx.db.prepare(SCHEDULE_INVENTORY_SQL).all();
   const scopes = affectedScheduleScopes([change], before, after);
   const r2 = {};

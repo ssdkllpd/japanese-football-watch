@@ -77,10 +77,13 @@ test('automation fetch executor completes and validates every artifact before pu
   assert.equal(merged.fixtures[0].fixtureId, 'af:fixture:9001');
 });
 
-test('automation fetch executor rejects a fixture that regresses from final status', async t => {
-  await assert.rejects(() => executeAutomationFetches({
-    plan: plan(), outputRoot: workspace(t), client: client('2H'),
-  }), /not the planned finalized identity/);
+test('automation fetch executor quarantines a regressed fixture and still fetches standings', async t => {
+  const root = workspace(t);
+  const report = await executeAutomationFetches({ plan: plan(), outputRoot: root, client: client('2H') });
+  assert.equal(report.fixtureCount, 0);
+  assert.equal(report.standingsCount, 1);
+  assert.match(report.quarantined[0].error, /not the planned finalized identity/);
+  assert.equal(fs.existsSync(path.join(root,'fixtures','9001')),false);
 });
 
 test('automation fetch executor refuses disabled or malformed plans before any API call', async t => {
@@ -89,4 +92,13 @@ test('automation fetch executor refuses disabled or malformed plans before any A
     plan: { ...plan(), mode: 'disabled' }, outputRoot: workspace(t), client: fake,
   }), /invalid or disabled/);
   assert.deepEqual(fake.calls, []);
+});
+
+test('malformed or duplicated fetch identities fail before calls or directory deletion', async t => {
+  for (const mutate of [p=>p.detailFetches[0].providerFixtureId='../escape',
+    p=>p.detailFetches.push({...p.detailFetches[0]}),p=>p.standingsFetches[0].league=-39]) {
+    const value=plan();mutate(value);const fake=client();
+    await assert.rejects(()=>executeAutomationFetches({plan:value,outputRoot:workspace(t),client:fake}),/invalid or duplicated/);
+    assert.deepEqual(fake.calls,[]);
+  }
 });

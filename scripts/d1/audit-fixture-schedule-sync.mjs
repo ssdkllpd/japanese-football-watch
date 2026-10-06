@@ -4,7 +4,8 @@ import { assertValidDateIndexPayload } from '../../shared/date-index-contract.mj
 export const jstDate = value => new Date(Date.parse(value) + 9 * 3600000).toISOString().slice(0, 10);
 const digest = ids => createHash('sha256').update(`${[...ids].sort().join('\n')}\n`).digest('hex');
 const fields = ['fixture_id', 'competition_id', 'season_id', 'kickoff_utc', 'date_jst',
-  'status_short', 'status_long', 'status_elapsed', 'ingestion_state', 'published_revision'];
+  'status_short', 'status_long', 'status_elapsed', 'ingestion_state', 'published_revision',
+  'teams_json', 'score_json', 'competition_json'];
 const labels = { NS: 'Not Started', TBD: 'Time to be defined', PST: 'Postponed',
   CANC: 'Cancelled', ABD: 'Abandoned', AWD: 'Technical Loss', WO: 'Walkover',
   SUSP: 'Match Suspended', INT: 'Match Interrupted' };
@@ -30,22 +31,50 @@ export function affectedScheduleScopes(changes, before, after) {
   }
   return scopes;
 }
-function verifyPayload(payload, scope, rows, label) {
+function sameJson(left,right) {
+  const stable = value => value && typeof value === 'object'
+    ? Array.isArray(value) ? value.map(stable) : Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])) : value;
+  return JSON.stringify(stable(left))===JSON.stringify(stable(right));
+}
+function verifyPayload(payload, scope, rows, label, corrections) {
   assertValidDateIndexPayload(payload, { expectedDate: scope.date, expectedCompetitionId: scope.competitionId });
   const actual = new Map(payload.fixtures.map(item => [item.fixtureId, item]));
   if (actual.size !== rows.length) throw new Error(`${label} fixture count differs from D1.`);
   for (const row of rows) {
     const item = actual.get(row.fixture_id);
+    const expected = { status: { short:row.status_short,long:row.status_long,elapsed:row.status_elapsed },
+      teams: JSON.parse(row.teams_json), score: JSON.parse(row.score_json) };
+    for (const side of ['home','away']) {
+      const winner=expected.teams[side].winner;
+      expected.teams[side].winner=winner===null ? null : Boolean(winner);
+    }
+    for (const correction of corrections.filter(c => c.target_canonical_id === row.fixture_id && c.status === 'active')
+      .sort((a,b)=>a.field_path.localeCompare(b.field_path))) {
+      const parts=correction.field_path.split('.');
+      if (parts.shift()!=='fixture' || !['status','teams','score'].includes(parts[0])) continue;
+      let target=expected;
+      for (const part of parts.slice(0,-1)) {
+        if (!target || !Object.hasOwn(target,part)) throw new Error('Audit correction path is invalid.');
+        target=target[part];
+      }
+      if (!target || !Object.hasOwn(target,parts.at(-1))) throw new Error('Audit correction path is invalid.');
+      target[parts.at(-1)]=JSON.parse(correction.applied_value_json);
+    }
     if (!item || item.kickoffUtc !== new Date(row.kickoff_utc).toISOString()
       || item.dateJst !== row.date_jst || item.competitionId !== row.competition_id
-      || item.seasonId !== row.season_id || item.status.short !== row.status_short
-      || item.status.long !== row.status_long || item.status.elapsed !== row.status_elapsed
-      || item.ingestionState !== row.ingestion_state) throw new Error(`${label} payload differs from D1: ${row.fixture_id}.`);
+      || item.seasonId !== row.season_id || item.status.short !== expected.status.short
+      || item.status.long !== expected.status.long || item.status.elapsed !== expected.status.elapsed
+      || item.ingestionState !== row.ingestion_state
+      || !sameJson(item.teams,expected.teams) || !sameJson(item.score,expected.score)
+      || !sameJson(item.competition,JSON.parse(row.competition_json))
+      || item.competitionName !== JSON.parse(row.competition_json).name) throw new Error(`${label} payload differs from D1: ${row.fixture_id}.`);
   }
 }
 export function auditScheduleSync({ changes, before, after, pending, genericCoverages,
-  competitionCoverages, r2, publicSamples, inventoryEnd }) {
+  competitionCoverages, r2, publicSamples, inventoryEnd, corrections = [], dateRepairs = [] }) {
   if (!Array.isArray(changes) || !Array.isArray(pending) || pending.length) throw new Error('Schedule changes are invalid or a repair remains pending.');
+  if (!Array.isArray(dateRepairs) || dateRepairs.length) throw new Error('Date repair queue is not empty.');
+  if (!Array.isArray(corrections)) throw new Error('Correction evidence is invalid.');
   const original = identityMap(before, 'Before inventory');
   const current = identityMap(after, 'After inventory');
   const ending = identityMap(inventoryEnd, 'End inventory');
@@ -60,6 +89,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
       if (fields.some(field => prior[field] !== row[field])) throw new Error(`Unselected or held fixture was changed: ${id}.`);
       continue;
     }
+    if (['teams_json','score_json','competition_json'].some(field=>prior[field]!==row[field])) throw new Error(`Selected fixture changed unrelated content: ${id}.`);
     if (prior.kickoff_utc !== change.oldKickoffUtc || prior.status_short !== change.oldStatus
       || prior.published_revision !== null || row.published_revision !== null
       || row.kickoff_utc !== new Date(change.newKickoffUtc).toISOString()
@@ -77,7 +107,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
     const coverage = scope.competitionId ? competitions.get(key) : generic.get(scope.date);
     if (!coverage || coverage.fixture_count !== rows.length || coverage.fixture_id_digest !== digest(rows.map(row => row.fixture_id))) throw new Error(`Coverage differs from all-competition D1 inventory: ${key}.`);
     if (!Object.hasOwn(r2 || {}, key)) throw new Error(`R2 evidence is missing: ${key}.`);
-    verifyPayload(r2[key], scope, rows, `R2 ${key}`);
+    verifyPayload(r2[key], scope, rows, `R2 ${key}`, corrections);
   }
   if (!Array.isArray(publicSamples) || (scopes.size && publicSamples.length === 0)) throw new Error('Public Worker samples are missing.');
   const sampled = new Set();
@@ -86,7 +116,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
     if (!scope || sampled.has(sample.scope) || sample.status !== 200) throw new Error('Public Worker sample failed or is outside the audit.');
     sampled.add(sample.scope);
     verifyPayload(sample.payload, scope, after.filter(row => row.date_jst === scope.date
-      && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`);
+      && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`, corrections);
   }
   return { schemaVersion: 'jfw-schedule-audit-report/2', passed: true,
     verifiedChanges: changes.length, verifiedPreservedFixtures: original.size - changes.length,

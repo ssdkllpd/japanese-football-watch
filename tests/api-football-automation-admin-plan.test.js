@@ -96,11 +96,17 @@ test('automation admin plan rejects fixture and standings scope drift', t => {
   const root = workspace(t);
   const fixtureDrift = automationPlan();
   fixtureDrift.detailFetches[0].competitionId = 'af:competition:78';
-  assert.throws(() => createAutomationAdminPlan(fixtureDrift, root, root), /scope differs/);
+  const fixtureReport = createAutomationAdminPlan(fixtureDrift, root, root);
+  assert.equal(fixtureReport.fixtures.length, 0);
+  assert.equal(fixtureReport.standings.length, 1);
+  assert.match(fixtureReport.quarantined[0].error, /scope differs/);
 
   const standingsDrift = automationPlan();
   standingsDrift.standingsFetches[0].seasonId = 'af:season:39:2025';
-  assert.throws(() => createAutomationAdminPlan(standingsDrift, root, root), /scope differs/);
+  const standingsReport = createAutomationAdminPlan(standingsDrift, root, root);
+  assert.equal(standingsReport.standings.length, 0);
+  assert.equal(standingsReport.fixtures.length, 1);
+  assert.match(standingsReport.quarantined[0].error, /scope differs/);
 });
 
 test('automation admin plan rejects escaped and malformed publish artifacts', t => {
@@ -109,7 +115,10 @@ test('automation admin plan rejects escaped and malformed publish artifacts', t 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   manifest.r2Objects[0].key = 'football/v2/wrong.json';
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-  assert.throws(() => createAutomationAdminPlan(automationPlan(), root, root), /standings_snapshot object is invalid/);
+  const report = createAutomationAdminPlan(automationPlan(), root, root);
+  assert.equal(report.standings.length, 0);
+  assert.equal(report.fixtures.length, 1);
+  assert.match(report.quarantined[0].error, /standings_snapshot object is invalid/);
 });
 
 test('automation admin plan rejects a fixture pointer or date-index key drift', t => {
@@ -118,5 +127,8 @@ test('automation admin plan rejects a fixture pointer or date-index key drift', 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   manifest.r2Objects.find(item => item.role === 'date_index').key = 'football/v2/indexes/date-jst/2026-08-23.json';
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-  assert.throws(() => createAutomationAdminPlan(automationPlan(), root, root), /publish manifest is invalid/);
+  const report = createAutomationAdminPlan(automationPlan(), root, root);
+  assert.equal(report.fixtures.length, 0);
+  assert.equal(report.standings.length, 1);
+  assert.match(report.quarantined[0].error, /publish manifest is invalid/);
 });
