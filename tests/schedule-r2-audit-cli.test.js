@@ -77,7 +77,7 @@ function run(E) {
   fs.writeFileSync(path.join(bin, 'npx'), SHIM, { mode: 0o755 }); fs.writeFileSync(path.join(E, 'fetch-stub.mjs'), FETCH_STUB);
   fs.rmSync(path.join(E, 'inventory.count'), { force: true }); fs.rmSync(path.join(E, 'out'), { recursive: true, force: true });
   const r = spawnSync(process.execPath, ['--import', path.join(E, 'fetch-stub.mjs'), 'scripts/d1/capture-schedule-audit.mjs', path.join(E, 'plan.json'), path.join(E, 'before.json'), path.join(E, 'out')], {
-    cwd: ROOT, encoding: 'utf8', timeout: 60000, env: { PATH: `${bin}:${process.env.PATH}`, JFW_EVIDENCE: E, NODE_OPTIONS: '', ADMIN_WORKER_NAME: 'w', R2_BUCKET: 'bucket',
+    cwd: ROOT, encoding: 'utf8', timeout: 60000, env: { PATH: `${bin}:${process.env.PATH}`, JFW_EVIDENCE: E, NODE_OPTIONS: '', ADMIN_WORKER_NAME: 'w', R2_BUCKET: 'bucket', PUBLIC_DATE_AUDIT_TOKEN:'a'.repeat(32),
       D1_DATABASE_NAME: 'db', D1_DATABASE_ID: '00000000-0000-0000-0000-000000000000' } });
   const evidence = fs.existsSync(path.join(E, 'out')) ? fs.readdirSync(path.join(E, 'out')).length : 0;
   return { code: r.status, out: r.stdout.trim().slice(0, 160), err: r.stderr.trim().split('\n').pop().slice(0, 160), evidenceFiles: evidence };

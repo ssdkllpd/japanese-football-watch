@@ -44,6 +44,7 @@ jobs:
       ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
       ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      PUBLIC_DATE_AUDIT_TOKEN: ${{ secrets.PUBLIC_DATE_AUDIT_TOKEN }}
       D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
     steps:
@@ -65,6 +66,7 @@ jobs:
           if [ "$EVENT_NAME" = schedule ] || [ "$REQUESTED_MODE" = execute ]; then
             test "$D1_ADMIN_PUBLISH_ENABLED" = true
             test -n "$ADMIN_INGEST_TOKEN"
+            test "${#PUBLIC_DATE_AUDIT_TOKEN}" -ge 32
             if [ "$EVENT_NAME" = workflow_dispatch ]; then test "$CONFIRMATION" = 'RUN SCHEDULE SYNC'; fi
           fi
       - name: Guard monthly D1 writes and repair an interrupted publication
@@ -72,7 +74,7 @@ jobs:
         run: |
           mkdir -p .tmp/schedule-sync
           node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/schedule-sync/usage.json
-          node scripts/d1/execute-fixture-schedule-plan.mjs repair
+          node scripts/d1/execute-fixture-schedule-plan.mjs repair --continue-on-error --report .tmp/schedule-sync/repair-report.json
       - name: Read exact stored season fixture inventory
         shell: bash
         run: |
@@ -99,6 +101,10 @@ jobs:
           node scripts/d1/capture-schedule-audit.mjs .tmp/schedule-sync/plan.json \
             .tmp/schedule-sync/inventory.json .tmp/schedule-sync/audit
 
+      - name: Fail visibly if initial date repairs remain incomplete
+        if: github.event_name == 'schedule' || inputs.mode == 'execute'
+        run: jq -e '.passed == true' .tmp/schedule-sync/repair-report.json >/dev/null
+
       - name: Upload schedule evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,6 +114,7 @@ jobs:
             .tmp/schedule-sync/plan.json
             .tmp/schedule-sync/inventory.json
             .tmp/schedule-sync/usage.json
+            .tmp/schedule-sync/repair-report.json
             .tmp/schedule-sync/audit/*.json
           if-no-files-found: warn
           retention-days: 14

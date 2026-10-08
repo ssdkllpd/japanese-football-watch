@@ -132,7 +132,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/automation/usage.json
-          node scripts/d1/execute-fixture-schedule-plan.mjs repair
+          node scripts/d1/execute-fixture-schedule-plan.mjs repair --continue-on-error --report .tmp/automation/repair-report.json
           node scripts/d1/render-admin-wrangler.mjs --output .tmp/automation/wrangler.toml
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/automation/wrangler.toml \
@@ -317,6 +317,10 @@ jobs:
           test ! -s .tmp/automation/quarantined-fixtures.txt
           jq -e '.passed == true' .tmp/automation/d1/admin-report.json >/dev/null
 
+      - name: Fail visibly if initial date repairs remain incomplete
+        if: steps.gate.outputs.mode == 'execute'
+        run: jq -e '.passed == true' .tmp/automation/repair-report.json >/dev/null
+
       - name: Upload bounded automation evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -330,6 +334,7 @@ jobs:
             .tmp/automation/d1-budget.json
             .tmp/automation/stored-dates.json
             .tmp/automation/usage.json
+            .tmp/automation/repair-report.json
             .tmp/automation/ready-fixtures.txt
             .tmp/automation/quarantined-fixtures.txt
             .tmp/automation/checkpoint-state.json

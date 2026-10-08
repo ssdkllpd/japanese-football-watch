@@ -74,10 +74,10 @@ test('P03 the nearest kickoffs are selected before later changes', async () => {
 test('P04 normal execution applies twenty from a 241-change plan', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-exec-'));
   const run = n => {
-    const changes = Array.from({ length: n }, (_, i) => ({ schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_schedule_update', fixtureId: `af:fixture:${i + 1}` }));
+    const changes = Array.from({ length: n }, (_, i) => ({ schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_schedule_update', fixtureId: `af:fixture:${i + 1}`,oldKickoffUtc:'2026-11-10T10:00:00.000Z',newKickoffUtc:'2026-11-11T10:00:00.000Z' }));
     const file = path.join(dir, `plan-${n}.json`);
     fs.writeFileSync(file, JSON.stringify({ schemaVersion: 'jfw-fixture-schedule-plan/1', changes, held: [] }));
-    return spawnSync(process.execPath, ['--import', 'data:text/javascript,let last=null;globalThis.fetch=async(url,init)=>{if(String(url).includes("api.cloudflare.com"))return new Response(JSON.stringify({data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[]}]}}}));const r=JSON.parse(init.body);if(r.fixtureId)last=r.fixtureId;return new Response(JSON.stringify({ok:true,report:{repaired:last}}))}', path.join(ROOT, 'scripts/d1/execute-fixture-schedule-plan.mjs'), 'execute', file], {
+    return spawnSync(process.execPath, ['--import', 'data:text/javascript,let last=null;globalThis.fetch=async(url,init)=>{if(String(url).includes("api.cloudflare.com"))return new Response(JSON.stringify({data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[]}]}}}));const r=JSON.parse(init.body);if(r.fixtureId)last=r.fixtureId;return new Response(JSON.stringify({ok:true,report:r.operation==="fixture_schedule_repair_status"?{dates:[],remaining:0}:{repaired:last}}))}', path.join(ROOT, 'scripts/d1/execute-fixture-schedule-plan.mjs'), 'execute', file], {
       env: { ...process.env, ADMIN_INGEST_URL: 'https://127.0.0.1:9', ADMIN_INGEST_TOKEN: 'x',
         CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32), CLOUDFLARE_API_TOKEN: 'x' }, encoding: 'utf8', timeout: 20000 });
   };
@@ -87,7 +87,10 @@ test('P04 normal execution applies twenty from a 241-change plan', () => {
   assert.doesNotMatch(msg(r240), /Invalid schedule plan/);     // 240 proceeds to capacity check / network
   // Independent expectation: normal mode processes 20 and leaves the rest for later scans.
   assert.equal(r241.status, 0, r241.stderr);
-  assert.deepEqual(JSON.parse(r241.stdout), { updated: 20, remaining: 221, held: 0 });
+  const result=JSON.parse(r241.stdout);
+  assert.deepEqual([result.passed,result.updated,result.remaining,result.held],[true,20,221,0]);
+  assert.deepEqual(result.successful,Array.from({length:20},(_,i)=>`af:fixture:${i+1}`));
+  assert.deepEqual(result.failed,[]);
 });
 
 test('P05 a missing provider fixture is held while unrelated changes continue', async () => {

@@ -20,7 +20,7 @@ const COV_G = 'SELECT date_jst,fixture_count,fixture_id_digest FROM date_index_c
 const COV_C = 'SELECT c.canonical_id AS competition_id,coverage.date_jst,coverage.fixture_count,coverage.fixture_id_digest FROM competition_date_index_coverages coverage JOIN competitions c ON c.id=coverage.competition_id ORDER BY c.canonical_id,coverage.date_jst';
 
 function workerEnv(ctx, cache) {
-  return { FOOTBALL_DB: ctx.env.FOOTBALL_DB, FOOTBALL_DATA: ctx.env.FOOTBALL_DATA, APP_ORIGINS: 'https://app.test',
+  return { FOOTBALL_DB: ctx.env.FOOTBALL_DB, FOOTBALL_DATA: ctx.env.FOOTBALL_DATA, APP_ORIGINS: 'https://app.test', PUBLIC_DATE_AUDIT_TOKEN:'a'.repeat(32),
     D1_DATE_INDEX_ENABLED: 'true', D1_COMPETITION_DATE_INDEX_ENABLED: 'true', ...(cache ? { RESPONSE_CACHE: cache } : {}) };
 }
 function memoryCache() { // stands in for the Workers Cache API (caches.default)
@@ -29,7 +29,7 @@ function memoryCache() { // stands in for the Workers Cache API (caches.default)
 }
 async function publicGet(ctx, env, scope, fresh = false) {
   const route = scope.competitionId ? `/api/v2/competitions/${encodeURIComponent(scope.competitionId)}/dates/${scope.date}` : `/api/v2/dates/${scope.date}`;
-  const res = await publicWorker.fetch(new Request(`https://worker.test${route}${fresh ? "?fresh=1" : ""}`, { headers: { Origin: 'https://app.test' } }), env, { waitUntil() {} });
+  const res = await publicWorker.fetch(new Request(`https://worker.test${route}${fresh ? "?fresh=1" : ""}`, { headers: { Origin: 'https://app.test', ...(fresh ? {'x-jfw-audit-token':'a'.repeat(32)} : {}) } }), env, { waitUntil() {} });
   return { status: res.status, source: res.headers.get('x-jfw-data-source'), cache: res.headers.get('x-jfw-cache'), cacheControl: res.headers.get('cache-control'), payload: await res.json() };
 }
 async function auditNow(ctx, env, changes, before) {
@@ -47,6 +47,23 @@ async function auditNow(ctx, env, changes, before) {
   catch (e) { verdict = `FAIL: ${e.message}`; }
   return { verdict, samples: publicSamples.map(s => [s.scope, s.status, s.source, s.cache]) };
 }
+
+test('R3 audit rejects competition header corruption in both nonempty and vacated feeds', async () => {
+  const [A,B]=['2026-11-10','2026-11-11'];
+  const ctx=setup([{id:8401,league:39,kickoff:`${A}T10:00:00.000Z`}]);
+  await baseline(ctx,[A,B]);
+  const before=rows(ctx,SCHEDULE_INVENTORY_SQL);
+  const change={schemaVersion:'jfw-d1-admin-ingest/1',...update(8401,39,`${A}T10:00:00.000Z`,`${B}T10:00:00.000Z`)};
+  assert.equal((await ctx.send(change)).status,200);assert.equal((await drain(ctx)).status,200);
+  assert.equal((await auditNow(ctx,workerEnv(ctx,null),[change],before)).verdict,'PASS');
+  for(const date of [A,B]) {
+    const key=C(39,date),raw=ctx.objects.get(key),payload=JSON.parse(raw);
+    payload.competition.name='Corrupted competition header';
+    ctx.objects.set(key,JSON.stringify(payload));
+    assert.match((await auditNow(ctx,workerEnv(ctx,null),[change],before)).verdict,/FAIL:.*competition header/i);
+    ctx.objects.set(key,raw);
+  }
+});
 
 test('K1 fresh audit reads bypass warmed date caches while normal visitors retain the cache', async () => {
   const [A, B] = ['2026-11-10', '2026-11-11'];

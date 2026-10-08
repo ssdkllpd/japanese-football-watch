@@ -1,3 +1,4 @@
+import { sha256Text } from './date-repair-control.mjs';
 import {
   assertValidDateIndexPayload,
   competitionDateIndexR2Key,
@@ -62,14 +63,25 @@ export async function refreshDateIndexesFromD1(env, request) {
     SELECT competition.canonical_id AS competition_id
     FROM competition_date_index_coverages coverage
     JOIN competitions competition ON competition.id = coverage.competition_id
-    WHERE coverage.date_jst = ?
+    WHERE coverage.date_jst = ? AND coverage.fixture_count > 0
   `).bind(input.date).all();
   const key = dateIndexR2Key(input.date);
   const existing = await env.FOOTBALL_DATA.get(key);
-  const previous = existing ? JSON.parse(await existing.text()) : null;
-  if (previous) assertValidDateIndexPayload(previous, {
-    expectedDate: input.date, expectedCompetitionId: null,
-  });
+  const rawPrevious=existing ? await existing.text() : null;
+  const authorization=rawPrevious===null ? null : await env.FOOTBALL_DB.prepare(
+    'SELECT orphan_ids_json,allow_invalid FROM date_index_repair_authorizations WHERE date_jst=? AND source_sha256=?'
+  ).bind(input.date,await sha256Text(rawPrevious)).first();
+  let previous=null;
+  if(rawPrevious!==null) {
+    try {previous=JSON.parse(rawPrevious);assertValidDateIndexPayload(previous,{expectedDate:input.date,expectedCompetitionId:null});}
+    catch(error) {if(!authorization?.allow_invalid) throw error;previous=null;}
+  }
+  const authorizedOrphans=new Set(JSON.parse(authorization?.orphan_ids_json || '[]'));
+  if(authorizedOrphans.size) {
+    const known=await env.FOOTBALL_DB.prepare('SELECT canonical_id FROM fixtures WHERE canonical_id IN (SELECT value FROM json_each(?))')
+      .bind(JSON.stringify([...authorizedOrphans])).all();
+    if(known.results.length) throw new Error('Approved orphan is now stored in D1; re-investigate the repair.');
+  }
   const departed = new Map([...(input.departedFixtures || []), ...(input.scheduledDepartures || [])]
     .map(item => [item.fixtureId, item.date]));
   const departedCompetitions = [];
@@ -127,7 +139,7 @@ export async function refreshDateIndexesFromD1(env, request) {
       const destination=moved.get(fixture.fixtureId);
       if (destination && destination!==input.date) departed.set(fixture.fixtureId,destination);
     }
-    if (removed.some(fixture => !departed.has(fixture.fixtureId))) {
+    if (removed.some(fixture => !departed.has(fixture.fixtureId) && !authorizedOrphans.has(fixture.fixtureId))) {
       throw new Error('Existing date index contains undeclared fixtures absent from D1; full publication is unsafe.');
     }
   }
@@ -145,8 +157,8 @@ export async function refreshDateIndexesFromD1(env, request) {
     || sizes.reduce((total, size) => total + size, 0) > 8 * 1024 * 1024) {
     throw new Error('Rebuilt date index exceeds the Admin Worker ingest limit.');
   }
-  // Save the complete scope before the first R2 put; do not erase these scopes
-  // on success, so concurrent or partial repairs can always rebuild empty indexes.
+  // Save the complete scope before the first R2 put. Empty scopes are retired only
+  // after verified publication while this operation still owns the queue token.
   if (competitions.length > 24) throw new Error('Date repair exceeds the reviewed competition limit (24).');
   if (competitions.length) await env.FOOTBALL_DB.prepare(`INSERT INTO date_index_repair_scopes(date_jst,competition_id)
     SELECT ?,value FROM json_each(?) WHERE true ON CONFLICT(date_jst,competition_id) DO NOTHING`)
@@ -166,6 +178,17 @@ export async function refreshDateIndexesFromD1(env, request) {
       || fresh.competitions.some(item => comparable(item) !== comparable(competitions.find(c => c.competition.id===item.competition.id)))) {
       throw new Error('D1 date changed during index repair; retry the durable date queue.');
     }
+    const emptyScopes=competitions.filter(item=>item.fixtures.length===0).map(item=>item.competition.id);
+    if(emptyScopes.length) await env.FOOTBALL_DB.prepare(`DELETE FROM date_index_repair_scopes
+      WHERE date_jst=? AND competition_id IN (SELECT value FROM json_each(?))
+        AND EXISTS (SELECT 1 FROM date_index_repair_queue WHERE date_jst=? AND repair_token=?)
+        AND NOT EXISTS (SELECT 1 FROM fixtures f JOIN competition_seasons s ON s.id=f.competition_season_id
+          JOIN competitions c ON c.id=s.competition_id WHERE f.date_jst=date_index_repair_scopes.date_jst
+            AND c.canonical_id=date_index_repair_scopes.competition_id)`)
+      .bind(input.date,JSON.stringify(emptyScopes),input.date,token).run();
+    await env.FOOTBALL_DB.prepare(`DELETE FROM date_index_repair_fixture_dates WHERE date_jst=?
+      AND EXISTS (SELECT 1 FROM date_index_repair_queue WHERE date_jst=? AND repair_token=?)`)
+      .bind(input.date,input.date,token).run();
     await env.FOOTBALL_DB.prepare('DELETE FROM date_index_repair_queue WHERE date_jst=? AND repair_token=?').bind(input.date,token).run();
   } catch (error) {
     // A stale repair may have written after a newer repair cleared its marker.

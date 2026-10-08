@@ -554,13 +554,21 @@ function scorePart(row, kind) {
   };
 }
 
+function normalizeStoredKickoff(value) {
+  if(typeof value!=='string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+    || !Number.isFinite(Date.parse(value))) throw new Error('Stored kickoff is not a UTC instant.');
+  const normalized=new Date(value).toISOString();
+  if(normalized !== (value.includes('.') ? value : value.replace(/Z$/,'.000Z'))) throw new Error('Stored kickoff is not canonical.');
+  return normalized;
+}
+
 function fixtureIndexEntryFromD1(row) {
   const competition = competitionDto(row);
   return {
     fixtureId: row.fixture_id,
     competitionId: competition.id,
     seasonId: row.season_id,
-    kickoffUtc: row.kickoff_utc,
+    kickoffUtc: normalizeStoredKickoff(row.kickoff_utc),
     dateJst: row.date_jst,
     status: {
       short: row.status_short,
@@ -1507,6 +1515,15 @@ async function fixtureDetailResponse(env, fixtureId, context = null) {
   return response;
 }
 
+async function authorizeFreshDateRead(request,env) {
+  const secret=env.PUBLIC_DATE_AUDIT_TOKEN;
+  if(typeof secret!=='string' || secret.length<32) return json({error:'Fresh date audit is not configured.'},503,{'cache-control':'no-store'});
+  const [provided,expected]=await Promise.all([sha256Hex(request.headers.get('x-jfw-audit-token') || ''),sha256Hex(secret)]);
+  let difference=0;
+  for(let i=0;i<expected.length;i++) difference |= provided.charCodeAt(i)^expected.charCodeAt(i);
+  return difference ? json({error:'Unauthorized fresh date audit.'},401,{'cache-control':'no-store'}) : null;
+}
+
 async function handle(request, env, context) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
@@ -1519,16 +1536,21 @@ async function handle(request, env, context) {
   if (fixtureMatch) return fixtureDetailResponse(env, decodeURIComponent(fixtureMatch[1]), context);
 
   const dateMatch = url.pathname.match(/^\/api\/v2\/dates\/(\d{4}-\d{2}-\d{2})$/);
-  if (dateMatch) return dateIndexResponse(env, dateMatch[1], null, context, url.searchParams.get('fresh') === '1');
+  const fresh=url.searchParams.get('fresh')==='1';
+  if (dateMatch) {
+    if(fresh) { const refusal=await authorizeFreshDateRead(request,env);if(refusal) return refusal; }
+    return dateIndexResponse(env,dateMatch[1],null,context,fresh);
+  }
 
   const competitionDateMatch = url.pathname.match(/^\/api\/v2\/competitions\/([^/]+)\/dates\/(\d{4}-\d{2}-\d{2})$/);
   if (competitionDateMatch) {
+    if(fresh) { const refusal=await authorizeFreshDateRead(request,env);if(refusal) return refusal; }
     return dateIndexResponse(
       env,
       competitionDateMatch[2],
       decodeURIComponent(competitionDateMatch[1]),
       context,
-      url.searchParams.get('fresh') === '1',
+      fresh,
     );
   }
 

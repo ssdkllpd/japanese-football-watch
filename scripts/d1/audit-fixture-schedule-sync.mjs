@@ -36,8 +36,11 @@ function sameJson(left,right) {
     ? Array.isArray(value) ? value.map(stable) : Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])) : value;
   return JSON.stringify(stable(left))===JSON.stringify(stable(right));
 }
-function verifyPayload(payload, scope, rows, label, corrections) {
+function verifyPayload(payload, scope, rows, label, corrections, competitionHeaders) {
   assertValidDateIndexPayload(payload, { expectedDate: scope.date, expectedCompetitionId: scope.competitionId });
+  if(scope.competitionId && !sameJson(payload.competition,competitionHeaders.get(scope.competitionId))) {
+    throw new Error(`${label} competition header differs from D1.`);
+  }
   const actual = new Map(payload.fixtures.map(item => [item.fixtureId, item]));
   if (actual.size !== rows.length) throw new Error(`${label} fixture count differs from D1.`);
   for (const row of rows) {
@@ -78,6 +81,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
   const original = identityMap(before, 'Before inventory');
   const current = identityMap(after, 'After inventory');
   const ending = identityMap(inventoryEnd, 'End inventory');
+  const competitionHeaders = new Map([...current.values()].map(row=>[row.competition_id,JSON.parse(row.competition_json)]));
   const changed = new Map(changes.map(item => [item.fixtureId, item]));
   if (changed.size !== changes.length || current.size !== original.size || ending.size !== current.size) throw new Error('Audit fixture identities differ.');
   for (const [id, prior] of original) {
@@ -107,7 +111,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
     const coverage = scope.competitionId ? competitions.get(key) : generic.get(scope.date);
     if (!coverage || coverage.fixture_count !== rows.length || coverage.fixture_id_digest !== digest(rows.map(row => row.fixture_id))) throw new Error(`Coverage differs from all-competition D1 inventory: ${key}.`);
     if (!Object.hasOwn(r2 || {}, key)) throw new Error(`R2 evidence is missing: ${key}.`);
-    verifyPayload(r2[key], scope, rows, `R2 ${key}`, corrections);
+    verifyPayload(r2[key], scope, rows, `R2 ${key}`, corrections, competitionHeaders);
   }
   if (!Array.isArray(publicSamples) || (scopes.size && publicSamples.length === 0)) throw new Error('Public Worker samples are missing.');
   const sampled = new Set();
@@ -116,7 +120,7 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
     if (!scope || sampled.has(sample.scope) || sample.status !== 200) throw new Error('Public Worker sample failed or is outside the audit.');
     sampled.add(sample.scope);
     verifyPayload(sample.payload, scope, after.filter(row => row.date_jst === scope.date
-      && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`, corrections);
+      && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`, corrections, competitionHeaders);
   }
   return { schemaVersion: 'jfw-schedule-audit-report/2', passed: true,
     verifiedChanges: changes.length, verifiedPreservedFixtures: original.size - changes.length,

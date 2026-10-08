@@ -11,6 +11,7 @@ import { handleAdminIngest } from '../../admin-worker/index.mjs';
 import { buildD1DateIndexesForPublication } from '../../worker/index.mjs';
 import { publishDateIndexCoverageFromR2 } from '../../admin-worker/date-index-coverage-ingest.mjs';
 import { executeAutomationAdminPlan } from './execute-automation-admin-plan.mjs';
+import { executeSchedulePlan, adminScheduleSender } from './execute-fixture-schedule-plan.mjs';
 import { dateIndexR2Key, competitionDateIndexR2Key } from '../../shared/date-index-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -130,6 +131,26 @@ INSERT INTO fixtures(canonical_id,source_id,provider_id,competition_season_id,ho
   assert.deepEqual(ids(competitionDateIndexR2Key('af:competition:39','2026-11-11')),[]);
   assert.deepEqual(ids(dateIndexR2Key('2026-11-12')),['af:fixture:9101']);
   assert.equal(await count('date_index_repair_queue'),0);
+  // Exercise the production schedule executor, with multiple crossings and a same-day update.
+  await database.prepare(`INSERT INTO fixtures(canonical_id,source_id,provider_id,competition_season_id,
+    home_team_id,away_team_id,kickoff_utc,date_jst,status_short,status_long,ingestion_state) VALUES
+    ('af:fixture:9103',1,9103,1,1,2,'2026-11-14T10:00:00.000Z','2026-11-14','NS','Not Started','scheduled'),
+    ('af:fixture:9104',1,9104,1,1,2,'2026-11-16T10:00:00.000Z','2026-11-16','NS','Not Started','scheduled')`).run();
+  const scheduleSend=adminScheduleSender({ADMIN_INGEST_URL:'https://offline.test',ADMIN_INGEST_TOKEN:'local-test'},
+    (url,init)=>handleAdminIngest(new Request(url,init),env));
+  const mixed=await executeSchedulePlan({schemaVersion:'jfw-fixture-schedule-plan/1',changes:[
+    {schemaVersion:'jfw-d1-admin-ingest/1',...upd(9103,'2026-11-14T10:00:00.000Z','2026-11-15T10:00:00.000Z')},
+    {schemaVersion:'jfw-d1-admin-ingest/1',...upd(9104,'2026-11-16T10:00:00.000Z','2026-11-16T11:00:00.000Z')},
+    {schemaVersion:'jfw-d1-admin-ingest/1',...upd(9104,'2026-11-16T11:00:00.000Z','2026-11-17T11:00:00.000Z')}
+  ]},scheduleSend,{capacityCheck:async()=>{}});
+  assert.equal(mixed.passed,true,JSON.stringify(mixed));assert.equal(mixed.updated,3);
+  for(const [date,expected] of [['2026-11-14',[]],['2026-11-15',['af:fixture:9103']],
+    ['2026-11-16',[]],['2026-11-17',['af:fixture:9104']]]) {
+    assert.deepEqual(ids(dateIndexR2Key(date)),expected);
+    assert.deepEqual(ids(competitionDateIndexR2Key('af:competition:39',date)),expected);
+  }
+  assert.equal(await count('date_index_repair_queue'),0);
+  assert.equal(await count('fixture_schedule_refresh_pending'),0);
   console.log(JSON.stringify({passed:true,runtime:'wrangler 4.147.0 / workerd local D1',sameBatch,crossBatch,
-    checks:['same date success','cross-date trigger writes success','partial R2 retry convergence','stale compare-and-swap refusal','result UPSERT and interrupted relocation retry'],remoteWrites:0}));
+    checks:['same date success','cross-date trigger writes success','partial R2 retry convergence','stale compare-and-swap refusal','result UPSERT and interrupted relocation retry','real schedule executor mixed three changes with two date crossings'],remoteWrites:0}));
 } finally { if(proxy) await proxy.dispose();fs.rmSync(temp,{recursive:true,force:true}); }

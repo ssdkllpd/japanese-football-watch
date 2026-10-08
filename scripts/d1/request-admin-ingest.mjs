@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { drainDateRepairs } from './drain-date-repairs.mjs';
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -298,15 +299,17 @@ export async function executeAdminIngestPlan(plan, options) {
   const requests = validatePlan(plan, options.planDirectory);
   const url = endpoint(options.url);
   const fetchImpl = options.fetchImpl || fetch;
-  const drain = async () => {
-    for (let count=0;count<100;count++) {
-      const response=await fetchImpl(url,{method:'POST',redirect:'error',headers:{authorization:`Bearer ${options.token}`,'content-type':'application/json'},
-        body:JSON.stringify({schemaVersion:REQUEST_VERSION,operation:'fixture_schedule_repair'})});
+  const drain = async request => {
+    const dates=requests.filter(item=>item.operation==='date_index_refresh'
+      && (item.fixtureIds.includes(request.fixtureId)
+        || (item.departedFixtures || []).some(entry=>entry.fixtureId===request.fixtureId))).map(item=>item.date);
+    const report=await drainDateRepairs(async payload=>{
+      const response=await fetchImpl(url,{method:'POST',redirect:'error',headers:{authorization:`Bearer ${options.token}`,'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await response.json();
-      if (!response.ok || body.ok!==true) throw new Error('Durable date repair failed.');
-      if (!body.report.repaired) return;
-    }
-    throw new Error('Date repair backlog exceeds the bounded run.');
+      if(!response.ok || body.ok!==true) throw new Error(body?.detail || 'Durable date repair failed.');
+      return body.report;
+    },{fixtureId:request.fixtureId,dates:[...new Set(dates)]});
+    if(!report.passed) throw new Error(`Affected date repair failed: ${JSON.stringify(report)}`);
   };
   const results = [];
   let failed = false;
@@ -318,7 +321,7 @@ export async function executeAdminIngestPlan(plan, options) {
       continue;
     }
     try {
-      if (options.repairDates && request.operation === 'fixture_publish') await drain();
+      if (options.repairDates && request.operation === 'fixture_publish') await drain(request);
       const init = {
         method: 'POST', redirect: 'error',
         headers: {
@@ -331,7 +334,7 @@ export async function executeAdminIngestPlan(plan, options) {
       if (request.operation === 'fixture_publish' && response.status===409) {
         const rejection=await response.clone().json().catch(()=>null);
         if (rejection?.detail === 'Finish the earlier schedule repairs before publishing this fixture.') {
-          await drain(); response=await fetchImpl(url,init);
+          await drain(request); response=await fetchImpl(url,init);
         }
       }
       const body = await response.json().catch(() => null);

@@ -1,44 +1,68 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { checkPaidBackfillCapacity } from './check-paid-backfill-capacity.mjs';
+import { drainDateRepairs } from './drain-date-repairs.mjs';
 
-const endpoint = new URL(process.env.ADMIN_INGEST_URL);
-if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
-  || !process.env.ADMIN_INGEST_TOKEN) throw new Error('Protected Admin endpoint is required.');
-endpoint.pathname = '/admin/v1/ingest';
-endpoint.search = '';
+export function adminScheduleSender(env, fetchImpl = fetch) {
+  const endpoint = new URL(env.ADMIN_INGEST_URL);
+  if(endpoint.protocol!=='https:' || endpoint.username || endpoint.password || !env.ADMIN_INGEST_TOKEN) throw new Error('Protected Admin endpoint is required.');
+  endpoint.pathname='/admin/v1/ingest';endpoint.search='';endpoint.hash='';
+  return async request => {
+    const response=await fetchImpl(endpoint,{method:'POST',redirect:'error',headers:{authorization:`Bearer ${env.ADMIN_INGEST_TOKEN}`,
+      'content-type':'application/json'},body:JSON.stringify(request)});
+    const body=await response.json().catch(()=>null);
+    if(!response.ok || body?.ok!==true) throw new Error(`Schedule ${request.operation} failed (${response.status}): ${body?.detail || 'unknown'}`);
+    return body.report;
+  };
+}
+const dateJst = value => new Date(Date.parse(value)+9*3600000).toISOString().slice(0,10);
 
-async function send(request) {
-  const response = await fetch(endpoint, { method: 'POST', redirect: 'error',
-    headers: { authorization: `Bearer ${process.env.ADMIN_INGEST_TOKEN}`,
-      'content-type': 'application/json' }, body: JSON.stringify(request) });
-  const body = await response.json().catch(() => null);
-  if (!response.ok || body?.ok !== true) {
-    throw new Error(`Schedule ${request.operation} failed (${response.status}): ${body?.detail || 'unknown'}`);
+export async function executeSchedulePlan(plan, send, {all=false, capacityCheck=()=>checkPaidBackfillCapacity(process.env)} = {}) {
+  if(plan.schemaVersion!=='jfw-fixture-schedule-plan/1' || !Array.isArray(plan.changes)
+    || (all && plan.changes.length>240)) throw new Error('Invalid schedule plan.');
+  const selected=all ? plan.changes : plan.changes.slice(0,20);
+  const successful=[],failed=[];
+  for(const [index,request] of selected.entries()) {
+    // Account limits are a global stop, not an isolated data error.
+    if(index%20===0) await capacityCheck();
+    try {
+      const scope={fixtureId:request.fixtureId,dates:[...new Set([dateJst(request.oldKickoffUtc),dateJst(request.newKickoffUtc)])]};
+      const before=await drainDateRepairs(send,scope);
+      if(!before.passed) throw new Error(`Affected date repairs are incomplete: ${JSON.stringify(before)}`);
+      await send(request);
+      const after=await drainDateRepairs(send,scope);
+      if(!after.passed) throw new Error(`Schedule repair remains incomplete: ${JSON.stringify(after)}`);
+      successful.push(request.fixtureId);
+    } catch(error) {
+      failed.push({fixtureId:request.fixtureId,detail:String(error.message)});
+    }
   }
-  return body.report;
+  return {passed:failed.length===0,updated:successful.length,successful,failed,
+    remaining:plan.changes.length-successful.length,held:(plan.held || []).length};
 }
 
-const repair = { schemaVersion: 'jfw-d1-admin-ingest/1', operation: 'fixture_schedule_repair' };
-const [mode, planFile, option] = process.argv.slice(2);
-if (mode === 'repair') {
-  // Drain previous partial publications before planning from the current D1 inventory.
-  for (let count = 0; count < 20; count += 1) {
-    const result = await send(repair);
-    if (!result.repaired) process.exit(0);
+async function main() {
+  const [mode,...args]=process.argv.slice(2);
+  const send=adminScheduleSender(process.env);
+  if(mode==='repair') {
+    const soft=args.includes('--continue-on-error');
+    const reportIndex=args.indexOf('--report');
+    const reportPath=reportIndex<0 ? null : args[reportIndex+1];
+    if(args.some((arg,i)=> !['--continue-on-error','--report'].includes(arg) && !(reportIndex>=0 && i===reportIndex+1))
+      || (reportIndex>=0 && (!reportPath || reportPath.startsWith('--')))) throw new Error('Invalid repair options.');
+    const report=await drainDateRepairs(send);
+    if(reportPath) {fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,`${JSON.stringify(report,null,2)}\n`);}
+    console.log(JSON.stringify(report));
+    if(!report.passed && !soft) process.exitCode=1;
+    return;
   }
-  throw new Error('Schedule repair backlog exceeded 20 fixtures.');
+  const [planFile,option]=args;
+  if(mode!=='execute' || !planFile || args.length>2 || (option && option!=='--all')) throw new Error('Use repair or execute PLAN.json [--all].');
+  const report=await executeSchedulePlan(JSON.parse(fs.readFileSync(planFile,'utf8')),send,{all:option==='--all'});
+  console.log(JSON.stringify(report));
+  if(!report.passed) process.exitCode=1;
 }
-if (mode !== 'execute' || !planFile) throw new Error('Use repair or execute PLAN.json.');
-const plan = JSON.parse(fs.readFileSync(planFile, 'utf8'));
-if (plan.schemaVersion !== 'jfw-fixture-schedule-plan/1'
-  || !Array.isArray(plan.changes) || (option === '--all' && plan.changes.length > 240)
-  || (option !== undefined && option !== '--all')) throw new Error('Invalid schedule plan.');
-const selected = option === '--all' ? plan.changes : plan.changes.slice(0, 20);
-for (const [index, request] of selected.entries()) {
-  if (index % 20 === 0) await checkPaidBackfillCapacity(process.env);
-  await send(request);
-  const outcome = await send(repair);
-  if (outcome.repaired !== request.fixtureId) throw new Error('Schedule repair identity mismatch.');
+if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch(error=>{console.error(`Error: ${error.message}`);process.exitCode=1;});
 }
-console.log(JSON.stringify({ updated: selected.length,
-  remaining: plan.changes.length - selected.length, held: (plan.held || []).length }));

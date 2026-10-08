@@ -44,6 +44,10 @@
     {
       "name": "0011_d1_date_repair_journal.sql",
       "sha256": "153c18094bb2a4fd68df963619144fec12e22b147b1e8071e7af23faf812922c"
+    },
+    {
+      "name": "0012_d1_date_repair_control.sql",
+      "sha256": "9643581daff337746e3c9fdfe567070e4c41b8369dab08da56f47d2cbe52d28d"
     }
   ],
   "tables": {

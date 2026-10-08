@@ -28,6 +28,8 @@ export function d1AuditRows(value) {
 async function main() {
   const [planFile, beforeFile, outputDirectory, option] = process.argv.slice(2);
   if (!planFile || !beforeFile || !outputDirectory || (option && option !== '--all')) throw new Error('Use PLAN BEFORE OUT [--all].');
+  const auditToken=process.env.PUBLIC_DATE_AUDIT_TOKEN;
+  if(typeof auditToken!=='string' || auditToken.length<32) throw new Error('Protected fresh audit token is required.');
   const plan = read(planFile);
   if (plan.schemaVersion !== 'jfw-fixture-schedule-plan/1' || !Array.isArray(plan.changes)) throw new Error('Schedule audit plan is invalid.');
   const changes = option === '--all' ? plan.changes : plan.changes.slice(0, 20);
@@ -66,7 +68,7 @@ async function main() {
   for (const scopeKey of sampleKeys) {
     const scope = scopes.get(scopeKey);
     const route = scope.competitionId ? `/api/v2/competitions/${encodeURIComponent(scope.competitionId)}/dates/${scope.date}` : `/api/v2/dates/${scope.date}`;
-    const response = await fetch(new URL(`${route}?fresh=1`, target.workerOrigin), { headers: { Origin: target.appOrigin },
+    const response = await fetch(new URL(`${route}?fresh=1`, target.workerOrigin), { headers: { Origin: target.appOrigin, 'x-jfw-audit-token':auditToken },
       redirect: 'error', signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`Public Worker read refused (${response.status}); audit incomplete.`);
     const sample = { scope: scopeKey, status: response.status, payload: await response.json() };
