@@ -7,12 +7,12 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: d1-staging-write
-  cancel-in-progress: false
-
 jobs:
   apply-schema-and-deploy-admin:
+    concurrency:
+      group: d1-staging-write
+      queue: max
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment: d1-staging
     env:

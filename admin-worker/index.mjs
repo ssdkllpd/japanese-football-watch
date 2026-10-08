@@ -1,3 +1,4 @@
+import { REPAIR_STATUS_OPERATION, REPAIR_AUTHORIZE_OPERATION, REPAIR_ENQUEUE_OPERATION, assertRepairControlRequest, readRepairStatus, authorizeDateRepair, enqueueDateRepair } from './date-repair-control.mjs';
 import {
   assertValidStandingsPayload,
   standingsIdentityDigestInput,
@@ -99,6 +100,7 @@ function assertRequest(value) {
   if (value.operation === FIXTURE_OPERATION || value.operation === FIXTURE_MIGRATION_OPERATION) {
     return assertFixtureRequest(value);
   }
+  if ([REPAIR_STATUS_OPERATION,REPAIR_AUTHORIZE_OPERATION,REPAIR_ENQUEUE_OPERATION].includes(value.operation)) return assertRepairControlRequest(value);
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
   if (value.operation === FIXTURE_CORRECTION_GUARD_OPERATION) return assertFixtureCorrectionGuardRequest(value);
   if (value.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) return assertFixturePublishBudgetRequest(value);
@@ -364,7 +366,13 @@ export async function handleAdminIngest(request, env) {
     } else if (input.operation === SCHEDULE_UPDATE_OPERATION) {
       report = await updateFixtureSchedule(env, input);
     } else if (input.operation === SCHEDULE_REPAIR_OPERATION) {
-      report = await repairFixtureSchedule(env);
+      report = await repairFixtureSchedule(env,input);
+    } else if(input.operation === REPAIR_STATUS_OPERATION) {
+      report = await readRepairStatus(env,input);
+    } else if(input.operation === REPAIR_AUTHORIZE_OPERATION) {
+      report = await authorizeDateRepair(env,input);
+    } else if(input.operation === REPAIR_ENQUEUE_OPERATION) {
+      report = await enqueueDateRepair(env,input);
     } else if (input.operation === FIXTURE_CORRECTION_GUARD_OPERATION) {
       report = await verifyStoredFixtureCorrections(env, input);
     } else if (input.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) {
@@ -388,7 +396,7 @@ export async function handleAdminIngest(request, env) {
     const status = error?.status || 422;
     return json({
       error: status === 401 ? 'Unauthorized' : 'Admin ingest rejected',
-      ...(authenticated && status !== 401 ? { detail: String(error?.message || 'unknown_error') } : {}),
+      ...(authenticated && status !== 401 ? { detail: String(error?.message || 'unknown_error'), ...(error.repairDate ? {repairDate:error.repairDate} : {}) } : {}),
     }, status);
   }
 }

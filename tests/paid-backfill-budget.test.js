@@ -10,13 +10,18 @@ test('Paid D1 capacity gate sums every database and fails closed on missing or h
   const payload = rows => ({ data: { viewer: { accounts: [{
     d1AnalyticsAdaptiveGroups: rows.map((written, index) => ({
       dimensions: { date: end, databaseId: `db-${index}` },
-      sum: { rowsWritten: written },
+      sum: { rowsWritten: written, rowsRead: 100 },
     })),
   }] } } });
   assert.equal(summarizePaidUsage(payload([20_000, 10_000]), start, end)
     .rowsWrittenTrailing31Days, 30_000);
   assert.throws(() => summarizePaidUsage(payload([40_000_001]), start, end),
     /conservative D1 monthly usage ceiling/);
+  const readHeavy = payload([1]);
+  readHeavy.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[0].sum.rowsRead = 20_000_000_001;
+  assert.throws(() => summarizePaidUsage(readHeavy, start, end), /ceiling/);
+  delete readHeavy.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[0].sum.rowsRead;
+  assert.throws(() => summarizePaidUsage(readHeavy, start, end), /invalid/);
   assert.throws(() => summarizePaidUsage(payload([-1]), start, end), /invalid/);
   assert.throws(() => summarizePaidUsage({ errors: [{ message: 'error' }] }, start, end), /errors/);
   assert.throws(() => summarizePaidUsage(payload([1, 2]).data.viewer.accounts[0], start, end),

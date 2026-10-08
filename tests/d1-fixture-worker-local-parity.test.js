@@ -95,7 +95,12 @@ function databaseState(db) {
     ORDER BY name`).all().map(row => row.name);
   return Object.fromEntries(tables.map(name => {
     const rows = db.prepare(`SELECT * FROM ${name}`).all()
-      .map(row => JSON.parse(JSON.stringify(row)))
+      .map(row => {
+        const value = JSON.parse(JSON.stringify(row));
+        // Each writer owns a different generation token and clock. Dates must match.
+        if (name === 'date_index_repair_queue') { delete value.repair_token; delete value.changed_at; }
+        return value;
+      })
       .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
     return [name, rows];
   }));
