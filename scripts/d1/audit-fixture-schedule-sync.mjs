@@ -74,9 +74,10 @@ function verifyPayload(payload, scope, rows, label, corrections, competitionHead
   }
 }
 export function auditScheduleSync({ changes, before, after, pending, genericCoverages,
-  competitionCoverages, r2, publicSamples, inventoryEnd, corrections = [], dateRepairs = [] }) {
-  if (!Array.isArray(changes) || !Array.isArray(pending) || pending.length) throw new Error('Schedule changes are invalid or a repair remains pending.');
-  if (!Array.isArray(dateRepairs) || dateRepairs.length) throw new Error('Date repair queue is not empty.');
+  competitionCoverages, r2, publicSamples, inventoryEnd, corrections = [], dateRepairs = [],
+  pendingEnd = pending, dateRepairsEnd = dateRepairs }) {
+  if (!Array.isArray(changes) || !Array.isArray(pending) || !Array.isArray(pendingEnd)) throw new Error('Schedule changes or pending repair evidence is invalid.');
+  if (!Array.isArray(dateRepairs) || !Array.isArray(dateRepairsEnd)) throw new Error('Date repair queue evidence is invalid.');
   if (!Array.isArray(corrections)) throw new Error('Correction evidence is invalid.');
   const original = identityMap(before, 'Before inventory');
   const current = identityMap(after, 'After inventory');
@@ -84,6 +85,31 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
   const competitionHeaders = new Map([...current.values()].map(row=>[row.competition_id,JSON.parse(row.competition_json)]));
   const changed = new Map(changes.map(item => [item.fixtureId, item]));
   if (changed.size !== changes.length || current.size !== original.size || ending.size !== current.size) throw new Error('Audit fixture identities differ.');
+  const scopes = affectedScheduleScopes(changes, before, after);
+  const affectedDates = new Set([...scopes.values()].map(scope => scope.date));
+  const isolatedPendingRepairs = [], isolatedDateRepairs = [];
+  const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+    && new Date(`${value}T00:00:00Z`).toISOString().slice(0,10) === value;
+  for (const [stage, checkpoints, queue] of [['initial',pending,dateRepairs],['final',pendingEnd,dateRepairsEnd]]) {
+    for (const row of checkpoints) {
+      if (!row || !/^af:fixture:\d+$/.test(row.fixture_id)) throw new Error('Pending repair evidence is invalid.');
+      if (changed.has(row.fixture_id)) throw new Error('A selected fixture repair remains pending.');
+      let registered;
+      try { registered = JSON.parse(row.registered_dates_json); } catch { throw new Error('Pending repair date evidence is invalid.'); }
+      if (!Array.isArray(registered) || !validDate(row.old_date_jst) || !validDate(row.new_date_jst)
+        || registered.some(date => !validDate(date))) throw new Error('Pending repair date evidence is invalid.');
+      const dates = [row.old_date_jst,row.new_date_jst,...registered,
+        original.get(row.fixture_id)?.date_jst,current.get(row.fixture_id)?.date_jst];
+      if (dates.some(date => affectedDates.has(date))) throw new Error('An affected date repair remains pending.');
+      isolatedPendingRepairs.push({stage,...row});
+    }
+    for (const row of queue) {
+      if (!row || !validDate(row.date_jst)) throw new Error('Date repair queue evidence is invalid.');
+      if (affectedDates.has(row.date_jst)) throw new Error('Affected date repair queue is not empty.');
+      isolatedDateRepairs.push({stage,...row});
+    }
+  }
   for (const [id, prior] of original) {
     const row = current.get(id);
     const end = ending.get(id);
@@ -103,7 +129,6 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
       || row.season_id !== change.seasonId) throw new Error(`Selected fixture differs from the declared change: ${id}.`);
   }
   if ([...changed.keys()].some(id => !original.has(id))) throw new Error('A selected fixture is absent from the baseline.');
-  const scopes = affectedScheduleScopes(changes, before, after);
   const generic = new Map(genericCoverages.map(row => [row.date_jst, row]));
   const competitions = new Map(competitionCoverages.map(row => [`${row.competition_id}/${row.date_jst}`, row]));
   for (const [key, scope] of scopes) {
@@ -122,7 +147,10 @@ export function auditScheduleSync({ changes, before, after, pending, genericCove
     verifyPayload(sample.payload, scope, after.filter(row => row.date_jst === scope.date
       && (!scope.competitionId || row.competition_id === scope.competitionId)), `Public ${sample.scope}`, corrections, competitionHeaders);
   }
-  return { schemaVersion: 'jfw-schedule-audit-report/2', passed: true,
+  return { schemaVersion: 'jfw-schedule-audit-report/3', passed: true,
+    auditScope: 'affected_dates_and_changed_fixtures',
+    overallPassed: isolatedPendingRepairs.length === 0 && isolatedDateRepairs.length === 0,
+    isolatedPendingRepairs, isolatedDateRepairs,
     verifiedChanges: changes.length, verifiedPreservedFixtures: original.size - changes.length,
     verifiedR2Scopes: scopes.size, verifiedPublicSamples: publicSamples.length,
     pendingRepairs: 0, providerFreshnessVerified: false, browserUiVerified: false };

@@ -45,8 +45,12 @@ async function main() {
   };
   const before = d1AuditRows(read(beforeFile));
   const after = query('inventory', SCHEDULE_INVENTORY_SQL);
-  const pending = query('pending', 'SELECT fixture_id,old_date_jst,new_date_jst,changed_at FROM fixture_schedule_refresh_pending ORDER BY fixture_id');
-  const dateRepairs = query('date-repairs', 'SELECT date_jst,repair_token FROM date_index_repair_queue ORDER BY date_jst');
+  const pendingSql = 'SELECT fixture_id,old_date_jst,new_date_jst,registered_dates_json,changed_at FROM fixture_schedule_refresh_pending ORDER BY fixture_id';
+  const dateRepairSql = `SELECT q.date_jst,q.repair_token,
+    (SELECT detail FROM date_index_repair_failures f WHERE f.date_jst=q.date_jst ORDER BY id DESC LIMIT 1) AS last_error
+    FROM date_index_repair_queue q ORDER BY q.date_jst`;
+  const pending = query('pending', pendingSql);
+  const dateRepairs = query('date-repairs', dateRepairSql);
   const correctionSql = "SELECT target_canonical_id,field_path,status,applied_value_json FROM correction_states WHERE target_kind='fixture' AND (field_path LIKE 'fixture.status%' OR field_path LIKE 'fixture.teams%' OR field_path LIKE 'fixture.score%') ORDER BY target_canonical_id,field_path";
   const corrections = query('corrections', correctionSql);
   const genericCoverages = query('generic-coverages', 'SELECT date_jst,fixture_count,fixture_id_digest FROM date_index_coverages ORDER BY date_jst');
@@ -77,11 +81,17 @@ async function main() {
   }
   const inventoryEnd = query('inventory-end', SCHEDULE_INVENTORY_SQL);
   if (JSON.stringify(query('corrections-end',correctionSql)) !== JSON.stringify(corrections)) throw new Error('Corrections changed during audit.');
-  if (JSON.stringify(query('date-repairs-end','SELECT date_jst,repair_token FROM date_index_repair_queue ORDER BY date_jst')) !== JSON.stringify(dateRepairs)) throw new Error('Date repairs changed during audit.');
+  const pendingEnd = query('pending-end',pendingSql);
+  const dateRepairsEnd = query('date-repairs-end',dateRepairSql);
   const report = auditScheduleSync({ changes, before, after, pending, genericCoverages,
-    competitionCoverages, r2, publicSamples, inventoryEnd, corrections, dateRepairs });
+    competitionCoverages, r2, publicSamples, inventoryEnd, corrections, dateRepairs, pendingEnd, dateRepairsEnd });
   fs.writeFileSync(path.join(root, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report));
+  // Preserve a completed affected-scope audit while keeping isolated failures visible.
+  if (!report.overallPassed) {
+    console.error('Affected-date audit passed; isolated repairs were observed. See report.json.');
+    process.exitCode = 1;
+  }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch(error => { console.error(error.message); process.exitCode = 1; });

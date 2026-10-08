@@ -23,8 +23,8 @@ if (a.includes('d1')) {
   const sql = a[a.indexOf('--command') + 1];
   let name = sql.includes('date_index_repair_queue') ? 'date-repairs' : sql.includes('correction_states') ? 'corrections' : sql.includes('fixture_schedule_refresh_pending') ? 'pending' : sql.includes('competition_date_index_coverages') ? 'competition-coverages'
     : sql.includes('FROM date_index_coverages') ? 'generic-coverages' : 'inventory';
-  if (name === 'inventory') { const c = path.join(E, 'inventory.count'); const n = fs.existsSync(c) ? Number(fs.readFileSync(c, 'utf8')) : 0;
-    fs.writeFileSync(c, String(n + 1)); if (n >= 1 && fs.existsSync(path.join(E, 'inventory-end.json'))) name = 'inventory-end'; }
+  if (['inventory','pending','date-repairs'].includes(name)) { const c = path.join(E, name + '.count'); const n = fs.existsSync(c) ? Number(fs.readFileSync(c, 'utf8')) : 0;
+    fs.writeFileSync(c, String(n + 1)); if (n >= 1 && fs.existsSync(path.join(E, name + '-end.json'))) name += '-end'; }
   process.stdout.write(fs.readFileSync(path.join(E, name + '.json'), 'utf8'));
 } else if (a.includes('r2')) {
   const key = a[a.indexOf('get') + 1].split('/').slice(1).join('/'); const out = a[a.indexOf('--file') + 1];
@@ -75,12 +75,15 @@ async function dump() {
 function run(E) {
   const bin = path.join(E, 'bin'); fs.mkdirSync(bin, { recursive: true });
   fs.writeFileSync(path.join(bin, 'npx'), SHIM, { mode: 0o755 }); fs.writeFileSync(path.join(E, 'fetch-stub.mjs'), FETCH_STUB);
-  fs.rmSync(path.join(E, 'inventory.count'), { force: true }); fs.rmSync(path.join(E, 'out'), { recursive: true, force: true });
+  for (const name of ['inventory','pending','date-repairs']) fs.rmSync(path.join(E, name + '.count'), { force: true });
+  fs.rmSync(path.join(E, 'out'), { recursive: true, force: true });
   const r = spawnSync(process.execPath, ['--import', path.join(E, 'fetch-stub.mjs'), 'scripts/d1/capture-schedule-audit.mjs', path.join(E, 'plan.json'), path.join(E, 'before.json'), path.join(E, 'out')], {
     cwd: ROOT, encoding: 'utf8', timeout: 60000, env: { PATH: `${bin}:${process.env.PATH}`, JFW_EVIDENCE: E, NODE_OPTIONS: '', ADMIN_WORKER_NAME: 'w', R2_BUCKET: 'bucket', PUBLIC_DATE_AUDIT_TOKEN:'a'.repeat(32),
       D1_DATABASE_NAME: 'db', D1_DATABASE_ID: '00000000-0000-0000-0000-000000000000' } });
   const evidence = fs.existsSync(path.join(E, 'out')) ? fs.readdirSync(path.join(E, 'out')).length : 0;
-  return { code: r.status, out: r.stdout.trim().slice(0, 160), err: r.stderr.trim().split('\n').pop().slice(0, 160), evidenceFiles: evidence };
+  const reportFile=path.join(E,'out','report.json');
+  return { code: r.status, out: r.stdout.trim().slice(0, 160), err: r.stderr.trim().split('\n').pop().slice(0, 160), evidenceFiles: evidence,
+    report:fs.existsSync(reportFile)?JSON.parse(fs.readFileSync(reportFile,'utf8')):null };
 }
 const mutate = (E, name, fn) => { const f = path.join(E, name); const v = JSON.parse(fs.readFileSync(f, 'utf8')); fn(v); fs.writeFileSync(f, JSON.stringify(v)); };
 
@@ -97,4 +100,26 @@ test('C audit CLI: PASS on consistent evidence, non-zero exit on refused public 
   console.log('C evidence', JSON.stringify(out, null, 1));
   assert.equal(out.C0_consistent.code, 0, out.C0_consistent.err);
   for (const k of Object.keys(out).filter(k => k !== 'C0_consistent')) assert.notEqual(out[k].code, 0, k);
+});
+
+test('R4 real capture CLI saves a complete affected-scope audit before exiting nonzero for isolated dates',async()=>{
+  const {E}=await dump();
+  mutate(E,'date-repairs.json',v=>v[0].results.push({date_jst:'2026-12-01',repair_token:'bad',last_error:'Investigate orphan'}));
+  mutate(E,'pending.json',v=>v[0].results.push({fixture_id:'af:fixture:99999',old_date_jst:'2026-12-01',
+    new_date_jst:'2026-12-02',registered_dates_json:'["2026-12-01","2026-12-02"]'}));
+  const result=run(E);
+  assert.equal(result.code,1);assert.equal(result.report?.passed,true);
+  assert.equal(result.report.overallPassed,false);assert.equal(result.report.verifiedChanges,3);
+  assert.ok(result.report.verifiedR2Scopes>0);assert.ok(result.report.verifiedPublicSamples>0);
+  assert.equal(result.report.isolatedDateRepairs[0].date_jst,'2026-12-01');
+  assert.equal(result.report.isolatedPendingRepairs[0].fixture_id,'af:fixture:99999');
+});
+test('R4 capture CLI tolerates an unrelated queue change during collection but rejects a new affected repair',async()=>{
+  const {E}=await dump();
+  fs.writeFileSync(path.join(E,'date-repairs-end.json'),wr([{date_jst:'2026-12-03',repair_token:'new'}]));
+  const isolated=run(E);assert.equal(isolated.code,1);assert.equal(isolated.report?.passed,true);
+  assert.equal(isolated.report.isolatedDateRepairs[0].stage,'final');
+  fs.writeFileSync(path.join(E,'date-repairs-end.json'),wr([{date_jst:'2026-11-11',repair_token:'new'}]));
+  const affected=run(E);assert.equal(affected.code,1);assert.equal(affected.report,null);
+  assert.match(affected.err,/Affected date repair queue/);
 });
