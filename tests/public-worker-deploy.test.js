@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { spawnSync } = require('node:child_process');
 
 const root = path.join(__dirname, '..');
 const manifestPath = path.join(root, 'config', 'public-worker-target.json');
@@ -133,4 +134,143 @@ test('deployment verifies every D1 route and automatically rolls back failed cut
   assert.match(workflow, /test "\$status" = '403'/);
   assert.equal(workflow.includes('d1 execute'), false);
   assert.equal(workflow.includes('d1 migrations apply'), false);
+});
+
+const workflow = fs.readFileSync(path.join(root, '.github/workflows/public-worker-deploy.yml'), 'utf8');
+
+function deploymentStep(name) {
+  const start = workflow.indexOf(`      - name: ${name}\n`);
+  assert.ok(start >= 0, name);
+  const rest = workflow.slice(start);
+  const end = rest.indexOf('\n      - ', 1);
+  const block = end < 0 ? rest : rest.slice(0, end);
+  const match = block.match(/        run: (\||>-)[^\n]*\n([\s\S]*)/);
+  assert.ok(match, name);
+  const lines = [];
+  for (const line of match[2].split('\n')) {
+    if (line.trim() && !line.startsWith('          ')) break;
+    lines.push(line.replace(/^          /, ''));
+  }
+  return match[1] === '>-' ? lines.join(' ') : lines.join('\n');
+}
+
+function shell(script, directory, env = {}) {
+  return spawnSync('bash', ['-euo', 'pipefail', '-c', script], {
+    cwd: directory, env: { ...process.env, ...env }, encoding: 'utf8', timeout: 20000,
+  });
+}
+
+test('public deployment requires successful same-commit migration and Admin deployment after preflight', () => {
+  const provision = workflow.split('\n  provision:\n')[1].split('\n  deploy:\n')[0];
+  const deploy = workflow.split('\n  deploy:\n')[1];
+  assert.match(provision, /^    needs: preflight$/m);
+  assert.match(provision, /^    uses: \.\/\.github\/workflows\/d1-staging-provision\.yml$/m);
+  assert.match(provision, /^    secrets: inherit$/m);
+  assert.match(deploy, /^    needs: provision$/m);
+  assert.doesNotMatch(provision, /\bif:|continue-on-error/);
+  assert.doesNotMatch(deploy.split('    steps:')[0], /\bif:|continue-on-error/);
+  assert.match(workflow, /group: public-worker-deploy/);
+  for (const dependency of ['admin-worker/**', 'migrations/**', '.github/workflows/d1-staging-provision.yml']) {
+    assert.ok(workflow.includes(`- '${dependency}'`), dependency);
+  }
+  const provisionWorkflow = fs.readFileSync(path.join(root, '.github/workflows/d1-staging-provision.yml'), 'utf8');
+  assert.match(provisionWorkflow, /workflow_call:/);
+  assert.match(provisionWorkflow, /group: d1-staging-write/);
+  assert.doesNotMatch(provisionWorkflow, /continue-on-error|if:.*always\(/);
+});
+
+test('actual deployment preflight rejects missing secrets before any write', async t => {
+  const script = deploymentStep('Validate deployment prerequisites before any remote write');
+  const env = {
+    CLOUDFLARE_API_TOKEN: 'offline-cloudflare', CLOUDFLARE_ACCOUNT_ID: 'offline-account',
+    ADMIN_INGEST_TOKEN: 'offline-admin', API_FOOTBALL_KEY: 'offline-provider',
+    PUBLIC_DATE_AUDIT_TOKEN: 'offline-audit-token-32-characters-long',
+    ADMIN_WORKER_NAME: 'jfw-football-admin-ingest-staging',
+    ADMIN_INGEST_URL: 'https://jfw-football-admin-ingest-staging.ssdkllpd.workers.dev',
+    D1_DATABASE_NAME: 'jfw-football-staging',
+    D1_DATABASE_ID: 'fdfd74e4-2702-4aa2-ab20-c062e952fe25', R2_BUCKET: 'jfw-football-data',
+  };
+  for (const [name, overrides, expected] of [
+    ['valid', {}, 0],
+    ...['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'ADMIN_INGEST_TOKEN', 'API_FOOTBALL_KEY', 'PUBLIC_DATE_AUDIT_TOKEN']
+      .map(name => [name, { [name]: '' }, 1]),
+    ['short audit token', { PUBLIC_DATE_AUDIT_TOKEN: 'a'.repeat(31) }, 1],
+    ['wrong target', { D1_DATABASE_ID: 'ffffffff-ffff-ffff-ffff-ffffffffffff' }, 1],
+  ]) {
+    await t.test(name, () => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-deploy-preflight-'));
+      try {
+        for (const entry of ['scripts', 'config', 'migrations']) fs.cpSync(path.join(root, entry), path.join(directory, entry), { recursive: true });
+        const result = shell(script, directory, { ...env, ...overrides });
+        assert.equal(result.status, expected, result.stderr);
+        assert.equal(fs.existsSync(path.join(directory, '.tmp/public-worker/wrangler.toml')), expected === 0);
+        assert.equal(`${result.stdout}${result.stderr}`.includes(env.PUBLIC_DATE_AUDIT_TOKEN), false);
+      } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+    });
+  }
+  assert.doesNotMatch(script, /npx|fetch|curl|wrangler@4/);
+});
+
+test('actual audit secret installation sends the exact token on stdin and preserves failures', async t => {
+  const script = deploymentStep('Install dedicated public date audit secret');
+  assert.match(workflow, /PUBLIC_DATE_AUDIT_TOKEN: \$\{\{ secrets\.PUBLIC_DATE_AUDIT_TOKEN \}\}/);
+  assert.ok(workflow.indexOf('Install dedicated public date audit secret') > workflow.indexOf('Deploy public read Worker'));
+  assert.ok(workflow.indexOf('Verify authenticated fresh date reads') > workflow.indexOf('Install dedicated public date audit secret'));
+  for (const failure of [false, true]) {
+    await t.test(failure ? 'failed installation stops the step' : 'token bytes are unchanged', () => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-deploy-secret-'));
+      try {
+        fs.writeFileSync(path.join(directory, 'npx'), `#!${process.execPath}\nconst fs=require('node:fs');
+const input=fs.readFileSync(0,'utf8');
+const ok=input===process.env.PUBLIC_DATE_AUDIT_TOKEN && process.argv.slice(2).join(' ')==='--yes wrangler@4 secret put PUBLIC_DATE_AUDIT_TOKEN --config .tmp/public-worker/wrangler.toml';
+process.exit(ok && process.env.FAIL_INSTALL!=='true' ? 0 : 22);
+`, { mode: 0o755 });
+        const result = shell(script, directory, {
+          PATH: `${directory}:${process.env.PATH}`, PUBLIC_DATE_AUDIT_TOKEN: 'a'.repeat(32), FAIL_INSTALL: String(failure),
+        });
+        assert.equal(result.status, failure ? 22 : 0, result.stderr);
+        assert.equal(`${result.stdout}${result.stderr}`.includes('a'.repeat(32)), false);
+      } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+    });
+  }
+});
+
+test('actual fresh deployment probe checks both authenticated feeds and refuses incomplete evidence', async t => {
+  const script = deploymentStep('Verify authenticated fresh date reads');
+  for (const mode of ['valid', 'unauthorized', 'cached', 'r2-fallback', 'wrong-date', 'wrong-competition', 'missing-fixture']) {
+    await t.test(mode, () => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jfw-deploy-fresh-'));
+      try {
+        fs.mkdirSync(path.join(directory, 'bin'));
+        fs.symlinkSync(path.join(root, 'config'), path.join(directory, 'config'), 'dir');
+        fs.writeFileSync(path.join(directory, 'bin/curl'), `#!${process.execPath}\nconst fs=require('node:fs');
+const args=process.argv.slice(2), url=args.at(-1), mode=process.env.PROBE_MODE;
+const value=flag=>args[args.indexOf(flag)+1];
+const target=JSON.parse(fs.readFileSync('config/public-worker-target.json','utf8'));
+const headers=args.flatMap((v,i)=>v==='--header'?[args[i+1]]:[]);
+const authed=headers.includes('x-jfw-audit-token: '+process.env.PUBLIC_DATE_AUDIT_TOKEN);
+if(!authed || !headers.includes('Origin: '+target.appOrigin) || !url.endsWith('?fresh=1') || mode==='unauthorized') process.exit(22);
+const competition=url.includes('/competitions/');
+fs.appendFileSync('requests.jsonl',JSON.stringify({competition,fresh:true,authenticated:true})+'\\n');
+fs.writeFileSync(value('--dump-header'),'HTTP/2 200\\r\\naccess-control-allow-origin: '+target.appOrigin+'\\r\\ncache-control: '+(mode==='cached'?'public, max-age=300':'no-store')+'\\r\\nx-jfw-data-source: '+(mode==='r2-fallback'?'r2':'d1')+'\\r\\n');
+fs.writeFileSync(value('--output'),JSON.stringify({date:mode==='wrong-date'?'2000-01-01':target.d1ReadProbes.date,fixtures:mode==='missing-fixture'?[]:[{fixtureId:target.d1ReadProbes.fixtureId}],...(competition?{competition:{id:mode==='wrong-competition'?'af:competition:999':target.d1ReadProbes.competitionId}}:{})}));
+`, { mode: 0o755 });
+        const result = shell(script, directory, {
+          PATH: `${directory}/bin:${process.env.PATH}`, PROBE_MODE: mode, PUBLIC_DATE_AUDIT_TOKEN: 'a'.repeat(32),
+        });
+        const report = path.join(directory, '.tmp/public-worker/evidence/fresh-date-audit-report.json');
+        if (mode === 'valid') {
+          assert.equal(result.status, 0, result.stderr);
+          assert.deepEqual(JSON.parse(fs.readFileSync(report, 'utf8')), { passed: true, authenticated: true, cacheControl: 'no-store', routes: 2 });
+          assert.deepEqual(fs.readFileSync(path.join(directory, 'requests.jsonl'), 'utf8').trim().split('\n').map(JSON.parse), [
+            { competition: false, fresh: true, authenticated: true }, { competition: true, fresh: true, authenticated: true },
+          ]);
+        } else {
+          assert.notEqual(result.status, 0, `${mode} was accepted`);
+          assert.equal(fs.existsSync(report), false);
+        }
+        assert.equal(`${result.stdout}${result.stderr}`.includes('a'.repeat(32)), false);
+      } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+    });
+  }
 });
