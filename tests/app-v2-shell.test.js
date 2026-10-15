@@ -12,7 +12,10 @@ test('both published entry files have the same five text-only primary destinatio
  assert.deepEqual([...doc.querySelectorAll('.bottom-nav button')].map(el=>el.textContent),['試合','リーグ','フォロー中','日本人','その他']);
  assert.deepEqual([...doc.querySelectorAll('.desktop-rail [data-page]')].map(el=>el.dataset.page),['matches','leagues','following','japanese','more']);
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest'))).name,'Football Companion');
- for(const script of doc.scripts) assert.ok(fs.existsSync(path.join(root,script.getAttribute('src'))));
+ for(const asset of doc.querySelectorAll('script[src],link[rel="stylesheet"]')) {
+  const url=new URL(asset.getAttribute('src') || asset.getAttribute('href'),'https://football.test/');
+  assert.ok(fs.existsSync(path.join(root,url.pathname.slice(1))),`missing asset ${url.pathname}`);
+ }
 });
 test('legacy entry remains available with its original title',()=>{
  const dom=new JSDOM(fs.readFileSync(path.join(root,'legacy.html'),'utf8'));
