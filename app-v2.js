@@ -517,8 +517,8 @@
       if (state.detail !== detailRequest) return;
       detailRequest.bundle = bundle;
       rememberFixtures(bundle.fixture ? [bundle.fixture] : []);
-      for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) if (player.id) knownPlayers.set(player.id,{playerId:player.id,name:player.name,photo:player.photo,pos:player.position});
-      for (const row of bundle.playerStats || []) if (row.playerId) knownPlayers.set(row.playerId, { playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position });
+      for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) rememberPlayer({playerId:player.id,name:player.name,photo:player.photo,pos:player.position});
+      for (const row of bundle.playerStats || []) rememberPlayer({ playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position });
     } catch (error) {
       if (state.detail !== detailRequest) return;
       detailRequest.error = error;
@@ -650,7 +650,7 @@
       const teamTitle = team?.id
         ? `<button class="lineup-team-link" data-team-id="${esc(team.id)}" type="button">${esc(team.name || team.id)} · ${esc(lineup.formation || 'フォーメーション未取得')}</button>`
         : `<span>${esc(team?.name || lineup.teamId || 'Team')} · ${esc(lineup.formation || 'フォーメーション未取得')}</span>`;
-      return `<section class="detail-card lineup-card"><div class="pitch-card"><div class="pitch-title">${teamTitle}${confidence === 'high' ? '' : `<span class="estimate confidence-${esc(confidence)}">${icon('estimated')} ${confidence === 'low' ? '推定（低確度）' : confidence === 'none' ? '配置は未取得' : '推定'}</span>`}</div><div class="pitch confidence-${esc(confidence)}">${confidence === 'none' ? '<div class="pitch-unavailable">配置は未取得です</div>' : laidOut.map(player => `<div class="pitch-player" style="left:${Number.isFinite(player.x) ? player.x : 50}%;top:${Number.isFinite(player.y) ? player.y : 50}%"><span class="pitch-disc">${esc(player.number ?? '—')}</span><span>${esc(player.name || '選手')}</span></div>`).join('')}</div></div>
+      return `<section class="detail-card lineup-card"><div class="pitch-card"><div class="pitch-title">${teamTitle}${confidence === 'high' ? '' : `<span class="estimate confidence-${esc(confidence)}">${icon('estimated')} ${confidence === 'low' ? '推定（低確度）' : confidence === 'none' ? '配置は未取得' : '推定'}</span>`}</div><div class="pitch confidence-${esc(confidence)}">${confidence === 'none' ? '<div class="pitch-unavailable">配置は未取得です</div>' : laidOut.map(player => `<div class="pitch-player" style="left:${Number.isFinite(player.x) ? player.x : 50}%;top:${Number.isFinite(player.y) ? player.y : 50}%"><span class="pitch-portrait">${personAvatar(player)}<span class="pitch-disc">${esc(player.number ?? '—')}</span></span><span class="pitch-name">${esc(player.name || '選手')}</span></div>`).join('')}</div></div>
         <div class="lineup-list"><h3>先発 ${Array.isArray(lineup.startXI) ? starters.length : valueCell(null)}</h3>${starters.map(player => lineupPersonRow(player, bundle, 'starter')).join('') || (Array.isArray(lineup.startXI) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
         <div class="lineup-list"><h3>ベンチ ${Array.isArray(lineup.substitutes) ? substitutes.length : valueCell(null)}</h3>${substitutes.map(player => lineupPersonRow(player, bundle, 'substitute')).join('') || (Array.isArray(lineup.substitutes) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
         <div class="coach-row">${personAvatar(coach, 'coach')}<div><span>監督</span><strong>${esc(coach?.name || '監督未取得')}</strong></div></div>
@@ -658,12 +658,25 @@
     }).join('');
   }
 
+  function rememberPlayer(player) {
+    if (!player.playerId) return;
+    const previous = knownPlayers.get(player.playerId);
+    knownPlayers.set(player.playerId, { ...previous, ...player, photo: player.photo || previous?.photo || null });
+  }
+
+  function knownPlayerPhoto(player) {
+    const id = player?.playerId || player?.jfwPlayerId || player?.id;
+    if (!id) return null;
+    // Share only acquired photos for the same canonical player, never a name match.
+    return knownPlayers.get(id)?.photo || (state.legacy?.players || []).find(item => (item.playerId || item.jfwPlayerId) === id)?.photo || null;
+  }
+
   function personAvatar(person, kind = 'player') {
     const name = String(person?.name || (kind === 'coach' ? '監督' : '選手'));
     const initials = name.split(/\s+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase() || '—';
     const fallback = kind === 'coach' ? esc(initials) : icon('missing-photo');
     const providerId = person?.providerId || (kind === 'coach' ? /^af:coach:(\d+)$/.exec(person?.id || '')?.[1] : null);
-    const photo = person?.photo || (kind === 'coach' && /^\d+$/.test(String(providerId || '')) ? `https://media.api-sports.io/football/coachs/${providerId}.png` : null);
+    const photo = person?.photo || (kind === 'player' ? knownPlayerPhoto(person) : null) || (kind === 'coach' && /^\d+$/.test(String(providerId || '')) ? `https://media.api-sports.io/football/coachs/${providerId}.png` : null);
     if (photo) return `<span class="person-photo person-avatar"><span class="person-initials" aria-hidden="true">${fallback}</span><img src="${esc(photo)}" alt="" loading="lazy"></span>`;
     return `<span class="person-photo person-fallback" aria-hidden="true">${fallback}</span>`;
   }
@@ -718,7 +731,7 @@
       const jfwValue = typeof row.jfwRating === 'number' ? row.jfwRating : row.jfwRating?.value;
       const value = state.ratingMode === 'jfw' ? valueCell(jfwValue, jfwState) : valueCell(row.values?.rating, row.fieldStates?.rating);
       const actionable = state.ratingMode === 'jfw' && playerId && !['not_applicable','not_fetched'].includes(jfwState) && row.jfwRating?.factors;
-      return `<button class="rating-row" data-rating-player="${esc(playerId || '')}" type="button"${actionable ? '' : ' disabled'}>${personAvatar({ name: row.playerName, photo: row.playerPhoto })}<span><strong>${esc(row.playerName || '選手')}</strong><small>${esc(lineupPlayer?.number ?? '')} · ${esc(row.position || lineupPlayer?.position || '')} ${esc(row.nationality || lineupPlayer?.nationality || '')} · 出場 ${valueCell(row.values?.minutes)}分</small></span><b>${value}</b></button>`;
+      return `<button class="rating-row" data-rating-player="${esc(playerId || '')}" type="button"${actionable ? '' : ' disabled'}>${personAvatar({ playerId, name: row.playerName, photo: row.playerPhoto })}<span><strong>${esc(row.playerName || '選手')}</strong><small>${esc(lineupPlayer?.number ?? '')} · ${esc(row.position || lineupPlayer?.position || '')} ${esc(row.nationality || lineupPlayer?.nationality || '')} · 出場 ${valueCell(row.values?.minutes)}分</small></span><b>${value}</b></button>`;
     };
     return `<div class="rating-switch" role="group" aria-label="評価方式"><button class="chip${state.ratingMode === 'provider' ? ' is-active' : ''}" data-rating-mode="provider" aria-pressed="${state.ratingMode === 'provider'}" type="button">API-Football</button><button class="chip${state.ratingMode === 'jfw' ? ' is-active' : ''}" data-rating-mode="jfw" aria-pressed="${state.ratingMode === 'jfw'}" type="button">JFW 独自評価</button></div><h2>${modeLabel}</h2>${teams.map(team => `<section class="detail-card" data-rating-team="${esc(team.id)}"><div class="section-title"><h3>${esc(team.name || 'チーム')}</h3></div>${rows.filter(row => row.teamId === team.id).map(renderRow).join('') || valueCell(null)}</section>`).join('')}${state.ratingPlayerId ? renderRatingBreakdown(rows.find(row => String(row.playerId || row.id) === String(state.ratingPlayerId))) : ''}`;
   }
@@ -875,7 +888,7 @@
       detail.seasonData = payload;
       applyCompetitionIdentity(detail, payload);
       for (const row of payload?.playerStats?.rows || []) if (row.player?.id) {
-        knownPlayers.set(row.player.id, {
+        rememberPlayer({
           playerId: row.player.id,
           name: row.player.name,
           photo: row.player.photo,
@@ -1077,7 +1090,7 @@
     if (!rows.length) return stats.presence === 'provider_missing'
       ? '<div class="notice">API-Footballの保存済み試合詳細に選手成績がありません。</div>'
       : `<div class="notice">${valueCell(null, stats.presence)}</div>`;
-    return `<p class="data-updated">終了試合の公開済み詳細を集計。値が返っていない項目は0にせず「未取得」と表示します。</p><div class="stats-table-scroll"><div class="player-stats-table"><div class="player-stats-row stats-head"><span>選手</span><span>出場</span><span>先発</span><span>分</span><span>G</span><span>A</span><span>評価</span></div>${rows.map(row => `<div class="player-stats-row"><span class="player-stat-person">${personAvatar({name:row.player?.name,photo:row.player?.photo})}<span><strong>${esc(row.player?.name || '選手名未取得')}</strong><small>${esc(row.team?.name || (row.teamCount > 1 ? `${row.teamCount}クラブ` : 'クラブ未取得'))}</small></span></span><span>${valueCell(row.appearances)}</span><span>${valueCell(row.starts)}</span><span>${aggregateValue(row.minutes)}</span><span>${aggregateValue(row.goals)}</span><span>${aggregateValue(row.assists)}</span><span>${aggregateValue(row.averageRating)}</span></div>`).join('')}</div></div>${stats.limited ? '<p class="notice">表示は上位200選手までです。</p>' : ''}`;
+    return `<p class="data-updated">終了試合の公開済み詳細を集計。値が返っていない項目は0にせず「未取得」と表示します。</p><div class="stats-table-scroll"><div class="player-stats-table"><div class="player-stats-row stats-head"><span>選手</span><span>出場</span><span>先発</span><span>分</span><span>G</span><span>A</span><span>評価</span></div>${rows.map(row => `<div class="player-stats-row"><span class="player-stat-person">${personAvatar(row.player)}<span><strong>${esc(row.player?.name || '選手名未取得')}</strong><small>${esc(row.team?.name || (row.teamCount > 1 ? `${row.teamCount}クラブ` : 'クラブ未取得'))}</small></span></span><span>${valueCell(row.appearances)}</span><span>${valueCell(row.starts)}</span><span>${aggregateValue(row.minutes)}</span><span>${aggregateValue(row.goals)}</span><span>${aggregateValue(row.assists)}</span><span>${aggregateValue(row.averageRating)}</span></div>`).join('')}</div></div>${stats.limited ? '<p class="notice">表示は上位200選手までです。</p>' : ''}`;
   }
 
   function renderCompetitionTeams(detail) {
@@ -1273,13 +1286,13 @@
     const teams = allKnownTeams().filter(item => String(item.name).toLowerCase().includes(query));
     const players = allKnownPlayers().filter(item => `${item.name} ${item.club || ''} ${item.league || ''}`.toLowerCase().includes(query));
     $('searchResults').innerHTML = query ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
-    bindCompetitionRows(); bindTeamRows(); bindPlayerRows(); bindFollowButtons();
+    bindCompetitionRows(); bindTeamRows(); bindPlayerRows(); bindFollowButtons(); bindImageFallbacks();
   }
   function allKnownPlayers() {
     const players = new Map(knownPlayers);
     for (const player of state.legacy?.players || []) {
       const id = player.playerId || player.jfwPlayerId;
-      if (id) players.set(id, player);
+      if (id) players.set(id, { ...players.get(id), ...player, photo: player.photo || players.get(id)?.photo || null });
     }
     return [...players.values()];
   }

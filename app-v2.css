@@ -85,7 +85,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .pitch{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin:auto;border:1px solid rgba(236,255,246,.58);border-radius:var(--radius-sm);background:repeating-linear-gradient(0deg,#177743 0,#177743 11.11%,#146e3e 11.11%,#146e3e 22.22%);overflow:hidden}
 .pitch:before{content:"";position:absolute;inset:4%;border:1px solid rgba(255,255,255,.45)}
 .pitch-player{position:absolute;width:64px;transform:translate(-50%,-50%);text-align:center;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9);font-size:11px;font-weight:900}
-.pitch-disc{display:grid;place-items:center;width:29px;height:29px;margin:auto;border-radius:50%;background:#182b3c;border:2px solid rgba(255,255,255,.84);font-size:12px}
+.pitch-portrait{position:relative;display:block;width:40px;height:40px;margin:0 auto 5px;text-shadow:none}
+.pitch-player .person-photo{width:40px;height:40px;border:2px solid rgba(255,255,255,.84);background:#182b3c}
+.pitch-player .person-initials,.pitch-player .person-fallback{color:#fff}
+.pitch-disc{position:absolute;right:-5px;bottom:-3px;display:grid;place-items:center;min-width:19px;height:19px;padding:0 3px;border-radius:10px;background:#182b3c;border:1px solid rgba(255,255,255,.84);font-size:10px;line-height:1}
+.pitch-name{display:block;line-height:1.2;overflow-wrap:anywhere}
 .team-stat-row{display:grid;grid-template-columns:1fr 58px 1fr;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);font-size:12px}
 .team-stat-row:first-child{border-top:0}
 .team-stat-row .home{text-align:right;font-weight:900}
