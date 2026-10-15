@@ -1,0 +1,45 @@
+name: Inspect Saved Player Name Sources 2026-10-15
+on:
+  push:
+    branches: [ops/player-name-source-audit-20261015]
+    paths:
+      - .github/workflows/player-name-source-audit-20261015.yml
+      - tools/player-name-source-audit.py
+permissions:
+  contents: read
+jobs:
+  inspect-saved-source:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read the pinned original snapshot only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p .tmp/name-source
+          archive_key=$(jq -r '.archiveKey' config/d1-major-league-snapshot-20260908.json)
+          test "$archive_key" = 'audit/api-football/v3/major-leagues/2026/snapshots/20260908-021509068Z.tar.gz'
+          npx --yes wrangler@4.147.0 r2 object get "jfw-football-data/$archive_key" \
+            --file .tmp/name-source/snapshot.tar.gz --remote
+      - name: Verify source hash and inspect name fields locally
+        run: |
+          python3 tools/player-name-source-audit.py \
+            .tmp/name-source/snapshot.tar.gz \
+            config/d1-major-league-snapshot-20260908.json \
+            .tmp/name-source/player-name-sources.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: player-name-sources-20261015
+          path: .tmp/name-source/player-name-sources.json
+          if-no-files-found: error
+          retention-days: 14
