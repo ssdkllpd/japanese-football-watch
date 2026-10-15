@@ -76,6 +76,70 @@ test('ratings are grouped under the corresponding home and away team',async t=>{
  const group=app.doc.querySelector(`[data-rating-team="${id}"]`);assert.ok(group);assert.ok(visible(group,app.w));assert.match(group.textContent,new RegExp(name));assert.equal(group.querySelectorAll('.rating-row').length,1);
  }
 });
+test('acquired stat photos are shared by pitch, lineup lists, ratings and player detail',async t=>{
+ const detail=bundle();
+ detail.playerStats[0].playerPhoto='https://photos.test/starter1.png';
+ detail.playerStats.push({playerId:'af:player:3',playerName:'Bench 1',teamId:home.id,playerPhoto:'https://photos.test/bench1.png',values:{minutes:12}});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const pitch=app.doc.querySelector('.pitch-player');
+ assert.equal(pitch.querySelector('img').src,detail.playerStats[0].playerPhoto);
+ assert.equal(pitch.querySelector('.pitch-disc').textContent,'9');
+ assert.equal(pitch.querySelector('.pitch-name').textContent,'Starter 1');
+ const rows=app.doc.querySelectorAll('.lineup-card:first-child .lineup-person');
+ assert.equal(rows[0].querySelector('img').src,detail.playerStats[0].playerPhoto);
+ assert.equal(rows[1].querySelector('img').src,'https://photos.test/bench1.png');
+ const requests=app.calls.length;
+ await app.click('[data-detail-tab="ratings"]');
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:1"] img').src,detail.playerStats[0].playerPhoto);
+ assert.equal(app.calls.length,requests,'photos reuse loaded data without extra API requests');
+ await app.click('[data-detail-tab="lineup"]');
+ await app.click('[data-player-id="af:player:1"]');
+ assert.equal(app.doc.querySelector('.entity-hero .person-photo img').src,detail.playerStats[0].playerPhoto);
+});
+test('legacy photos match canonical IDs, while truly missing and failed photos keep a usable fallback',async t=>{
+ const detail=bundle();detail.lineups[1].startXI[0].name='Starter 1';
+ const legacy={players:[{playerId:'af:player:1',name:'Starter 1',photo:'https://photos.test/legacy.png'}]};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail,legacy});
+ const players=app.doc.querySelectorAll('.pitch-player');
+ assert.equal(players[0].querySelector('img').src,legacy.players[0].photo);
+ assert.equal(players[1].querySelector('img'),null,'same name with another ID must not borrow a photo');
+ assert.ok(players[1].querySelector('.person-fallback'));
+ const image=players[0].querySelector('img');image.dispatchEvent(new app.w.Event('error'));
+ assert.equal(image.hidden,true);assert.ok(image.closest('.person-avatar').classList.contains('is-fallback'));
+ assert.equal(players[0].querySelector('.pitch-disc').textContent,'9');
+ assert.ok(visible(players[0].querySelector('.person-initials'),app.w));
+ assert.ok(visible(players[0].querySelector('.pitch-name'),app.w));
+ assert.ok(app.calls.every(url=>new URL(url).hostname==='api.test'));
+});
+test('missing photos in later fixture data cannot erase an acquired lineup photo in any view',async t=>{
+ const detail=bundle();detail.lineups[0].startXI[0].photo='https://photos.test/acquired.png';
+ detail.playerStats[0].playerPhoto=null;
+ const legacy={players:[{playerId:'af:player:1',name:'Starter 1',photo:null}]};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail,legacy});
+ assert.equal(app.doc.querySelector('.pitch-player img').src,'https://photos.test/acquired.png');
+ await app.click('[data-detail-tab="ratings"]');
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:1"] img').src,'https://photos.test/acquired.png');
+ await app.click('[data-detail-tab="lineup"]');
+ await app.click('[data-player-id="af:player:1"]');
+ assert.equal(app.doc.querySelector('.entity-hero .person-photo img').src,'https://photos.test/acquired.png');
+ await app.click('#searchButton');
+ const input=app.doc.getElementById('globalSearch');input.value='Starter 1';input.dispatchEvent(new app.w.Event('input',{bubbles:true}));
+ const image=app.doc.querySelector('#searchResults [data-player-id="af:player:1"] img');
+ assert.equal(image.src,'https://photos.test/acquired.png');
+ image.dispatchEvent(new app.w.Event('error'));assert.equal(image.hidden,true);
+});
+test('competition photos survive navigating into a fixture without photos',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
+ const seasonDetail={competition:catalog.competitions[0],season:catalog.competitions[0].seasons[0],playerStats:{presence:'present',rows:[{player:{id:'af:player:1',name:'Starter 1',photo:'https://photos.test/season.png'},team:home}]}};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=players',catalog,seasonDetail});
+ await until(()=>!!app.doc.querySelector('.player-stat-person img'),'season photos did not render');
+ assert.equal(app.doc.querySelector('.player-stat-person img').src,'https://photos.test/season.png');
+ app.w.location.hash='#/fixtures/af%3Afixture%3A10?tab=lineup';
+ await until(()=>!!app.doc.querySelector('.pitch-player img'),'cached season photo was erased by missing fixture photos');
+ assert.equal(app.doc.querySelector('.pitch-player img').src,'https://photos.test/season.png');
+ await app.click('[data-detail-tab="ratings"]');
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:1"] img').src,'https://photos.test/season.png');
+});
 test('all five fixture tabs update URL and expose an associated tabpanel',async t=>{
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10'});
  for(const tab of ['overview','lineup','events','stats','ratings']){
