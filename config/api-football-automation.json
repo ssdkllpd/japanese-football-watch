@@ -1,6 +1,6 @@
 {
   "schemaVersion": "jfw-api-football-automation-policy/1",
-  "scheduledSynchronizationEnabled": false,
+  "scheduledSynchronizationEnabled": true,
   "timeZone": "Asia/Tokyo",
   "cron": "*/15 * * * *",
   "competitionSeasons": [

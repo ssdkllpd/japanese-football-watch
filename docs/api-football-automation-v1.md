@@ -2,9 +2,9 @@
 
 ## Status
 
-The workflow is implemented but deliberately inactive.
+The reviewed policy permits activation after the October 15 live-data validation. The repository switch remains the final operational gate.
 
-- `config/api-football-automation.json` has `scheduledSynchronizationEnabled: false`.
+- `config/api-football-automation.json` has `scheduledSynchronizationEnabled: true`. The ten-season scope and all request/publication limits are unchanged.
 - Scheduled runs also require the repository variable `API_FOOTBALL_AUTOMATION_ENABLED=true`.
 - A manual `execute` run additionally requires the exact confirmation `RUN API-FOOTBALL AUTOMATION`.
 - A manual `preview` may fetch and validate artifacts, but every R2, D1, and state-write step is gated to `execute`.
