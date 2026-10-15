@@ -84,7 +84,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .estimate{border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line));border-radius:var(--radius-pill);padding:2px 5px;color:var(--warn);font-size:12px}
 .pitch{position:relative;width:min(100%,390px);aspect-ratio:2/3;margin:auto;border:1px solid rgba(236,255,246,.58);border-radius:var(--radius-sm);background:repeating-linear-gradient(0deg,#177743 0,#177743 11.11%,#146e3e 11.11%,#146e3e 22.22%);overflow:hidden}
 .pitch:before{content:"";position:absolute;inset:4%;border:1px solid rgba(255,255,255,.45)}
-.pitch-player{position:absolute;width:64px;transform:translate(-50%,-50%);text-align:center;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9);font-size:11px;font-weight:900}
+/* Anchor each coordinate to the 40px portrait center, independent of name wrapping. */
+.pitch-player{position:absolute;width:64px;transform:translate(-50%,-20px);text-align:center;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9);font-size:11px;font-weight:900}
 .pitch-portrait{position:relative;display:block;width:40px;height:40px;margin:0 auto 5px;text-shadow:none}
 .pitch-player .person-photo{width:40px;height:40px;border:2px solid rgba(255,255,255,.84);background:#182b3c}
 .pitch-player .person-initials,.pitch-player .person-fallback{color:#fff}
