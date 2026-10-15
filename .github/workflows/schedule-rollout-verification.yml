@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: d1-staging-write
@@ -15,85 +16,118 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  preview:
+  execute-limited:
     runs-on: ubuntu-latest
     environment: d1-staging
     timeout-minutes: 20
     env:
-      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      PUBLIC_DATE_AUDIT_TOKEN: ${{ secrets.PUBLIC_DATE_AUDIT_TOKEN }}
       ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
       ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
       D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
+      D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Read repair state and exact stored inventory without writes
+      - name: Download the inspected preview from the exact run
+        uses: actions/download-artifact@v4
+        with:
+          name: schedule-rollout-preview-38684857067
+          run-id: 38684857067
+          github-token: ${{ github.token }}
+          path: .tmp/inspected-preview
+      - name: Recheck unchanged baseline and pin exactly three future changes
+        id: prepare
         shell: bash
         run: |
           set -euo pipefail
+          test "$D1_ADMIN_PUBLISH_ENABLED" = true
+          test "${#PUBLIC_DATE_AUDIT_TOKEN}" -ge 32
           node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
-          mkdir -p .tmp/rollout-verification
-          node scripts/d1/render-admin-wrangler.mjs --output .tmp/rollout-verification/wrangler.toml
+          mkdir -p .tmp/limited-verification
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/limited-verification/usage.json
+          node scripts/d1/render-admin-wrangler.mjs --output .tmp/limited-verification/wrangler.toml
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
+          import { createHash } from 'node:crypto';
           import { execFileSync } from 'node:child_process';
           import { adminScheduleSender } from './scripts/d1/execute-fixture-schedule-plan.mjs';
           import { SCHEDULE_INVENTORY_SQL, d1AuditRows } from './scripts/d1/capture-schedule-audit.mjs';
-          const root = '.tmp/rollout-verification';
-          const status = await adminScheduleSender(process.env)({schemaVersion:'jfw-d1-admin-ingest/1',operation:'fixture_schedule_repair_status'});
-          fs.writeFileSync(`${root}/repair-status.json`, JSON.stringify(status,null,2)+'\n');
-          const query = (name, sql) => {
-            const raw = execFileSync('npx', ['--yes','wrangler@4','d1','execute',process.env.D1_DATABASE_NAME,
+          const root='.tmp/limited-verification';
+          const raw=fs.readFileSync('.tmp/inspected-preview/plan.json');
+          const beforeRaw=fs.readFileSync('.tmp/inspected-preview/inventory.json');
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          if(sha(raw)!=='bdcab6fbffb200cb6dac8b3b28d3a4da002600a7c8a447d178d10e0af850c5bf'
+            || sha(beforeRaw)!=='56795b3333e08c9b8bd4c6ca2e99a67d95037f40da48baa03c75c43511851121') throw new Error('Inspected preview bytes differ.');
+          const plan=JSON.parse(raw);
+          const age=Date.now()-Date.parse(plan.generatedAt);
+          if(!Number.isFinite(age) || age<0 || age>30*60000) throw new Error('Preview is outside its 30-minute execution window.');
+          const ids=['af:fixture:1570423','af:fixture:1570427','af:fixture:1570429'];
+          const selected=ids.map(id=>{
+            const matches=plan.changes.filter(item=>item.fixtureId===id);
+            if(matches.length!==1) throw new Error('Pinned fixture is not a unique preview change.');
+            return matches[0];
+          });
+          const day=utc=>new Date(Date.parse(utc)+9*3600000).toISOString().slice(0,10);
+          if(plan.schemaVersion!=='jfw-fixture-schedule-plan/1' || plan.executable!==true
+            || selected.filter(item=>day(item.oldKickoffUtc)!==day(item.newKickoffUtc)).length!==2
+            || selected.some(item=>item.operation!=='fixture_schedule_update' || item.oldStatus!=='NS'
+              || item.newStatus!=='NS' || Date.parse(item.newKickoffUtc)<Date.now()+24*3600000)) throw new Error('Limited selection is unsafe.');
+          const query=(name,sql)=>{
+            const raw=execFileSync('npx',['--yes','wrangler@4','d1','execute',process.env.D1_DATABASE_NAME,
               '--remote','--json','--config',`${root}/wrangler.toml`,'--command',sql],
               {encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
             fs.writeFileSync(`${root}/${name}.json`,raw);
             return d1AuditRows(JSON.parse(raw));
           };
-          const inventory = query('inventory', SCHEDULE_INVENTORY_SQL);
-          const badDates = query('kickoff-date-violations', "SELECT canonical_id,kickoff_utc,date_jst FROM fixtures WHERE strftime('%Y-%m-%d',kickoff_utc,'+9 hours') IS NOT date_jst LIMIT 100");
-          const foreignKeys = query('foreign-key-violations','PRAGMA foreign_key_check');
-          const missingDay = query('date-2026-09-29', "SELECT 'fixtures' AS kind,COUNT(*) AS count FROM fixtures WHERE date_jst='2026-09-29' UNION ALL SELECT 'coverage',COUNT(*) FROM date_index_coverages WHERE date_jst='2026-09-29'");
-          console.log(JSON.stringify({readOnly:true,inventoryRows:inventory.length,repairStatus:status,
-            kickoffDateViolations:badDates.length,foreignKeyViolations:foreignKeys.length,missingDay,
-            heldFixture1552141:inventory.find(row=>row.fixture_id==='af:fixture:1552141')}));
-          if(badDates.length || foreignKeys.length) throw new Error('Stored integrity checks failed before provider discovery.');
+          const current=query('before',SCHEDULE_INVENTORY_SQL);
+          if(JSON.stringify(current)!==JSON.stringify(d1AuditRows(JSON.parse(beforeRaw)))) throw new Error('Stored baseline changed after preview.');
+          const pending=query('pending-before','SELECT fixture_id,old_date_jst,new_date_jst FROM fixture_schedule_refresh_pending ORDER BY fixture_id');
+          const status=await adminScheduleSender(process.env)({schemaVersion:'jfw-d1-admin-ingest/1',operation:'fixture_schedule_repair_status'});
+          fs.writeFileSync(`${root}/repair-status-before.json`,JSON.stringify(status,null,2)+'\n');
+          if(status.remaining!==0 || !Array.isArray(status.dates) || status.dates.length || pending.length) throw new Error('Initial repairs require investigation before limited writes.');
+          const limited={...plan,changes:selected,batchSize:3,remainingAfterBatch:0};
+          fs.writeFileSync(`${root}/plan.json`,JSON.stringify(limited,null,2)+'\n');
+          fs.writeFileSync(`${root}/selection-report.json`,JSON.stringify({previewRun:38684857067,
+            planSha256:sha(raw),selectedIds:ids,crossings:2,preservedFixtures:current.length-3,providerRequests:0},null,2)+'\n');
+          console.log(JSON.stringify({selected,baselineFixtures:current.length,initialRepairs:0,providerRequests:0}));
           NODE
-      - name: Preview ten provider seasons without publishing
-        run: node scripts/v2/plan-fixture-schedule-sync.js .tmp/rollout-verification/inventory.json .tmp/rollout-verification/plan.json
-      - name: Summarize proposed crossings and held fixtures
+      - name: Apply only the three inspected schedule changes
+        id: execute
+        run: node scripts/d1/execute-fixture-schedule-plan.mjs execute .tmp/limited-verification/plan.json > .tmp/limited-verification/execution-report.json
+      - name: Confirm affected repairs are fully drained
+        if: always() && steps.execute.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import { createHash } from 'node:crypto';
-          const root='.tmp/rollout-verification';
-          const raw=fs.readFileSync(`${root}/plan.json`);
-          const plan=JSON.parse(raw);
+          import { adminScheduleSender } from './scripts/d1/execute-fixture-schedule-plan.mjs';
+          import { drainDateRepairs } from './scripts/d1/drain-date-repairs.mjs';
+          const root='.tmp/limited-verification';
+          const plan=JSON.parse(fs.readFileSync(`${root}/plan.json`));
           const day=utc=>new Date(Date.parse(utc)+9*3600000).toISOString().slice(0,10);
-          const crossings=plan.changes.filter(item=>day(item.oldKickoffUtc)!==day(item.newKickoffUtc));
-          const heldReasons={};
-          for(const item of plan.held) heldReasons[item.reason]=(heldReasons[item.reason]||0)+1;
-          const report={mode:'preview',remoteWrites:0,generatedAt:plan.generatedAt,scanned:plan.scanned,
-            executable:plan.executable,changes:plan.changes.length,crossings:crossings.length,
-            crossingCandidates:crossings.slice(0,10),heldReasons,
-            heldFixture1552141:plan.held.filter(item=>item.fixtureId==='af:fixture:1552141'),
-            dailyRemaining:plan.dailyRemaining,planSha256:createHash('sha256').update(raw).digest('hex')};
-          fs.writeFileSync(`${root}/preview-report.json`,JSON.stringify(report,null,2)+'\n');
+          const dates=[...new Set(plan.changes.flatMap(item=>[day(item.oldKickoffUtc),day(item.newKickoffUtc)]))];
+          const report=await drainDateRepairs(adminScheduleSender(process.env),{dates});
+          fs.writeFileSync(`${root}/repair-report.json`,JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(report));
+          if(!report.passed) throw new Error('Limited repair check failed.');
           NODE
-      - name: Upload preview evidence
+      - name: Independently compare all fixtures and affected D1 R2 fresh scopes
+        if: always() && steps.execute.outcome != 'skipped' && steps.prepare.outcome == 'success'
+        run: node scripts/d1/capture-schedule-audit.mjs .tmp/limited-verification/plan.json .tmp/limited-verification/before.json .tmp/limited-verification/audit
+      - name: Upload complete bounded verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: schedule-rollout-preview-${{ github.run_id }}
-          path: .tmp/rollout-verification/*.json
+          name: schedule-rollout-limited-${{ github.run_id }}
+          path: .tmp/limited-verification/**/*.json
           retention-days: 14
           if-no-files-found: warn
