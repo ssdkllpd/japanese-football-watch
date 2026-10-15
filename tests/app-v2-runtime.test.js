@@ -34,7 +34,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','app-v2-history.js','app-v2-router.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
@@ -75,6 +75,33 @@ test('ratings are grouped under the corresponding home and away team',async t=>{
  for(const [id,name] of [['af:team:1','Starter 1'],['af:team:2','Starter 2']]){
  const group=app.doc.querySelector(`[data-rating-team="${id}"]`);assert.ok(group);assert.ok(visible(group,app.w));assert.match(group.textContent,new RegExp(name));assert.equal(group.querySelectorAll('.rating-row').length,1);
  }
+});
+test('only pitch labels are short while starter, bench, ratings and detail names expand',async t=>{
+ const detail=bundle();
+ Object.assign(detail.lineups[0].startXI[0],{id:'af:player:278088',name:'C. Rushworth'});
+ Object.assign(detail.lineups[0].substitutes[0],{id:'af:player:37961',name:'M. van Ewijk'});
+ Object.assign(detail.playerStats[0],{playerId:'af:player:278088',playerName:'C. Rushworth'});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.equal(app.doc.querySelector('.pitch-name').textContent,'C. Rushworth');
+ assert.equal(app.doc.querySelector('.pitch-name').title,'Carl Andrew Rushworth');
+ assert.equal(app.doc.querySelector('.lineup-person strong').textContent,'Carl Andrew Rushworth');
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:37961"]').textContent,'Milan Fabrizio van Ewijk');
+ await app.click('[data-detail-tab="ratings"]');
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:278088"] strong').textContent,'Carl Andrew Rushworth');
+ await app.click('[data-detail-tab="lineup"]');
+ await app.click('[data-player-id="af:player:278088"]');
+ assert.equal(app.doc.querySelector('.entity-hero h2').textContent,'Carl Andrew Rushworth');
+ assert.equal(detail.lineups[0].startXI[0].name,'C. Rushworth');
+});
+test('pitch uses the saved short label while an existing full list name stays full',async t=>{
+ const detail=bundle();
+ Object.assign(detail.lineups[0].startXI[0],{id:'af:player:2937',name:'Declan Rice'});
+ Object.assign(detail.playerStats[0],{playerId:'af:player:2937',playerName:'Declan Rice'});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.equal(app.doc.querySelector('.pitch-name').textContent,'D. Rice');
+ assert.equal(app.doc.querySelector('.lineup-person strong').textContent,'Declan Rice');
+ await app.click('[data-detail-tab="ratings"]');
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:2937"] strong').textContent,'Declan Rice');
 });
 test('acquired stat photos are shared by pitch, lineup lists, ratings and player detail',async t=>{
  const detail=bundle();
