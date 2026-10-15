@@ -47,7 +47,7 @@ jobs:
           import { adminScheduleSender } from './scripts/d1/execute-fixture-schedule-plan.mjs';
           import { SCHEDULE_INVENTORY_SQL, d1AuditRows } from './scripts/d1/capture-schedule-audit.mjs';
           const root = '.tmp/rollout-verification';
-          const status = await adminScheduleSender(process.env)({operation:'fixture_schedule_repair_status'});
+          const status = await adminScheduleSender(process.env)({schemaVersion:'jfw-d1-admin-ingest/1',operation:'fixture_schedule_repair_status'});
           fs.writeFileSync(`${root}/repair-status.json`, JSON.stringify(status,null,2)+'\n');
           const query = (name, sql) => {
             const raw = execFileSync('npx', ['--yes','wrangler@4','d1','execute',process.env.D1_DATABASE_NAME,
