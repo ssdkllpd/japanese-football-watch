@@ -330,7 +330,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: api-football-manual-backfill-${{ github.run_id }}-${{ github.sha }}
+          name: api-football-manual-backfill-${{ github.run_id }}-${{ github.sha }}-${{ inputs.batches_left }}-${{ inputs.batches_left }}
           path: |
             .tmp/manual-backfill/plan.json
             .tmp/manual-backfill/budget.json
