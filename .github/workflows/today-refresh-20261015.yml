@@ -3,25 +3,6 @@ permissions:
   contents: read
   actions: write
 jobs:
-  result-batch-4:
-    uses: ./.github/workflows/api-football-manual-backfill.yml
-    with:
-      mode: execute
-      confirmation: RUN API-FOOTBALL BACKFILL
-      auto_continue: ${{ 'false' }}
-      batches_left: '3'
-      billing_mode: paid
-    secrets: inherit
-  result-batch-5:
-    needs: result-batch-4
-    uses: ./.github/workflows/api-football-manual-backfill.yml
-    with:
-      mode: execute
-      confirmation: RUN API-FOOTBALL BACKFILL
-      auto_continue: ${{ 'false' }}
-      batches_left: '2'
-      billing_mode: paid
-    secrets: inherit
   result-final-batch:
     runs-on: ubuntu-latest
     timeout-minutes: 80
@@ -194,9 +175,40 @@ jobs:
     - name: Recheck Paid D1 monthly usage before publication
       if: true && true && steps.plan.outputs.action_count != '0'
       run: node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/manual-backfill/paid-usage-current.json
-    - name: Retain the current protected fixture bundle before reconciliation
-      run: npx --yes wrangler@4 r2 object get "$R2_BUCKET/football/v2/competitions/af:competition:88/seasons/af:season:88:2026/fixtures/af:fixture:1552141.json"
-        --file .tmp/manual-backfill/protected-fixture-before.json --remote
+    - name: Retain the published protected fixture from its verified storage location
+      run: |
+        set -euo pipefail
+        node --input-type=module <<'NODE'
+        import fs from 'node:fs';
+        import assert from 'node:assert/strict';
+        import {execFileSync} from 'node:child_process';
+        const root='.tmp/manual-backfill';
+        const sql="SELECT f.canonical_id,f.kickoff_utc,f.date_jst,f.published_revision,r.revision_no,r.detail_location,r.content_sha256,a.r2_key AS archive_r2_key FROM fixtures f JOIN fixture_revisions r ON r.id=f.published_revision AND r.fixture_id=f.id AND r.lifecycle_state='published' LEFT JOIN fixture_archives a ON a.fixture_revision_id=r.id AND a.status='ready' AND a.is_active=1 WHERE f.canonical_id='af:fixture:1552141'";
+        const raw=execFileSync('npx',['--yes','wrangler@4','d1','execute',process.env.D1_DATABASE_NAME,'--remote','--json','--config',root+'/wrangler.toml','--command',sql],{encoding:'utf8',timeout:120000});
+        fs.writeFileSync(root+'/protected-storage-before.json',raw);
+        const results=JSON.parse(raw);assert.equal(results.length,1);assert.equal(results[0].success,true);assert.equal(results[0].results.length,1);
+        const metadata=results[0].results[0];assert.ok(metadata.revision_no>0);
+        const manifest=JSON.parse(fs.readFileSync(root+'/artifacts/fixtures/1552141/manifest.json'));
+        const key=manifest.r2Objects.find(x=>x.role==='fixture')?.key;assert.ok(key);
+        const backup=root+'/protected-fixture-before.json';let canonicalAbsent=false,source='canonical-r2';
+        try{execFileSync('npx',['--yes','wrangler@4','r2','object','get',process.env.R2_BUCKET+'/'+key,'--file',backup,'--remote'],{stdio:'pipe',timeout:120000});}
+        catch(error){const message=String(error.stdout||'')+String(error.stderr||'');if(!/specified key does not exist|not found|404/i.test(message))throw error;canonicalAbsent=true;fs.rmSync(backup,{force:true});}
+        if(canonicalAbsent){
+         if(metadata.detail_location==='r2'){
+          assert.ok(metadata.archive_r2_key);source='active-r2-archive';
+          execFileSync('npx',['--yes','wrangler@4','r2','object','get',process.env.R2_BUCKET+'/'+metadata.archive_r2_key,'--file',backup,'--remote'],{stdio:'pipe',timeout:120000});
+         }else{
+          assert.equal(metadata.detail_location,'d1');source='published-d1-public-bundle';
+          const target=JSON.parse(fs.readFileSync('config/public-worker-target.json'));
+          const response=await fetch(new URL('/api/v2/fixtures/'+encodeURIComponent(metadata.canonical_id),target.workerOrigin),{headers:{Origin:target.appOrigin},redirect:'error',signal:AbortSignal.timeout(20000)});assert.equal(response.status,200);
+          const bundle=await response.json();assert.equal(bundle.detailAvailability,'available');fs.writeFileSync(backup,JSON.stringify(bundle,null,2)+'\n');
+         }
+        }
+        const bundle=JSON.parse(fs.readFileSync(backup));assert.equal(bundle.fixture.id,metadata.canonical_id);assert.equal(bundle.fixture.revision,metadata.revision_no);assert.equal(new Date(bundle.fixture.kickoffUtc).toISOString(),new Date(metadata.kickoff_utc).toISOString());
+        fs.writeFileSync(root+'/protected-backup-report.json',JSON.stringify({passed:true,source,canonicalKey:key,canonicalAbsent,metadata},null,2)+'\n');
+        console.log(JSON.stringify({protectedBackup:true,source,canonicalAbsent,revision:metadata.revision_no}));
+        NODE
+      shell: bash
     - name: Check every fixture guard before R2 writes
       if: true && steps.plan.outputs.fixture_count != '0'
       shell: bash
@@ -320,9 +332,12 @@ jobs:
           .tmp/manual-backfill/protected-fixture-before.json
           .tmp/manual-backfill/artifacts/fixtures/1552141/*.json
           .tmp/manual-backfill/d1/d1-corrections/*.json
+          .tmp/manual-backfill/artifacts/fetch-report.json
+          .tmp/manual-backfill/artifacts/standings/**/*.json
+          .tmp/manual-backfill/protected-storage-before.json
+          .tmp/manual-backfill/protected-backup-report.json
         if-no-files-found: warn
         retention-days: 14
-    needs: result-batch-5
     concurrency:
       group: d1-staging-write
       queue: max
