@@ -1,0 +1,32 @@
+name: Confirm Enabled Football Automation 2026-10-15
+on:
+  push:
+    branches: [ops/confirm-automation-activation-20261015]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: activation-confirmation-20261015
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SCHEDULE_ENABLED: ${{ vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED }}
+      RESULTS_ENABLED: ${{ vars.API_FOOTBALL_AUTOMATION_ENABLED }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm repository switches and execute main workflows in order
+        run: node scripts/d1/verify-enabled-workflows-20261015.mjs
+      - name: Save activation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activation-confirmation-${{ github.run_id }}
+          path: .tmp/activation-confirmation/report.json
+          retention-days: 14
