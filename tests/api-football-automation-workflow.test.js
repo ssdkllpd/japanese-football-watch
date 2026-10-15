@@ -18,10 +18,10 @@ test('automation schedule stays behind both repository and reviewed policy gates
   assert.equal(policy.scheduledSynchronizationEnabled, false);
 });
 
-test('automation serializes with every staging writer and never executes D1 directly', () => {
+test('automation serializes with every staging writer and only reads D1 directly', () => {
   assert.match(workflow, /group: d1-staging-write/);
-  assert.doesNotMatch(workflow, /wrangler@4 d1 execute|wrangler d1 execute|migrations apply/);
-  assert.match(workflow, /request-admin-ingest\.mjs/);
+  assert.doesNotMatch(workflow, /migrations apply|--command "(?:UPDATE|DELETE|INSERT)/);
+  assert.match(workflow, /execute-automation-admin-plan\.mjs/);
   assert.match(workflow, /verify-d1-target\.mjs/);
 });
 
@@ -30,7 +30,7 @@ test('durable state advances only after Admin Worker verification', () => {
     < workflow.indexOf('discover-api-football-automation.js'));
   assert.ok(workflow.indexOf('--start-discovery true')
     < workflow.indexOf('discover-api-football-automation.js'));
-  const admin = workflow.indexOf('request-admin-ingest.mjs');
+  const admin = workflow.indexOf('execute-automation-admin-plan.mjs');
   const advance = workflow.lastIndexOf('advance-api-football-automation-state.js');
   const upload = workflow.lastIndexOf('$R2_BUCKET/$AUTOMATION_STATE_KEY');
   assert.ok(admin > 0 && advance > admin && upload > advance);
@@ -46,7 +46,7 @@ test('preview performs no R2 or D1 writes', () => {
     'Reconcile and publish finalized fixture objects to R2',
     'Publish standings objects to R2',
     'Publish through the protected Admin Worker and verify',
-    'Advance durable state only after successful verification',
+    'Advance durable state only for verified fixtures and standings',
   ];
   for (const name of writeSteps) {
     const start = workflow.indexOf(`- name: ${name}`);

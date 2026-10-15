@@ -31,7 +31,7 @@ function readContainedJson(root, relative, label) {
   }
 }
 
-function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory) {
+function createStrictAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory) {
   if (automationPlan?.schemaVersion !== AUTOMATION_PLAN_VERSION
     || !Array.isArray(automationPlan.detailFetches)
     || !Array.isArray(automationPlan.standingsFetches)) {
@@ -95,13 +95,16 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     if (item.previousDateJst !== undefined) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(item.previousDateJst)
         || new Date(`${item.previousDateJst}T00:00:00Z`).toISOString().slice(0, 10) !== item.previousDateJst
-        || item.previousDateJst === bundle.fixture.dateJst) {
+) {
         throw new Error(`Fixture ${item.fixtureId} previous date is invalid.`);
       }
+      if (item.previousDateJst === bundle.fixture.dateJst) { fixture.requireStableDate = true; }
+      else {
       fixture.expectedPreviousDate = item.previousDateJst;
       dateScope(item.previousDateJst).departedFixtures.push({
         fixtureId: item.fixtureId, date: bundle.fixture.dateJst,
       });
+      }
     } else fixture.requireStableDate = true;
     fixture.preserveCorrections = true;
     fixtures.push(fixture);
@@ -160,6 +163,38 @@ function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory
     dateIndexCoverages: [],
     expectedTotals: null,
   };
+}
+
+function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory) {
+  if (!Array.isArray(automationPlan?.detailFetches) || !Array.isArray(automationPlan?.standingsFetches)) throw new Error('Automation plan is invalid.');
+  const result = createStrictAutomationAdminPlan({ ...automationPlan, detailFetches: [], standingsFetches: [] },artifactRoot,outputDirectory);
+  const quarantined = [];
+  const scopes = new Map();
+  for (const [kind,items] of [['detailFetches',automationPlan.detailFetches],['standingsFetches',automationPlan.standingsFetches]]) {
+    if (items.some(item => !item || typeof item !== 'object')) throw new Error('Automation plan item is invalid.');
+    const identities = items.map(item => kind === 'detailFetches' ? item.fixtureId : `${item.competitionId}/${item.seasonId}`);
+    if (new Set(identities).size !== items.length) throw new Error('Automation plan contains duplicate identities.');
+    for (const item of items) {
+      try {
+        const one = createStrictAutomationAdminPlan({ ...automationPlan, detailFetches: [], standingsFetches: [], [kind]: [item] },artifactRoot,outputDirectory);
+        result.fixtures.push(...one.fixtures); result.standings.push(...one.standings);
+        for (const scope of one.dateIndexRefreshes) {
+          if (!scopes.has(scope.date)) scopes.set(scope.date,{ date:scope.date,fixtureIds:[],departedFixtures:[] });
+          const dest=scopes.get(scope.date);dest.fixtureIds.push(...scope.fixtureIds);dest.departedFixtures.push(...(scope.departedFixtures||[]));
+        }
+      } catch(error) { quarantined.push({ identity: kind === 'detailFetches' ? item.fixtureId : `${item.competitionId}/${item.seasonId}`,stage:'bind',error:error.message }); }
+    }
+  }
+  result.dateIndexRefreshes=[...scopes.values()].map(scope => scope.departedFixtures.length ? scope : {date:scope.date,fixtureIds:scope.fixtureIds});
+  result.fixtures.sort((a,b)=>a.fixtureId.localeCompare(b.fixtureId));
+  result.standings.sort((a,b)=>a.seasonId.localeCompare(b.seasonId));
+  result.dateIndexRefreshes.sort((a,b)=>a.date.localeCompare(b.date));
+  for (const scope of result.dateIndexRefreshes) {
+    scope.fixtureIds.sort();
+    if (scope.departedFixtures) scope.departedFixtures.sort((a,b)=>a.fixtureId.localeCompare(b.fixtureId));
+  }
+  result.quarantined=quarantined;
+  return result;
 }
 
 function parseArgs(argv) {

@@ -32,7 +32,7 @@ test('complete season scan selects only changed unpublished fixtures and holds r
   const client = { async refreshDailyQuota() { return { dailyRemaining: 7000 }; },
     async get(_name, params) { return { data: { response: data.get(params.league), paging: { total: 1 } },
       quota: { dailyRemaining: 6990 } }; } };
-  const plan = await planScheduleSync({ client, inventory: [{ results: rows, success: true }] });
+  const plan = await planScheduleSync({ client, inventory: [{ results: rows, success: true }], now: '2026-09-30T03:00:00Z' });
   assert.equal(plan.scanned, 3420);
   assert.equal(plan.changes.length, 2);
   assert.equal(plan.held.length, 1);
@@ -40,15 +40,15 @@ test('complete season scan selects only changed unpublished fixtures and holds r
   assert.equal(plan.changes[1].newStatus, 'PST');
   assert.equal(plan.changes[1].newKickoffUtc, plan.changes[1].oldKickoffUtc);
   data.get(39).pop();
-  await assert.rejects(() => planScheduleSync({ client, inventory: [{ results: rows, success: true }] }),
-    /disappeared/);
+  const missing = await planScheduleSync({ client, inventory: [{ results: rows, success: true }], now: '2026-09-30T03:00:00Z' });
+  assert.ok(missing.held.some(item => item.fixtureId === 'af:fixture:390341' && item.reason === 'provider_fixture_missing'));
   data.get(39).push({ fixture: { id: 390341, date: '2026-10-01T10:00:00Z',
     status: { short: 'NS' } }, league: { id: 39, season: 2026 } });
   for (let index = 3; index < 25; index += 1) {
     data.get(39)[index].fixture.date = '2026-10-03T10:00:00Z';
   }
-  const oversized = await planScheduleSync({ client, inventory: [{ results: rows, success: true }] });
-  assert.equal(oversized.executable, false);
+  const oversized = await planScheduleSync({ client, inventory: [{ results: rows, success: true }], now: '2026-09-30T03:00:00Z' });
+  assert.equal(oversized.executable, true);
   assert.equal(oversized.changes.length, 24);
 });
 
@@ -100,6 +100,13 @@ test('schedule relocation survives interrupted index write, retries, and a secon
     }), env);
     return { status: response.status, body: await response.json() };
   };
+  const drain = async () => {
+    for(let i=0;i<100;i+=1) {
+      const result=await send({operation:'fixture_schedule_repair'});
+      if(result.status!==200 || result.body.report.repaired===null) return result;
+    }
+    throw new Error('Schedule repair did not drain');
+  };
   const update = (oldKickoffUtc, newKickoffUtc, oldStatus = 'NS', newStatus = 'NS') => ({
     operation: 'fixture_schedule_update', fixtureId: 'af:fixture:9001',
     competitionId: 'af:competition:39', seasonId: 'af:season:39:2026',
@@ -111,19 +118,19 @@ test('schedule relocation survives interrupted index write, retries, and a secon
   assert.equal((await send(update(first, second))).status, 200);
   assert.equal((await send(update(first, third))).status, 422);
   failDate = dateIndexR2Key('2026-10-03');
-  assert.equal((await send({ operation: 'fixture_schedule_repair' })).status, 422);
+  assert.equal((await drain()).status, 422);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_schedule_refresh_pending').get().count, 1);
-  assert.equal((await send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain()).status, 200);
   assert.deepEqual((await buildD1DateFeed(env, '2026-10-01')).fixtures, []);
   assert.deepEqual((await buildD1DateFeed(env, '2026-10-03')).fixtures.map(row => row.fixtureId),
     ['af:fixture:9001']);
   assert.equal((await send(update(second, third))).status, 200);
-  assert.equal((await send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain()).status, 200);
   assert.deepEqual((await buildD1DateFeed(env, '2026-10-03')).fixtures, []);
   assert.deepEqual((await buildD1DateFeed(env, '2026-10-05')).fixtures.map(row => row.fixtureId),
     ['af:fixture:9001']);
   assert.equal((await send(update(third, second, 'NS', 'PST'))).status, 200);
-  assert.equal((await send({ operation: 'fixture_schedule_repair' })).status, 200);
+  assert.equal((await drain()).status, 200);
   assert.equal((await buildD1DateFeed(env, '2026-10-03')).fixtures[0].status.short, 'PST');
   db.exec(`INSERT INTO fixture_revisions(fixture_id,revision_no,lifecycle_state,
     detail_location,content_sha256,created_at,published_at)

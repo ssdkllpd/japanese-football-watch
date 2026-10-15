@@ -350,7 +350,7 @@ test('admin fixture ingest publishes one complete revision and is content-idempo
   assert.equal(response.status, 200);
   let body = await response.json();
   assert.equal(body.report.imported, true);
-  assert.equal(body.report.statementCount + 12 <= 50, true);
+  assert.equal(body.report.statementCount + 13 <= 50, true);
   const resolved = await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
   assert.equal(resolved.source, 'd1');
   const comparison = compareFixtureBundles(bundle, resolved.bundle);
@@ -412,7 +412,7 @@ test('admin fixture ingest preserves 41 distinct endpoint-backed appearances wit
   const body = await response.json();
   assert.equal(body.report.counts.appearances, 41);
   assert.equal(body.report.counts.playerStats, 40);
-  assert.equal(body.report.statementCount + 12 <= 50, true);
+  assert.equal(body.report.statementCount + 13 <= 50, true);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 41);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_lineup_entries').get().count, 40);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_stats').get().count, 40);
@@ -429,7 +429,7 @@ test('admin fixture ingest supports the complete 80-player endpoint union withou
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.report.counts.appearances, 80);
-  assert.equal(body.report.statementCount + 12 <= 50, true);
+  assert.equal(body.report.statementCount + 13 <= 50, true);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 80);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_lineup_entries').get().count, 40);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_stats').get().count, 40);
@@ -447,7 +447,7 @@ test('admin fixture ingest preserves 80 lineup and player-stat rows within the f
   const body = await response.json();
   assert.equal(body.report.counts.appearances, 80);
   assert.equal(body.report.counts.playerStats, 80);
-  assert.equal(body.report.statementCount + 12 <= 50, true);
+  assert.equal(body.report.statementCount + 13 <= 50, true);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_appearances').get().count, 80);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_lineup_entries').get().count, 80);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_player_stats').get().count, 80);

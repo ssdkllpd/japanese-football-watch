@@ -3,13 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const MAX_ROWS_PER_MONTH = 50_000_000;
+const STOP_AT_READ_ROWS = 20_000_000_000;
 const STOP_AT_ROWS = 40_000_000; // Reserve 10 million rows for reporting lag and other account activity.
 const QUERY = `query D1PaidBackfillRows($accountTag: string!, $start: Date!, $end: Date!) {
   viewer {
     accounts(filter: { accountTag: $accountTag }) {
       d1AnalyticsAdaptiveGroups(limit: 10000, filter: { date_geq: $start, date_leq: $end }) {
         dimensions { date databaseId }
-        sum { rowsWritten }
+        sum { rowsWritten rowsRead }
       }
     }
   }
@@ -28,25 +29,31 @@ export function summarizePaidUsage(payload, start, end) {
     throw new Error('Cloudflare D1 analytics is missing or truncated.');
   }
   let rows = 0;
+  let reads = 0;
   const unique = new Set();
   for (const group of groups) {
     const date = group?.dimensions?.date;
     const databaseId = group?.dimensions?.databaseId;
     const written = group?.sum?.rowsWritten;
+    const read = group?.sum?.rowsRead;
     const key = `${date}/${databaseId}`;
     if (typeof date !== 'string' || date < start || date > end
       || typeof databaseId !== 'string' || !databaseId
-      || !Number.isSafeInteger(written) || written < 0 || unique.has(key)) {
+      || !Number.isSafeInteger(written) || written < 0
+      || !Number.isSafeInteger(read) || read < 0 || unique.has(key)) {
       throw new Error('Cloudflare D1 account analytics group is invalid or duplicated.');
     }
     unique.add(key);
     rows += written;
-    if (!Number.isSafeInteger(rows)) throw new Error('D1 usage total is unsafe.');
+    reads += read;
+    if (!Number.isSafeInteger(rows) || !Number.isSafeInteger(reads)) throw new Error('D1 usage total is unsafe.');
   }
-  if (rows > STOP_AT_ROWS) {
+  if (rows > STOP_AT_ROWS || reads > STOP_AT_READ_ROWS) {
     throw new Error('Paid bulk catch-up stopped at the conservative D1 monthly usage ceiling.');
   }
-  return { rowsWrittenTrailing31Days: rows, stopAtRows: STOP_AT_ROWS,
+  return { rowsWrittenTrailing31Days: rows, rowsReadTrailing31Days: reads,
+    stopAtReadRows: STOP_AT_READ_ROWS, stopAtRows: STOP_AT_ROWS,
+    coverage: 'D1 row reads and writes only; R2, Workers and storage charges are not included',
     includedMonthlyRows: MAX_ROWS_PER_MONTH, databaseDays: unique.size };
 }
 

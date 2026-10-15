@@ -27,7 +27,16 @@ function main(argv = process.argv.slice(2)) {
     throw new Error('Use --plan FILE or --start-discovery true --policy FILE, with --state FILE --out FILE.');
   }
   const state = validateState(readJson(args.state, emptyAutomationState()));
-  const plan = args.plan ? readJson(args.plan, null) : null;
+  let plan = args.plan ? readJson(args.plan, null) : null;
+  if (args.report) {
+    const report = readJson(args.report, null);
+    if (report?.schemaVersion !== 'jfw-automation-publication-report/1'
+      || !Array.isArray(report.successfulFixtures) || !Array.isArray(report.successfulStandings)) {
+      throw new Error('Automation publication report is invalid.');
+    }
+    plan = { ...plan, detailFetches: plan.detailFetches.filter(item => report.successfulFixtures.includes(item.fixtureId)),
+      standingsFetches: plan.standingsFetches.filter(item => report.successfulStandings.includes(`${item.competitionId}/${item.seasonId}`)) };
+  }
   const next = args['start-discovery'] === 'true'
     ? startAutomationDiscovery(state,
       validatePolicy(readJson(args.policy, null)), args.now || Date.now())

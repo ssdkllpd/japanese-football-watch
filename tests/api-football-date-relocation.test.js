@@ -150,13 +150,18 @@ test('two changed JST dates rebuild both feeds and recover after a partial R2 fa
     date: dates[0], fixtureIds: [], departedFixtures: [{
       fixtureId: 'af:fixture:1552173', date: dates[1],
     }] };
+  const oldObjects = new Map(objects);
   const undeclared = await handleAdminIngest(new Request('https://offline.example.test/admin/v1/ingest', {
     method: 'POST', headers: { authorization: 'Bearer offline-token' },
     body: JSON.stringify({ ...oldDate, departedFixtures: [{
       fixtureId: 'af:fixture:1552171', date: dates[1],
     }] }),
   }), env);
-  assert.equal(undeclared.ok, false);
+  // The transaction journal authorizes removal of a known fixture that moved.
+  assert.equal(undeclared.ok, true, await undeclared.text());
+  assert.equal(JSON.parse(objects.get(dateIndexR2Key(dates[0]))).fixtures.length, 0);
+  // Replay the stale R2 objects to independently exercise a partial put failure.
+  for (const [key,value] of oldObjects) objects.set(key,value);
   const oldRequest = () => new Request('https://offline.example.test/admin/v1/ingest', {
     method: 'POST', headers: { authorization: 'Bearer offline-token' },
     body: JSON.stringify(oldDate),

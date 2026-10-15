@@ -61,6 +61,7 @@ permissions:
 
 concurrency:
   group: d1-staging-write
+  queue: max
   cancel-in-progress: false
 
 jobs:

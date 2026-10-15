@@ -266,7 +266,7 @@ function compareText(a, b) {
 }
 
 function planAutomation({ policy, state, fixturesByDate, now, quota = {}, preview = false,
-  dailyBudget = null }) {
+  dailyBudget = null, storedDates = null }) {
   validatePolicy(policy);
   state = validateState(state);
   const nowDate = new Date(now || Date.now());
@@ -304,11 +304,19 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     const retained = fixturesById.get(fixture.fixtureId);
     if (retained && (retained.providerFixtureId !== fixture.providerFixtureId
       || retained.league !== fixture.league
-      || retained.season !== fixture.season
-      || retained.kickoffUtc !== fixture.kickoffUtc)) {
+      || retained.season !== fixture.season)) {
       throw new Error(`Provider discovery changed retained identity for ${fixture.fixtureId}.`);
     }
     fixturesById.set(fixture.fixtureId, fixture);
+  }
+  const stored = new Map();
+  if (storedDates !== null) {
+    if (!Array.isArray(storedDates)) throw new Error('D1 stored dates must be an array.');
+    for (const row of storedDates) {
+      if (!/^af:fixture:\d+$/.test(row.fixture_id) || !realDate(row.date_jst)
+        || stored.has(row.fixture_id)) throw new Error('D1 stored date identity is invalid or duplicated.');
+      stored.set(row.fixture_id, row.date_jst);
+    }
   }
   const fixtures = [...fixturesById.values()];
   const nowMs = nowDate.getTime();
@@ -351,7 +359,10 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     if (state.fixtures[candidate.fixture.fixtureId]?.lastDetailFetchedAt?.slice(0, 10) === dateUtc) continue;
     const recoveryOnly = publishedToday.has(candidate.fixture.fixtureId);
     if (!recoveryOnly && publishCapacity === 0) continue;
-    detailFetches.push({ ...candidate.fixture, recheckStage: candidate.stage.stage, dueAt: candidate.stage.dueAt });
+    const previousDate = stored.get(candidate.fixture.fixtureId);
+    detailFetches.push({ ...candidate.fixture, recheckStage: candidate.stage.stage, dueAt: candidate.stage.dueAt,
+      ...(previousDate && previousDate !== dateJst(candidate.fixture.kickoffUtc)
+        ? { previousDateJst: previousDate } : {}) });
     requestCapacity -= 5;
     if (!recoveryOnly) publishCapacity -= 1;
   }
@@ -408,7 +419,11 @@ function checkpointAutomationDiscovery(state, plan) {
   }
   next.pendingDiscoveryDate = plan.nextDiscoveryDate;
   for (const fixture of plan.pendingFixtures) {
-    if (next.fixtures[fixture.fixtureId]) continue;
+    if (next.fixtures[fixture.fixtureId]) {
+      next.fixtures[fixture.fixtureId].kickoffUtc = fixture.kickoffUtc;
+      next.fixtures[fixture.fixtureId].lastStatus = fixture.status;
+      continue;
+    }
     if (!FINAL_STATUSES.has(fixture.status)
       || fixture.fixtureId !== `af:fixture:${fixture.providerFixtureId}`
       || fixture.competitionId !== `af:competition:${fixture.league}`

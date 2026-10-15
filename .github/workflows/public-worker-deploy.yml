@@ -5,7 +5,17 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/public-worker-deploy.yml'
+      - '.github/workflows/d1-staging-provision.yml'
+      - 'config/d1-targets.json'
+      - 'config/d1-constraints.lock.json'
       - 'config/public-worker-target.json'
+      - 'migrations/**'
+      - 'admin-worker/**'
+      - 'scripts/d1/check-schema-lock.mjs'
+      - 'scripts/d1/migration-inventory.js'
+      - 'scripts/d1/render-admin-wrangler.mjs'
+      - 'scripts/d1/verify-d1-target.mjs'
+      - 'scripts/d1/read-api-football-automation-budget.mjs'
       - 'scripts/v2/render-public-wrangler.mjs'
       - 'scripts/d1/fixture-repository.js'
       - 'worker/**'
@@ -20,7 +30,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      PUBLIC_DATE_AUDIT_TOKEN: ${{ secrets.PUBLIC_DATE_AUDIT_TOKEN }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate deployment prerequisites before any remote write
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
+          test -n "$ADMIN_INGEST_TOKEN" || { echo 'ADMIN_INGEST_TOKEN is required'; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY is required'; exit 1; }
+          test "${#PUBLIC_DATE_AUDIT_TOKEN}" -ge 32 || { echo 'PUBLIC_DATE_AUDIT_TOKEN must contain at least 32 characters'; exit 1; }
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          node scripts/d1/check-schema-lock.mjs
+          node scripts/v2/render-public-wrangler.mjs \
+            --manifest config/public-worker-target.json \
+            --output .tmp/public-worker/wrangler.toml
+
+  provision:
+    needs: preflight
+    uses: ./.github/workflows/d1-staging-provision.yml
+    secrets: inherit
+
   deploy:
+    needs: provision
     runs-on: ubuntu-latest
     environment: d1-staging
     timeout-minutes: 10
@@ -28,6 +79,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      PUBLIC_DATE_AUDIT_TOKEN: ${{ secrets.PUBLIC_DATE_AUDIT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,10 +87,14 @@ jobs:
           node-version: '22'
 
       - name: Validate credentials and render locked public configuration
+        shell: bash
         run: |
+          set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is required'; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'CLOUDFLARE_ACCOUNT_ID is required'; exit 1; }
           test -n "$API_FOOTBALL_KEY" || { echo 'API_FOOTBALL_KEY is required'; exit 1; }
+          test "${#PUBLIC_DATE_AUDIT_TOKEN}" -ge 32 || { echo 'PUBLIC_DATE_AUDIT_TOKEN must contain at least 32 characters'; exit 1; }
+          mkdir -p .tmp/public-worker/evidence
           node scripts/v2/render-public-wrangler.mjs \
             --manifest config/public-worker-target.json \
             --output .tmp/public-worker/wrangler.toml
@@ -54,13 +110,21 @@ jobs:
           npx --yes wrangler@4 secret put API_FOOTBALL_KEY
           --config .tmp/public-worker/wrangler.toml
 
+      - name: Install dedicated public date audit secret
+        shell: bash
+        run: >-
+          printf '%s' "$PUBLIC_DATE_AUDIT_TOKEN" |
+          npx --yes wrangler@4 secret put PUBLIC_DATE_AUDIT_TOKEN
+          --config .tmp/public-worker/wrangler.toml
+
       - name: Verify allowed-origin health and CORS
         shell: bash
         run: |
           mkdir -p .tmp/public-worker/evidence
           worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
           app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
-          curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --retry 10 --retry-delay 2 --retry-max-time 60 --retry-all-errors \
             --header "Origin: $app_origin" \
             --dump-header .tmp/public-worker/evidence/headers.txt \
             --output .tmp/public-worker/evidence/health.json \
@@ -69,7 +133,7 @@ jobs:
             .tmp/public-worker/evidence/health.json >/dev/null
           tr -d '\r' < .tmp/public-worker/evidence/headers.txt \
             | grep -Fxi "access-control-allow-origin: $app_origin"
-          status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$worker_origin/health")
+          status=$(curl --silent --show-error --connect-timeout 5 --max-time 20 --output /dev/null --write-out '%{http_code}' "$worker_origin/health")
           test "$status" = '403'
           jq -n --arg workerOrigin "$worker_origin" --arg appOrigin "$app_origin" \
             '{workerOrigin: $workerOrigin, appOrigin: $appOrigin, allowedOriginHealth: true, noOriginDenied: true}' \
@@ -95,7 +159,8 @@ jobs:
           probe_d1() {
             label=$1
             route=$2
-            curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+            curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+              --retry 10 --retry-delay 2 --retry-max-time 60 --retry-all-errors \
               --header "Origin: $app_origin" \
               --dump-header "$evidence/$label.headers.txt" \
               --output "$evidence/$label.json" \
@@ -143,8 +208,79 @@ jobs:
               standingsSeasonId:$standingsSeasonId, fixtureId:$fixtureId}' \
             > "$evidence/d1-read-cutover-report.json"
 
+      - name: Verify authenticated fresh date reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence=.tmp/public-worker/evidence
+          mkdir -p "$evidence"
+          worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
+          app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
+          probe_date=$(jq -r '.d1ReadProbes.date' config/public-worker-target.json)
+          competition_id=$(jq -r '.d1ReadProbes.competitionId' config/public-worker-target.json)
+          fixture_id=$(jq -r '.d1ReadProbes.fixtureId' config/public-worker-target.json)
+          competition_path=$(jq -rn --arg value "$competition_id" '$value|@uri')
+
+          probe_fresh() {
+            label=$1
+            route=$2
+            curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+              --retry 10 --retry-delay 2 --retry-max-time 60 --retry-all-errors \
+              --header "Origin: $app_origin" \
+              --header "x-jfw-audit-token: $PUBLIC_DATE_AUDIT_TOKEN" \
+              --dump-header "$evidence/$label.headers.txt" \
+              --output "$evidence/$label.json" \
+              "$worker_origin$route?fresh=1"
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi "access-control-allow-origin: $app_origin"
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi 'cache-control: no-store'
+            if jq -e ".d1ReadFlags.$3" config/public-worker-target.json >/dev/null; then
+              tr -d '\r' < "$evidence/$label.headers.txt" \
+                | grep -Fxi 'x-jfw-data-source: d1'
+            fi
+            jq -e --arg date "$probe_date" --arg fixture "$fixture_id" \
+              '.date == $date and any(.fixtures[]?; .fixtureId == $fixture)' \
+              "$evidence/$label.json" >/dev/null
+          }
+
+          probe_fresh fresh-date "/api/v2/dates/$probe_date" D1_DATE_INDEX_ENABLED
+          probe_fresh fresh-competition-date "/api/v2/competitions/$competition_path/dates/$probe_date" D1_COMPETITION_DATE_INDEX_ENABLED
+          jq -e --arg competition "$competition_id" '.competition.id == $competition' \
+            "$evidence/fresh-competition-date.json" >/dev/null
+
+          wrong_token='invalid-public-date-audit-token-01'
+          if [ "$wrong_token" = "$PUBLIC_DATE_AUDIT_TOKEN" ]; then
+            wrong_token='invalid-public-date-audit-token-02'
+          fi
+          probe_denied() {
+            label=$1
+            route=$2
+            audit_headers=()
+            if [ "$3" = wrong ]; then
+              audit_headers=(--header "x-jfw-audit-token: $wrong_token")
+            fi
+            status=$(curl --silent --show-error --connect-timeout 5 --max-time 20 \
+              --retry 10 --retry-delay 2 --retry-max-time 60 --retry-all-errors \
+              --header "Origin: $app_origin" "${audit_headers[@]}" \
+              --dump-header "$evidence/$label.headers.txt" \
+              --output /dev/null --write-out '%{http_code}' \
+              "$worker_origin$route?fresh=1")
+            test "$status" = '401'
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi 'cache-control: no-store'
+            tr -d '\r' < "$evidence/$label.headers.txt" \
+              | grep -Fxi "access-control-allow-origin: $app_origin"
+          }
+          probe_denied fresh-date-no-token "/api/v2/dates/$probe_date" none
+          probe_denied fresh-date-wrong-token "/api/v2/dates/$probe_date" wrong
+          probe_denied fresh-competition-date-no-token "/api/v2/competitions/$competition_path/dates/$probe_date" none
+          probe_denied fresh-competition-date-wrong-token "/api/v2/competitions/$competition_path/dates/$probe_date" wrong
+          jq -n '{passed:true, authenticated:true, cacheControl:"no-store", routes:2, rejectedUnauthenticatedRequests:4}' \
+            > "$evidence/fresh-date-audit-report.json"
+
       - name: Roll back all D1 public reads after a failed deployment check
-        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        if: ${{ (failure() || cancelled()) && steps.deploy.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -155,7 +291,8 @@ jobs:
           npx --yes wrangler@4 deploy --config .tmp/public-worker/wrangler-rollback.toml
           worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
           app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
-          curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --retry 10 --retry-delay 2 --retry-max-time 60 --retry-all-errors \
             --header "Origin: $app_origin" \
             --output .tmp/public-worker/evidence/rollback-health.json \
             "$worker_origin/health"
