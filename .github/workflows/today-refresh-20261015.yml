@@ -1,0 +1,110 @@
+name: Refresh Today 2026-10-15
+
+on:
+  push:
+    branches: [ops/schedule-rollout-verification-20261015]
+    paths:
+      - .github/workflows/today-refresh-20261015.yml
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  preview:
+    concurrency:
+      group: d1-staging-write
+      queue: max
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 20
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read repair state and exact stored inventory without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          mkdir -p .tmp/rollout-verification
+          node scripts/d1/render-admin-wrangler.mjs --output .tmp/rollout-verification/wrangler.toml
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          import { adminScheduleSender } from './scripts/d1/execute-fixture-schedule-plan.mjs';
+          import { SCHEDULE_INVENTORY_SQL, d1AuditRows } from './scripts/d1/capture-schedule-audit.mjs';
+          const root = '.tmp/rollout-verification';
+          const status = await adminScheduleSender(process.env)({schemaVersion:'jfw-d1-admin-ingest/1',operation:'fixture_schedule_repair_status'});
+          fs.writeFileSync(`${root}/repair-status.json`, JSON.stringify(status,null,2)+'\n');
+          const query = (name, sql) => {
+            const raw = execFileSync('npx', ['--yes','wrangler@4','d1','execute',process.env.D1_DATABASE_NAME,
+              '--remote','--json','--config',`${root}/wrangler.toml`,'--command',sql],
+              {encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
+            fs.writeFileSync(`${root}/${name}.json`,raw);
+            return d1AuditRows(JSON.parse(raw));
+          };
+          const inventory = query('inventory', SCHEDULE_INVENTORY_SQL);
+          const badDates = query('kickoff-date-violations', "SELECT canonical_id,kickoff_utc,date_jst FROM fixtures WHERE strftime('%Y-%m-%d',kickoff_utc,'+9 hours') IS NOT date_jst LIMIT 100");
+          const foreignKeys = query('foreign-key-violations','PRAGMA foreign_key_check');
+          const missingDay = query('date-2026-09-29', "SELECT 'fixtures' AS kind,COUNT(*) AS count FROM fixtures WHERE date_jst='2026-09-29' UNION ALL SELECT 'coverage',COUNT(*) FROM date_index_coverages WHERE date_jst='2026-09-29'");
+          console.log(JSON.stringify({readOnly:true,inventoryRows:inventory.length,repairStatus:status,
+            kickoffDateViolations:badDates.length,foreignKeyViolations:foreignKeys.length,missingDay,
+            heldFixture1552141:inventory.find(row=>row.fixture_id==='af:fixture:1552141')}));
+          if(badDates.length || foreignKeys.length) throw new Error('Stored integrity checks failed before provider discovery.');
+          NODE
+      - name: Preview ten provider seasons without publishing
+        run: node scripts/v2/plan-fixture-schedule-sync.js .tmp/rollout-verification/inventory.json .tmp/rollout-verification/plan.json
+      - name: Summarize proposed crossings and held fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const root='.tmp/rollout-verification';
+          const raw=fs.readFileSync(`${root}/plan.json`);
+          const plan=JSON.parse(raw);
+          const day=utc=>new Date(Date.parse(utc)+9*3600000).toISOString().slice(0,10);
+          const crossings=plan.changes.filter(item=>day(item.oldKickoffUtc)!==day(item.newKickoffUtc));
+          const heldReasons={};
+          for(const item of plan.held) heldReasons[item.reason]=(heldReasons[item.reason]||0)+1;
+          const report={mode:'preview',remoteWrites:0,generatedAt:plan.generatedAt,scanned:plan.scanned,
+            executable:plan.executable,changes:plan.changes.length,crossings:crossings.length,
+            crossingCandidates:crossings.slice(0,10),heldReasons,
+            heldFixture1552141:plan.held.filter(item=>item.fixtureId==='af:fixture:1552141'),
+            dailyRemaining:plan.dailyRemaining,planSha256:createHash('sha256').update(raw).digest('hex')};
+          fs.writeFileSync(`${root}/preview-report.json`,JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          NODE
+      - name: Upload preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-rollout-preview-${{ github.run_id }}
+          path: .tmp/rollout-verification/*.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  result-preview:
+    needs: preview
+    uses: ./.github/workflows/api-football-manual-backfill.yml
+    with:
+      mode: preview
+      confirmation: ''
+      auto_continue: 'false'
+      batches_left: '1'
+      billing_mode: paid
+    secrets: inherit
