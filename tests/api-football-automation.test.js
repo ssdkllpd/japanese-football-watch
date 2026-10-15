@@ -39,9 +39,9 @@ function input(rows, now = '2026-09-17T12:00:00.000Z', customPolicy = policy()) 
   };
 }
 
-test('reviewed automation policy is valid but scheduled execution remains disabled', () => {
+test('reviewed automation policy permits activation within unchanged limits', () => {
   const value = validatePolicy(policy());
-  assert.equal(value.scheduledSynchronizationEnabled, false);
+  assert.equal(value.scheduledSynchronizationEnabled, true);
   assert.equal(value.competitionSeasons.length, 10);
   assert.equal(value.limits.maxFinalDetailFixturesPerRun, 20);
 });
@@ -65,6 +65,7 @@ test('disabled policy produces no side effects unless explicitly previewed', () 
   const rows = { '2026-09-17': [fixture(1, 39, 'FT', '2026-09-17T06:00:00Z')] };
   const args = input(rows);
   args.preview = false;
+  args.policy.scheduledSynchronizationEnabled = false;
   const plan = planAutomation(args);
   assert.equal(plan.mode, 'disabled');
   assert.deepEqual(plan.detailFetches, []);
@@ -238,5 +239,6 @@ test('planner refuses automated work when the provider quota header is unavailab
   args.quota = {};
   assert.throws(() => planAutomation(args), /daily remaining quota is required/);
   args.preview = false;
+  args.policy.scheduledSynchronizationEnabled = false;
   assert.equal(planAutomation(args).mode, 'disabled');
 });

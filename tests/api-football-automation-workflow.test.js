@@ -15,7 +15,7 @@ test('automation schedule stays behind both repository and reviewed policy gates
   assert.match(workflow, /scheduledSynchronizationEnabled/);
   assert.match(workflow, /RUN API-FOOTBALL AUTOMATION/);
   const policy = require('../config/api-football-automation.json');
-  assert.equal(policy.scheduledSynchronizationEnabled, false);
+  assert.equal(policy.scheduledSynchronizationEnabled, true);
 });
 
 test('automation serializes with every staging writer and only reads D1 directly', () => {
