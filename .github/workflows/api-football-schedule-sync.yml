@@ -15,13 +15,21 @@ on:
         description: For execute, enter RUN SCHEDULE SYNC
         required: false
         type: string
+      trigger_source:
+        description: Origin of an external scheduled invocation
+        required: false
+        type: string
+      trigger_slot:
+        description: UTC slot for external scheduled invocation audit
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   provision:
-    if: github.event_name == 'schedule' && vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED == 'true' || github.event_name == 'workflow_dispatch' && inputs.mode == 'execute' && inputs.confirmation == 'RUN SCHEDULE SYNC'
+    if: (github.event_name == 'schedule' && vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED == 'true' || github.event_name == 'workflow_dispatch' && inputs.mode == 'execute' && inputs.confirmation == 'RUN SCHEDULE SYNC') && (inputs.trigger_source != 'cloudflare' || vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED == 'true')
     uses: ./.github/workflows/d1-staging-provision.yml
     secrets: inherit
 
@@ -58,8 +66,15 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REQUESTED_MODE: ${{ inputs.mode }}
           CONFIRMATION: ${{ inputs.confirmation }}
+          TRIGGER_SOURCE: ${{ inputs.trigger_source }}
+          TRIGGER_SLOT: ${{ inputs.trigger_slot }}
+          REPOSITORY_ENABLED: ${{ vars.API_FOOTBALL_SCHEDULE_SYNC_ENABLED }}
         run: |
           set -euo pipefail
+          if [ "$TRIGGER_SOURCE" = cloudflare ]; then
+            test "$REPOSITORY_ENABLED" = true || { echo 'Repository schedule switch is disabled.' >&2; exit 1; }
+            test -n "$TRIGGER_SLOT" || { echo 'External trigger slot is required.' >&2; exit 1; }
+          fi
           test -n "$API_FOOTBALL_KEY" && test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$ADMIN_INGEST_URL"
           node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
