@@ -25,7 +25,7 @@ An atomic D1 lease and minute claim prevent duplicate acquisition. Provider redi
 2. Pin that UUID in `config/live-worker-target.json` and enable acquisition. Confirm a real cron heartbeat and successful provider acquisition before enabling reads. The enabled deployment also probes the real `fixtures?live=all` response once, counting its requests in the live budget without publishing probe fixtures.
 3. Set `liveReadEnabled: true` in `config/public-worker-target.json`. The public deployment checks the D1 source header, enabled/fresh contract and existing final-data routes. No provider credential is installed on the public Worker.
 
-An acquisition deployment failure automatically deploys the private Worker disabled. To roll back a published reader, first set public `liveReadEnabled` false, then disable acquisition. Do not restore viewer-driven provider requests.
+Activation verification allows up to two transient failed cron ticks to recover; three distinct completed failed ticks fail activation. In-flight leases do not count as completed failures. An acquisition deployment failure automatically deploys the private Worker disabled. To roll back a published reader, first set public `liveReadEnabled` false, then disable acquisition. Do not restore viewer-driven provider requests.
 
 ## Monitoring and verification
 
