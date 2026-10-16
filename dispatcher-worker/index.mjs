@@ -25,7 +25,7 @@ export async function dispatchScheduled(event, env, request = fetch) {
     accept: 'application/vnd.github+json',
     'content-type': 'application/json',
     authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
-    'x-github-api-version': '2022-11-28',
+    'x-github-api-version': '2026-03-10',
     'user-agent': 'jfw-workflow-dispatcher',
   };
   const results = [];
@@ -68,8 +68,14 @@ export async function dispatchScheduled(event, env, request = fetch) {
           trigger_source: 'cloudflare', trigger_slot: workflow.slot,
         } }),
       });
-      record.status = response.status === 204 ? 'accepted' : 'rejected';
+      record.status = [200, 204].includes(response.status) ? 'accepted' : 'rejected';
       record.httpStatus = response.status;
+      if (response.status === 200) {
+        const run = await response.json().catch(() => null);
+        if (Number.isSafeInteger(run?.workflow_run_id) && run.workflow_run_id > 0) {
+          record.workflowRunId = run.workflow_run_id;
+        }
+      }
     } catch {
       record.status = 'uncertain';
     }

@@ -81,6 +81,19 @@ test('busy Actions workflow defers without claiming and retries on the next minu
   assert.equal(posts, 1);
 });
 
+test('current GitHub dispatch response records its accepted workflow run id', async () => {
+  const { dispatchScheduled } = await import('../dispatcher-worker/index.mjs');
+  const env = environment();
+  const result = await dispatchScheduled(event, env, async (_, options) => {
+    assert.equal(options.headers['x-github-api-version'], '2026-03-10');
+    return options.method === 'POST'
+      ? Response.json({ workflow_run_id: 12345 })
+      : Response.json({ workflow_runs: [] });
+  });
+  assert.equal(result.results[0].status, 'accepted');
+  assert.equal(result.results[0].workflowRunId, 12345);
+});
+
 test('ambiguous POST failure is recorded and never blindly retried', async () => {
   const { dispatchScheduled } = await import('../dispatcher-worker/index.mjs');
   const env = environment();
