@@ -547,3 +547,22 @@ test('follow icons inherit the state color and toggle outline and fill',async t=
   const app=await boot(t,{hash:`#/matches?date=${today}&filter=all`,request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({fixtures:[],liveUpdatesEnabled:true,stale:true,reason:'acquisition_stale'})}:null});
   await until(()=>app.text().includes('ライブ更新が遅れています'),'stale notice');assert.match(app.text(),/Home Club/);
  });
+
+test('today fixture detail refreshes stored live scores and explains stale data',async t=>{
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+ const intervals=[];let score=1,stale=false;
+ const detail={...bundle(),fixture:{...fixture(),dateJst:today,ingestionState:'scheduled',status:{short:'NS'}}};
+ const app=await boot(t,{hash:`#/matches?date=${today}&filter=all`,intervals,detail,
+  feed:async()=>({fixtures:[detail.fixture]}),
+  request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({liveUpdatesEnabled:true,stale,fixtures:[{
+   fixtureId:'af:fixture:10',competitionId:'af:competition:39',seasonId:'af:season:39:2026',dateJst:today,kickoffUtc:new Date().toISOString(),status:{short:'1H',elapsed:20},
+   home:{teamId:home.id,name:home.name,score},away:{teamId:away.id,name:away.name,score:0},
+  }]})}:null,
+ });
+ await until(()=>app.doc.querySelector('[data-fixture]'),'today fixture');
+ await app.click('[data-fixture]');
+ await until(()=>app.doc.querySelector('.score-value')?.textContent.trim()==='1 - 0','live detail score');
+ score=2;stale=true;intervals.find(value=>value.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.score-value')?.textContent.trim()==='2 - 0','refreshed live detail');
+ assert.match(app.text(),/ライブ更新が遅れています/);
+});

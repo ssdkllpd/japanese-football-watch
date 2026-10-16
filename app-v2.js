@@ -328,9 +328,9 @@
     if (route.kind === 'following') renderFollowing();
   }
 
-  async function loadMatches({ background = false } = {}) {
+  async function loadMatches({ background = false, date = state.date } = {}) {
     const loadSequence = ++state.matchLoadSequence;
-    const requestedDate = state.date;
+    const requestedDate = date;
     if (!background) { state.loading = true; renderMatchesIfVisible(); }
     const legacy = await loadLegacy();
     const legacyRows = legacyFixturesForDate(legacy, requestedDate);
@@ -566,6 +566,7 @@
       ['ratings', '選手評価'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div>
+      ${state.liveNotice && row.dateJst === todayJst() && row.ingestionState !== 'finalized' ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : ''}
       <section class="detail-card score-hero"><div class="score-meta">${esc(comp)} · ${esc(row.round || '節は未取得')} · ${['PST', 'TBD'].includes(statusShort(row)) ? '日程未定' : `${esc(row.dateJst || '日付は未取得')} ${esc(formatKickoff(row.kickoffUtc))} JST`}</div><div class="score-grid"><div class="score-team">${homeLogo}<strong>${esc(home.name || 'Home')}</strong>${followTeamButton(home)}</div><div class="score-value">${valueCell(row?.score?.goals?.home)} - ${valueCell(row?.score?.goals?.away)}</div><div class="score-team">${awayLogo}<strong>${esc(away.name || 'Away')}</strong>${followTeamButton(away)}</div></div></section>
       <p class="entity-sub">更新: ${row.reconciledAt || row.provenance?.fetchedAt ? esc(row.reconciledAt || row.provenance.fetchedAt) : valueCell(null)} · ${watchLabel(row)} · ${attentionLabel(row)}</p>${renderAnnotations(bundle.annotations)}
       <div class="detail-tabs" role="tablist" aria-label="試合詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${state.detailTab === tab ? ' is-active' : ''}" id="fixture-tab-${tab}" aria-controls="fixture-panel" data-detail-tab="${tab}" type="button" role="tab" aria-selected="${state.detailTab === tab}">${label}</button>`).join('')}</div>
@@ -1668,10 +1669,14 @@
   // Only read our own stored-data API; page views never call the provider.
   let liveRefreshPending = false;
   window.setInterval(() => {
-    if (document.visibilityState === 'visible' && state.workerBase && state.page === 'matches'
-        && state.date === todayJst() && !state.loading && !liveRefreshPending) {
+    const route = router.parseHash(location.hash, { date: state.date });
+    const detailRow = state.detail?.bundle?.fixture || state.detail?.summary;
+    const liveDetail = route.kind === 'fixture' && detailRow?.dateJst === todayJst() && detailRow?.ingestionState !== 'finalized';
+    const liveList = route.kind === 'matches' && state.date === todayJst();
+    if (document.visibilityState === 'visible' && state.workerBase && (liveList || liveDetail)
+        && !state.loading && !liveRefreshPending) {
       liveRefreshPending = true;
-      loadMatches({ background: true }).catch(() => {}).finally(() => { liveRefreshPending = false; });
+      loadMatches({ background: true, date: liveDetail ? todayJst() : state.date }).catch(() => {}).finally(() => { liveRefreshPending = false; });
     }
   }, 60000);
   window.addEventListener('popstate', scheduleRouteApply);
