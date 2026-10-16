@@ -58,7 +58,7 @@ test('concurrent and repeated cron deliveries dispatch exactly once per shared s
     calls.push({ url, options });
     assert.ok(url.startsWith('https://api.github.com/repos/ssdkllpd/japanese-football-watch/actions/workflows/'));
     assert.equal(options.headers.authorization, 'Bearer test-only-secret');
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     if (options.method !== 'POST') return Response.json({ workflow_runs: [] });
     assert.deepEqual(JSON.parse(options.body), { ref: 'main', inputs: {
       mode: 'execute', confirmation: 'RUN API-FOOTBALL AUTOMATION',
@@ -137,6 +137,28 @@ test('failed run inspection cannot claim a slot or send a dispatch', async () =>
   const env = environment();
   await assert.rejects(dispatchScheduled(event, env, async () => new Response(null, { status: 403 })), /inspection HTTP 403/);
   assert.equal(env.DISPATCH_STATE.objects.size, 1);
+});
+
+test('redirect responses fail closed without following or retrying a dispatch', async () => {
+  const { dispatchScheduled } = await import('../dispatcher-worker/index.mjs');
+  for (const stage of ['inspection', 'dispatch']) {
+    const env = environment();
+    let calls = 0;
+    const request = async (_, options) => {
+      calls++;
+      assert.equal(options.redirect, 'manual');
+      if (stage === 'dispatch' && options.method !== 'POST') return Response.json({ workflow_runs: [] });
+      return new Response(null, { status: 302, headers: { location: 'https://untrusted.invalid/' } });
+    };
+    await assert.rejects(dispatchScheduled(event, env, request), stage === 'inspection' ? /inspection HTTP 302/ : /rejected/);
+    assert.equal(calls, stage === 'inspection' ? 1 : 2);
+    if (stage === 'inspection') assert.equal(env.DISPATCH_STATE.objects.has(AUTO_KEY), false);
+    else {
+      assert.equal(JSON.parse(env.DISPATCH_STATE.objects.get(AUTO_KEY)).httpStatus, 302);
+      await dispatchScheduled(event, env, request);
+      assert.equal(calls, 2);
+    }
+  }
 });
 
 test('schedule dispatch uses the existing workflow confirmation and records rejected POSTs', async () => {

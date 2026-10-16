@@ -40,8 +40,10 @@ export async function dispatchScheduled(event, env, request = fetch) {
     const base = `https://api.github.com/repos/${REPOSITORY}/actions/workflows/${workflow.file}`;
     // Defer while this workflow is queued or executing. Retry on the next minute,
     // before claiming the slot, to avoid building an unbounded Actions queue.
+    // workerd supports manual/follow, not Node's redirect:error. Never follow a
+    // redirect with the credential: reject 3xx via the status checks below.
     const runs = await request(`${base}/runs?branch=main&per_page=100`, {
-      headers, redirect: 'error', signal: AbortSignal.timeout(10000),
+      headers, redirect: 'manual', signal: AbortSignal.timeout(10000),
     });
     if (!runs.ok) throw new Error(`GitHub run inspection HTTP ${runs.status}`);
     const payload = await runs.json();
@@ -64,7 +66,7 @@ export async function dispatchScheduled(event, env, request = fetch) {
     }
     try {
       const response = await request(`${base}/dispatches`, {
-        method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(10000),
+        method: 'POST', headers, redirect: 'manual', signal: AbortSignal.timeout(10000),
         body: JSON.stringify({ ref: 'main', inputs: {
           mode: 'execute', confirmation: workflow.confirmation,
           trigger_source: 'cloudflare', trigger_slot: workflow.slot, trigger_epoch: env.DISPATCH_EPOCH,

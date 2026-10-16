@@ -73,3 +73,9 @@ jobs:
           JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
           WRANGLER_SEND_METRICS: 'false'
         run: node scripts/d1/test-schedule-workerd.mjs
+      - name: Verify dispatcher native fetch and R2 on workerd
+        timeout-minutes: 2
+        env:
+          JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
+          WRANGLER_SEND_METRICS: 'false'
+        run: node scripts/v2/test-dispatcher-workerd.mjs
