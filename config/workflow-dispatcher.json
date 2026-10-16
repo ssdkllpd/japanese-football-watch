@@ -1,4 +1,4 @@
 {
   "schemaVersion": "jfw-workflow-dispatcher/1",
-  "triggerSource": "github"
+  "triggerSource": "cloudflare"
 }

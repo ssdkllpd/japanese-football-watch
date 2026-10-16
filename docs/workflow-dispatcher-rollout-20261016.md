@@ -4,7 +4,7 @@ Public reads must never call API-Football. The October 16 live pause removes tha
 
 ## Current activation state
 
-The October 16 12:08 JST activation stopped at the GitHub credential check with HTTP 401, before any Cloudflare deployment or secret installation. The rollback restores `triggerSource: github` and both original GitHub cron blocks. Viewer-triggered API-Football calls remain disabled. Replace the `WORKFLOW_DISPATCH_TOKEN` value and validate it while the legacy timers remain active before retrying the cutover. Credential verification now runs even while Cloudflare dispatch is disabled; it checks GitHub authentication and dispatches a dedicated authentication-probe workflow with no application credentials or data access, proving Actions dispatch permission before either timer is removed.
+The earlier October 16 activation stopped at GitHub authentication with HTTP 401 before any Cloudflare changes, and the original GitHub timers were restored. After the credential was corrected, authentication and Actions dispatch permission were verified while those timers remained active: authentication-probe run `38849679141` succeeded. This retry selects Cloudflare and removes the legacy timers. Completion still requires successful real-cron verification of both acquisition workflows on this deployment. Viewer-triggered API-Football calls remain disabled.
 
 ## Prepared configuration
 

@@ -10,8 +10,6 @@ on:
       confirmation:
         required: true
         type: string
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       mode:
