@@ -39,7 +39,7 @@ try {
       calls.push(url.pathname+url.search);
       if(redirect) return new Response(null,{status:302,headers:{location:'https://untrusted.invalid/'}});
       const headers={'x-ratelimit-requests-remaining':String(remaining),'x-ratelimit-remaining':'300'};
-      if(url.pathname==='/status') return Response.json({response:{requests:{limit:10000,current:10000-remaining}}},{headers});
+      if(url.pathname==='/status') return Response.json({response:{requests:{limit_day:10000,current:10000-remaining}}},{headers});
       assert.equal(url.pathname,'/fixtures');
       let rows=[...fixtures.values()];
       if(url.searchParams.has('ids')) {const ids=url.searchParams.get('ids').split('-').map(Number);rows=rows.filter(row=>ids.includes(row.fixture.id));}

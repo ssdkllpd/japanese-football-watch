@@ -43,7 +43,7 @@ export async function providerSession(env, now, request=fetch) {
     const body=await response.json();
     if(body?.errors && (Array.isArray(body.errors)?body.errors.length:Object.keys(body.errors).length)) throw new Error('provider_response_error');
     if(status) {
-      const used=body?.response?.requests?.current, limit=body?.response?.requests?.limit;
+      const used=scalar(body?.response?.requests?.current), limit=scalar(body?.response?.requests?.limit_day);
       if(!Number.isSafeInteger(used)||!Number.isSafeInteger(limit)||used<0||limit<used) throw new Error('provider_quota_unknown');
       remaining=Math.min(headerRemaining??Infinity,limit-used);
       await db.prepare('UPDATE live_budget SET remaining=?,checked_ms=? WHERE utc_day=?').bind(remaining,now,day).run();
