@@ -10,9 +10,9 @@ const workflow = fs.readFileSync(path.join(
 ), 'utf8');
 
 test('automation schedule stays behind both repository and reviewed policy gates', () => {
-  assert.doesNotMatch(workflow, /^  schedule:/m);
+  assert.match(workflow, /cron: '\*\/15 \* \* \* \*'/);
   assert.match(workflow, /trigger_source/);
-  assert.equal(require('../config/workflow-dispatcher.json').triggerSource, 'cloudflare');
+  assert.equal(require('../config/workflow-dispatcher.json').triggerSource, 'github');
   assert.match(workflow, /vars\.API_FOOTBALL_AUTOMATION_ENABLED == 'true'/);
   assert.match(workflow, /scheduledSynchronizationEnabled/);
   assert.match(workflow, /RUN API-FOOTBALL AUTOMATION/);
