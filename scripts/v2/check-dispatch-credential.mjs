@@ -8,6 +8,9 @@ const result = {
   type: token.startsWith('github_pat_') ? 'fine-grained' : token.startsWith('ghp_') ? 'classic' : 'unrecognized',
   outerWhitespace: raw !== token,
   internalWhitespace: /\s/.test(token),
+  wrappedInQuotes: token.length > 1 && ['"', "'", '`'].some(quote => token.startsWith(quote) && token.endsWith(quote)),
+  containsPATPrefix: token.includes('github_pat_') || token.includes('ghp_'),
+  invisibleCharacters: /[\u200B-\u200D\u2060]/.test(token),
   placeholderCharacters: /\.{3}|…|[<>]/.test(token),
   plausibleFormat: /^(github_pat_|ghp_)[A-Za-z0-9_]+$/.test(token) && token.length >= 40,
 };
