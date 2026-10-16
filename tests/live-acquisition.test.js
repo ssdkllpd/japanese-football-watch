@@ -6,7 +6,7 @@ function binding(db) {
   let pending=Promise.resolve();
   return {prepare,batch(statements){const run=pending.then(async()=>{db.exec('BEGIN');try {const rows=[];for(const stmt of statements)rows.push(await stmt.all());db.exec('COMMIT');return rows;}catch(error){db.exec('ROLLBACK');throw error;}});pending=run.catch(()=>{});return run;}};
 }
-function database(t) {const db=new DatabaseSync(':memory:');db.exec(fs.readFileSync(path.join(__dirname,'../migrations/live/0001_live.sql'),'utf8'));t.after(()=>db.close());return {db,LIVE_DB:binding(db)};}
+function database(t) {const db=new DatabaseSync(':memory:');for(const name of fs.readdirSync(path.join(__dirname,'../migrations/live')).filter(name=>name.endsWith('.sql')).sort())db.exec(fs.readFileSync(path.join(__dirname,'../migrations/live',name),'utf8'));t.after(()=>db.close());return {db,LIVE_DB:binding(db)};}
 const now=Date.parse('2026-10-16T10:00:00Z');
 function provider(options={}) {
   const calls=[];
@@ -122,4 +122,17 @@ test('status wire contract uses limit_day and rejects missing or invalid quota m
   if(remaining===null) await assert.rejects(invoke(),/provider_quota_unknown/);
   else assert.equal((await invoke()).remaining,remaining);
  }
+});
+
+test('provider diagnostics are bounded, redact the credential and remain outside public reads',async t=>{
+ const {providerSession}=await import('../live-worker/index.mjs');
+ const {db,LIVE_DB}=database(t),wire=provider();
+ const session=await providerSession({LIVE_DB,API_FOOTBALL_KEY:'test-provider-secret'},now,wire.request);
+ const env={LIVE_DB,API_FOOTBALL_KEY:'test-provider-secret'};
+ await assert.rejects(providerSession(env,now+1,async()=>Response.json({errors:{token:'Rejected test-provider-secret'}})),/provider_response_error/);
+ const row=db.prepare('SELECT * FROM live_provider_errors').get();
+ assert.equal(row.endpoint,'/status');assert.match(row.error_detail,/\[redacted\]/);assert.doesNotMatch(row.error_detail,/test-provider-secret/);
+ const {storedLiveResponse}=await import('../worker/index.mjs');
+ const response=await storedLiveResponse({...env,LIVE_DATA_READ_ENABLED:'true'},now);
+ assert.doesNotMatch(await response.text(),/Rejected|error_detail|test-provider-secret/);
 });

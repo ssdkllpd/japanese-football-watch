@@ -48,7 +48,7 @@ try {
       return Response.json({response:rows,errors:[],paging:{current:1,total:1}},{headers});
     }}));
   const db=await runtime.getD1Database('LIVE_DB'),core=await runtime.getD1Database('FOOTBALL_DB');
-  const schema=fs.readFileSync(path.join(root,'migrations/live/0001_live.sql'),'utf8');
+  const schema=fs.readdirSync(path.join(root,'migrations/live')).filter(name=>name.endsWith('.sql')).sort().map(name=>fs.readFileSync(path.join(root,'migrations/live',name),'utf8')).join('\n');
   await db.batch(schema.replace(/^--.*$/gm,'').split(';').map(sql=>sql.trim()).filter(Boolean).map(sql=>db.prepare(sql)));
   const coreSchema=`CREATE TABLE fixtures(provider_id INTEGER,competition_season_id INTEGER,home_team_id INTEGER,away_team_id INTEGER,kickoff_utc TEXT,status_short TEXT,status_long TEXT,status_elapsed INTEGER,home_goals INTEGER,away_goals INTEGER,ingestion_state TEXT);
 CREATE TABLE competition_seasons(id INTEGER,competition_id INTEGER,provider_season INTEGER);
