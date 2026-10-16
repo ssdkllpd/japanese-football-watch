@@ -95,7 +95,7 @@ function platform(options = {}) {
 
 test('platform reports expiry date without exposing either credential', async () => {
   const { checkDispatchPlatform } = await import('../scripts/v2/check-automation-health.mjs');
-  const result = await checkDispatchPlatform({ env: platformEnv, now, request: platform() });
+  const result = await checkDispatchPlatform({ liveTarget: {acquisitionEnabled:false}, env: platformEnv, now, request: platform() });
   assert.equal(result.passed, true, JSON.stringify(result));
   assert.equal(result.dispatchTokenExpiresAt, new Date(now + 90 * 86400000).toISOString());
   for (const secret of ['dispatch-test-secret', 'cf-test-secret']) assert.equal(JSON.stringify(result).includes(secret), false);
@@ -108,17 +108,17 @@ for (const [name, options, message] of [
   ['removed cron', { noCron: true }, /minute schedule is missing/],
 ]) test(`platform detects ${name}`, async () => {
   const { checkDispatchPlatform } = await import('../scripts/v2/check-automation-health.mjs');
-  const result = await checkDispatchPlatform({ env: platformEnv, now, request: platform(options) });
+  const result = await checkDispatchPlatform({ liveTarget: {acquisitionEnabled:false}, env: platformEnv, now, request: platform(options) });
   assert.equal(result.passed, false);
   assert.match(result.problems.join(), message);
 });
 
 test('missing expiry metadata is explicit and a configured expiry can supply it', async () => {
   const { checkDispatchPlatform } = await import('../scripts/v2/check-automation-health.mjs');
-  const result = await checkDispatchPlatform({ env: platformEnv, now, request: platform({ noExpiry: true }) });
+  const result = await checkDispatchPlatform({ liveTarget: {acquisitionEnabled:false}, env: platformEnv, now, request: platform({ noExpiry: true }) });
   assert.equal(result.dispatchTokenExpiresAt, null);
   assert.match(result.warnings.join(), /did not expose token expiry/);
-  const configured = await checkDispatchPlatform({ env: { ...platformEnv, WORKFLOW_DISPATCH_TOKEN_EXPIRES_AT: new Date(now + 6 * 86400000).toISOString() }, now, request: platform({ noExpiry: true }) });
+  const configured = await checkDispatchPlatform({ liveTarget: {acquisitionEnabled:false}, env: { ...platformEnv, WORKFLOW_DISPATCH_TOKEN_EXPIRES_AT: new Date(now + 6 * 86400000).toISOString() }, now, request: platform({ noExpiry: true }) });
   assert.equal(configured.passed, false);
 });
 
@@ -137,8 +137,30 @@ test('watchdog stays independent of the dispatch token and alerts through failed
   const { checkWorkflowHealth, checkDispatchPlatform } = await import('../scripts/v2/check-automation-health.mjs');
   const request = async () => { throw new Error('dispatch-test-secret cf-test-secret independent-test-token'); };
   const health = await checkWorkflowHealth({ env, now, request });
-  const platform = await checkDispatchPlatform({ env: platformEnv, now, request });
+  const platform = await checkDispatchPlatform({ liveTarget: {acquisitionEnabled:false}, env: platformEnv, now, request });
   assert.equal(health.passed, false);
   assert.equal(platform.passed, false);
   assert.doesNotMatch(JSON.stringify({ health, platform }), /dispatch-test-secret|cf-test-secret|independent-test-token/);
+ });
+
+ test('live health checks the separate D1 heartbeat only after public activation',async()=>{
+  const {checkDispatchPlatform}=await import('../scripts/v2/check-automation-health.mjs');
+  const target={acquisitionEnabled:true,publicReadEnabled:true,databaseId:'11111111-1111-1111-1111-111111111111'};
+  for(const [label,row,passed] of [
+    ['healthy',{enabled:1,status:'idle',heartbeat_ms:now,last_success_ms:now,next_start_ms:now+3600000},true],
+    ['stopped',{enabled:0,status:'disabled',heartbeat_ms:now},false],
+    ['missing heartbeat',{enabled:1,status:'polling',heartbeat_ms:now-181000},false],
+    ['acquisition error',{enabled:1,status:'error',heartbeat_ms:now},false],
+  ]) {
+    let reads=0;
+    const request=async(url,options)=>{
+      if(url.includes('/d1/database/')) {
+        reads++;assert.equal(options.method,'POST');assert.match(JSON.parse(options.body).sql,/^SELECT /);
+        return Response.json({success:true,result:[{success:true,results:[row]}]});
+      }
+      return platform()(url,options);
+    };
+    const result=await checkDispatchPlatform({env:platformEnv,now,request,liveTarget:target});
+    assert.equal(result.passed,passed,label+JSON.stringify(result));assert.equal(reads,1);
+  }
  });

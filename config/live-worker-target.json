@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "jfw-live-worker/1",
+  "workerName": "jfw-football-live-acquisition",
+  "databaseName": "jfw-football-live",
+  "databaseId": null,
+  "acquisitionEnabled": false
+}

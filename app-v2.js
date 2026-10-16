@@ -45,6 +45,7 @@
     fixtures: [],
     source: 'loading',
     livePaused: false,
+    liveNotice: '',
     workerBase: readWorkerBase(),
     follows: readFollows(),
     loading: false,
@@ -307,7 +308,9 @@
       kickoffUtc: row.kickoffUtc,
       dateJst: row.dateJst,
       status: row.status || {},
-      ingestionState: 'live',
+      ingestionState: FINAL_STATUSES.has(row?.status?.short) ? 'provisional_final' : 'live',
+      isLiveSnapshot: true,
+      reconciledAt: row.updatedAt || null,
       teams: {
         home: { id: row?.home?.teamId, name: row?.home?.name, logo: row?.home?.logo },
         away: { id: row?.away?.teamId, name: row?.away?.name, logo: row?.away?.logo },
@@ -319,35 +322,39 @@
   function renderMatchesIfVisible() {
     const route = router.parseHash(location.hash, { date: state.date });
     if (route.kind === 'matches') renderMatches();
+    if (route.kind === 'fixture' && state.detail) renderFixtureDetail();
     if (route.kind === 'competitions') renderLeagues();
     if (route.kind === 'team') renderTeamDetail(route.entityId, route.productSeason);
     if (route.kind === 'following') renderFollowing();
   }
 
-  async function loadMatches() {
+  async function loadMatches({ background = false } = {}) {
     const loadSequence = ++state.matchLoadSequence;
     const requestedDate = state.date;
-    state.loading = true;
-    renderMatchesIfVisible();
+    if (!background) { state.loading = true; renderMatchesIfVisible(); }
     const legacy = await loadLegacy();
     const legacyRows = legacyFixturesForDate(legacy, requestedDate);
     let fixtures;
     let source;
     let livePaused = false;
+    let liveNotice = "";
     if (state.workerBase) {
       try {
         const [index, live] = await Promise.all([
           apiFetch(`/api/v2/dates/${encodeURIComponent(requestedDate)}`).catch(error => {
             throw error;
           }),
-          requestedDate === todayJst() ? apiFetch('/api/v2/live').catch(() => ({ fixtures: [] })) : Promise.resolve({ fixtures: [] }),
+          requestedDate === todayJst() ? apiFetch('/api/v2/live').catch(() => ({ fixtures: [], liveUpdatesEnabled: false, reason: 'acquisition_unavailable' })) : Promise.resolve({ fixtures: [] }),
         ]);
         if (!Array.isArray(index?.fixtures)) throw new Error('invalid_date_index');
         livePaused = live?.liveUpdatesEnabled === false && live?.reason === 'temporarily_paused';
+        if (livePaused) liveNotice = 'ライブ更新は一時停止中です。保存済みの試合情報を表示しています。';
+        else if (live?.reason === 'quota_reserved' || live?.reason === 'live_request_budget' || live?.reason === 'live_write_budget') liveNotice = 'ライブ更新は取得上限により停止しています。最後に保存した情報を表示しています。';
+        else if (live?.stale || live?.liveUpdatesEnabled === false) liveNotice = 'ライブ更新が遅れています。最後に保存した情報を表示しています。';
         const baseRows = index.fixtures;
         const liveRows = (Array.isArray(live?.fixtures) ? live.fixtures : []).map(normalizeLive);
         const merged = new Map(baseRows.map(row => [row.fixtureId || row.id, { ...row, fixtureId: row.fixtureId || row.id }]));
-        for (const row of liveRows) if (row.dateJst === requestedDate) merged.set(row.fixtureId, { ...(merged.get(row.fixtureId) || {}), ...row });
+        for (const row of liveRows) if (row.dateJst === requestedDate && merged.get(row.fixtureId)?.ingestionState !== 'finalized') merged.set(row.fixtureId, { ...(merged.get(row.fixtureId) || {}), ...row });
         fixtures = [...merged.values()].sort((a, b) => String(a.kickoffUtc || '').localeCompare(String(b.kickoffUtc || '')));
         source = 'core';
       } catch (error) {
@@ -363,6 +370,7 @@
     state.fixtures = fixtures;
     state.source = source;
     state.livePaused = livePaused;
+    state.liveNotice = liveNotice;
     state.loading = false;
     renderMatchesIfVisible();
   }
@@ -439,8 +447,8 @@
     setPageHeader('matches');
     const rows = filteredFixtures();
     const sourceNote = state.source === 'core' ? '' : `<div class="notice">試合データに接続できていないため、取得済みの移行データを表示しています。</div>`;
-    const liveNote = state.livePaused && state.date === todayJst()
-      ? '<div class="notice" role="status">ライブ更新は一時停止中です。保存済みの試合情報を表示しています。</div>' : '';
+    const liveNote = state.liveNotice && state.date === todayJst()
+      ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : '';
     const integrityNote = state.source === 'core' ? '' : dataIntegrityNotice();
     const personalNote = ['following', 'japanese'].includes(state.matchFilter)
       ? '<div class="notice">この絞り込みは端末内のフォロー状態・追跡データに依存するため、同じURLでも端末によって結果が変わることがあります。</div>'
@@ -540,7 +548,9 @@
     title.textContent = '試合';
     const detail = state.detail || {};
     const bundle = detail.bundle || {};
-    const row = bundle.fixture || detail.summary || {};
+    const stored = bundle.fixture || detail.summary || {};
+    const live = state.fixtures.find(item => item.fixtureId === (stored.fixtureId || stored.id));
+    const row = stored.ingestionState !== 'finalized' && live?.isLiveSnapshot ? { ...stored, ...live } : stored;
     const home = row?.teams?.home || {};
     const away = row?.teams?.away || {};
     const comp = bundle?.competition?.name || detail.summary?.competitionName || detail.summary?.competitionId || '大会未取得';
@@ -1655,6 +1665,15 @@
     $('globalSearch')?.focus();
   });
   themeButton.addEventListener('click', toggleTheme);
+  // Only read our own stored-data API; page views never call the provider.
+  let liveRefreshPending = false;
+  window.setInterval(() => {
+    if (document.visibilityState === 'visible' && state.workerBase && state.page === 'matches'
+        && state.date === todayJst() && !state.loading && !liveRefreshPending) {
+      liveRefreshPending = true;
+      loadMatches({ background: true }).catch(() => {}).finally(() => { liveRefreshPending = false; });
+    }
+  }, 60000);
   window.addEventListener('popstate', scheduleRouteApply);
   window.addEventListener('hashchange', scheduleRouteApply);
   applyTheme(localStorage.getItem('football-v2-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
@@ -1667,5 +1686,6 @@
     if (migrated) history.replaceState(history.state, '', `${location.pathname}${migrated.search}${migrated.hash}`);
     applyCurrentRoute();
     if (state.page !== 'matches') loadMatches();
+    else if (router.parseHash(location.hash).kind === 'fixture') loadMatches({ background: true });
   });
 })();

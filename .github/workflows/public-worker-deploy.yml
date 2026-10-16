@@ -9,6 +9,8 @@ on:
       - 'config/d1-targets.json'
       - 'config/d1-constraints.lock.json'
       - 'config/public-worker-target.json'
+      - 'config/live-worker-target.json'
+      - 'scripts/live/target.mjs'
       - 'migrations/**'
       - 'admin-worker/**'
       - 'scripts/d1/check-schema-lock.mjs'
@@ -139,7 +141,7 @@ jobs:
             '{workerOrigin: $workerOrigin, appOrigin: $appOrigin, allowedOriginHealth: true, noOriginDenied: true}' \
             > .tmp/public-worker/evidence/report.json
 
-      - name: Verify public live acquisition is paused
+      - name: Verify public live stored-data contract
         shell: bash
         run: |
           set -euo pipefail
@@ -148,13 +150,18 @@ jobs:
           for attempt in {1..10}; do
             if curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
               --header "Origin: $app_origin" \
+              --dump-header .tmp/public-worker/evidence/live.headers.txt \
               --output .tmp/public-worker/evidence/live.json \
               "$worker_origin/api/v2/live" && \
-              jq -e '.liveUpdatesEnabled == false and .reason == "temporarily_paused" and .fixtures == []' \
+              jq -e --argjson enabled "$(jq '.liveReadEnabled == true' config/public-worker-target.json)" \
+                'if $enabled then .liveUpdatesEnabled == true and .stale == false and (.fixtures|type == "array") else .liveUpdatesEnabled == false and .reason == "temporarily_paused" and .fixtures == [] end' \
                 .tmp/public-worker/evidence/live.json >/dev/null; then
+              if jq -e '.liveReadEnabled == true' config/public-worker-target.json >/dev/null; then
+                tr -d '\r' < .tmp/public-worker/evidence/live.headers.txt | grep -Fxi 'x-jfw-data-source: d1-live'
+              fi
               break
             fi
-            test "$attempt" -lt 10 || { echo 'Public live pause verification failed'; exit 1; }
+            test "$attempt" -lt 10 || { echo 'Public live contract verification failed'; exit 1; }
             sleep 5
           done
 

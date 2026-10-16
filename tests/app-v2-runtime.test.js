@@ -23,9 +23,10 @@ const home = team(1, 'Home Club'), away = team(2, 'Away Club');
 function visible(el,w) { for(let node=el;node;node=node.parentElement){const css=w.getComputedStyle(node);if(node.hidden || css.display === 'none' || css.visibility === 'hidden') return false;}return true;}
 function fixture() { return { id: 'af:fixture:10', fixtureId: 'af:fixture:10', competitionId: 'af:competition:39', competitionName: 'League', seasonId: 'af:season:39:2026', dateJst: '2026-09-01', kickoffUtc: '2026-09-01T12:00:00Z', status: { short: 'FT' }, teams: { home, away }, score: { goals: { home: 0, away: 1 } } }; }
 function bundle() { return { fixture: fixture(), sectionStates: Object.fromEntries(['lineups','events','teamStats','playerStats'].map(key => [key, { presence: 'present' }])), lineups: [home,away].map((t,i) => ({ teamId:t.id, formation:'4-4-2', startXI:[{id:`af:player:${i+1}`,name:`Starter ${i+1}`,number:i+9,position:'F'}], substitutes:[{id:`af:player:${i+3}`,name:`Bench ${i+1}`,number:20}], coach:{ name:`Coach ${i+1}`,photo:`https://photos.test/coach${i}.png` } })), playerStats:[home,away].map((t,i)=>({ teamId:t.id, playerId:`af:player:${i+1}`,playerName:`Starter ${i+1}`,position:'F',values:{rating:7+i},jfwRating:{value:8,factors:{attack:1}} })), teamStats:[{teamId:home.id,values:{shots_on_goal:0,ball_possession:null},fieldStates:{ball_possession:{presence:'not_fetched'}}},{teamId:away.id,values:{shots_on_goal:2,ball_possession:null},fieldStates:{ball_possession:{presence:'not_applicable'}}}], events:[] }; }
-async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},detail=bundle(),feed,catalog={competitions:[]},seasonDetail={},standings={groups:[]},storage={},apiBase='https://api.test',publicConfig,search='',request}={}) {
+async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},detail=bundle(),feed,catalog={competitions:[]},seasonDetail={},standings={groups:[]},storage={},apiBase='https://api.test',publicConfig,search='',request,intervals}={}) {
  const dom = new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:`https://football.test/${search}${hash}`,runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window, calls=[], scrollCalls=[];
+ if(intervals) w.setInterval=(callback,ms)=>{intervals.push({callback,ms});return intervals.length;};
  for(const css of ['app-v2.css','app-v2-league.css','app-v2-wireframe.css']) {const style=w.document.createElement('style');style.textContent=fs.readFileSync(path.join(root,css),'utf8');w.document.head.append(style);}
  t.after(()=>w.close());
  w.matchMedia=()=>({matches:false});
@@ -518,3 +519,31 @@ test('follow icons inherit the state color and toggle outline and fill',async t=
   }
  }
 });
+
+ test('live polling refreshes stored scores while visible, and finalized core data takes priority',async t=>{
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+  const intervals=[];let score=2,finalized=false;
+  const app=await boot(t,{hash:`#/matches?date=${today}&filter=all`,intervals,
+    feed:async()=>({fixtures:[{...fixture(),dateJst:today,ingestionState:finalized?'finalized':'scheduled',status:{short:finalized?'FT':'NS'}}]}),
+    request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({liveUpdatesEnabled:true,stale:false,fixtures:[{
+      fixtureId:'af:fixture:10',competitionId:'af:competition:39',seasonId:'af:season:39:2026',dateJst:today,kickoffUtc:new Date().toISOString(),status:{short:'1H',elapsed:10},
+      home:{teamId:home.id,name:home.name,score},away:{teamId:away.id,name:away.name,score:0},
+    }]})}:null,
+  });
+  const scores=()=>[...app.doc.querySelectorAll('[data-fixture="af:fixture:10"] .team-score')].map(el=>el.textContent.trim()).join('-');
+  await until(()=>scores()==='2-0','initial live score');
+  assert.equal(intervals.find(value=>value.ms===60000)!==undefined,true);
+  score=3;intervals.find(value=>value.ms===60000).callback();
+  await until(()=>scores()==='3-0','updated score from stored live API');
+  finalized=true;intervals.find(value=>value.ms===60000).callback();
+  await until(()=>scores()==='0-1','finalized core score must win');
+  const before=app.calls.filter(url=>url.endsWith('/api/v2/live')).length;
+  Object.defineProperty(app.doc,'visibilityState',{configurable:true,value:'hidden'});
+  intervals.find(value=>value.ms===60000).callback();await tick();
+  assert.equal(app.calls.filter(url=>url.endsWith('/api/v2/live')).length,before);
+ });
+ test('stale live acquisition is explained without hiding saved fixtures',async t=>{
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+  const app=await boot(t,{hash:`#/matches?date=${today}&filter=all`,request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({fixtures:[],liveUpdatesEnabled:true,stale:true,reason:'acquisition_stale'})}:null});
+  await until(()=>app.text().includes('ライブ更新が遅れています'),'stale notice');assert.match(app.text(),/Home Club/);
+ });

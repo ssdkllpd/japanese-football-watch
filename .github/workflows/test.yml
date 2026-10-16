@@ -84,3 +84,9 @@ jobs:
           JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
           WRANGLER_SEND_METRICS: 'false'
         run: node scripts/v2/test-dispatcher-workerd.mjs
+      - name: Verify live acquisition, D1 storage, public reads and failure cases on workerd
+        timeout-minutes: 3
+        env:
+          JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
+          WRANGLER_SEND_METRICS: 'false'
+        run: node scripts/live/test-workerd.mjs
