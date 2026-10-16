@@ -1120,6 +1120,34 @@ function pausedLiveResponse() {
   });
 }
 
+export async function storedLiveResponse(env, now=Date.now()) {
+  if(env.LIVE_DATA_READ_ENABLED!=='true') return pausedLiveResponse();
+  const headers={'cache-control':'public, max-age=15','x-jfw-data-source':'d1-live'};
+  try {
+    if(!env.LIVE_DB) throw new Error('live_database_missing');
+    const [controlResult,snapshotsResult]=await env.LIVE_DB.batch([
+      env.LIVE_DB.prepare('SELECT heartbeat_ms,last_success_ms,enabled,status,error_code,last_poll_ms,next_start_ms FROM live_control WHERE id=1'),
+      env.LIVE_DB.prepare('SELECT payload,updated_ms FROM live_snapshots WHERE updated_ms>=? ORDER BY fixture_id LIMIT 501').bind(now-2*86400000),
+    ]);
+    if(controlResult.success===false||snapshotsResult.success===false||!controlResult.results?.length
+      ||!Array.isArray(snapshotsResult.results)||snapshotsResult.results.length>=501) throw new Error('live_database_unavailable');
+    const control=controlResult.results[0],allowed=allowedCompetitionIds(env);
+    const stale=!control.heartbeat_ms||now-control.heartbeat_ms>180000||control.status==='error';
+    const paused=control.enabled!==1||['disabled','quota_reserved','live_request_budget','live_write_budget'].includes(control.status);
+    const fixtures=snapshotsResult.results.map(row=>({...JSON.parse(row.payload),updatedAt:new Date(row.updated_ms).toISOString(),stale:now-row.updated_ms>180000}))
+      .filter(row=>/^af:fixture:\d+$/.test(row.fixtureId||'')&&row.dateJst===dateJst(new Date(now).toISOString())
+        &&(allowed.size===0||allowed.has(String(row.competitionId?.split(':')[2]))));
+    return json({contractVersion:'2.0.0',timeZone:'Asia/Tokyo',generatedAt:new Date(now).toISOString(),fixtures,
+      liveUpdatesEnabled:!paused,stale:stale||fixtures.some(row=>row.stale&&['1H','2H','HT','ET','BT','P','LIVE','INT','SUSP'].includes(row.status?.short)),reason:stale?'acquisition_stale':control.status,
+      monitor:{heartbeatAt:control.heartbeat_ms?new Date(control.heartbeat_ms).toISOString():null,
+        lastSuccessfulAt:control.last_success_ms?new Date(control.last_success_ms).toISOString():null,
+        lastPollAt:control.last_poll_ms?new Date(control.last_poll_ms).toISOString():null,
+        nextStartAt:control.next_start_ms?new Date(control.next_start_ms).toISOString():null}},200,headers);
+  } catch {
+    return json({contractVersion:'2.0.0',fixtures:[],liveUpdatesEnabled:false,stale:true,reason:'acquisition_unavailable'},200,{'cache-control':'no-store','x-jfw-data-source':'d1-live-unavailable'});
+  }
+}
+
 async function r2JsonObject(env, key, extraHeaders = {}) {
   if (!env.FOOTBALL_DATA) {
     return json({ error: 'FOOTBALL_DATA R2 binding is not configured.' }, 503, extraHeaders);
@@ -1520,7 +1548,7 @@ async function handle(request, env, context) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
   if (url.pathname === '/health') return json({ ok: true, service: 'football-data-v2' });
-  if (url.pathname === '/api/v2/live') return pausedLiveResponse();
+  if (url.pathname === '/api/v2/live') return storedLiveResponse(env);
   if (url.pathname === '/api/v2/competitions') return competitionDirectoryResponse(env, context);
 
   const fixtureMatch = url.pathname.match(/^\/api\/v2\/fixtures\/(.+)$/);

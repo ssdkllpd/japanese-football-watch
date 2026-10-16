@@ -1,0 +1,60 @@
+name: Deploy Live Acquisition Worker
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-worker-deploy.yml'
+      - 'live-worker/**'
+      - 'migrations/live/**'
+      - 'scripts/live/**'
+      - 'shared/live-contract.mjs'
+      - 'config/live-worker-target.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-worker-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Provision the separate live database and verify its schema
+        run: node scripts/live/provision.mjs
+      - name: Build the acquisition Worker before deployment
+        run: npx --yes wrangler@4.147.0 deploy --dry-run --config .tmp/live/wrangler.toml --outdir .tmp/live/build
+      - name: Deploy disabled while installing the provider credential
+        id: bootstrap
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml --var LIVE_ACQUISITION_ENABLED:false
+      - name: Install the provider credential only on the acquisition Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$API_FOOTBALL_KEY"
+          printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4.147.0 secret put API_FOOTBALL_KEY --config .tmp/live/wrangler.toml
+      - name: Apply the reviewed acquisition enable switch
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml
+      - name: Verify an actual cron heartbeat and successful enabled acquisition
+        run: node scripts/live/verify-deployment.mjs
+      - name: Disable acquisition after failed activation
+        if: ${{ (failure() || cancelled()) && steps.bootstrap.outcome == 'success' }}
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml --var LIVE_ACQUISITION_ENABLED:false
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-acquisition-${{ github.run_id }}
+          path: |
+            .tmp/live/target.json
+            .tmp/live/verification.json
+          retention-days: 14
+          if-no-files-found: warn

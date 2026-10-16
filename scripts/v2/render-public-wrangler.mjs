@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadLiveTarget } from '../live/target.mjs';
 
 const FLAG_NAMES = Object.freeze([
   'D1_DATE_INDEX_ENABLED',
@@ -14,7 +15,7 @@ const FLAG_NAMES = Object.freeze([
 const TARGET_FIELDS = new Set([
   'schemaVersion', 'workerName', 'workerOrigin', 'appOrigin', 'r2BucketName',
   'd1DatabaseName', 'd1DatabaseId', 'liveCompetitionIds', 'd1ReadFlags',
-  'd1CutoverAuthorization', 'd1ReadProbes',
+  'd1CutoverAuthorization', 'd1ReadProbes', 'liveReadEnabled',
 ]);
 const AUTHORIZATION_FIELDS = new Set([
   'schemaVersion', 'databaseId', 'migrationWorkflowRunId', 'migrationCommit',
@@ -74,6 +75,7 @@ export function loadPublicWorkerTarget(manifestPath) {
     throw new Error('Public Worker target schemaVersion is unsupported.');
   }
   exactKeys(target, TARGET_FIELDS, 'Public Worker target');
+  if(target.liveReadEnabled!==undefined && typeof target.liveReadEnabled!=='boolean') throw new Error('Invalid live read switch');
   requiredString(target.workerName, 'workerName', /^[a-z0-9][a-z0-9-]{0,62}$/);
   requiredString(target.r2BucketName, 'r2BucketName', /^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/);
   requiredString(target.d1DatabaseName, 'd1DatabaseName', /^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/);
@@ -152,6 +154,8 @@ export function loadPublicWorkerTarget(manifestPath) {
 export function renderPublicWrangler(target, outputPath, options = {}) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const outputDirectory = path.dirname(path.resolve(outputPath));
+  const live=loadLiveTarget(root);
+  if(target.liveReadEnabled && (!live.databaseId||!live.acquisitionEnabled)) throw new Error('Live acquisition must be verified before enabling public live reads');
   return [
     `name = ${JSON.stringify(target.workerName)}`,
     `main = ${tomlPath(outputDirectory, path.join(root, 'worker', 'index.mjs'))}`,
@@ -167,11 +171,13 @@ export function renderPublicWrangler(target, outputPath, options = {}) {
     `database_name = ${JSON.stringify(target.d1DatabaseName)}`,
     `database_id = ${JSON.stringify(target.d1DatabaseId)}`,
     '',
+    ...(target.liveReadEnabled?['[[d1_databases]]','binding = \"LIVE_DB\"',`database_name = ${JSON.stringify(live.databaseName)}`,`database_id = ${JSON.stringify(live.databaseId)}`,'']:[]),
     '[vars]',
     `APP_ORIGINS = ${JSON.stringify(target.appOrigin)}`,
     'ALLOW_NO_ORIGIN = "false"',
     'SOFT_RATE_LIMIT_PER_MINUTE = "120"',
     `LIVE_COMPETITION_IDS = ${JSON.stringify([...target.liveCompetitionIds].sort((a, b) => a - b).join(','))}`,
+    `LIVE_DATA_READ_ENABLED = "${target.liveReadEnabled===true}"`,
     ...FLAG_NAMES.map(name => `${name} = "${options.disableD1Reads ? false : target.d1ReadFlags[name]}"`),
     '',
   ].join('\n');

@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '3-58/5 * * * *'
   workflow_run:
-    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher]
+    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher, Deploy Live Acquisition Worker]
     types: [completed]
     branches: [main]
   push:
@@ -12,6 +12,8 @@ on:
     paths:
       - '.github/workflows/automation-watchdog.yml'
       - 'scripts/v2/check-automation-health.mjs'
+      - 'config/live-worker-target.json'
+      - 'config/public-worker-target.json'
   workflow_dispatch:
 
 permissions:

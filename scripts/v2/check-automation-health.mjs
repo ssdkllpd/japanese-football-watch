@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadLiveTarget,ROOT } from '../live/target.mjs';
 
 const REPOSITORY = 'ssdkllpd/japanese-football-watch';
 const API = `https://api.github.com/repos/${REPOSITORY}`;
@@ -84,7 +85,7 @@ export async function checkWorkflowHealth({ env = process.env, request = fetch, 
   return { passed: problems.length === 0, checkedAt: new Date(now).toISOString(), workflows, problems };
 }
 
-export async function checkDispatchPlatform({ env = process.env, request = fetch, now = Date.now() } = {}) {
+export async function checkDispatchPlatform({ env = process.env, request = fetch, now = Date.now(), liveTarget = null } = {}) {
   const problems = [], warnings = [];
   let expiresAt = null;
   if (!env.WORKFLOW_DISPATCH_TOKEN) problems.push('Dispatch token is missing');
@@ -125,7 +126,29 @@ export async function checkDispatchPlatform({ env = process.env, request = fetch
       if (!schedules.result.schedules.some(schedule => schedule.cron === '* * * * *')) problems.push('Cloudflare minute schedule is missing');
     } catch (error) { problems.push(`Cloudflare inspection: ${safeReadError(error)}`); }
   }
-  return { passed: problems.length === 0, checkedAt: new Date(now).toISOString(), dispatchTokenExpiresAt: expiresAt, problems, warnings };
+  let liveAcquisition = null;
+  const publicTarget=JSON.parse(fs.readFileSync(path.join(ROOT,'config/public-worker-target.json'),'utf8'));
+  const live=liveTarget ?? {...loadLiveTarget(),publicReadEnabled:publicTarget.liveReadEnabled===true};
+  if(live.acquisitionEnabled && live.publicReadEnabled) {
+    try {
+      if(!live.databaseId || !env.CLOUDFLARE_API_TOKEN || !/^[a-f0-9]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID||'')) throw new Error('Live monitor configuration missing');
+      const response=await request(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${live.databaseId}/query`,{
+        method:'POST',headers:{authorization:`Bearer ${env.CLOUDFLARE_API_TOKEN}`,'content-type':'application/json'},
+        body:JSON.stringify({sql:'SELECT enabled,status,error_code,heartbeat_ms,last_success_ms,last_poll_ms,next_start_ms FROM live_control WHERE id=1'}),
+        redirect:'error',signal:AbortSignal.timeout(15000)});
+      if(!response.ok) throw new Error(`Health read HTTP ${response.status}`);
+      const payload=await response.json(),row=payload.result?.[0]?.results?.[0];
+      if(payload.success!==true||payload.result?.[0]?.success!==true||!row) throw new Error('Live monitor payload invalid');
+      if(row.enabled!==1) problems.push('Live acquisition is disabled while public live reads are enabled');
+      if(!Number.isSafeInteger(row.heartbeat_ms)||now-row.heartbeat_ms>180000||row.heartbeat_ms>now+60000) problems.push('Live acquisition heartbeat is stale (three minutes)');
+      if(row.status==='error') problems.push('Live acquisition reported an error; inspect the live Worker logs');
+      if(['quota_reserved','live_request_budget','live_write_budget'].includes(row.status)) warnings.push('Live acquisition is paused at its safety reserve or budget');
+      liveAcquisition={status:row.status,heartbeatAt:row.heartbeat_ms?new Date(row.heartbeat_ms).toISOString():null,
+        lastSuccessfulAt:row.last_success_ms?new Date(row.last_success_ms).toISOString():null,
+        nextStartAt:row.next_start_ms?new Date(row.next_start_ms).toISOString():null};
+    } catch(error) {problems.push(`Live acquisition health: ${safeReadError(error)}`);}
+  }
+  return { passed: problems.length === 0, checkedAt: new Date(now).toISOString(), dispatchTokenExpiresAt: expiresAt, liveAcquisition, problems, warnings };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
