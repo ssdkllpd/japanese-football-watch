@@ -1,0 +1,41 @@
+name: API-Football Live Acquisition
+run-name: API-Football Live [Cloudflare ${{ inputs.scheduled_slot }}]
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        required: true
+        type: string
+      scheduled_slot:
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: api-football-live-acquisition
+  cancel-in-progress: false
+jobs:
+  acquire:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirmation == 'RUN LIVE ACQUISITION' }}
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Acquire all eligible live games and save only provisional D1 data
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          LIVE_TRIGGER_SLOT: ${{ inputs.scheduled_slot }}
+        run: node scripts/live/acquire.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-acquisition-run-${{ github.run_id }}
+          path: .tmp/live-acquisition/result.json
+          retention-days: 7
+          if-no-files-found: ignore

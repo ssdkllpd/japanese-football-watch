@@ -5,7 +5,7 @@ export const ROOT=fileURLToPath(new URL('../../',import.meta.url));
 export function loadLiveTarget(root=ROOT) {
   const value=JSON.parse(fs.readFileSync(path.join(root,'config/live-worker-target.json'),'utf8'));
   if(value.schemaVersion!=='jfw-live-worker/1'||value.workerName!=='jfw-football-live-acquisition'||value.databaseName!=='jfw-football-live'
-    ||typeof value.acquisitionEnabled!=='boolean'||Object.keys(value).length!==5
+    ||typeof value.acquisitionEnabled!=='boolean'||Object.keys(value).length!==6||value.acquisitionMode!=='github'
     ||(value.databaseId!==null&&!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value.databaseId))) throw new Error('Invalid live target');
   if(value.acquisitionEnabled&&!value.databaseId) throw new Error('Live acquisition needs the reviewed database ID');
   return value;
@@ -20,6 +20,7 @@ compatibility_date = "2026-10-08"
 workers_dev = false
 [vars]
 LIVE_ACQUISITION_ENABLED = "${target.acquisitionEnabled}"
+LIVE_ACQUISITION_MODE = "${target.acquisitionMode}"
 LIVE_COMPETITION_IDS = "${core.liveCompetitionIds.join(',')}"
 [triggers]
 crons = ["* * * * *"]

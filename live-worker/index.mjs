@@ -1,3 +1,4 @@
+import {dispatchLiveTick} from './dispatch.mjs';
 import { LIVE_STATUSES, CLOSED_STATUSES, MINUTE, jstDate, allowedLeagues, providerFixture, isCandidate, precheckStage, liveEligible } from '../shared/live-contract.mjs';
 
 export const LIMITS = Object.freeze({ reserve:1200, dailyRequests:4000, dailyRows:100000, maxFixtures:240, perTickRequests:12 });
@@ -15,6 +16,8 @@ export async function providerSession(env, now, request=fetch) {
   const budget=(await all(db,'SELECT * FROM live_budget WHERE utc_day=?',day))[0];
   if (budget.rows_written>=LIMITS.dailyRows-10000) throw new Error('live_write_budget');
   if (budget.remaining!==null && budget.remaining<=LIMITS.reserve+LIMITS.perTickRequests) throw new Error('quota_reserved');
+  if(budget.requests>=LIMITS.dailyRequests) throw new Error('live_request_budget');
+  if(!env.API_FOOTBALL_KEY) throw new Error('live_configuration_missing');
   let remaining=null, calls=0, minuteRemaining=null;
   const started=Date.now();
   const read=async (endpoint,parameters={},status=false) => {
@@ -187,7 +190,7 @@ async function runTick(env,now,request) {
   return {status:'polling',nextStart:null,providerCalls:session.calls,liveFixtures:seen.size};
 }
 // Measure D1's actual billed write metadata instead of guessing from SQL changes.
-function countedDatabase(db,counter) {
+export function countedDatabase(db,counter) {
   const native=new WeakMap();
   const record=result=>{ counter.rows+=Number(result?.meta?.rows_written??result?.meta?.changes??0);return result; };
   const wrap=stmt=>{
@@ -208,7 +211,7 @@ export async function scheduledTick(event,env,request=fetch,now=Date.now()) {
   let result,error;
   try {
     if(env.LIVE_ACQUISITION_ENABLED!=='true') result={status:'disabled',nextStart:null};
-    else if(!env.API_FOOTBALL_KEY || !env.FOOTBALL_DB) throw new Error('live_configuration_missing');
+    else if(!env.FOOTBALL_DB) throw new Error('live_configuration_missing');
     else result=await runTick(env,now,request);
   } catch(caught) {
     const code=String(caught?.message||'');
@@ -225,4 +228,4 @@ export async function scheduledTick(event,env,request=fetch,now=Date.now()) {
   if(result.status==='error') throw new Error(error);
   return result;
 }
-export default { async scheduled(event,env){await scheduledTick(event,env);}, fetch(){return new Response('Not found',{status:404});} };
+export default { async scheduled(event,env){if(env.LIVE_ACQUISITION_MODE==='github')return dispatchLiveTick(event,env);return scheduledTick(event,env);}, fetch(){return new Response('Not found',{status:404});} };

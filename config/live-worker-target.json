@@ -3,5 +3,6 @@
   "workerName": "jfw-football-live-acquisition",
   "databaseName": "jfw-football-live",
   "databaseId": "62fe34bb-c406-4d9b-ace3-ad9edc61fc6a",
-  "acquisitionEnabled": true
+  "acquisitionEnabled": true,
+  "acquisitionMode": "github"
 }
