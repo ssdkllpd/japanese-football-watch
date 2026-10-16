@@ -14,7 +14,7 @@ function provider(options={}) {
     calls.push(url);assert.equal(init.redirect,'manual');assert.equal(init.headers['x-apisports-key'],'test-provider-secret');
     if(options.http) return new Response(null,{status:options.http});
     const headers=options.noHeader?{}:{'x-ratelimit-requests-remaining':String(options.remaining??6000),'x-ratelimit-remaining':'300'};
-    if(url.includes('/status')) return Response.json({response:{requests:{limit:10000,current:10000-(options.remaining??6000)}}},{headers});
+    if(url.includes('/status')) return Response.json({response:{requests:{limit_day:10000,current:10000-(options.remaining??6000)}}},{headers});
     return Response.json({response:[],errors:options.error?{scope:'invalid'}:[],paging:{total:options.pages??1}},{headers});
   };
   return {calls,request};
@@ -107,4 +107,19 @@ test('unavailable live storage fails closed without calling the provider',async(
   const {storedLiveResponse}=await import('../worker/index.mjs');
   const body=await(await storedLiveResponse({LIVE_DATA_READ_ENABLED:'true'},now)).json();
   assert.equal(body.reason,'acquisition_unavailable');assert.equal(body.liveUpdatesEnabled,false);assert.deepEqual(body.fixtures,[]);
+});
+
+test('status wire contract uses limit_day and rejects missing or invalid quota metadata',async t=>{
+ const {providerSession}=await import('../live-worker/index.mjs');
+ for(const [requests,remaining] of [
+  [{current:'100',limit_day:'7500'},7400],
+  [{current:100,limit:7500},null],
+  [{current:null,limit_day:null},null],
+  [{current:8,limit_day:7},null],
+ ]) {
+  const {LIVE_DB}=database(t);
+  const invoke=()=>providerSession({LIVE_DB,API_FOOTBALL_KEY:'test'},now,async()=>Response.json({response:{requests}}));
+  if(remaining===null) await assert.rejects(invoke(),/provider_quota_unknown/);
+  else assert.equal((await invoke()).remaining,remaining);
+ }
 });
