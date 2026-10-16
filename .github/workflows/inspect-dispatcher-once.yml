@@ -30,6 +30,15 @@ jobs:
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jfw-football-workflow-dispatcher/schedules" \
             --output .tmp/dispatcher-inspect/schedules.json
           jq '{success, errors, result}' .tmp/dispatcher-inspect/schedules.json
+      - name: Read effective dispatcher bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jfw-football-workflow-dispatcher/settings" \
+            --output .tmp/dispatcher-inspect/settings.json
+          jq '{success, dispatch: [.result.bindings[]? | select(.name == "DISPATCH_ENABLED" or .name == "DISPATCH_EPOCH") | {name, type, text}], credentialPresent: any(.result.bindings[]?; .name == "WORKFLOW_DISPATCH_TOKEN" and .type == "secret_text")}' .tmp/dispatcher-inspect/settings.json
       - name: Observe dispatcher logs for one minute
         shell: bash
         run: |
