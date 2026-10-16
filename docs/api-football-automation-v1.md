@@ -20,7 +20,7 @@ This unit automates two existing, already reviewed data paths for the ten config
 
 The 15-minute workflow trigger is a discovery cadence, not a promise to publish every 15 minutes. Newly discovered final fixtures may be checkpointed in R2 even when their detail is deferred; no due work publishes no fixture or standings object.
 
-This unit does not yet replace the public request-time live provider path and does not publish basic scheduled fixture changes. Those are separate activation units because a basic date-feed response must never replace an existing rich fixture bundle. Until that merge rule and the compact live projection are implemented and reviewed, the current paths remain unchanged.
+Public request-time live provider fetches were disabled on October 16 to protect shared provider quota. `/api/v2/live` returns an explicit paused response with no live overrides; the UI continues showing stored date-index data. Public browsing must never call API-Football, including on cache misses. Future live ingestion must run separately and publish stored live data for public reads. A basic date-feed response must never replace an existing rich fixture bundle.
 
 ## Request budget
 

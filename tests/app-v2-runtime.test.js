@@ -40,6 +40,20 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
 }
 
+test('paused live keeps stored fixtures and explains the pause only on today',async t=>{
+ const today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+ const app=await boot(t,{
+  hash:`#/matches?date=${today}&filter=all`,
+  request:async url=>new URL(url).pathname==='/api/v2/live'
+   ? {ok:true,status:200,json:async()=>({fixtures:[],liveUpdatesEnabled:false,reason:'temporarily_paused'})}:null,
+ });
+ await until(()=>app.text().includes('ライブ更新は一時停止中です。'),'live pause notice');
+ assert.match(app.text(),/Home Club/);
+ assert.match(app.text(),/Away Club/);
+ await app.click('[data-date]');
+ assert.doesNotMatch(app.text(),/ライブ更新は一時停止中/);
+});
+
 test('club deep link stays a club after a delayed date response',async t=>{
  let resolve; const feed=new Promise(r=>resolve=r);
  const app=await boot(t,{hash:'#/teams/af%3Ateam%3A1',feed:()=>feed});

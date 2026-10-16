@@ -44,6 +44,7 @@
     legacySearch: '',
     fixtures: [],
     source: 'loading',
+    livePaused: false,
     workerBase: readWorkerBase(),
     follows: readFollows(),
     loading: false,
@@ -332,6 +333,7 @@
     const legacyRows = legacyFixturesForDate(legacy, requestedDate);
     let fixtures;
     let source;
+    let livePaused = false;
     if (state.workerBase) {
       try {
         const [index, live] = await Promise.all([
@@ -341,6 +343,7 @@
           requestedDate === todayJst() ? apiFetch('/api/v2/live').catch(() => ({ fixtures: [] })) : Promise.resolve({ fixtures: [] }),
         ]);
         if (!Array.isArray(index?.fixtures)) throw new Error('invalid_date_index');
+        livePaused = live?.liveUpdatesEnabled === false && live?.reason === 'temporarily_paused';
         const baseRows = index.fixtures;
         const liveRows = (Array.isArray(live?.fixtures) ? live.fixtures : []).map(normalizeLive);
         const merged = new Map(baseRows.map(row => [row.fixtureId || row.id, { ...row, fixtureId: row.fixtureId || row.id }]));
@@ -359,6 +362,7 @@
     rememberFixtures(fixtures);
     state.fixtures = fixtures;
     state.source = source;
+    state.livePaused = livePaused;
     state.loading = false;
     renderMatchesIfVisible();
   }
@@ -435,6 +439,8 @@
     setPageHeader('matches');
     const rows = filteredFixtures();
     const sourceNote = state.source === 'core' ? '' : `<div class="notice">試合データに接続できていないため、取得済みの移行データを表示しています。</div>`;
+    const liveNote = state.livePaused && state.date === todayJst()
+      ? '<div class="notice" role="status">ライブ更新は一時停止中です。保存済みの試合情報を表示しています。</div>' : '';
     const integrityNote = state.source === 'core' ? '' : dataIntegrityNotice();
     const personalNote = ['following', 'japanese'].includes(state.matchFilter)
       ? '<div class="notice">この絞り込みは端末内のフォロー状態・追跡データに依存するため、同じURLでも端末によって結果が変わることがあります。</div>'
@@ -450,6 +456,7 @@
       ${renderDateStrip()}
       ${personalNote}
       ${sourceNote}
+      ${liveNote}
       ${integrityNote}
       ${state.loading ? '<div class="notice">試合データを読み込み中…</div>' : ''}
       <div id="fixtureGroups">${renderFixtureGroups(rows)}</div>`;

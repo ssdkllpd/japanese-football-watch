@@ -191,7 +191,7 @@ test('deployment includes cancellation in rollback and bounds every curl request
   const rollback = workflow.split('- name: Roll back all D1 public reads')[1].split('- name: Upload public deployment evidence')[0];
   assert.match(rollback, /if: \$\{\{ \(failure\(\) \|\| cancelled\(\)\) && steps\.deploy\.outcome == 'success' \}\}/);
   const commands = workflow.match(/curl[^\n]*(?:\\\n[^\n]*)*/g);
-  assert.equal(commands.length, 6);
+  assert.equal(commands.length, 7);
   for (const command of commands) {
     assert.match(command, /--connect-timeout 5\b/);
     assert.match(command, /--max-time 20\b/);

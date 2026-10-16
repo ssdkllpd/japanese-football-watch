@@ -11,7 +11,6 @@ import fixtureRepositoryModule from '../scripts/d1/fixture-repository.js';
 
 const { FixtureRepository } = fixtureRepositoryModule;
 
-const API_BASE = 'https://v3.football.api-sports.io';
 const LIVE_TTL_SECONDS = 60;
 const DATE_TTL_SECONDS = 300;
 const STANDINGS_TTL_SECONDS = 300;
@@ -1106,27 +1105,19 @@ function softRateLimit(request, env) {
   return count <= limit;
 }
 
-async function providerLive(env) {
-  if (!env.API_FOOTBALL_KEY) return json({ error: 'API_FOOTBALL_KEY is not configured.' }, 503);
-  const cache = caches.default;
-  const scope = [...allowedCompetitionIds(env)].sort().join(',') || 'all';
-  const cacheKey = new Request(`https://jfw.internal/cache/live?scope=${encodeURIComponent(scope)}`);
-  const hit = await cache.match(cacheKey);
-  if (hit) return hit;
-
-  const response = await fetch(`${API_BASE}/fixtures?live=all`, {
-    headers: { 'x-apisports-key': env.API_FOOTBALL_KEY },
+function pausedLiveResponse() {
+  // Public reads must never spend provider quota. Resume only from stored live data.
+  // Ignore the former provider cache so stale scores cannot mask this pause.
+  return json({
+    contractVersion: '2.0.0',
+    generatedAt: new Date().toISOString(),
+    fixtures: [],
+    liveUpdatesEnabled: false,
+    reason: 'temporarily_paused',
+  }, 200, {
+    'cache-control': `public, max-age=${LIVE_TTL_SECONDS}`,
+    'x-jfw-data-source': 'live-paused',
   });
-  if (!response.ok) return json({ error: `API-Football HTTP ${response.status}` }, 502);
-  const payload = await response.json();
-  if (payload?.errors && (Array.isArray(payload.errors) ? payload.errors.length : Object.keys(payload.errors).length)) {
-    return json({ error: 'API-Football returned an API-level error.' }, 502);
-  }
-
-  const projected = projectLiveFixtures(payload, env);
-  const result = json(projected, 200, { 'cache-control': `public, max-age=${LIVE_TTL_SECONDS}` });
-  await cache.put(cacheKey, result.clone());
-  return result;
 }
 
 async function r2JsonObject(env, key, extraHeaders = {}) {
@@ -1529,7 +1520,7 @@ async function handle(request, env, context) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
   if (url.pathname === '/health') return json({ ok: true, service: 'football-data-v2' });
-  if (url.pathname === '/api/v2/live') return providerLive(env);
+  if (url.pathname === '/api/v2/live') return pausedLiveResponse();
   if (url.pathname === '/api/v2/competitions') return competitionDirectoryResponse(env, context);
 
   const fixtureMatch = url.pathname.match(/^\/api\/v2\/fixtures\/(.+)$/);
