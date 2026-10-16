@@ -2,9 +2,13 @@
 
 Public reads must never call API-Football. The October 16 live pause removes that path while saved D1/R2 data remains available. Full live ingestion is a separate implementation: scheduled acquisition writes a D1 live table, and public reads only that stored data.
 
+## Current activation state
+
+The October 16 12:08 JST activation stopped at the GitHub credential check with HTTP 401, before any Cloudflare deployment or secret installation. The rollback restores `triggerSource: github` and both original GitHub cron blocks. Viewer-triggered API-Football calls remain disabled. Replace the `WORKFLOW_DISPATCH_TOKEN` value and validate it while the legacy timers remain active before retrying the cutover. Credential verification now runs even while Cloudflare dispatch is disabled; it checks GitHub authentication and dispatches a dedicated authentication-probe workflow with no application credentials or data access, proving Actions dispatch permission before either timer is removed.
+
 ## Prepared configuration
 
-The October 16 cutover selects `triggerSource: cloudflare` in `config/workflow-dispatcher.json` and removes both legacy GitHub cron blocks. The registered credential is `WORKFLOW_DISPATCH_TOKEN`. Configuration alone is not completion evidence: the deployment workflow must verify real cron records and successful synchronization jobs on the exact cutover commit.
+The prepared Cloudflare cutover selects `triggerSource: cloudflare` in `config/workflow-dispatcher.json` and removes both legacy GitHub cron blocks. It is not active while the rollback policy selects GitHub. The registered credential is `WORKFLOW_DISPATCH_TOKEN`. Configuration alone is not completion evidence: the deployment workflow must verify real cron records and successful synchronization jobs on the exact cutover commit.
 
 The separate Worker only calls two fixed GitHub workflows on `main`. Every-minute Cloudflare cron checks the existing fifteen-minute automation slots and UTC 01:37/05:37/09:37/13:37/17:37/21:37 schedule slots. Only the latest slot for each workflow is eligible: automation catches up within fourteen minutes; schedule synchronization catches up within its four-hour slot, including once immediately after cutover. Older slots are never replayed. The Worker defers while the same workflow is queued or running and uses conditional R2 creation to claim each slot once across isolates within a deployment. Each deployment has a new epoch so verification cannot reuse an earlier deployment's success; activation may recheck the two current slots once. Existing Actions processing, R2 audit snapshots, protected writes, forty automatic fixtures/day, and the global 240-publication ceiling remain in place. External invocations respect the existing repository enable switches.
 

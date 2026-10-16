@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/workflow-dispatcher-deploy.yml'
+      - '.github/workflows/workflow-dispatcher-auth-probe.yml'
       - 'config/workflow-dispatcher.json'
       - 'dispatcher-worker/**'
       - 'scripts/v2/render-workflow-dispatcher.mjs'
@@ -50,7 +51,7 @@ jobs:
       - name: Build without remote changes
         run: npx --yes wrangler@4.147.0 deploy --dry-run --config .tmp/dispatcher/wrangler.toml --outdir .tmp/dispatcher/build
       - name: Validate GitHub authentication before changing Cloudflare
-        if: steps.configuration.outputs.enabled == 'true'
+        if: env.WORKFLOW_DISPATCH_TOKEN != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -61,6 +62,18 @@ jobs:
             --output .tmp/dispatcher/workflows.json
           jq -e 'all(["api-football-automation.yml", "api-football-schedule-sync.yml"][]; . as $name | any($workflows[0].workflows[]; .path == (".github/workflows/" + $name) and .state == "active"))' \
             --slurpfile workflows .tmp/dispatcher/workflows.json --null-input >/dev/null
+          jq -n --arg nonce "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            '{ref: "main", inputs: {nonce: $nonce}}' > .tmp/dispatcher/auth-probe-request.json
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --request POST \
+            --header "Authorization: Bearer $WORKFLOW_DISPATCH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2026-03-10' \
+            --header 'Content-Type: application/json' \
+            --data-binary @.tmp/dispatcher/auth-probe-request.json \
+            'https://api.github.com/repos/ssdkllpd/japanese-football-watch/actions/workflows/workflow-dispatcher-auth-probe.yml/dispatches' \
+            --output .tmp/dispatcher/auth-probe-response.json
+          echo 'GitHub token authentication and workflow dispatch permission verified.' >> "$GITHUB_STEP_SUMMARY"
       - name: Deploy with dispatch disabled before installing the credential
         id: bootstrap
         if: steps.configuration.outputs.enabled == 'true'

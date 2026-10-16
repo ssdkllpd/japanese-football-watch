@@ -1,0 +1,24 @@
+name: Workflow Dispatcher Authentication Probe
+run-name: Workflow dispatcher authentication [${{ inputs.nonce }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      nonce:
+        description: Deployment run and attempt verifying workflow dispatch permission
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm authenticated workflow dispatch without touching application data
+        env:
+          NONCE: ${{ inputs.nonce }}
+        run: node -e 'if (!/^\d+-\d+$/.test(process.env.NONCE || "")) process.exit(1); console.log("Authenticated workflow dispatch accepted")'
