@@ -314,6 +314,6 @@ if(args.includes('--fail') && status>=400) process.exit(22);
   assert.doesNotMatch(workflow, /secrets\.API_FOOTBALL_KEY|secret put API_FOOTBALL_KEY/);
   const cleanup = deploymentStep('Remove unused provider credential from the public read Worker');
   assert.match(cleanup, /secret list/);
-  assert.match(cleanup, /secret delete API_FOOTBALL_KEY --force/);
+  assert.match(cleanup, /secret delete API_FOOTBALL_KEY/);
   assert.match(cleanup, /all\(\.\[\]; \.name != "API_FOOTBALL_KEY"\)/);
  });

@@ -68,6 +68,11 @@ jobs:
         run: node --test tests/*.test.js
       - name: Install pinned local D1 runtime
         run: npm install --prefix .tmp/workerd --ignore-scripts --no-audit --no-fund wrangler@4.147.0
+      - name: Validate public secret cleanup with the real CLI parser
+        env:
+          JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
+          WRANGLER_SEND_METRICS: 'false'
+        run: node scripts/v2/test-public-secret-cleanup-cli.mjs
       - name: Verify schedule updates and R2 recovery on workerd D1
         env:
           JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
