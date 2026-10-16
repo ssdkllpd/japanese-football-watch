@@ -1,16 +1,17 @@
 const REPOSITORY = 'ssdkllpd/japanese-football-watch';
 const PREFIX = 'automation/workflow-dispatch/v1/';
 const WORKFLOWS = Object.freeze([
-  { file: 'api-football-automation.yml', confirmation: 'RUN API-FOOTBALL AUTOMATION', due: date => date.getUTCMinutes() % 15 === 0 },
-  { file: 'api-football-schedule-sync.yml', confirmation: 'RUN SCHEDULE SYNC', due: date => date.getUTCMinutes() === 37 && date.getUTCHours() % 4 === 1 },
+  { file: 'api-football-automation.yml', confirmation: 'RUN API-FOOTBALL AUTOMATION', lookbackMinutes: 15, due: date => date.getUTCMinutes() % 15 === 0 },
+  { file: 'api-football-schedule-sync.yml', confirmation: 'RUN SCHEDULE SYNC', lookbackMinutes: 240, due: date => date.getUTCMinutes() === 37 && date.getUTCHours() % 4 === 1 },
 ]);
 
 export function dueSlots(scheduledTime) {
   if (!Number.isSafeInteger(scheduledTime) || scheduledTime < 0) throw new Error('Invalid scheduled time');
   const minute = Math.floor(scheduledTime / 60000) * 60000;
   return WORKFLOWS.flatMap(workflow => {
-    // Catch a late tick without replaying a backlog of obsolete fifteen-minute runs.
-    for (let age = 0; age < 15; age++) {
+    // Only the latest slot per workflow is eligible. The four-hour schedule slot
+    // also catches up once on cutover, without replaying older missed slots.
+    for (let age = 0; age < workflow.lookbackMinutes; age++) {
       const date = new Date(minute - age * 60000);
       if (workflow.due(date)) return [{ ...workflow, slot: date.toISOString() }];
     }

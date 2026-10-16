@@ -1,4 +1,5 @@
 name: API-Football Automation
+run-name: ${{ inputs.trigger_source == 'cloudflare' && format('API-Football Automation [Cloudflare {0}]', inputs.trigger_slot) || 'API-Football Automation' }}
 
 on:
   workflow_call:
@@ -9,8 +10,6 @@ on:
       confirmation:
         required: true
         type: string
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       mode:
