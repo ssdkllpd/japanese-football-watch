@@ -1,21 +1,69 @@
-name: Actions Notification Test
-run-name: "Notification test - intentional failure - 2026-10-16"
+name: Automation Watchdog Simulation
+run-name: "SIMULATION ONLY - update stopped for 31 minutes"
 
 on:
   push:
     branches: [test/actions-notification-20261016]
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  notification-test:
+  simulated-stale-update:
+    name: "SIMULATION ONLY - stale update alert"
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
-      - name: Intentional failure to verify failed-workflow notifications
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: "SIMULATION ONLY - exercise the real watchdog with a 31-minute-old success"
         shell: bash
         run: |
-          echo "This is an authorized notification test."
-          echo "No checkout, secrets, provider calls, data writes, or deployment."
-          echo "::error::Intentional notification test. Production acquisition is unaffected."
-          exit 1
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import { checkWorkflowHealth } from './scripts/v2/check-automation-health.mjs';
+          const now = Date.now();
+          const iso = minutes => new Date(now - minutes * 60000).toISOString();
+          let reads = 0;
+          // This injected reader returns fixtures only. It never calls fetch.
+          const request = async (url, options) => {
+            reads++;
+            assert.equal(new URL(url).origin, 'https://api.github.com');
+            assert.equal(options.headers.authorization, 'Bearer simulation-only');
+            if (url.includes('/runs/11/jobs?')) return Response.json({ jobs: [
+              { name: 'synchronize', status: 'completed', conclusion: 'success', completed_at: iso(31) },
+            ] });
+            if (url.includes('/runs/22/jobs?')) return Response.json({ jobs: [
+              { name: 'synchronize', status: 'completed', conclusion: 'success', completed_at: iso(65) },
+            ] });
+            const auto = url.includes('api-football-automation.yml');
+            const schedule = url.includes('api-football-schedule-sync.yml');
+            assert.ok(auto || schedule, 'Unexpected read must fail without networking');
+            if (!url.includes('/runs?')) return Response.json({ state: 'active' });
+            if (new URL(url).searchParams.get('status') === 'success') return Response.json({ workflow_runs: [
+              { id: auto ? 11 : 22, event: 'workflow_dispatch', head_branch: 'main',
+                created_at: iso(auto ? 32 : 66), display_title:
+                (auto ? 'API-Football Automation' : 'API-Football Schedule Sync') + ' [Cloudflare simulation / test]' },
+            ] });
+            return Response.json({ workflow_runs: [] });
+          };
+          const result = await checkWorkflowHealth({ env: { GH_TOKEN: 'simulation-only' }, now, request });
+          assert.equal(result.passed, false, 'The real watchdog must detect the simulated outage');
+          assert.deepEqual(result.problems, ['api-football-automation.yml: no successful synchronization within 30 minutes']);
+          const summary = [
+            '# SIMULATION ONLY: notification delivery test',
+            'Production acquisition has NOT been stopped.',
+            'The real watchdog was given synthetic run/job metadata: the last automatic success was 31 minutes ago.',
+            'Expected result: stale-acquisition detection and a failed-workflow notification.',
+            'External HTTP calls from the test reader: 0. Provider calls, data writes, deployment changes: 0.',
+            ...result.problems.map(problem => '- ' + problem),
+          ].join('\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
+          console.log(JSON.stringify({ simulation: true, productionAcquisitionStopped: false,
+            simulatedReads: reads, externalHttpCalls: 0, ...result }));
+          console.error('::error::SIMULATION ONLY: ' + result.problems.join('; '));
+          process.exitCode = 1; // Intentionally notify using the existing failed-workflow setting.
+          JS
