@@ -4,7 +4,7 @@ Public reads must never call API-Football. The October 16 live pause removes tha
 
 ## Prepared configuration
 
-`config/workflow-dispatcher.json` keeps `triggerSource: github` until credentials and a cutover are ready. The preparation workflow reports only whether `GITHUB_DISPATCH_TOKEN` exists and builds the Worker without deploying or changing either existing timer.
+`config/workflow-dispatcher.json` keeps `triggerSource: github` until credentials and a cutover are ready. The preparation workflow reports only whether `WORKFLOW_DISPATCH_TOKEN` exists and builds the Worker without deploying or changing either existing timer.
 
 The separate Worker only calls two fixed GitHub workflows on `main`. Every-minute Cloudflare cron checks the existing fifteen-minute automation slots and UTC 01:37/05:37/09:37/13:37/17:37/21:37 schedule slots. It catches ticks delayed by up to fourteen minutes, defers while the same workflow is queued or running, and uses conditional R2 creation to claim each slot once across isolates. Existing Actions processing, R2 audit snapshots, protected writes, forty automatic fixtures/day, and the global 240-publication ceiling remain in place. External invocations respect the existing repository enable switches.
 
@@ -12,7 +12,7 @@ The Worker has no provider key and no D1 binding. Its R2 binding stores only dis
 
 ## Credential and activation
 
-1. Create a fine-grained GitHub token restricted to `ssdkllpd/japanese-football-watch`, with repository **Actions: read and write**. Add it as environment secret `GITHUB_DISPATCH_TOKEN` in `d1-staging`. Do not paste the token into chat. Actions write is GitHub's required permission and also allows other Actions operations; it is not a dispatch-only permission. The Worker restricts its own use to the two fixed workflows. Set an expiry and arrange renewal.
+1. Create a fine-grained GitHub token restricted to `ssdkllpd/japanese-football-watch`, with repository **Actions: read and write**. Add it as environment secret `WORKFLOW_DISPATCH_TOKEN` in `d1-staging`. Do not paste the token into chat. Actions write is GitHub's required permission and also allows other Actions operations; it is not a dispatch-only permission. The Worker restricts its own use to the two fixed workflows. Set an expiry and arrange renewal.
 2. Before switching, validate both repository enable switches and direct manual dispatch of both workflows. Verify the existing deployment workflow's credential readiness report. This preparation does not prove write permission merely because a token exists.
 3. In one reviewed cutover, change `triggerSource` to `cloudflare`, remove the two legacy `on.schedule` blocks, and update the tests that assert those legacy schedules. The renderer rejects an enabled configuration if either legacy cron remains. The deploy workflow checks credential availability and active workflows, deploys initially with dispatch disabled, installs the credential, then enables dispatch.
 4. Verify a real Cloudflare tick, its R2 `accepted` record, the corresponding `workflow_dispatch` run, and successful data publication. Verify the next slots too. Acceptance alone does not prove that a job started or completed. Do not call the switch complete before this evidence exists.

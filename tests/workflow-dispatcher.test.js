@@ -18,7 +18,7 @@ function storage() {
   };
 }
 const event = { scheduledTime: Date.parse('2026-10-16T01:00:00Z') };
-const environment = () => ({ DISPATCH_ENABLED: 'true', GITHUB_DISPATCH_TOKEN: 'test-only-secret', DISPATCH_STATE: storage() });
+const environment = () => ({ DISPATCH_ENABLED: 'true', WORKFLOW_DISPATCH_TOKEN: 'test-only-secret', DISPATCH_STATE: storage() });
 
 test('dispatcher preserves the 96 automation and six schedule slots per UTC day', async () => {
   const { dueSlots } = await import('../dispatcher-worker/index.mjs');
@@ -36,7 +36,7 @@ test('dispatcher preserves the 96 automation and six schedule slots per UTC day'
 
 test('disabled dispatcher does not touch credentials, storage, or network', async () => {
   const { dispatchScheduled } = await import('../dispatcher-worker/index.mjs');
-  const env = { DISPATCH_ENABLED: 'false', get GITHUB_DISPATCH_TOKEN() { throw new Error('must not read'); } };
+  const env = { DISPATCH_ENABLED: 'false', get WORKFLOW_DISPATCH_TOKEN() { throw new Error('must not read'); } };
   const result = await dispatchScheduled(event, env, () => { throw new Error('must not fetch'); });
   assert.deepEqual(result, { enabled: false, results: [] });
 });
