@@ -40,3 +40,4 @@ jobs:
             console.log(JSON.stringify({sql,rows:rows[0].results}));
           }
           NODE
+# Checkpoint: inspect completed enabled cron attempts.
