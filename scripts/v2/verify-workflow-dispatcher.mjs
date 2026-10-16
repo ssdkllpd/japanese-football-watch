@@ -13,10 +13,11 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function verifyDispatcher({ env = process.env, request = fetch, now = Date.now,
   sleep = pause, timeoutMs = 25 * 60000, pollMs = 10000 } = {}) {
-  for (const name of ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'WORKFLOW_DISPATCH_TOKEN', 'GITHUB_SHA']) {
+  for (const name of ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'WORKFLOW_DISPATCH_TOKEN', 'GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT']) {
     if (!env[name]) throw new Error(`${name} is required`);
   }
   const startedAt = now();
+  const epoch = `${env.GITHUB_RUN_ID}-${env.GITHUB_RUN_ATTEMPT}`;
   const accepted = new Map();
   const completed = new Map();
   const githubHeaders = { authorization: `Bearer ${env.WORKFLOW_DISPATCH_TOKEN}`,
@@ -31,18 +32,18 @@ export async function verifyDispatcher({ env = process.env, request = fetch, now
   while (now() - startedAt < timeoutMs) {
     for (const candidate of dueSlots(now())) {
       if (accepted.has(candidate.file)) continue;
-      const key = `automation/workflow-dispatch/v1/${candidate.slot.slice(0, 10)}/${candidate.file}/${candidate.slot}.json`;
+      const key = `automation/workflow-dispatch/v1/${epoch}/${candidate.slot.slice(0, 10)}/${candidate.file}/${candidate.slot}.json`;
       const record = await read(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(env.CLOUDFLARE_ACCOUNT_ID)}/r2/buckets/jfw-football-data/objects/${key}`,
         { authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` }, true);
       if (!record) continue;
-      if (record.workflow !== candidate.file || record.slot !== candidate.slot) throw new Error('Dispatch record identity mismatch');
+      if (record.workflow !== candidate.file || record.slot !== candidate.slot || record.deploymentEpoch !== epoch) throw new Error('Dispatch record identity mismatch');
       if (!Number.isFinite(Date.parse(record.attemptedAt)) || Date.parse(record.attemptedAt) < startedAt - 120000) continue;
       if (['rejected', 'uncertain'].includes(record.status)) throw new Error(`Recorded dispatch ${record.status}: ${candidate.file}`);
       if (record.status === 'accepted') accepted.set(candidate.file, record);
     }
     for (const [file, record] of accepted) {
       if (completed.has(file)) continue;
-      const expectedTitle = `${LABELS[file]} [Cloudflare ${record.slot}]`;
+      const expectedTitle = `${LABELS[file]} [Cloudflare ${record.slot} / ${epoch}]`;
       let run;
       if (Number.isSafeInteger(record.workflowRunId)) {
         run = await read(`https://api.github.com/repos/${REPOSITORY}/actions/runs/${record.workflowRunId}`, githubHeaders);
@@ -64,7 +65,7 @@ export async function verifyDispatcher({ env = process.env, request = fetch, now
       completed.set(file, { workflow: file, slot: record.slot, runId: run.id, url: run.html_url, conclusion: run.conclusion });
     }
     console.log(JSON.stringify({ accepted: accepted.size, completed: completed.size, elapsedSeconds: Math.floor((now() - startedAt) / 1000) }));
-    if (completed.size === 2) return { passed: true, triggerSource: 'cloudflare', commit: env.GITHUB_SHA, workflows: [...completed.values()] };
+    if (completed.size === 2) return { passed: true, triggerSource: 'cloudflare', commit: env.GITHUB_SHA, deploymentEpoch: epoch, workflows: [...completed.values()] };
     await sleep(pollMs);
   }
   throw new Error(`Verification timed out: accepted ${accepted.size}/2, completed ${completed.size}/2`);

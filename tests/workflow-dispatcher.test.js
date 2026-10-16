@@ -18,12 +18,12 @@ function storage() {
   };
 }
 const event = { scheduledTime: Date.parse('2026-10-16T01:00:00Z') };
-const AUTO_KEY = 'automation/workflow-dispatch/v1/2026-10-16/api-football-automation.yml/2026-10-16T01:00:00.000Z.json';
+const AUTO_KEY = 'automation/workflow-dispatch/v1/test-1/2026-10-16/api-football-automation.yml/2026-10-16T01:00:00.000Z.json';
 const environment = () => {
   const state = storage();
   // The schedule slot preceding these automation-only cases was already claimed.
-  state.objects.set('automation/workflow-dispatch/v1/2026-10-15/api-football-schedule-sync.yml/2026-10-15T21:37:00.000Z.json', '{}');
-  return { DISPATCH_ENABLED: 'true', WORKFLOW_DISPATCH_TOKEN: 'test-only-secret', DISPATCH_STATE: state };
+  state.objects.set('automation/workflow-dispatch/v1/test-1/2026-10-15/api-football-schedule-sync.yml/2026-10-15T21:37:00.000Z.json', '{}');
+  return { DISPATCH_ENABLED: 'true', DISPATCH_EPOCH: 'test-1', WORKFLOW_DISPATCH_TOKEN: 'test-only-secret', DISPATCH_STATE: state };
 };
 
 test('dispatcher preserves the 96 automation and six schedule slots per UTC day', async () => {
@@ -62,7 +62,7 @@ test('concurrent and repeated cron deliveries dispatch exactly once per shared s
     if (options.method !== 'POST') return Response.json({ workflow_runs: [] });
     assert.deepEqual(JSON.parse(options.body), { ref: 'main', inputs: {
       mode: 'execute', confirmation: 'RUN API-FOOTBALL AUTOMATION',
-      trigger_source: 'cloudflare', trigger_slot: '2026-10-16T01:00:00.000Z',
+      trigger_source: 'cloudflare', trigger_slot: '2026-10-16T01:00:00.000Z', trigger_epoch: 'test-1',
     } });
     return new Response(null, { status: 204 });
   };
@@ -88,6 +88,21 @@ test('busy Actions workflow defers without claiming and retries on the next minu
   busy = false;
   await dispatchScheduled({ scheduledTime: event.scheduledTime + 60000 }, env, request);
   assert.equal(posts, 1);
+});
+
+test('a new deployment verifies its current slots without reusing earlier deployment claims', async () => {
+  const { dispatchScheduled } = await import('../dispatcher-worker/index.mjs');
+  const env = { ...environment(), DISPATCH_STATE: storage() };
+  let posts = 0;
+  const request = async (_, options) => {
+    if (options.method === 'POST') { posts++; return new Response(null, { status: 204 }); }
+    return Response.json({ workflow_runs: [] });
+  };
+  await dispatchScheduled(event, env, request);
+  await dispatchScheduled(event, env, request);
+  assert.equal(posts, 2);
+  await dispatchScheduled(event, { ...env, DISPATCH_EPOCH: 'test-2' }, request);
+  assert.equal(posts, 4);
 });
 
 test('current GitHub dispatch response records its accepted workflow run id', async () => {
@@ -137,7 +152,7 @@ test('schedule dispatch uses the existing workflow confirmation and records reje
   };
   const tick = { scheduledTime: Date.parse('2026-10-16T01:37:00Z') };
   // Automation's 01:30 slot has already been accepted before the schedule slot.
-  env.DISPATCH_STATE.objects.set('automation/workflow-dispatch/v1/2026-10-16/api-football-automation.yml/2026-10-16T01:30:00.000Z.json', '{}');
+  env.DISPATCH_STATE.objects.set('automation/workflow-dispatch/v1/test-1/2026-10-16/api-football-automation.yml/2026-10-16T01:30:00.000Z.json', '{}');
   await assert.rejects(dispatchScheduled(tick, env, request), /rejected/);
   await dispatchScheduled(tick, env, request);
   assert.equal(posts, 1);

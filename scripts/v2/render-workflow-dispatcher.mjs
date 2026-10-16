@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export function renderDispatcher(root, output) {
+export function renderDispatcher(root, output, deploymentEpoch = 'local-1') {
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(deploymentEpoch)) throw new Error('Invalid deployment epoch');
   const policy = JSON.parse(fs.readFileSync(path.join(root, 'config/workflow-dispatcher.json'), 'utf8'));
   if (policy.schemaVersion !== 'jfw-workflow-dispatcher/1'
       || !['github', 'cloudflare'].includes(policy.triggerSource)
@@ -23,6 +24,7 @@ workers_dev = false
 
 [vars]
 DISPATCH_ENABLED = "${enabled}"
+DISPATCH_EPOCH = "${deploymentEpoch}"
 
 [triggers]
 crons = ["* * * * *"]
@@ -43,5 +45,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const index = process.argv.indexOf('--output');
   if (index < 0 || !process.argv[index + 1]) throw new Error('--output required');
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  console.log(JSON.stringify(renderDispatcher(root, path.resolve(process.argv[index + 1]))));
+  const epoch = `${process.env.GITHUB_RUN_ID || 'local'}-${process.env.GITHUB_RUN_ATTEMPT || '1'}`;
+  console.log(JSON.stringify(renderDispatcher(root, path.resolve(process.argv[index + 1]), epoch)));
 }
