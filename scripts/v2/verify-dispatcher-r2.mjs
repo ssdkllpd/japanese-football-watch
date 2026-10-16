@@ -30,6 +30,14 @@ try {
   const winners = contenders.map((result, id) => ({ result: result.value, id })).filter(value => value.result !== null);
   assert.equal(winners.length, 1, 'exactly one real R2 conditional create must win');
   assert.deepEqual(await (await bucket.get(key)).json(), { contender: winners[0].id });
+  // Independently read through Cloudflare's account API. A silently local
+  // binding cannot satisfy this check, even if its conditional writes pass.
+  const remote = await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/jfw-football-data/objects/${key}`, {
+    headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
+    redirect: 'error', signal: AbortSignal.timeout(20000),
+  });
+  assert.equal(remote.status, 200, 'diagnostic object must exist in the actual Cloudflare bucket');
+  assert.deepEqual(await remote.json(), { contender: winners[0].id });
   const repeats = await Promise.all(Array.from({ length: 8 }, () => bucket.put(key, 'must-not-overwrite', { onlyIf: { etagDoesNotMatch: '*' } })));
   assert.ok(repeats.every(value => value === null), 'all later creates must lose');
   assert.deepEqual(await (await bucket.get(key)).json(), { contender: winners[0].id }, 'winner remains unchanged');
