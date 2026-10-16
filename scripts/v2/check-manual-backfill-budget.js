@@ -3,9 +3,12 @@
 const fs = require('node:fs');
 const { PLAN_VERSION } = require('./api-football-automation-plan');
 const { resolveDetailDailyCap } = require('./manual-backfill-daily-cap');
+const { validatePublicationBudget } = require('../d1/fixture-publication-budget');
 
 function checkManualBackfillBudget(before, current, plan, detailDailyCap = 20) {
   detailDailyCap = resolveDetailDailyCap(detailDailyCap);
+  validatePublicationBudget(before, plan?.generatedAt?.slice(0, 10));
+  validatePublicationBudget(current, plan?.generatedAt?.slice(0, 10));
   if (plan?.schemaVersion !== PLAN_VERSION || !Array.isArray(plan.detailFetches)
     || !before || !current || before.operation !== 'fixture_publish_budget'
     || current.operation !== 'fixture_publish_budget'
@@ -18,7 +21,9 @@ function checkManualBackfillBudget(before, current, plan, detailDailyCap = 20) {
     || JSON.stringify([...before.fixtureIds].sort()) !== JSON.stringify([...current.fixtureIds].sort())
     || new Set(plan.detailFetches.map(item => item.fixtureId)).size !== plan.detailFetches.length
     || plan.detailFetches.some(item => current.fixtureIds.includes(item.fixtureId))
-    || current.fixtureIds.length + plan.detailFetches.length > detailDailyCap) {
+    || JSON.stringify([...before.manualFixtureIds].sort()) !== JSON.stringify([...current.manualFixtureIds].sort())
+    || current.manualFixtureIds.length + plan.detailFetches.length > detailDailyCap
+    || plan.detailFetches.length > current.remaining) {
     throw new Error('D1 publication budget changed or the planned batch exceeds the daily cap.');
   }
 }

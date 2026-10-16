@@ -19,7 +19,7 @@ const { executeAutomationAdminPlan } = await import(path.join(ROOT, 'scripts/d1/
 const G = dateIndexR2Key; const C = (l, d) => competitionDateIndexR2Key(`af:competition:${l}`, d); const F = id => `af:fixture:${id}`;
 const NOW = new Date('2026-10-04T00:00:00.000Z');
 const storedDates = ctx => ctx.db.prepare('SELECT canonical_id AS fixture_id, date_jst FROM fixtures ORDER BY canonical_id').all().map(r => ({ ...r }));
-const budget = { dateUtc: '2026-10-04', fixtureIds: [] };
+const budget = { dateUtc: '2026-10-04', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 };
 
 function plan(ctx, state, fixturesByDate) {
   return planAutomation({ policy, state, fixturesByDate, now: NOW, quota: { dailyRemaining: 7000 }, dailyBudget: budget, storedDates: storedDates(ctx) });

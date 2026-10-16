@@ -14,7 +14,7 @@ export async function readFixturePublishBudget(env, now = new Date()) {
   if (!env.FOOTBALL_DB) throw new Error('D1 fixture publication budget is unavailable.');
   const dateUtc = now.toISOString().slice(0, 10);
   const result = await env.FOOTBALL_DB.prepare(`
-    SELECT fixture_id FROM fixture_detail_publish_days WHERE date_utc = ?
+    SELECT fixture_id, publication_source FROM fixture_detail_publish_days WHERE date_utc = ?
     ORDER BY fixture_id
   `).bind(dateUtc).all();
   const fixtureIds = (result.results || []).map(row => row.fixture_id);
@@ -25,13 +25,17 @@ export async function readFixturePublishBudget(env, now = new Date()) {
     schemaVersion: 'jfw-d1-admin-ingest-report/1',
     operation: FIXTURE_PUBLISH_BUDGET_OPERATION,
     dateUtc, fixtureIds, remaining: MAX_DAILY_FIXTURE_PUBLISHES - fixtureIds.length,
+    automationFixtureIds: (result.results || []).filter(row => row.publication_source === 'automation')
+      .map(row => row.fixture_id),
+    manualFixtureIds: (result.results || []).filter(row => row.publication_source !== 'automation')
+      .map(row => row.fixture_id),
   };
 }
 
-export function dailyFixturePublishStatement(database, fixtureId, revision, now = new Date()) {
+export function dailyFixturePublishStatement(database, fixtureId, revision, now = new Date(), source = 'manual') {
   const dateUtc = now.toISOString().slice(0, 10);
   return database.prepare(`
-    INSERT INTO fixture_detail_publish_days(date_utc, fixture_id, revision_no, published_at)
-    VALUES (?, ?, ?, ?)
-  `).bind(dateUtc, fixtureId, revision, now.toISOString());
+    INSERT INTO fixture_detail_publish_days(date_utc, fixture_id, revision_no, published_at, publication_source)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(dateUtc, fixtureId, revision, now.toISOString(), source);
 }

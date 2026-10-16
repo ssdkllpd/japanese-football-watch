@@ -1,7 +1,7 @@
 # Manual final-fixture backfill
 
 `API-Football Manual Backfill` is a separately gated, manual workflow for the ten
-reviewed 2026 competition seasons. It leaves scheduled synchronization disabled.
+reviewed 2026 competition seasons. Its allowance is separate from scheduled synchronization.
 
 The workflow reads the published fixture IDs in the exact staging D1 target and
 queries each of the ten full season fixture lists. It selects final `FT`, `AET`,
@@ -23,9 +23,13 @@ and up to ten standings. API-Football's daily balance retains a reserve of 100;
 the plan is capped at 150 requests. Migration `0008` and the corresponding
 Admin Worker raise D1's shared ledger limit to 240 distinct fixtures per UTC
 day across all writers. This ledger is not a Cloudflare rows-written quota.
-The manual planner and its pre-write check enforce the reviewed Free-plan model
-of at most 20 detail publications per UTC day across the shared ledger, even
-when chained runs have additional provider requests available. This is a
+The manual planner and its pre-write check allow at most 20 manual detail
+publications per UTC day in Free mode, or 120 in Paid mode after account usage
+checks. Migration `0013` records each publication source: automatic receipts
+do not consume the manual allowance, and manual receipts do not consume the
+separate 40-fixture automatic allowance. Historical receipts remain `legacy`
+and count conservatively against manual catch-up. Every path still respects
+the shared 240-publication ledger and the one-publication-per-fixture rule. This is a
 conservative planning bound, not a measurement of Cloudflare's account-wide
 rows written; other D1 writers still require monitoring. After successful
 publication, D1 becomes the resume
@@ -36,7 +40,7 @@ before a failure. The workflow uses the existing
 correction guard, canonical R2 reconciliation, Admin Worker, and date-index
 rebuild used by automation.
 
-1. Apply migration `0008` and deploy the matching Admin Worker by running
+1. Apply migrations through `0013` and deploy the matching Admin Worker by running
    **D1 Staging Provision** after merging this change. Check that it succeeds
    before executing another manual backfill. This is a staging-only deployment.
    The one-shot date relocation rollout deploys the reviewed Admin Worker

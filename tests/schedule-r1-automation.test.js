@@ -78,12 +78,12 @@ test('A01 D1 date snapshot declares relocation and the finalized result converge
   const fixturesByDate = { '2026-10-03': [], '2026-10-04': [raw], '2026-10-05': [] };
   let state = checkpointAutomationDiscovery(emptyAutomationState(),
     planAutomation({ policy: policyOn, state: emptyAutomationState(), fixturesByDate, now, quota: { dailyRemaining: 7000 },
-      dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [] },
+      dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 },
       storedDates: [{ fixture_id: 'af:fixture:3001', date_jst: '2026-10-03' }] }));
   const runs = [];
   for (let run = 0; run < 3; run += 1) {
     const plan = planAutomation({ policy: policyOn, state, fixturesByDate: { '2026-10-03': [], '2026-10-04': [raw], '2026-10-05': [] },
-      now, quota: { dailyRemaining: 7000 }, dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [] },
+      now, quota: { dailyRemaining: 7000 }, dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 },
       storedDates: [{ fixture_id: 'af:fixture:3001', date_jst: '2026-10-03' }] });
     const detail = plan.detailFetches.map(d => ({ fixtureId: d.fixtureId, previousDateJst: d.previousDateJst }));
     const admin = createAutomationAdminPlan({ schemaVersion: plan.schemaVersion,
@@ -106,7 +106,7 @@ test('A02 provider kickoff correction does not invalidate retained identity', ()
   const raw = { fixture: { id: 3101, date: '2026-10-03T14:00:00Z', status: { short: 'FT' } }, league: { id: 39, season: 2026 } };
   const now = new Date('2026-10-04T00:00:00.000Z');
   const dates = { '2026-10-03': [raw], '2026-10-04': [], '2026-10-05': [] };
-  const common = { policy: policyOn, now, quota: { dailyRemaining: 7000 }, dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [] },
+  const common = { policy: policyOn, now, quota: { dailyRemaining: 7000 }, dailyBudget: { dateUtc: '2026-10-04', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 },
       storedDates: [{ fixture_id: 'af:fixture:3001', date_jst: '2026-10-03' }] };
   const state = checkpointAutomationDiscovery(emptyAutomationState(), planAutomation({ ...common, state: emptyAutomationState(), fixturesByDate: dates }));
   const corrected = structuredClone(raw); corrected.fixture.date = '2026-10-03T14:15:00Z';

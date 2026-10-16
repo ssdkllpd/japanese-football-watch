@@ -1,0 +1,23 @@
+name: API-Football Capacity Rollout Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/api-football-capacity-rollout-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    uses: ./.github/workflows/d1-staging-provision.yml
+    secrets: inherit
+
+  verify-main-automation:
+    needs: provision
+    uses: ./.github/workflows/api-football-automation.yml
+    with:
+      mode: execute
+      confirmation: RUN API-FOOTBALL AUTOMATION
+    secrets: inherit

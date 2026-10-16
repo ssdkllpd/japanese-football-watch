@@ -153,6 +153,12 @@ export function validatePlan(plan, directory) {
       request.expectedPreviousDate = item.expectedPreviousDate;
     }
     if (item.preserveCorrections === true) request.preserveCorrections = true;
+    if (item.publicationSource !== undefined) {
+      if (!['manual', 'automation'].includes(item.publicationSource)) {
+        throw new Error('Fixture publicationSource must be manual or automation.');
+      }
+      request.publicationSource = item.publicationSource;
+    }
     requests.push(request);
   }
   for (const [index, item] of plan.standings.entries()) {

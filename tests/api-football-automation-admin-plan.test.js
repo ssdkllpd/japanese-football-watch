@@ -88,6 +88,9 @@ test('automation admin plan binds fetched artifacts to the reviewed plan scopes'
   assert.deepEqual(plan.dateIndexRefreshes, [{ date: '2026-08-22', fixtureIds: ['af:fixture:9001'] }]);
   assert.equal(plan.fixtures[0].preserveCorrections, true);
   assert.equal(plan.fixtures[0].requireStableDate, true);
+  assert.equal(plan.fixtures[0].publicationSource, 'automation');
+  const manual = createAutomationAdminPlan({ ...automationPlan(), publicationSource: 'manual' }, root, root);
+  assert.equal(manual.fixtures[0].publicationSource, 'manual');
   assert.equal(plan.expectedTotals, null);
   assert.ok(fs.existsSync(path.join(root, 'd1-corrections', 'af_fixture_9001.json')));
 });
