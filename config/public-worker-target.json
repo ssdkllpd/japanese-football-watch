@@ -6,6 +6,7 @@
   "r2BucketName": "jfw-football-data",
   "d1DatabaseName": "jfw-football-staging",
   "d1DatabaseId": "fdfd74e4-2702-4aa2-ab20-c062e952fe25",
+  "liveReadEnabled": true,
   "liveCompetitionIds": [39, 40, 61, 78, 88, 94, 135, 140, 144, 179],
   "d1ReadFlags": {
     "D1_DATE_INDEX_ENABLED": true,
