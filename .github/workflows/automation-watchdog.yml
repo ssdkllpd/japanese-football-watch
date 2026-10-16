@@ -1,0 +1,73 @@
+name: Automation Watchdog
+
+on:
+  schedule:
+    - cron: '3-58/5 * * * *'
+  workflow_run:
+    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/automation-watchdog.yml'
+      - 'scripts/v2/check-automation-health.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: automation-watchdog
+  cancel-in-progress: false
+
+jobs:
+  acquisition-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check independent successful-execution heartbeats and stuck runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/v2/check-automation-health.mjs workflows
+      - name: Save health evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-health-${{ github.run_id }}
+          path: .tmp/automation-health/workflows.json
+          retention-days: 14
+          if-no-files-found: warn
+  dispatch-platform:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check credential expiry and actual deployed trigger state
+        env:
+          WORKFLOW_DISPATCH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
+          WORKFLOW_DISPATCH_TOKEN_EXPIRES_AT: ${{ vars.WORKFLOW_DISPATCH_TOKEN_EXPIRES_AT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/v2/check-automation-health.mjs platform
+      - name: Save platform evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-platform-${{ github.run_id }}
+          path: .tmp/automation-health/platform.json
+          retention-days: 14
+          if-no-files-found: warn

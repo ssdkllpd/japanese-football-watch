@@ -114,7 +114,7 @@ test('deployment verifies every D1 route and automatically rolls back failed cut
   assert.match(workflow, /environment: d1-staging/);
   const render = workflow.indexOf('render-public-wrangler.mjs');
   const deploy = workflow.indexOf('wrangler@4 deploy');
-  const secret = workflow.indexOf('secret put API_FOOTBALL_KEY');
+  const secret = workflow.indexOf('secret delete API_FOOTBALL_KEY');
   const health = workflow.indexOf('Verify allowed-origin health and CORS');
   const d1Reads = workflow.indexOf('Verify every enabled D1 public read path');
   const rollback = workflow.indexOf('Roll back all D1 public reads');
@@ -204,7 +204,7 @@ test('actual deployment preflight rejects missing secrets before any write', asy
   const script = deploymentStep('Validate deployment prerequisites before any remote write');
   const env = {
     CLOUDFLARE_API_TOKEN: 'offline-cloudflare', CLOUDFLARE_ACCOUNT_ID: 'offline-account',
-    ADMIN_INGEST_TOKEN: 'offline-admin', API_FOOTBALL_KEY: 'offline-provider',
+    ADMIN_INGEST_TOKEN: 'offline-admin',
     PUBLIC_DATE_AUDIT_TOKEN: 'offline-audit-token-32-characters-long',
     ADMIN_WORKER_NAME: 'jfw-football-admin-ingest-staging',
     ADMIN_INGEST_URL: 'https://jfw-football-admin-ingest-staging.ssdkllpd.workers.dev',
@@ -213,7 +213,7 @@ test('actual deployment preflight rejects missing secrets before any write', asy
   };
   for (const [name, overrides, expected] of [
     ['valid', {}, 0],
-    ...['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'ADMIN_INGEST_TOKEN', 'API_FOOTBALL_KEY', 'PUBLIC_DATE_AUDIT_TOKEN']
+    ...['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'ADMIN_INGEST_TOKEN', 'PUBLIC_DATE_AUDIT_TOKEN']
       .map(name => [name, { [name]: '' }, 1]),
     ['short audit token', { PUBLIC_DATE_AUDIT_TOKEN: 'a'.repeat(31) }, 1],
     ['wrong target', { D1_DATABASE_ID: 'ffffffff-ffff-ffff-ffff-ffffffffffff' }, 1],
@@ -309,3 +309,11 @@ if(args.includes('--fail') && status>=400) process.exit(22);
     });
   }
 });
+
+ test('public read deployment removes the unused provider secret and does not receive its value', () => {
+  assert.doesNotMatch(workflow, /secrets\.API_FOOTBALL_KEY|secret put API_FOOTBALL_KEY/);
+  const cleanup = deploymentStep('Remove unused provider credential from the public read Worker');
+  assert.match(cleanup, /secret list/);
+  assert.match(cleanup, /secret delete API_FOOTBALL_KEY --force/);
+  assert.match(cleanup, /all\(\.\[\]; \.name != "API_FOOTBALL_KEY"\)/);
+ });

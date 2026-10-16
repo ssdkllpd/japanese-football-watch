@@ -4,7 +4,9 @@ Public reads must never call API-Football. The October 16 live pause removes tha
 
 ## Current activation state
 
-The earlier October 16 activation stopped at GitHub authentication with HTTP 401 before any Cloudflare changes, and the original GitHub timers were restored. After the credential was corrected, authentication and Actions dispatch permission were verified while those timers remained active: authentication-probe run `38849679141` succeeded. This retry selects Cloudflare and removes the legacy timers. Completion still requires successful real-cron verification of both acquisition workflows on this deployment. Viewer-triggered API-Football calls remain disabled.
+Cloudflare dispatch is active after PR #138 (`1fb6f85`). The production runtime rejected `redirect: error`; PR #138 changed the Worker to `redirect: manual` and added a real workerd/native-fetch regression. The initial activation had disabled Cloudflare after verification timed out while the GitHub timers were already removed. Acquisition was not restored promptly during that investigation; this was an operational gap, not a token failure.
+
+Successful cron evidence: automation run `38859841167` completed at 15:13 JST, schedule run `38859847149` completed at 15:14 JST, and the following 15:15 automation slot `38860217187` also succeeded. Deployment verification `38859724628` bound both successful synchronization jobs to the deployed epoch and exact commit. Slot labels (15:00 and 14:37) describe the caught-up slot, not the actual execution time. Viewer-triggered API-Football calls remain disabled.
 
 ## Prepared configuration
 
@@ -32,3 +34,30 @@ The daily estimate remains 588 provider data requests at the reviewed workload (
 - https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event
 - https://developers.cloudflare.com/workers/configuration/cron-triggers/
 - https://developers.cloudflare.com/r2/api/workers/workers-api-reference/
+
+## Independent health monitoring
+
+`Automation Watchdog` uses a GitHub schedule at minutes 03/08/.../58, completion events from the two acquisition workflows and dispatcher deployment, and manual execution. The acquisition-health job uses the automatically issued, read-only `GITHUB_TOKEN` and has no `d1-staging` environment, Cloudflare credential, or dispatch PAT dependency. The separate platform job inspects credentials and actual Cloudflare settings; its failure does not prevent the independent heartbeat job from running.
+
+Alarms fail the Actions job and record the cause in the job summary and retained JSON artifact:
+
+- No successful, executed Cloudflare `synchronize` job for 30 minutes (automation), or 270 minutes (four-hour schedule plus 30-minute grace).
+- Any queued/running/waiting/pending/requested run that remains unfinished for 90 minutes from creation. It is reported, never automatically cancelled during a possible write.
+- A failed acquisition or dispatcher deployment observed by a completion event, even if the last acquisition heartbeat is still fresh.
+- Dispatch authentication failure, token expiry within seven days, missing token binding, disabled deployed dispatch, or missing every-minute cron.
+
+The platform report records only the expiry timestamp obtained from GitHub's `GitHub-Authentication-Token-Expiration` response header, never the token. If GitHub omits this metadata, set repository variable `WORKFLOW_DISPATCH_TOKEN_EXPIRES_AT` to the expiry timestamp; an unknown expiry is explicitly reported as a warning. This check validates read access and expiry; the existing deployment probe validates dispatch write permission.
+
+**Notification delivery must be configured by the account owner:** GitHub Settings → Notifications → System → Actions → On GitHub and/or Email → Only notify for failed workflows. The repository contains no email addresses, external webhook, issue spam, or additional notification credential. A failed watchdog run is tested detection evidence, not proof that a person received email. See https://docs.github.com/en/subscriptions-and-notifications/how-tos/managing-github-actions-notifications .
+
+GitHub schedule events can be delayed or dropped and can be disabled after 60 days of repository inactivity. Completion events provide another trigger while acquisition is running, but are not a substitute when all acquisition stops. This watchdog therefore does not promise detection exactly at minute 30, nor cover a total GitHub Actions outage or a disabled watchdog itself. Stronger availability requires an external uptime/alerting service with a separately verified delivery destination.
+
+## Review integration checks and credential separation
+
+`Verify Automation Review Findings` is a one-off/manual workflow, not another acquisition timer. It reads the stored fixture inventory around the October 16 outage without API-Football calls, and tests sixteen simultaneous conditional creates against the real R2 bucket through an explicitly remote binding. Exactly one must succeed, fifteen must return null, and all eight later attempts must return null without changing the winner. A random key under `automation/verification/r2-conditional/` is deleted after the check; production dispatch records are never touched.
+
+The public read Worker no longer receives `API_FOOTBALL_KEY` during deployment. Its old provider secret is deleted if present, and absence is verified before public endpoint checks. Acquisition secrets stay with the scheduled acquisition workflows. Future live ingestion belongs in a separate acquisition Worker with its own provider credential; public reads continue to read stored D1 data only.
+
+## Future live cutovers
+
+Verify the new acquisition process against an isolated validation output while the old process is still available. Stop the old process in a separate change only after real execution, storage, and read-back verification pass. Keep the rollback path available and monitor the transition. The simultaneous removal/activation used in the October 16 scheduler cutover must not be reused for live ingestion. Current deployment failure cleanup disables Cloudflare; it does **not** automatically restore the old GitHub timers. Until an automated recovery mechanism exists, restoring the old timers is an explicit operational action and must be completed promptly instead of leaving acquisition disabled while investigating.

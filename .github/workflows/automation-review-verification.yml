@@ -1,0 +1,54 @@
+name: Verify Automation Review Findings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/automation-review-verification.yml'
+      - 'scripts/v2/verify-dispatcher-r2.mjs'
+      - 'scripts/v2/audit-dispatch-outage.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  outage-audit:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect stored fixtures around the outage without provider calls
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/v2/audit-dispatch-outage.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: automation-outage-audit-${{ github.run_id }}
+          path: .tmp/automation-review/outage.json
+          retention-days: 14
+          if-no-files-found: warn
+  remote-r2-atomicity:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned remote-binding runtime
+        run: npm install --prefix .tmp/workerd --ignore-scripts --no-audit --no-fund wrangler@4.147.0
+      - name: Check real R2 conditional creation with concurrent contenders
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          JFW_WRANGLER_MODULE: ${{ github.workspace }}/.tmp/workerd/node_modules/wrangler
+          WRANGLER_SEND_METRICS: 'false'
+        run: node scripts/v2/verify-dispatcher-r2.mjs
