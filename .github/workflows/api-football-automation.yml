@@ -1,4 +1,5 @@
 name: API-Football Automation
+run-name: ${{ inputs.trigger_source == 'cloudflare' && format('API-Football Automation [Cloudflare {0} / {1}]', inputs.trigger_slot, inputs.trigger_epoch) || 'API-Football Automation' }}
 
 on:
   workflow_call:
@@ -9,8 +10,6 @@ on:
       confirmation:
         required: true
         type: string
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -31,6 +30,10 @@ on:
         type: string
       trigger_slot:
         description: UTC slot for external scheduled invocation audit
+        required: false
+        type: string
+      trigger_epoch:
+        description: Deployment identifier for external scheduled invocation audit
         required: false
         type: string
 

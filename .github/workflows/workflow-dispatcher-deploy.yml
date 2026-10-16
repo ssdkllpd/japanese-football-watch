@@ -8,6 +8,7 @@ on:
       - 'config/workflow-dispatcher.json'
       - 'dispatcher-worker/**'
       - 'scripts/v2/render-workflow-dispatcher.mjs'
+      - 'scripts/v2/verify-workflow-dispatcher.mjs'
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     environment: d1-staging
-    timeout-minutes: 10
+    timeout-minutes: 35
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -61,6 +62,7 @@ jobs:
           jq -e 'all(["api-football-automation.yml", "api-football-schedule-sync.yml"][]; . as $name | any($workflows[0].workflows[]; .path == (".github/workflows/" + $name) and .state == "active"))' \
             --slurpfile workflows .tmp/dispatcher/workflows.json --null-input >/dev/null
       - name: Deploy with dispatch disabled before installing the credential
+        id: bootstrap
         if: steps.configuration.outputs.enabled == 'true'
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/dispatcher/wrangler.toml --var DISPATCH_ENABLED:false
       - name: Install persistent dispatch credential
@@ -73,3 +75,18 @@ jobs:
       - name: Deploy enabled dispatcher
         if: steps.configuration.outputs.enabled == 'true'
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/dispatcher/wrangler.toml
+      - name: Verify real cron dispatch and both existing synchronization workflows
+        if: steps.configuration.outputs.enabled == 'true'
+        timeout-minutes: 28
+        run: node scripts/v2/verify-workflow-dispatcher.mjs
+      - name: Disable dispatcher after a failed activation check
+        if: ${{ (failure() || cancelled()) && steps.bootstrap.outcome == 'success' }}
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/dispatcher/wrangler.toml --var DISPATCH_ENABLED:false
+      - name: Upload dispatch verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-dispatcher-${{ github.run_id }}
+          path: .tmp/dispatcher/verification.json
+          if-no-files-found: ignore
+          retention-days: 14
