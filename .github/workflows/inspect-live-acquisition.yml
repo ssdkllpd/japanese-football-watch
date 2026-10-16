@@ -13,7 +13,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -36,34 +35,8 @@ jobs:
           const settings=await read(prefix+'/settings');
           console.log(JSON.stringify({bindings:settings.bindings.map(x=>({name:x.name,type:x.type,...(x.type==='plain_text'?{text:x.text}:{}),...(x.type==='d1'?{databaseId:x.id}:{})}))}));
           console.log(JSON.stringify({schedules:await read(prefix+'/schedules')}));
-          for(const sql of ['SELECT * FROM live_control','SELECT * FROM live_budget ORDER BY utc_day DESC LIMIT 1','SELECT fixture_id,status,kickoff_ms,check_2h_ms,check_1h_ms FROM live_schedule ORDER BY kickoff_ms LIMIT 5','SELECT COUNT(*) AS snapshots FROM live_snapshots']) {
+          for(const sql of ['SELECT * FROM live_control','SELECT * FROM live_budget ORDER BY utc_day DESC LIMIT 1','SELECT fixture_id,status,kickoff_ms,check_2h_ms,check_1h_ms FROM live_schedule ORDER BY kickoff_ms LIMIT 5','SELECT COUNT(*) AS snapshots FROM live_snapshots','SELECT at_ms,endpoint,http_status,error_detail FROM live_provider_errors ORDER BY id DESC LIMIT 5']) {
             const rows=await read('/d1/database/'+db.uuid+'/query',{method:'POST',body:JSON.stringify({sql})});
             console.log(JSON.stringify({sql,rows:rows[0].results}));
           }
-          NODE
-      - name: Inspect only safe provider quota and endpoint error fields
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN,key=process.env.API_FOOTBALL_KEY;
-          const db='62fe34bb-c406-4d9b-ace3-ad9edc61fc6a',day=new Date().toISOString().slice(0,10);
-          async function query(sql,params=[]) {
-            const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database/'+db+'/query',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});
-            if(!r.ok)throw new Error('Audit database HTTP '+r.status);const b=await r.json();if(!b.success||!b.result?.[0]?.success)throw new Error('Audit query failed');return b.result[0].results;
-          }
-          let remaining=(await query('SELECT remaining FROM live_budget WHERE utc_day=?',[day]))[0]?.remaining??null;
-          const date=n=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date(Date.now()+n*86400000));
-          const endpoints=['/status','/fixtures?date='+date(0)+'&timezone=Asia%2FTokyo','/fixtures?date='+date(1)+'&timezone=Asia%2FTokyo','/fixtures?live=all&timezone=Asia%2FTokyo'];
-          for(const endpoint of endpoints) {
-            if(remaining!==null&&remaining<=1212){console.log('Audit stopped at quota reserve');break;}
-            const claim=await query('UPDATE live_budget SET requests=requests+1 WHERE utc_day=? AND requests<4000 RETURNING requests',[day]);if(!claim.length)throw new Error('Audit request budget exhausted');
-            const r=await fetch('https://v3.football.api-sports.io'+endpoint,{headers:{'x-apisports-key':key},redirect:'manual',signal:AbortSignal.timeout(12000)});
-            const b=await r.json(),h=r.headers.get('x-ratelimit-requests-remaining');
-            const balance=b.response?.requests;
-            if(h!==null)remaining=Number(h);else if(balance?.limit_day!=null&&balance?.current!=null)remaining=Number(balance.limit_day)-Number(balance.current);
-            if(remaining!==null)await query('UPDATE live_budget SET remaining=?,checked_ms=? WHERE utc_day=?',[remaining,Date.now(),day]);
-            let errors=JSON.stringify(b.errors??null);for(const secret of [key,token,account])if(secret)errors=errors.split(secret).join('[redacted]');
-            console.log(JSON.stringify({endpoint,http:r.status,errors:errors.slice(0,600),remaining,quota:balance??null,results:b.results,paging:b.paging,responseCount:Array.isArray(b.response)?b.response.length:null}));
-          }
-          await query('UPDATE live_budget SET rows_written=rows_written+20 WHERE utc_day=?',[day]);
           NODE
