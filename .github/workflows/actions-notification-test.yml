@@ -1,0 +1,21 @@
+name: Actions Notification Test
+run-name: "Notification test - intentional failure - 2026-10-16"
+
+on:
+  push:
+    branches: [test/actions-notification-20261016]
+
+permissions: {}
+
+jobs:
+  notification-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Intentional failure to verify failed-workflow notifications
+        shell: bash
+        run: |
+          echo "This is an authorized notification test."
+          echo "No checkout, secrets, provider calls, data writes, or deployment."
+          echo "::error::Intentional notification test. Production acquisition is unaffected."
+          exit 1
