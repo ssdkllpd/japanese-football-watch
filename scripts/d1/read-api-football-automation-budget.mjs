@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import budgetModule from './fixture-publication-budget.js';
 
 export async function readAutomationPublishBudget({ url, token, fetchImpl = fetch }) {
   const endpoint = new URL(url);
@@ -24,7 +25,7 @@ export async function readAutomationPublishBudget({ url, token, fetchImpl = fetc
     || result.report?.operation !== 'fixture_publish_budget') {
     throw new Error(`D1 fixture publication budget is unavailable (${response.status}).`);
   }
-  return result.report;
+  return budgetModule.validatePublicationBudget(result.report, new Date().toISOString().slice(0, 10));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

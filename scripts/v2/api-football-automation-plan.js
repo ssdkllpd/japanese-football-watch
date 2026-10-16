@@ -1,5 +1,7 @@
 'use strict';
 
+const { AUTOMATION_DAILY_CAP, validatePublicationBudget } = require('../d1/fixture-publication-budget');
+
 const POLICY_VERSION = 'jfw-api-football-automation-policy/1';
 const STATE_VERSION = 'jfw-api-football-automation-state/1';
 const PLAN_VERSION = 'jfw-api-football-automation-plan/1';
@@ -88,11 +90,14 @@ function validatePolicy(policy) {
   }
   exactKeys(policy.limits, [
     'dailyRequestReserve', 'minimumRequestIntervalMs', 'maxProviderRequestsPerRun',
-    'maxFinalDetailFixturesPerRun', 'maxStandingsPerRun', 'standingsMinimumIntervalHours',
+    'maxFinalDetailFixturesPerRun', 'maxFinalDetailFixturesPerDay', 'maxStandingsPerRun', 'standingsMinimumIntervalHours',
   ], 'limits');
   for (const key of Object.keys(policy.limits)) positiveInteger(policy.limits[key], `limits.${key}`);
   if (policy.limits.maxFinalDetailFixturesPerRun > 20) {
     throw new Error('maxFinalDetailFixturesPerRun exceeds the reviewed hard cap of 20.');
+  }
+  if (policy.limits.maxFinalDetailFixturesPerDay > AUTOMATION_DAILY_CAP) {
+    throw new Error('maxFinalDetailFixturesPerDay exceeds the reviewed daily cap of 40.');
   }
   if (policy.limits.dailyRequestReserve < 100
     || policy.limits.minimumRequestIntervalMs < 300
@@ -333,21 +338,17 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     throw new Error('API-Football daily remaining quota is required before planning automated work.');
   }
   const dateUtc = nowDate.toISOString().slice(0, 10);
-  if (dailyBudget && (dailyBudget.dateUtc !== dateUtc
-    || !Array.isArray(dailyBudget.fixtureIds)
-    || dailyBudget.fixtureIds.length > 240
-    || dailyBudget.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))
-    || new Set(dailyBudget.fixtureIds).size !== dailyBudget.fixtureIds.length)) {
-    throw new Error('D1 daily fixture publication budget is invalid or stale.');
-  }
+  if (dailyBudget) validatePublicationBudget(dailyBudget, dateUtc);
   if (enabled && !preview && !dailyBudget) {
     throw new Error('D1 daily fixture publication budget is required for execution.');
   }
-  const publishedToday = new Set(dailyBudget?.fixtureIds || []);
+  const globallyPublishedToday = new Set(dailyBudget?.fixtureIds || []);
+  const publishedToday = new Set(dailyBudget?.automationFixtureIds || []);
   const statePublishedToday = Object.values(state.fixtures)
     .filter(fixture => fixture.lastDetailFetchedAt?.slice(0, 10) === dateUtc);
   for (const fixture of statePublishedToday) publishedToday.add(fixture.fixtureId);
-  let publishCapacity = Math.max(0, 20 - publishedToday.size);
+  let publishCapacity = Math.max(0, policy.limits.maxFinalDetailFixturesPerDay - publishedToday.size);
+  let globalCapacity = dailyBudget?.remaining ?? 240;
   let requestCapacity = policy.limits.maxProviderRequestsPerRun - discoveryRequestCount;
   if (remaining !== null) requestCapacity = Math.min(
     requestCapacity,
@@ -359,12 +360,15 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     if (state.fixtures[candidate.fixture.fixtureId]?.lastDetailFetchedAt?.slice(0, 10) === dateUtc) continue;
     const recoveryOnly = publishedToday.has(candidate.fixture.fixtureId);
     if (!recoveryOnly && publishCapacity === 0) continue;
+    const requiresGlobalSlot = !globallyPublishedToday.has(candidate.fixture.fixtureId);
+    if (requiresGlobalSlot && globalCapacity === 0) continue;
     const previousDate = stored.get(candidate.fixture.fixtureId);
     detailFetches.push({ ...candidate.fixture, recheckStage: candidate.stage.stage, dueAt: candidate.stage.dueAt,
       ...(previousDate && previousDate !== dateJst(candidate.fixture.kickoffUtc)
         ? { previousDateJst: previousDate } : {}) });
     requestCapacity -= 5;
     if (!recoveryOnly) publishCapacity -= 1;
+    if (requiresGlobalSlot) globalCapacity -= 1;
   }
   const competitionScopes = new Map(policy.competitionSeasons.map(item => [item.league, item]));
   const standingsFetches = [];
@@ -386,6 +390,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const estimatedProviderRequests = discoveryRequestCount + activeDetails.length * 5 + activeStandings.length;
   return {
     schemaVersion: PLAN_VERSION,
+    publicationSource: 'automation',
     mode: policy.scheduledSynchronizationEnabled ? 'enabled' : preview ? 'preview' : 'disabled',
     generatedAt: nowDate.toISOString(),
     discoveryDates: dates,
@@ -404,6 +409,9 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
       estimatedProviderRequests,
       requestCapacityRemaining: Math.max(0, requestCapacity),
       fixturePublishesRemaining: publishCapacity,
+      globalFixturePublishesRemaining: globalCapacity,
+      automaticFixturesUsedToday: publishedToday.size,
+      manualFixturesPublishedToday: dailyBudget?.manualFixtureIds.length ?? 0,
     },
   };
 }

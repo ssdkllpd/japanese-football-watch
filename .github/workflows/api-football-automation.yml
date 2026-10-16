@@ -1,6 +1,14 @@
 name: API-Football Automation
 
 on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+      confirmation:
+        required: true
+        type: string
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:

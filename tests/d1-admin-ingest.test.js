@@ -712,3 +712,52 @@ test('the fixture integrity gate does not depend on lifecycle_state staying narr
   assert.equal(response.status, 422);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM fixture_revisions').get().count, 0);
 });
+
+test('publication sources preserve legacy receipts and enforce 40 automatic publications independently', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const { readFixturePublishBudget } = await import('../admin-worker/fixture-publish-budget.mjs');
+  const today = new Date().toISOString().slice(0, 10);
+  const insert = db.prepare(`INSERT INTO fixture_detail_publish_days
+    (date_utc, fixture_id, revision_no, published_at, publication_source) VALUES (?, ?, 1, ?, ?)`);
+  for (let id = 1; id <= 105; id++) insert.run(today, `af:fixture:${id}`, new Date().toISOString(), 'legacy');
+  for (let id = 201; id <= 240; id++) insert.run(today, `af:fixture:${id}`, new Date().toISOString(), 'automation');
+  assert.throws(() => insert.run(today, 'af:fixture:241', new Date().toISOString(), 'automation'), /automation publication daily cap/);
+  assert.doesNotThrow(() => insert.run(today, 'af:fixture:242', new Date().toISOString(), 'manual'));
+  const b = await readFixturePublishBudget({ FOOTBALL_DB: createLocalD1(db) });
+  assert.equal(b.remaining, 94);
+  assert.equal(b.automationFixtureIds.length, 40);
+  assert.equal(b.manualFixtureIds.length, 106);
+});
+
+test('Admin publication persists automatic source while older clients default to manual', async t => {
+  const admin = await import('../admin-worker/index.mjs');
+  for (const source of ['automation', undefined]) {
+    const db = database();
+    t.after(() => db.close());
+    const bundle = fixturePayload();
+    const body = fixtureIngestBody(bundle);
+    if (source) body.publicationSource = source;
+    const response = await admin.default.fetch(request(body), fixtureEnv(db, bundle));
+    assert.equal(response.status, 200, await response.text());
+    const row = db.prepare('SELECT publication_source FROM fixture_detail_publish_days').get();
+    assert.equal(row.publication_source, source || 'manual');
+  }
+});
+
+test('source migration preserves existing receipt rows without guessing their original source', async t => {
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  applyMigrations(db, root, { through: '0012_d1_date_repair_control.sql' });
+  db.exec(`INSERT INTO fixture_detail_publish_days VALUES ('2026-10-15', 'af:fixture:1', 3, '2026-10-15T06:00:00Z')`);
+  db.exec(migrations[12]);
+  assert.deepEqual({ ...db.prepare('SELECT * FROM fixture_detail_publish_days').get() }, {
+    date_utc: '2026-10-15', fixture_id: 'af:fixture:1', revision_no: 3,
+    published_at: '2026-10-15T06:00:00Z', publication_source: 'legacy',
+  });
+  const { readFixturePublishBudget } = await import('../admin-worker/fixture-publish-budget.mjs');
+  const b = await readFixturePublishBudget({ FOOTBALL_DB: createLocalD1(db) }, new Date('2026-10-15T07:00:00Z'));
+  assert.equal(b.remaining, 239);
+  assert.deepEqual(b.manualFixtureIds, ['af:fixture:1']);
+  assert.deepEqual(b.automationFixtureIds, []);
+});

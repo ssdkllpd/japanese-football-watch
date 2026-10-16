@@ -56,6 +56,7 @@ export function assertFixtureRequest(input) {
     'catalog', 'reuseStoredCatalog', 'correctionDefinitions',
     'requireStableDate', 'preserveCorrections',
     'expectedPreviousDate',
+    'publicationSource',
   ]);
   if (input.operation === FIXTURE_MIGRATION_OPERATION) {
     for (const key of ['snapshotId', 'archiveSha256', 'artifactKey', 'artifactSha256']) allowed.add(key);
@@ -70,6 +71,9 @@ export function assertFixtureRequest(input) {
   }
   if (input.reuseStoredCatalog !== undefined && input.reuseStoredCatalog !== true) {
     throw new Error('reuseStoredCatalog must be true when supplied.');
+  }
+  if (input.publicationSource !== undefined && !['manual', 'automation'].includes(input.publicationSource)) {
+    throw new Error('Fixture publicationSource must be manual or automation.');
   }
   for (const key of ['requireStableDate', 'preserveCorrections']) {
     if (input[key] !== undefined && input[key] !== true) throw new Error(`${key} must be true when supplied.`);
@@ -877,7 +881,7 @@ export async function publishFixtureFromR2(env, input) {
   addPublishStatements(env.FOOTBALL_DB, statements, context, checked.previousRevisionId);
   if ([FIXTURE_OPERATION, FIXTURE_MIGRATION_OPERATION].includes(input.operation)) {
     statements.push(dailyFixturePublishStatement(
-      env.FOOTBALL_DB, input.fixtureId, context.fixture.revision,
+      env.FOOTBALL_DB, input.fixtureId, context.fixture.revision, new Date(), input.publicationSource || 'manual',
     ));
   }
   const preflightBudget = FIXTURE_PREFLIGHT_QUERY_BUDGET

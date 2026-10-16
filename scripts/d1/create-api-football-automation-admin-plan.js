@@ -107,6 +107,7 @@ function createStrictAutomationAdminPlan(automationPlan, artifactRoot, outputDir
       }
     } else fixture.requireStableDate = true;
     fixture.preserveCorrections = true;
+    fixture.publicationSource = automationPlan.publicationSource || 'automation';
     fixtures.push(fixture);
     dateScope(bundle.fixture.dateJst).fixtureIds.push(fixture.fixtureId);
   }
@@ -167,6 +168,10 @@ function createStrictAutomationAdminPlan(automationPlan, artifactRoot, outputDir
 
 function createAutomationAdminPlan(automationPlan, artifactRoot, outputDirectory) {
   if (!Array.isArray(automationPlan?.detailFetches) || !Array.isArray(automationPlan?.standingsFetches)) throw new Error('Automation plan is invalid.');
+  if (automationPlan.publicationSource !== undefined
+    && !['manual', 'automation'].includes(automationPlan.publicationSource)) {
+    throw new Error('Fixture publicationSource must be manual or automation.');
+  }
   const result = createStrictAutomationAdminPlan({ ...automationPlan, detailFetches: [], standingsFetches: [] },artifactRoot,outputDirectory);
   const quarantined = [];
   const scopes = new Map();

@@ -16,7 +16,7 @@ const fixture = (id, league, status = 'FT', date = '2026-09-20T12:00:00Z') => ({
   fixture: { id, date, status: { short: status } }, league: { id: league, season: 2026 },
 });
 const budget = (ids = []) => ({ dateUtc: '2026-09-25', operation: 'fixture_publish_budget',
-  fixtureIds: ids, remaining: 240 - ids.length });
+  fixtureIds: ids, manualFixtureIds: ids, automationFixtureIds: [], remaining: 240 - ids.length });
 const inventory = ids => [{ success: true, results: ids.map(id => ({
   canonical_id: `af:fixture:${id}`, total: ids.length,
 })) }];
@@ -165,9 +165,9 @@ test('budget change during fetch aborts publication before any R2 writes', async
     client: fakeClient({ 39: [fixture(1, 39)] }) });
   assert.doesNotThrow(() => checkManualBackfillBudget(budget(), budget(), plan));
   assert.throws(() => checkManualBackfillBudget(budget(), budget(['af:fixture:42']), plan),
-    /budget changed/);
+    /budget changed|missing or stale/);
   assert.throws(() => checkManualBackfillBudget(budget(), { ...budget(), dateUtc: '2026-09-26' }, plan),
-    /budget changed/);
+    /budget changed|missing or stale/);
 });
 
 test('a partial Admin failure recovers indexes for only fixtures already published in D1', () => {
@@ -225,4 +225,20 @@ test('one-shot date relocation deploys the matching Admin Worker before a single
   assert.match(rollout, /auto_continue: 'false'/);
   assert.match(rollout, /batches_left: '1'/);
   assert.match(rollout, /billing_mode: paid/);
+});
+
+test('40 automatic publications leave manual catch-up its own remaining 120-fixture allowance', async () => {
+  const automatic = Array.from({ length: 40 }, (_, i) => `af:fixture:${i + 1000}`);
+  const manual = Array.from({ length: 119 }, (_, i) => `af:fixture:${i + 2000}`);
+  const ids = [...manual, ...automatic];
+  const mixed = { ...budget(ids), manualFixtureIds: manual, automationFixtureIds: automatic };
+  const plan = await planManualFixtureBackfill({ policy, inventory: inventory([]),
+    dateInventory: dateInventory({}), dailyBudget: mixed, now, detailDailyCap: 120,
+    client: fakeClient({ 39: [fixture(1, 39), fixture(2, 39)] }) });
+  assert.equal(plan.detailFetches.length, 1);
+  assert.equal(plan.quota.fixturePublishesRemaining, 0);
+  assert.equal(plan.publicationSource, 'manual');
+  assert.doesNotThrow(() => checkManualBackfillBudget(mixed, mixed, plan, 120));
+  assert.throws(() => checkManualBackfillBudget(mixed, mixed,
+    { ...plan, detailFetches: [...plan.detailFetches, { fixtureId: 'af:fixture:2' }] }, 120), /daily cap/);
 });

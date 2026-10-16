@@ -1,5 +1,7 @@
 'use strict';
 
+const { validatePublicationBudget } = require('../d1/fixture-publication-budget');
+
 const fs = require('node:fs');
 const path = require('node:path');
 const { createClientFromEnv } = require('../api-football/client');
@@ -65,13 +67,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   if (Number.isNaN(nowDate.getTime())) throw new Error('Backfill time is invalid.');
   const todayJst = dateJst(nowDate);
   const todayUtc = nowDate.toISOString().slice(0, 10);
-  if (dailyBudget?.dateUtc !== todayUtc || !Array.isArray(dailyBudget.fixtureIds)
-    || dailyBudget.fixtureIds.length > 240
-    || dailyBudget.remaining !== 240 - dailyBudget.fixtureIds.length
-    || new Set(dailyBudget.fixtureIds).size !== dailyBudget.fixtureIds.length
-    || dailyBudget.fixtureIds.some(id => !/^af:fixture:\d+$/.test(id))) {
-    throw new Error('D1 daily publication budget is missing or stale.');
-  }
+  validatePublicationBudget(dailyBudget, todayUtc);
   const published = publishedFixtureIds(inventory);
   const storedDates = storedFixtureDates(dateInventory);
   const scopes = new Set(policy.competitionSeasons.map(scope => `${scope.league}:${scope.season}`));
@@ -128,7 +124,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     })) : [];
   const detailBudget = capacity - standingsFetches.length;
   const publishCapacity = Math.max(0, Math.min(dailyBudget.remaining,
-    detailDailyCap - dailyBudget.fixtureIds.length));
+    detailDailyCap - dailyBudget.manualFixtureIds.length));
   const maxDetails = Math.min(policy.limits.maxFinalDetailFixturesPerRun,
     publishCapacity, Math.floor(detailBudget / 5));
   const detailFetches = eligible.slice(0, maxDetails).map(fixture => ({
@@ -140,6 +136,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   }));
   return {
     schemaVersion: PLAN_VERSION,
+    publicationSource: 'manual',
     mode: preview ? 'preview' : 'enabled',
     generatedAt: nowDate.toISOString(),
     discoveryDates: [],

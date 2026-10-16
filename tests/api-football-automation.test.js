@@ -44,6 +44,7 @@ test('reviewed automation policy permits activation within unchanged limits', ()
   assert.equal(value.scheduledSynchronizationEnabled, true);
   assert.equal(value.competitionSeasons.length, 10);
   assert.equal(value.limits.maxFinalDetailFixturesPerRun, 20);
+  assert.equal(value.limits.maxFinalDetailFixturesPerDay, 40);
 });
 
 test('planner includes only reviewed competition-season identities and finalized fixtures', () => {
@@ -119,25 +120,33 @@ test('planner enforces the 20-fixture hard cap and deterministic kickoff/id orde
 });
 
 test('D1 daily receipts bound successive runs and allow the next UTC day', () => {
-  const rows = { '2026-09-17': Array.from({ length: 25 }, (_, index) =>
+  const rows = { '2026-09-17': Array.from({ length: 45 }, (_, index) =>
     fixture(100 + index, 39, 'FT', '2026-09-17T06:00:00Z')) };
   const args = input(rows);
   const enabled = { ...policy(), scheduledSynchronizationEnabled: true };
   args.policy = enabled;
   args.preview = false;
-  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: [] };
+  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 };
   const first = planAutomation(args);
   assert.equal(first.detailFetches.length, 20);
   args.dailyBudget.fixtureIds = first.detailFetches.map(item => item.fixtureId);
+  args.dailyBudget.automationFixtureIds = [...args.dailyBudget.fixtureIds];
+  args.dailyBudget.remaining = 220;
   assert.deepEqual(planAutomation(args).detailFetches.map(item => item.fixtureId),
     first.detailFetches.map(item => item.fixtureId)); // recovery of already published details
   args.state = advanceAutomationState(checkpointAutomationDiscovery(args.state, first), first,
     '2026-09-17T12:01:00Z');
+  const second = planAutomation(args);
+  assert.equal(second.detailFetches.length, 20);
+  args.dailyBudget.fixtureIds.push(...second.detailFetches.map(item => item.fixtureId));
+  args.dailyBudget.automationFixtureIds = [...args.dailyBudget.fixtureIds];
+  args.dailyBudget.remaining = 200;
+  args.state = advanceAutomationState(args.state, second, '2026-09-17T12:02:00Z');
   assert.equal(planAutomation(args).detailFetches.length, 0);
   const next = input({}, '2026-09-18T12:00:00.000Z', enabled);
   next.preview = false;
   next.state = args.state;
-  next.dailyBudget = { dateUtc: '2026-09-18', fixtureIds: [] };
+  next.dailyBudget = { dateUtc: '2026-09-18', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 };
   assert.equal(planAutomation(next).detailFetches.length, 20);
 });
 
@@ -241,4 +250,51 @@ test('planner refuses automated work when the provider quota header is unavailab
   args.preview = false;
   args.policy.scheduledSynchronizationEnabled = false;
   assert.equal(planAutomation(args).mode, 'disabled');
+});
+
+test('105 manual publications do not consume automatic daily capacity, and manual same-day checks count as automatic work', () => {
+  const args = input({ '2026-09-17': Array.from({ length: 21 }, (_, i) =>
+    fixture(1000 + i, 39, 'FT', '2026-09-17T06:00:00Z')) });
+  const manual = Array.from({ length: 105 }, (_, i) => `af:fixture:${1000 + i}`);
+  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: manual,
+    manualFixtureIds: manual, automationFixtureIds: [], remaining: 135 };
+  const first = planAutomation(args);
+  assert.equal(first.detailFetches.length, 20);
+  assert.equal(first.quota.fixturePublishesRemaining, 20);
+  assert.equal(first.quota.globalFixturePublishesRemaining, 135);
+  assert.equal(first.quota.manualFixturesPublishedToday, 105);
+  assert.equal(first.publicationSource, 'automation');
+  args.state = advanceAutomationState(args.state, first, '2026-09-17T12:01:00Z');
+  const second = planAutomation(args);
+  assert.equal(second.detailFetches.length, 1);
+  assert.equal(second.quota.fixturePublishesRemaining, 19);
+});
+
+test('automatic receipts survive a failed state write and the global cap remains independent', () => {
+  const args = input({ '2026-09-17': [fixture(999, 39, 'FT', '2026-09-17T06:00:00Z')] });
+  const automatic = Array.from({ length: 40 }, (_, i) => `af:fixture:${i + 1}`);
+  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: automatic,
+    automationFixtureIds: automatic, manualFixtureIds: [], remaining: 200 };
+  assert.equal(planAutomation(args).detailFetches.length, 0);
+  const manual = Array.from({ length: 240 }, (_, i) => `af:fixture:${i + 1}`);
+  args.dailyBudget = { dateUtc: '2026-09-17', fixtureIds: manual,
+    automationFixtureIds: [], manualFixtureIds: manual, remaining: 0 };
+  assert.equal(planAutomation(args).detailFetches.length, 0);
+  args.dailyBudget.remaining = 1;
+  assert.throws(() => planAutomation(args), /budget/);
+  delete args.dailyBudget.automationFixtureIds;
+  assert.throws(() => planAutomation(args), /source receipts/);
+  const p = policy();
+  p.limits.maxFinalDetailFixturesPerDay = 41;
+  assert.throws(() => validatePolicy(p), /daily cap of 40/);
+});
+
+test('source partitions cannot omit, duplicate or invent published fixtures', () => {
+  const { validatePublicationBudget } = require('../scripts/d1/fixture-publication-budget');
+  const b = { dateUtc: '2026-10-15', fixtureIds: ['af:fixture:1'], remaining: 239,
+    automationFixtureIds: [], manualFixtureIds: ['af:fixture:1'] };
+  assert.doesNotThrow(() => validatePublicationBudget(b, '2026-10-15'));
+  assert.throws(() => validatePublicationBudget({ ...b, manualFixtureIds: [] }, b.dateUtc), /partition/);
+  assert.throws(() => validatePublicationBudget({ ...b, automationFixtureIds: ['af:fixture:1'] }, b.dateUtc), /partition/);
+  assert.throws(() => validatePublicationBudget({ ...b, manualFixtureIds: ['af:fixture:2'] }, b.dateUtc), /partition/);
 });

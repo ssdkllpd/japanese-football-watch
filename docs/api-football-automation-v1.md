@@ -27,7 +27,7 @@ This unit does not yet replace the public request-time live provider path and do
 - Up to three JST dates are inspected per run. The normal window is yesterday, today, and tomorrow; an unfinished earlier discovery resumes from its saved date and catches up over subsequent runs.
 - Before those charged requests, the API-Football `status` endpoint supplies the current daily balance. This endpoint does not count against the daily quota; missing or malformed status data stops discovery.
 - Requests are serialized with at least 300 ms between starts.
-- At most 20 complete fixture details are fetched per run. Each uses five provider requests. D1 also enforces 20 distinct fixture publications per UTC day globally and one changed publication per fixture per UTC day; due rechecks wait for the next day when necessary.
+- At most 20 complete fixture details are fetched per run, and 40 distinct fixtures are processed by automation per UTC day (09:00 JST reset), including correction rechecks and unchanged details. Each detail uses five provider requests. Successful unchanged details are counted by durable automation state; changed publications are also counted by source-tagged D1 receipts, so a failed state write cannot erase a publication from the daily count. Manual publications do not consume the automatic allowance. The Paid manual catch-up allowance remains 120 fixtures per UTC day (Free mode remains 20), excluding automatic receipts. All paths still share the D1 limit of 240 changed publications per UTC day and one changed publication per fixture per UTC day. Exhausted work remains pending for the next day.
 - At most ten standings scopes are fetched per run.
 - A run is capped at 150 provider calls including the uncharged status call, and preserves at least 100 reported daily requests.
 - Missing quota headers stop executable planning; they are never treated as unlimited capacity.
@@ -46,7 +46,7 @@ The workflow uses one shared `d1-staging-write` concurrency group and follows th
 
 A failure during discovery retains the saved date for the next run. A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. A changed fixture already published on the same UTC day waits until the next day. Direct `wrangler d1 execute` and migration application are not part of this workflow.
 
-Migration `0007_d1_fixture_publish_budget.sql` and the matching Admin Worker version must be applied to the reviewed staging target before enabling execution. Both manual fixture workflows validate their D1 mirror plans before R2 publication; a fixture with manual overrides requires reviewed Git correction definitions and is blocked before any write until that workflow supports them.
+Migrations through `0013_d1_publication_sources.sql` and the matching Admin Worker version must be applied to the reviewed staging target before enabling execution. Historical receipts retain the `legacy` source and count conservatively against manual catch-up; they never consume automatic capacity. Missing or inconsistent source partitions stop planning. Both manual fixture workflows validate their D1 mirror plans before R2 publication; a fixture with manual overrides requires reviewed Git correction definitions and is blocked before any write until that workflow supports them.
 
 ## Manual review sequence
 

@@ -48,6 +48,10 @@
     {
       "name": "0012_d1_date_repair_control.sql",
       "sha256": "9643581daff337746e3c9fdfe567070e4c41b8369dab08da56f47d2cbe52d28d"
+    },
+    {
+      "name": "0013_d1_publication_sources.sql",
+      "sha256": "93ff3f6d2970e994bf6553b8b7b5814f6187a3085371eedff4def07bf486816e"
     }
   ],
   "tables": {
