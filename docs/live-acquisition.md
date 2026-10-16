@@ -21,15 +21,15 @@ An atomic D1 lease and minute claim prevent duplicate acquisition. Provider redi
 
 ## Deployment and rollback
 
-1. Deploy with `databaseId: null`, acquisition disabled and public live reads disabled. The deployment creates the dedicated database, applies only `migrations/live/0001_live.sql`, installs the key on the private Worker, and waits for a real disabled cron heartbeat. The database UUID is logged and saved as an Actions artifact.
+1. Deploy with `databaseId: null`, acquisition disabled and public live reads disabled. The deployment creates the dedicated database, applies only the dedicated `migrations/live/*.sql`, installs the key on the private Worker, and waits for a real disabled cron heartbeat. The database UUID is logged and saved as an Actions artifact.
 2. Pin that UUID in `config/live-worker-target.json` and enable acquisition. Confirm a real cron heartbeat and successful provider acquisition before enabling reads. The enabled deployment also probes the real `fixtures?live=all` response once, counting its requests in the live budget without publishing probe fixtures.
 3. Set `liveReadEnabled: true` in `config/public-worker-target.json`. The public deployment checks the D1 source header, enabled/fresh contract and existing final-data routes. No provider credential is installed on the public Worker.
 
-An acquisition deployment failure automatically deploys the private Worker disabled. To roll back a published reader, first set public `liveReadEnabled` false, then disable acquisition. Do not restore viewer-driven provider requests.
+Activation verification allows up to two transient failed cron ticks to recover; three distinct completed failed ticks fail activation. In-flight leases do not count as completed failures. An acquisition deployment failure automatically deploys the private Worker disabled. To roll back a published reader, first set public `liveReadEnabled` false, then disable acquisition. Do not restore viewer-driven provider requests.
 
 ## Monitoring and verification
 
-`live_control` records cron heartbeat, successful tick, status/error, latest live poll and next acquisition start. `live_budget` records provider requests, remaining quota and actual written-row metadata. The deployment verifier requires an actual post-deployment cron tick rather than inserting a synthetic heartbeat.
+`live_control` records cron heartbeat, successful tick, status/error, latest live poll and next acquisition start. `live_budget` records provider requests, remaining quota and actual written-row metadata. `live_provider_errors` retains at most 100 operator-only provider errors, with the API key redacted; the public endpoint never exposes these details. The deployment verifier requires an actual post-deployment cron tick rather than inserting a synthetic heartbeat.
 
 The existing Automation Watchdog checks the live D1 heartbeat, enable switch and error status once both acquisition and public reads are enabled. Its existing workflow-completion triggers and GitHub schedule remain the notification mechanism; a strict delivery deadline is not guaranteed by GitHub's scheduled trigger. Budget pauses are reported as warnings. Inspect the Live Acquisition deployment and Worker logs for failures; a test email alone does not prove every production failure path.
 

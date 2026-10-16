@@ -41,7 +41,14 @@ export async function providerSession(env, now, request=fetch) {
     }
     if(!response.ok) throw new Error(response.status===429?'provider_rate_limited':'provider_http_error');
     const body=await response.json();
-    if(body?.errors && (Array.isArray(body.errors)?body.errors.length:Object.keys(body.errors).length)) throw new Error('provider_response_error');
+    if(body?.errors && (Array.isArray(body.errors)?body.errors.length:Object.keys(body.errors).length)) {
+      const detail=JSON.stringify(body.errors).split(String(env.API_FOOTBALL_KEY)).join('[redacted]').slice(0,600);
+      await db.batch([
+        db.prepare('INSERT INTO live_provider_errors(at_ms,endpoint,http_status,error_detail) VALUES(?,?,?,?)').bind(now,url.pathname,response.status,detail),
+        db.prepare('DELETE FROM live_provider_errors WHERE id NOT IN (SELECT id FROM live_provider_errors ORDER BY id DESC LIMIT 100)'),
+      ]);
+      throw new Error('provider_response_error');
+    }
     if(status) {
       const used=scalar(body?.response?.requests?.current), limit=scalar(body?.response?.requests?.limit_day);
       if(!Number.isSafeInteger(used)||!Number.isSafeInteger(limit)||used<0||limit<used) throw new Error('provider_quota_unknown');

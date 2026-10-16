@@ -27,7 +27,7 @@ if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(found.uuid||'')) throw 
 if(target.databaseId&&target.databaseId!==found.uuid) throw new Error('Live database ID drift');
 const core=JSON.parse(fs.readFileSync(`${ROOT}/config/public-worker-target.json`));
 if(found.uuid===core.d1DatabaseId) throw new Error('Live and core databases must be separate');
-const sql=fs.readFileSync(`${ROOT}/migrations/live/0001_live.sql`,'utf8');
+const sql=fs.readdirSync(`${ROOT}/migrations/live`).filter(name=>/^\d{4}_[a-z_]+\.sql$/.test(name)).sort().map(name=>fs.readFileSync(`${ROOT}/migrations/live/${name}`,'utf8')).join('\n');
 await api(`${base}/${found.uuid}/query`,{method:'POST',body:JSON.stringify({sql})});
 const check=await api(`${base}/${found.uuid}/query`,{method:'POST',body:JSON.stringify({sql:'SELECT version FROM live_schema WHERE id=1'})});
 if(check?.[0]?.results?.[0]?.version!==1) throw new Error('Live schema verification failed');
