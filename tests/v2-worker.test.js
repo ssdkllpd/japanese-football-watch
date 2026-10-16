@@ -15,6 +15,30 @@ async function loadWorker() {
   return import('../worker/index.mjs');
 }
 
+test('public live reads never access the provider, its secret, or the former cache', async t => {
+  const { default: worker } = await loadWorker();
+  t.mock.method(globalThis, 'fetch', () => { throw new Error('Public upstream fetch forbidden'); });
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'caches');
+  Object.defineProperty(globalThis, 'caches', { configurable: true, get() { throw new Error('Former cache forbidden'); } });
+  t.after(() => previous ? Object.defineProperty(globalThis, 'caches', previous) : delete globalThis.caches);
+  const env = {
+    APP_ORIGINS: 'https://example.github.io',
+    get API_FOOTBALL_KEY() { throw new Error('Provider secret forbidden'); },
+  };
+  const responses = await Promise.all(Array.from({ length: 8 }, (_, i) => worker.fetch(new Request(
+    `https://worker.test/api/v2/live?viewer=${i}`, { headers: { origin: 'https://example.github.io' } },
+  ), env)));
+  for (const response of responses) {
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-jfw-data-source'), 'live-paused');
+    const body = await response.json();
+    assert.equal(body.liveUpdatesEnabled, false);
+    assert.equal(body.reason, 'temporarily_paused');
+    assert.deepEqual(body.fixtures, []);
+  }
+  assert.equal(globalThis.fetch.mock.callCount(), 0);
+});
+
 function fixtureIdDigest(ids) {
   return crypto.createHash('sha256').update(`${[...ids].sort().join('\n')}\n`).digest('hex');
 }

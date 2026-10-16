@@ -139,6 +139,25 @@ jobs:
             '{workerOrigin: $workerOrigin, appOrigin: $appOrigin, allowedOriginHealth: true, noOriginDenied: true}' \
             > .tmp/public-worker/evidence/report.json
 
+      - name: Verify public live acquisition is paused
+        shell: bash
+        run: |
+          set -euo pipefail
+          worker_origin=$(jq -r '.workerOrigin' config/public-worker-target.json)
+          app_origin=$(jq -r '.appOrigin' config/public-worker-target.json)
+          for attempt in {1..10}; do
+            if curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+              --header "Origin: $app_origin" \
+              --output .tmp/public-worker/evidence/live.json \
+              "$worker_origin/api/v2/live" && \
+              jq -e '.liveUpdatesEnabled == false and .reason == "temporarily_paused" and .fixtures == []' \
+                .tmp/public-worker/evidence/live.json >/dev/null; then
+              break
+            fi
+            test "$attempt" -lt 10 || { echo 'Public live pause verification failed'; exit 1; }
+            sleep 5
+          done
+
       - name: Verify every enabled D1 public read path
         shell: bash
         run: |
