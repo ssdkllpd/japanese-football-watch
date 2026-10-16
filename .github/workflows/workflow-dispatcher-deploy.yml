@@ -25,7 +25,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      GITHUB_DISPATCH_TOKEN: ${{ secrets.GITHUB_DISPATCH_TOKEN }}
+      WORKFLOW_DISPATCH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,11 +39,11 @@ jobs:
           node scripts/v2/render-workflow-dispatcher.mjs --output .tmp/dispatcher/wrangler.toml > .tmp-dispatcher-readiness.json
           enabled=$(jq -r '.enabled' .tmp-dispatcher-readiness.json)
           echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
-          if [ -n "$GITHUB_DISPATCH_TOKEN" ]; then configured=true; else configured=false; fi
+          if [ -n "$WORKFLOW_DISPATCH_TOKEN" ]; then configured=true; else configured=false; fi
           echo "GitHub dispatch credential configured: $configured" >> "$GITHUB_STEP_SUMMARY"
           echo "Cloudflare trigger enabled: $enabled" >> "$GITHUB_STEP_SUMMARY"
           if [ "$enabled" = true ]; then
-            test "$configured" = true || { echo 'GITHUB_DISPATCH_TOKEN required before activation'; exit 1; }
+            test "$configured" = true || { echo 'WORKFLOW_DISPATCH_TOKEN required before activation'; exit 1; }
             test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
           fi
       - name: Build without remote changes
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
-            --header "Authorization: Bearer $GITHUB_DISPATCH_TOKEN" \
+            --header "Authorization: Bearer $WORKFLOW_DISPATCH_TOKEN" \
             --header 'Accept: application/vnd.github+json' \
             'https://api.github.com/repos/ssdkllpd/japanese-football-watch/actions/workflows?per_page=100' \
             --output .tmp/dispatcher/workflows.json
@@ -67,8 +67,8 @@ jobs:
         if: steps.configuration.outputs.enabled == 'true'
         shell: bash
         run: >-
-          printf '%s' "$GITHUB_DISPATCH_TOKEN" |
-          npx --yes wrangler@4.147.0 secret put GITHUB_DISPATCH_TOKEN
+          printf '%s' "$WORKFLOW_DISPATCH_TOKEN" |
+          npx --yes wrangler@4.147.0 secret put WORKFLOW_DISPATCH_TOKEN
           --config .tmp/dispatcher/wrangler.toml
       - name: Deploy enabled dispatcher
         if: steps.configuration.outputs.enabled == 'true'

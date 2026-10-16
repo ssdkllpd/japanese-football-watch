@@ -20,11 +20,11 @@ export function dueSlots(scheduledTime) {
 
 export async function dispatchScheduled(event, env, request = fetch) {
   if (env.DISPATCH_ENABLED !== 'true') return { enabled: false, results: [] };
-  if (!env.GITHUB_DISPATCH_TOKEN || !env.DISPATCH_STATE) throw new Error('Dispatcher credentials or storage missing');
+  if (!env.WORKFLOW_DISPATCH_TOKEN || !env.DISPATCH_STATE) throw new Error('Dispatcher credentials or storage missing');
   const headers = {
     accept: 'application/vnd.github+json',
     'content-type': 'application/json',
-    authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+    authorization: `Bearer ${env.WORKFLOW_DISPATCH_TOKEN}`,
     'x-github-api-version': '2026-03-10',
     'user-agent': 'jfw-workflow-dispatcher',
   };
