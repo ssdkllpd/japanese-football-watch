@@ -1,0 +1,75 @@
+name: Prepare or Deploy Workflow Dispatcher
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/workflow-dispatcher-deploy.yml'
+      - 'config/workflow-dispatcher.json'
+      - 'dispatcher-worker/**'
+      - 'scripts/v2/render-workflow-dispatcher.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-dispatcher-deploy
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_DISPATCH_TOKEN: ${{ secrets.GITHUB_DISPATCH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Render configuration and report credential readiness
+        id: configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v2/render-workflow-dispatcher.mjs --output .tmp/dispatcher/wrangler.toml > .tmp-dispatcher-readiness.json
+          enabled=$(jq -r '.enabled' .tmp-dispatcher-readiness.json)
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          if [ -n "$GITHUB_DISPATCH_TOKEN" ]; then configured=true; else configured=false; fi
+          echo "GitHub dispatch credential configured: $configured" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cloudflare trigger enabled: $enabled" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$enabled" = true ]; then
+            test "$configured" = true || { echo 'GITHUB_DISPATCH_TOKEN required before activation'; exit 1; }
+            test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          fi
+      - name: Build without remote changes
+        run: npx --yes wrangler@4.147.0 deploy --dry-run --config .tmp/dispatcher/wrangler.toml --outdir .tmp/dispatcher/build
+      - name: Validate GitHub authentication before changing Cloudflare
+        if: steps.configuration.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --header "Authorization: Bearer $GITHUB_DISPATCH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/ssdkllpd/japanese-football-watch/actions/workflows?per_page=100' \
+            --output .tmp/dispatcher/workflows.json
+          jq -e 'all(["api-football-automation.yml", "api-football-schedule-sync.yml"][]; . as $name | any($workflows[0].workflows[]; .path == (".github/workflows/" + $name) and .state == "active"))' \
+            --slurpfile workflows .tmp/dispatcher/workflows.json --null-input >/dev/null
+      - name: Deploy with dispatch disabled before installing the credential
+        if: steps.configuration.outputs.enabled == 'true'
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/dispatcher/wrangler.toml --var DISPATCH_ENABLED:false
+      - name: Install persistent dispatch credential
+        if: steps.configuration.outputs.enabled == 'true'
+        shell: bash
+        run: >-
+          printf '%s' "$GITHUB_DISPATCH_TOKEN" |
+          npx --yes wrangler@4.147.0 secret put GITHUB_DISPATCH_TOKEN
+          --config .tmp/dispatcher/wrangler.toml
+      - name: Deploy enabled dispatcher
+        if: steps.configuration.outputs.enabled == 'true'
+        run: npx --yes wrangler@4.147.0 deploy --config .tmp/dispatcher/wrangler.toml

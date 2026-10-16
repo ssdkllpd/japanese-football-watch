@@ -25,6 +25,14 @@ on:
         description: For execute, enter RUN API-FOOTBALL AUTOMATION
         required: false
         type: string
+      trigger_source:
+        description: Origin of an external scheduled invocation
+        required: false
+        type: string
+      trigger_slot:
+        description: UTC slot for external scheduled invocation audit
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -69,10 +77,16 @@ jobs:
           REQUESTED_MODE: ${{ inputs.mode || 'execute' }}
           CONFIRMATION: ${{ inputs.confirmation }}
           REPOSITORY_ENABLED: ${{ vars.API_FOOTBALL_AUTOMATION_ENABLED }}
+          TRIGGER_SOURCE: ${{ inputs.trigger_source }}
+          TRIGGER_SLOT: ${{ inputs.trigger_slot }}
         run: |
           set -euo pipefail
           node -e "require('./scripts/v2/api-football-automation-plan').validatePolicy(require('./config/api-football-automation.json'))"
           policy_enabled=$(jq -r '.scheduledSynchronizationEnabled' config/api-football-automation.json)
+          if [ "$TRIGGER_SOURCE" = cloudflare ]; then
+            test "$REPOSITORY_ENABLED" = true || { echo 'Repository automation switch is disabled.' >&2; exit 1; }
+            test -n "$TRIGGER_SLOT" || { echo 'External trigger slot is required.' >&2; exit 1; }
+          fi
           if [ "$EVENT_NAME" = schedule ]; then
             test "$REPOSITORY_ENABLED" = true || { echo 'Repository automation switch is disabled.' >&2; exit 1; }
             test "$policy_enabled" = true || { echo 'Reviewed automation policy is disabled.' >&2; exit 1; }
