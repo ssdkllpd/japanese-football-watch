@@ -46,6 +46,8 @@ jobs:
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml
       - name: Verify an actual cron heartbeat and successful enabled acquisition
         run: node scripts/live/verify-deployment.mjs
+      - name: Verify the provider batch-live response without publishing test data
+        run: node scripts/live/verify-provider.mjs
       - name: Disable acquisition after failed activation
         if: ${{ (failure() || cancelled()) && steps.bootstrap.outcome == 'success' }}
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml --var LIVE_ACQUISITION_ENABLED:false
@@ -56,5 +58,6 @@ jobs:
           path: |
             .tmp/live/target.json
             .tmp/live/verification.json
+            .tmp/live/provider-verification.json
           retention-days: 14
           if-no-files-found: warn

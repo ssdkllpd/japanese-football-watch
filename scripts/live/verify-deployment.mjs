@@ -13,7 +13,9 @@ while(Date.now()-started<18*60000) {
   if(row?.heartbeat_ms>=started-1000&&row.enabled===(target.acquisitionEnabled?1:0)) {
     if(row.status==='error') throw new Error(`Live cron failed: ${row.error_code}`);
     if(!target.acquisitionEnabled||row.last_success_ms>=started-1000) {
-      const report={passed:true,databaseId:target.databaseId,enabled:target.acquisitionEnabled,control:row,verifiedAt:new Date().toISOString()};
+      const budget=await query('SELECT utc_day,requests,remaining,rows_written FROM live_budget ORDER BY utc_day DESC LIMIT 1');
+      const upcoming=await query(`SELECT fixture_id,status,kickoff_ms,check_2h_ms,check_1h_ms FROM live_schedule WHERE kickoff_ms>=${Date.now()} ORDER BY kickoff_ms LIMIT 5`);
+      const report={passed:true,databaseId:target.databaseId,enabled:target.acquisitionEnabled,control:row,budget,upcoming,verifiedAt:new Date().toISOString()};
       fs.writeFileSync('.tmp/live/verification.json',`${JSON.stringify(report,null,2)}\n`);console.log(JSON.stringify(report));process.exit(0);
     }
   }

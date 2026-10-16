@@ -9,7 +9,7 @@ The private `jfw-football-live-acquisition` Worker is the only live component th
 - After both confirmations, acquisition starts one hour before kickoff. One `fixtures?live=all` request covers simultaneous games; it is filtered to the ten configured leagues and known eligible fixtures. Polling runs once per minute while a fixture is eligible, with a fresh quota check before each acquisition cycle.
 - Thirty minutes without live data triggers a fixture schedule check. A previously observed game disappearing from live results is checked immediately for its final score. A postponement or cancellation removes that game without stopping other games.
 - The acquisition window ends six hours after the scheduled kickoff. This bounds unusual suspended games and provider costs. Snapshots older than three minutes are visibly stale; old scores are never presented as fresh merely because the scheduler is alive.
-- Browsers refresh today's visible match list once per minute. The live endpoint returns only stored snapshots and monitoring metadata. Hidden tabs do not refresh.
+- Browsers refresh today's visible match list and today's non-final fixture detail once per minute. The live endpoint returns only stored snapshots and monitoring metadata. Hidden tabs do not refresh.
 
 ## Budgets and safety
 
@@ -22,7 +22,7 @@ An atomic D1 lease and minute claim prevent duplicate acquisition. Provider redi
 ## Deployment and rollback
 
 1. Deploy with `databaseId: null`, acquisition disabled and public live reads disabled. The deployment creates the dedicated database, applies only `migrations/live/0001_live.sql`, installs the key on the private Worker, and waits for a real disabled cron heartbeat. The database UUID is logged and saved as an Actions artifact.
-2. Pin that UUID in `config/live-worker-target.json` and enable acquisition. Confirm a real cron heartbeat and successful provider acquisition before enabling reads.
+2. Pin that UUID in `config/live-worker-target.json` and enable acquisition. Confirm a real cron heartbeat and successful provider acquisition before enabling reads. The enabled deployment also probes the real `fixtures?live=all` response once, counting its requests in the live budget without publishing probe fixtures.
 3. Set `liveReadEnabled: true` in `config/public-worker-target.json`. The public deployment checks the D1 source header, enabled/fresh contract and existing final-data routes. No provider credential is installed on the public Worker.
 
 An acquisition deployment failure automatically deploys the private Worker disabled. To roll back a published reader, first set public `liveReadEnabled` false, then disable acquisition. Do not restore viewer-driven provider requests.
