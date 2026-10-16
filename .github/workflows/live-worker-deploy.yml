@@ -9,6 +9,7 @@ on:
       - 'scripts/live/**'
       - 'shared/live-contract.mjs'
       - 'config/live-worker-target.json'
+      - '.github/workflows/api-football-live.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +25,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      WORKFLOW_DISPATCH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,15 +35,21 @@ jobs:
         run: node scripts/live/provision.mjs
       - name: Build the acquisition Worker before deployment
         run: npx --yes wrangler@4.147.0 deploy --dry-run --config .tmp/live/wrangler.toml --outdir .tmp/live/build
-      - name: Deploy disabled while installing the provider credential
+      - name: Deploy disabled while installing the workflow dispatch credential
         id: bootstrap
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml --var LIVE_ACQUISITION_ENABLED:false
-      - name: Install the provider credential only on the acquisition Worker
+      - name: Install the workflow credential and remove the provider key from the Worker
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$API_FOOTBALL_KEY"
-          printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4.147.0 secret put API_FOOTBALL_KEY --config .tmp/live/wrangler.toml
+          test -n "$WORKFLOW_DISPATCH_TOKEN"
+          printf '%s' "$WORKFLOW_DISPATCH_TOKEN" | npx --yes wrangler@4.147.0 secret put WORKFLOW_DISPATCH_TOKEN --config .tmp/live/wrangler.toml
+          npx --yes wrangler@4.147.0 secret list --config .tmp/live/wrangler.toml > .tmp/live/secrets.json
+          if jq -e 'any(.[]; .name == "API_FOOTBALL_KEY")' .tmp/live/secrets.json >/dev/null; then
+            npx --yes wrangler@4.147.0 secret delete API_FOOTBALL_KEY --config .tmp/live/wrangler.toml
+          fi
+          npx --yes wrangler@4.147.0 secret list --config .tmp/live/wrangler.toml > .tmp/live/secrets.json
+          jq -e 'all(.[]; .name != "API_FOOTBALL_KEY")' .tmp/live/secrets.json >/dev/null
       - name: Apply the reviewed acquisition enable switch
         run: npx --yes wrangler@4.147.0 deploy --config .tmp/live/wrangler.toml
       - name: Verify an actual cron heartbeat and successful enabled acquisition
