@@ -2,8 +2,6 @@ name: API-Football Schedule Sync
 run-name: ${{ inputs.trigger_source == 'cloudflare' && format('API-Football Schedule Sync [Cloudflare {0} / {1}]', inputs.trigger_slot, inputs.trigger_epoch) || 'API-Football Schedule Sync' }}
 
 on:
-  schedule:
-    - cron: '37 1,5,9,13,17,21 * * *'
   workflow_dispatch:
     inputs:
       mode:
