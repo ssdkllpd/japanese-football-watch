@@ -48,3 +48,12 @@ test('a failed or absent league payload does not claim the player has no appeara
   const empty = build([player], records, [payload(39, [])]);
   assert.equal(empty.get('jp-1').seasonStats, null);
 });
+
+test('missing per-player team ID uses only one exact club and league mapping from the snapshot', () => {
+  const player = { playerId: 'jp-1', club: 'Club A', league: 'League A', providerIds: { apiFootball: { player: 42 } } };
+  const records = [{ playerId: 'jp-2', club: 'Club A', league: 'League A', providerIds: { apiFootball: { team: 50, league: 39 } } }];
+  const data = [payload(39, [row(42, 50, 1), row(42, 60, 9)])];
+  assert.equal(build([player], records, data, { 'League A': 'af:competition:39' }).get('jp-1').seasonStats.goals, 1);
+  records.push({ playerId: 'jp-3', club: 'Club A', league: 'League A', providerIds: { apiFootball: { team: 60, league: 39 } } });
+  assert.equal(build([player], records, data, { 'League A': 'af:competition:39' }).size, 0);
+});
