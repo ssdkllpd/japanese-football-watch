@@ -40,6 +40,14 @@
     for (const player of players) {
       const link = identity(player, records);
       if (!link) continue;
+      if (!link.teams.size) {
+        // Reuse a team ID only when another stored record proves a unique
+        // exact club and league identity in this same snapshot.
+        const clubTeams = new Set(records.filter(record => record.club === player.club && record.league === player.league)
+          .map(record => positive(record.providerIds?.apiFootball?.team)).filter(Boolean));
+        if (clubTeams.size !== 1) continue;
+        link.teams.add([...clubTeams][0]);
+      }
       const matched = [];
       let covered = false;
       for (const payload of payloads) {
