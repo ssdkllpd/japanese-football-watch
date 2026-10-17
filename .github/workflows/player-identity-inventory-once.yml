@@ -31,7 +31,7 @@ jobs:
           (async()=>{
             const client=createClientFromEnv(process.env,{minimumIntervalMs:350,dailyReserve:100});
             await client.refreshDailyQuota();
-            const searches=[{search:'Ryotaro',team:735,season:2026},{search:'Keito',league:78,season:2026},{search:'Ogawa',league:98,season:2026}];
+            const searches=[{search:'Ryotaro',team:735,season:2025},{search:'Kumashiro',league:78,season:2025},{search:'Ogawa',league:88,season:2025}];
             const ids=[];
             const result={observedAt:new Date().toISOString(),queries:[],initialRemaining:client.lastQuota.dailyRemaining};
             for(const [endpoint,params] of [...searches.map(query=>['players',query]),...ids.map(id=>['players',{id,season:2026}])]){
