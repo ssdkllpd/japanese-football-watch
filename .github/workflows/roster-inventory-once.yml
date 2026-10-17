@@ -1,0 +1,65 @@
+name: Roster Inventory Once
+
+on:
+  push:
+    branches: [fix/tracked-japanese-profile-link-20261017]
+    paths:
+      - .github/workflows/roster-inventory-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read pinned R2 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/roster-inventory/extracted
+          test "$R2_BUCKET" = 'jfw-football-data'
+          key=$(jq -r '.archiveKey' config/d1-major-league-snapshot-20260908.json)
+          sha=$(jq -r '.archiveSha256' config/d1-major-league-snapshot-20260908.json)
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/$key" \
+            --file .tmp/roster-inventory/snapshot.tar.gz --remote
+          test "$(sha256sum .tmp/roster-inventory/snapshot.tar.gz | cut -d' ' -f1)" = "$sha"
+          tar -tzf .tmp/roster-inventory/snapshot.tar.gz > .tmp/roster-inventory/entries.txt
+          if grep -E '^/|(^|/)\.\.(/|$)' .tmp/roster-inventory/entries.txt; then exit 1; fi
+          if tar -tvzf .tmp/roster-inventory/snapshot.tar.gz | awk 'substr($1,1,1)=="l" || substr($1,1,1)=="h" {found=1} END {exit found?0:1}'; then exit 1; fi
+          tar -xzf .tmp/roster-inventory/snapshot.tar.gz -C .tmp/roster-inventory/extracted --no-same-owner --no-same-permissions
+          node <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const root='.tmp/roster-inventory/extracted';
+          const result={snapshotId:'20260908-021509068Z',players:[],squads:[]};
+          for(const dir of fs.readdirSync(root).filter(name=>/^league-\d+$/.test(name))){
+            const league=Number(dir.slice(7));
+            for(const file of fs.readdirSync(path.join(root,dir,'players'))){
+              if(!/^page-\d+\.json$/.test(file))continue;
+              const payload=JSON.parse(fs.readFileSync(path.join(root,dir,'players',file)));
+              for(const row of payload.response||[])result.players.push({league,player:row.player,statistics:(row.statistics||[]).map(s=>({team:s.team,league:s.league,games:s.games}))});
+            }
+            for(const file of fs.readdirSync(path.join(root,dir,'squads'))){
+              if(!/^\d+\.json$/.test(file))continue;
+              const payload=JSON.parse(fs.readFileSync(path.join(root,dir,'squads',file)));
+              for(const row of payload.response||[])result.squads.push({league,team:row.team,players:row.players});
+            }
+          }
+          fs.writeFileSync('.tmp/roster-inventory/roster.json',JSON.stringify(result));
+          console.log(JSON.stringify({playerRows:result.players.length,squadTeams:result.squads.length,nationalities:result.players.filter(x=>x.player?.nationality).length,japan:result.players.filter(x=>x.player?.nationality==='Japan').length}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pinned-roster-inventory
+          path: .tmp/roster-inventory/roster.json
+          retention-days: 2
