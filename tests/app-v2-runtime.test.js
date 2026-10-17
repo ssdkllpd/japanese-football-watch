@@ -35,7 +35,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
@@ -313,6 +313,36 @@ test('scope switching uses stored competition aggregates and keeps past tracked 
  assert.match(app.text(),/無所属・追跡対象外/);assert.match(app.doc.getElementById('japaneseList').textContent,/G 5/);
  const select=app.doc.getElementById('japaneseCompetition');assert.equal(select.disabled,false);assert.ok(![...select.options].some(o=>o.value==='J1'));
  select.value='Premier League';select.dispatchEvent(new app.w.Event('change'));assert.match(app.doc.getElementById('japaneseList').textContent,/G 2/);assert.doesNotMatch(app.doc.getElementById('japaneseList').textContent,/G 99/);
+});
+test('Japanese list and tracked profile refresh from published stats while an unlinked player stays unknown',async t=>{
+ const players=[
+  {playerId:'jp-1',name:'Tracked Player',club:'Club A',league:'Premier League',trackingStatus:'active',rankingEligible:true,providerIds:{apiFootball:{player:42}},seasonStats:{apps:1,goals:9,assists:9}},
+  {playerId:'jp-2',name:'Unlinked Player',club:'Club A',league:'Premier League',trackingStatus:'active',rankingEligible:true,seasonStats:{apps:1,goals:8,assists:8}},
+ ];
+ const app=await boot(t,{hash:'#/japanese?productSeason=jfw%3Aseason%3A2026-27',legacy:{_dataIntegrity:{season:'2026-27'},players,playerMatchStats:[{playerId:'jp-1',providerIds:{apiFootball:{player:42,team:50,league:39}}}]},
+  request:async url=>{
+   if(!String(url).includes('/seasons/')) return null;
+   const id=Number(new URL(url).pathname.match(/competitions\/af%3Acompetition%3A(\d+)/)?.[1]);
+   return {ok:true,status:200,json:async()=>({competition:{id:`af:competition:${id}`,providerId:id},playerStats:{presence:'present',rows:id===39?[{player:{providerId:42,name:'Tracked Player'},team:{id:'af:team:50'},appearances:4,goals:{value:2,presence:'present'},assists:{value:1,presence:'present'},minutes:{value:300,presence:'present'},redCards:{value:0,presence:'present'}}]:[]}})};
+  }});
+ await until(()=>app.doc.getElementById('japaneseList')?.textContent.includes('公開済み試合'),'published stats in list');
+ const linked=app.doc.querySelector('[data-player-id="jp-1"]');
+ assert.match(linked.textContent,/出場 4/);assert.match(linked.textContent,/G 2/);
+ const unlinked=app.doc.querySelector('[data-player-id="jp-2"]');
+ assert.match(unlinked.textContent,/選手ID未連携/);assert.doesNotMatch(unlinked.textContent,/G 8/);
+ await app.click('[data-player-id="jp-1"]');
+ assert.match(section(app,'今季スタッツ').textContent,/公開済み試合から更新/);
+ assert.match(section(app,'今季スタッツ').textContent,/出場/);
+ assert.match(app.text(),/海外日本人追跡/);
+ assert.doesNotMatch(section(app,'直近試合').textContent,/以前の試合/);
+});
+test('a cold API-Football player link resolves to the tracked Japanese profile by explicit provider ID',async t=>{
+ const app=await boot(t,{hash:'#/players/af%3Aplayer%3A42?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'},players:[{playerId:'jp-1',name:'Tracked Player',league:'Premier League',trackingStatus:'active',providerIds:{apiFootball:{player:42}}}],playerMatchStats:[{playerId:'jp-1',providerIds:{apiFootball:{team:50,league:39}}}]},
+  request:async url=>String(url).includes('/seasons/')?{ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[{player:{providerId:42},team:{id:'af:team:50'},appearances:2,goals:{value:1,presence:'present'},assists:{value:0,presence:'present'},minutes:{value:150,presence:'present'},redCards:{value:0,presence:'present'}}]}})}:null});
+ await until(()=>section(app,'今季スタッツ').textContent.includes('公開済み試合から更新'),'tracked player profile updated');
+ assert.match(app.text(),/海外日本人追跡/);
+ assert.match(section(app,'今季スタッツ').textContent,/得点/);
 });
 test('known competition seasons can change without losing the selected tab',async t=>{
  const app=await boot(t,{feed:()=>({fixtures:[{...fixture(),fixtureId:'af:fixture:11',seasonId:'af:season:39:2025'},fixture()]})});
