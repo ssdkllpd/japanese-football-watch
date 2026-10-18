@@ -59,7 +59,8 @@
     route: null,
     japaneseCompetition: 'all',
     japaneseNationality: 'Japan',
-    playerDirectory: { nationality: null, loading: false, loaded: false, error: null, players: new Map(), nextCursor: null },
+    playerDirectory: { nationality: null, query: '', loading: false, loaded: false, error: null, players: new Map(), nextCursor: null },
+    playerSearchTimer: null,
     trackedStats: { season: null, loading: false, loaded: false, error: null, players: new Map() },
     attention: { presence: 'not_fetched', snapshot: null, season: null, loading: false, error: null },
   };
@@ -282,17 +283,30 @@
     if (['japanese','player','search','team'].includes(router.parseHash(location.hash).kind)) repaint();
   }
 
-  async function loadPlayerDirectory(nationality = state.japaneseNationality, after = null) {
-    if (!state.workerBase || state.playerDirectory.loading) return;
+  async function loadPlayerDirectory(nationality = state.japaneseNationality, after = null,
+    query = nationality === 'all' ? state.legacySearch.trim() : '') {
     const previous = state.playerDirectory;
-    const append = after !== null && previous.nationality === nationality;
-    const request = { nationality, loading: true, loaded: false, error: null,
+    if (!state.workerBase || previous.loading && previous.nationality === nationality && previous.query === query) return;
+    const append = after !== null && previous.nationality === nationality && previous.query === query;
+    const request = { nationality, query, loading: true, loaded: false, error: null,
       players: append ? new Map(previous.players) : new Map(), nextCursor: append ? previous.nextCursor : null };
     state.playerDirectory = request;
     try {
       const params = new URLSearchParams({ nationality });
       if (append) params.set('after', String(after));
-      const result = await apiFetch(`/api/v2/players?${params}`);
+      if (query) params.set('q', query);
+      let result;
+      if (nationality === 'all' && /[\u3040-\u30ff\u3400-\u9fff]/u.test(query)) {
+        const ids = [...new Set(Object.entries(window.JFWTrackedProviderIds || {})
+          .filter(([name]) => name.includes(query)).map(([, id]) => id))].slice(0, 20);
+        const [directory, ...profiles] = await Promise.allSettled([
+          apiFetch(`/api/v2/players?${params}`),
+          ...ids.map(id => apiFetch(`/api/v2/players/af%3Aplayer%3A${id}`)),
+        ]);
+        if (directory.status === 'rejected') throw directory.reason;
+        result = { ...directory.value,
+          players: [...directory.value.players, ...profiles.filter(item => item.status === 'fulfilled').map(item => item.value.player)] };
+      } else result = await apiFetch(`/api/v2/players?${params}`);
       if (state.playerDirectory !== request) return;
       for (const player of result.players || []) {
         request.players.set(player.id, player);
@@ -311,6 +325,7 @@
     const latest = profile.rosterTeams || [];
     const club = latest.map(team => team.name).join(' / ') || null;
     return { ...published, ...profile, playerId: profile.id, name: legacy?.name || profile.name,
+      providerName: profile.name,
       rosterHistory: knownPlayers.get(profile.id)?.rosterHistory || profile.rosterHistory,
       pos: legacy?.pos || null, trackingStatus: legacy?.trackingStatus || null,
       nationality: profile.nationality, club, league: profile.rosterObservedOn ? `名簿確認 ${profile.rosterObservedOn}` : '所属未取得',
@@ -326,13 +341,28 @@
     const reviewedId = window.JFWTrackedProviderIds?.[player.name];
     const published = reviewedId && state.trackedStats.allPlayers?.get(`af:player:${reviewedId}`);
     if (published) {
-      const profile = state.playerDirectory.players.get(`af:player:${reviewedId}`);
+      const profile = state.playerDirectory.players.get(`af:player:${reviewedId}`)
+        || knownPlayers.get(`af:player:${reviewedId}`);
       return { ...player, providerId: reviewedId,
         club: profile?.rosterTeams?.map(team => team.name).join(' / ') || player.club,
+        rosterHistory: profile?.rosterHistory || null,
         nationality: profile?.nationality || player.nationality || null,
         seasonStats: published.seasonStats, competitionStats: published.competitionStats,
         clubStats: published.clubStats, photo: profile?.photo || published.photo || player.photo,
         statsSource: 'published' };
+    }
+    if (player.trackingStatus === 'out_of_scope') return { ...player, providerId: reviewedId || null, statsSource: 'historical' };
+    if (reviewedId && state.trackedStats.loaded) {
+      const profile = state.playerDirectory.players.get(`af:player:${reviewedId}`)
+        || knownPlayers.get(`af:player:${reviewedId}`);
+      return { ...player, providerId: reviewedId,
+        club: profile?.rosterTeams?.map(team => team.name).join(' / ') || player.club,
+        rosterHistory: profile?.rosterHistory || null,
+        nationality: profile?.nationality || player.nationality || null,
+        photo: profile?.photo || player.photo,
+        seasonStats: null,
+        competitionStats: {}, clubStats: {}, stats: null,
+        statsSource: state.trackedStats.error ? 'not_fetched' : 'no_appearance' };
     }
     const live = state.trackedStats.players.get(id);
     if (live) return {
@@ -341,7 +371,6 @@
       photo: player.photo || live.photo,
       statsSource: live.seasonStats ? 'published' : 'no_appearance',
     };
-    if (player.trackingStatus === 'out_of_scope') return { ...player, statsSource: 'historical' };
     if (!player.trackingStatus) return player;
     const linked = window.JFWTrackedPlayerStats.identity(player, state.legacy?.playerMatchStats || []);
     return { ...player, seasonStats: null, competitionStats: {}, clubStats: {}, stats: null,
@@ -1281,7 +1310,7 @@
     main.innerHTML = `${dataIntegrityNotice()}<p class="notice">API-Footballの選手IDでプロフィールと公開済み試合を結び付けています。名簿確認日は移籍日ではありません。国籍が未取得の選手は日本人絞り込みに含まれません。</p>${directory.loading ? '<p class="notice" role="status">選手名簿を取得中です。</p>' : ''}${directory.error ? '<p class="notice" role="status">選手名簿を取得できませんでした。従来の追跡一覧を表示しています。</p>' : ''}${state.trackedStats.loading ? '<p class="notice" role="status">選手成績を取得中です。</p>' : ''}${state.trackedStats.error ? '<p class="notice" role="status">一部の大会の成績を取得できませんでした。再読込で再試行できます。</p>' : ''}<div class="control-row"><span>シーズン ${season ? esc(seasonLabel(season)) : valueCell(null)}</span><label>国籍 <select id="japaneseNationality" class="season-select"><option value="Japan" ${state.japaneseNationality === 'Japan' ? 'selected' : ''}>日本</option><option value="all" ${state.japaneseNationality === 'all' ? 'selected' : ''}>すべて</option></select></label><label>大会 <select id="japaneseCompetition" class="season-select" ${competitions.length ? '' : 'disabled'}>${options.map(c => `<option value="${esc(c.id)}" ${c.id === state.japaneseCompetition ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label></div><input id="japaneseSearch" class="search-box" placeholder="選手を検索" value="${esc(state.legacySearch)}" autocomplete="off"><div id="japaneseList"></div>${directory.nextCursor !== null ? '<button id="playerDirectoryMore" class="plain-button" type="button">さらに表示</button>' : ''}${renderAttentionRanking()}${renderTrackingInsights()}`;
     const renderList = () => {
       const q = state.legacySearch.trim().toLowerCase();
-      const rows = players.filter(p => p.rankingEligible !== false && (!q || `${p.name} ${p.club} ${p.league}`.toLowerCase().includes(q))).map(p => ({...p, displayStats: state.japaneseCompetition === 'all' ? p.seasonStats || p.stats : p.competitionStats?.[state.japaneseCompetition]})).filter(p => state.japaneseCompetition === 'all' || p.displayStats);
+      const rows = players.filter(p => p.rankingEligible !== false && (!q || `${p.name} ${p.providerName || ''} ${p.club} ${p.league}`.toLowerCase().includes(q))).map(p => ({...p, displayStats: state.japaneseCompetition === 'all' ? p.seasonStats || p.stats : p.competitionStats?.[state.japaneseCompetition]})).filter(p => state.japaneseCompetition === 'all' || p.displayStats);
       const sorted = rows.sort((a,b) => {
         const total = p => Number.isFinite(p.displayStats?.goals) && Number.isFinite(p.displayStats?.assists) ? p.displayStats.goals + p.displayStats.assists : -1;
         return total(b)-total(a) || String(a.name).localeCompare(String(b.name),'ja');
@@ -1291,7 +1320,13 @@
       $('japaneseList').innerHTML = group('追跡選手',sorted.filter(p => !out(p))) + (sorted.some(out) ? group('無所属・追跡対象外',sorted.filter(out)) : '');
       bindFollowButtons(); bindPlayerRows(); bindImageFallbacks();
     };
-    $('japaneseSearch').addEventListener('input',event => {state.legacySearch=event.target.value;renderList();});
+    $('japaneseSearch').addEventListener('input',event => {
+      state.legacySearch=event.target.value;renderList();
+      if (state.japaneseNationality === 'all') {
+        clearTimeout(state.playerSearchTimer);
+        state.playerSearchTimer = setTimeout(() => loadPlayerDirectory('all'), 250);
+      }
+    });
     $('japaneseNationality').addEventListener('change',event => {state.japaneseNationality=event.target.value;state.legacySearch='';loadPlayerDirectory(event.target.value);renderJapanese();});
     $('japaneseCompetition').addEventListener('change',event => {state.japaneseCompetition=event.target.value;renderList();});
     $('playerDirectoryMore')?.addEventListener('click', () => loadPlayerDirectory(state.japaneseNationality, directory.nextCursor));
@@ -1539,7 +1574,9 @@
       main.innerHTML=`${entityBackButton('選手一覧','#/japanese')}<p class="notice">選手情報は未取得です。選手詳細の取得機能は準備中です。</p>`;bindEntityBack();return;
     }
     if(productSeason && currentProductSeason() && productSeason !== currentProductSeason()) return renderRouteError({status:400,code:'season_not_available'},router.entityHash('players',playerId,currentProductSeason()));
-    if (/^af:player:\d+$/.test(String(playerId)) && !player.rosterHistory) loadPlayerProfile(playerId);
+    const providerProfileId = /^af:player:\d+$/.test(String(playerId)) ? playerId
+      : player.providerId ? `af:player:${player.providerId}` : null;
+    if (providerProfileId && !knownPlayers.get(providerProfileId)?.rosterHistory) loadPlayerProfile(providerProfileId);
     const isTracked = player.trackingStatus === 'active' && (state.legacy?.players || []).some(item => item.playerId === player.playerId);
     setPageHeader('japanese');
     eyebrow.textContent = '選手詳細';

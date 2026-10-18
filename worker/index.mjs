@@ -995,7 +995,7 @@ SELECT player.canonical_id AS id, player.provider_id AS provider_id,
 FROM players player
 WHERE (?1 = 'all' OR player.nationality = ?1)
   AND player.provider_id > ?2
-  AND (?3 = '' OR player.display_name LIKE '%' || ?3 || '%')
+  AND (?3 = '' OR INSTR(LOWER(player.display_name), LOWER(?3)) > 0)
   AND (?4 = '' OR EXISTS (SELECT 1 FROM player_roster_observations membership
     JOIN teams club ON club.id=membership.team_id
     WHERE membership.player_id=player.id AND club.canonical_id=?4

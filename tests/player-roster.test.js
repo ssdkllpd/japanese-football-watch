@@ -74,6 +74,28 @@ test('roster identities use provider IDs, and fixture team aggregates survive a 
   assert.equal(result.clubStats['af:team:20'].apps, 1);
 });
 
+test('all-player directory searches beyond the first page with a stable cursor', async t => {
+  const db = new DatabaseSync(':memory:');
+  t.after(() => db.close());
+  applyMigrations(db, path.join(__dirname, '..'));
+  db.exec("INSERT INTO provider_sources(id,code,api_version) VALUES (1,'api-football','v3')");
+  const insert = db.prepare('INSERT INTO players(canonical_id,source_id,provider_id,display_name,nationality) VALUES (?,1,?,?,?)');
+  for (let id = 1; id <= 105; id++) insert.run(`af:player:${id}`, id, id === 105 ? 'Late Arrival' : `Player ${id}`, id % 2 ? 'Japan' : 'France');
+  const { default: worker } = await import('../worker/index.mjs');
+  const env = { FOOTBALL_DB: createLocalD1(db), APP_ORIGINS: 'https://example.github.io' };
+  const get = async query => (await worker.fetch(new Request(`https://worker.test/api/v2/players?${query}`, {
+    headers: { origin: 'https://example.github.io' },
+  }), env)).json();
+  const first = await get('nationality=all');
+  assert.equal(first.players.length, 100);
+  assert.equal(first.nextCursor, 100);
+  const second = await get(`nationality=all&after=${first.nextCursor}`);
+  assert.equal(second.players.length, 5);
+  assert.equal(second.nextCursor, null);
+  const searched = await get('nationality=all&q=Late%20Arrival');
+  assert.deepEqual(searched.players.map(item => item.id), ['af:player:105']);
+});
+
 test('reviewed Japanese bridge preserves explicit legacy IDs without identity collisions', async () => {
   const fs = require('node:fs');
   const legacy = await require('../v2-backfill-data').loadCurrentMergedData({
@@ -88,6 +110,5 @@ test('reviewed Japanese bridge preserves explicit legacy IDs without identity co
       .map(row => row.providerIds?.apiFootball?.player).filter(Number.isInteger));
     if (explicit.size) assert.deepEqual([...explicit], [reviewedIds[item.name]], item.name);
   }
-  assert.deepEqual(legacy.players.filter(item => !reviewedIds[item.name]).map(item => item.name).sort(),
-    ['伊藤涼太郎', '神代慶人'].sort());
+  assert.deepEqual(legacy.players.filter(item => !reviewedIds[item.name]).map(item => item.name), []);
 });

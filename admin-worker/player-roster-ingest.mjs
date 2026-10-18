@@ -65,9 +65,7 @@ export async function publishPlayerRoster(env, input) {
     VALUES (?,?)`).bind(input.runId, input.observedOn)];
   const seenTeams = new Map();
   for (const player of input.players) for (const team of player.teams) {
-    const prior = seenTeams.get(team.id);
-    if (prior && prior.name !== team.name) throw new Error('Conflicting team names in roster batch.');
-    seenTeams.set(team.id, team);
+    if (!seenTeams.has(team.id) || team.source === 'team_squad') seenTeams.set(team.id, team);
   }
   for (const team of seenTeams.values()) {
     statements.push(env.FOOTBALL_DB.prepare(`INSERT INTO teams(canonical_id,source_id,provider_id,name,logo_url)

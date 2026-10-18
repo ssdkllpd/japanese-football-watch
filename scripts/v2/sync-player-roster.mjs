@@ -25,6 +25,8 @@ export function normalizeRoster(pages, squads, profiles = []) {
       existing.nationality = profile.nationality || existing.nationality;
       existing.birthDate = profile.birth?.date || existing.birthDate;
       existing.photo = profile.photo || existing.photo;
+    } else {
+      existing.photo ||= profile.photo || null;
     }
     if (!existing.teams.some(row => row.id === team.id && row.source === source)) {
       existing.teams.push({ id: team.id, name: team.name, logo: team.logo || null, source });
