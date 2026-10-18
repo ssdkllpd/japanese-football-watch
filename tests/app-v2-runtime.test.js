@@ -77,13 +77,19 @@ test('search preserves its input node during typing and composition',async t=>{
  input.dispatchEvent(new app.w.CompositionEvent('compositionstart')); input.value='日本';input.dispatchEvent(new app.w.Event('input',{bubbles:true}));
  assert.equal(app.doc.getElementById('globalSearch'),input);
 });
-test('lineup renders both starting lists, both benches and visible coaches',async t=>{
+test('lineup switches between one team at a time with starters, bench and coach visible',async t=>{
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup'});
- assert.equal(app.doc.querySelectorAll('.lineup-card').length,2);
- for(const name of ['Starter 1','Starter 2','Bench 1','Bench 2','Coach 1','Coach 2']) assert.match(app.text(),new RegExp(name));
- assert.equal(app.doc.querySelectorAll('.coach-row img').length,2);
- for(const el of app.doc.querySelectorAll('.lineup-card,.lineup-person,.coach-row'))assert.ok(visible(el,app.w),'required lineup content must remain visible');
- for(const card of app.doc.querySelectorAll('.lineup-card'))assert.match(card.textContent,/ベンチ 1/);
+ assert.equal(app.doc.querySelectorAll('.lineup-card').length,1);
+ assert.equal(app.doc.querySelectorAll('[data-lineup-team]').length,2);
+ for(const [id,n,other] of [[home.id,1,2],[away.id,2,1],[home.id,1,2]]) {
+  await app.click(`[data-lineup-team="${id}"]`);
+  assert.equal(app.doc.querySelector('[data-lineup-team][aria-pressed=true]').dataset.lineupTeam,id);
+  const card=app.doc.querySelector('.lineup-card');
+  for(const name of [`Starter ${n}`,`Bench ${n}`,`Coach ${n}`])assert.ok(card.textContent.includes(name));
+  assert.ok(!card.textContent.includes(`Starter ${other}`));
+  assert.equal(card.querySelectorAll('.coach-row img').length,1);
+  for(const el of card.querySelectorAll('.lineup-person,.coach-row'))assert.ok(visible(el,app.w));
+ }
 });
 test('ratings are grouped under the corresponding home and away team',async t=>{
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings'});
@@ -127,7 +133,7 @@ test('acquired stat photos are shared by pitch, lineup lists, ratings and player
  assert.equal(pitch.querySelector('img').src,detail.playerStats[0].playerPhoto);
  assert.equal(pitch.querySelector('.pitch-disc').textContent,'9');
  assert.equal(pitch.querySelector('.pitch-name').textContent,'Starter 1');
- const rows=app.doc.querySelectorAll('.lineup-card:first-child .lineup-person');
+ const rows=app.doc.querySelectorAll('.lineup-card .lineup-person');
  assert.equal(rows[0].querySelector('img').src,detail.playerStats[0].playerPhoto);
  assert.equal(rows[1].querySelector('img').src,'https://photos.test/bench1.png');
  const requests=app.calls.length;
@@ -142,15 +148,17 @@ test('legacy photos match canonical IDs, while truly missing and failed photos k
  const detail=bundle();detail.lineups[1].startXI[0].name='Starter 1';
  const legacy={players:[{playerId:'af:player:1',name:'Starter 1',photo:'https://photos.test/legacy.png'}]};
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail,legacy});
- const players=app.doc.querySelectorAll('.pitch-player');
- assert.equal(players[0].querySelector('img').src,legacy.players[0].photo);
- assert.equal(players[1].querySelector('img'),null,'same name with another ID must not borrow a photo');
- assert.ok(players[1].querySelector('.person-fallback'));
- const image=players[0].querySelector('img');image.dispatchEvent(new app.w.Event('error'));
+ const player=app.doc.querySelector('.pitch-player');
+ assert.equal(player.querySelector('img').src,legacy.players[0].photo);
+ const image=player.querySelector('img');image.dispatchEvent(new app.w.Event('error'));
  assert.equal(image.hidden,true);assert.ok(image.closest('.person-avatar').classList.contains('is-fallback'));
- assert.equal(players[0].querySelector('.pitch-disc').textContent,'9');
- assert.ok(visible(players[0].querySelector('.person-initials'),app.w));
- assert.ok(visible(players[0].querySelector('.pitch-name'),app.w));
+ assert.equal(player.querySelector('.pitch-disc').textContent,'9');
+ assert.ok(visible(player.querySelector('.person-initials'),app.w));
+ assert.ok(visible(player.querySelector('.pitch-name'),app.w));
+ await app.click('[data-lineup-team="af:team:2"]');
+ const other=app.doc.querySelector('.pitch-player');
+ assert.equal(other.querySelector('img'),null,'same name with another ID must not borrow a photo');
+ assert.ok(other.querySelector('.person-fallback'));
  assert.ok(app.calls.every(url=>new URL(url).hostname==='api.test'));
 });
 test('missing photos in later fixture data cannot erase an acquired lineup photo in any view',async t=>{
@@ -224,8 +232,11 @@ test('J1 never shows a supplied JFW score and unknown tracking stays unfetched',
 test('missing formation draws no overlapping players but keeps textual players and coach',async t=>{
  const detail=bundle();detail.lineups.forEach(l=>l.layoutConfidence='none');
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
- assert.equal(app.doc.querySelectorAll('.pitch-player').length,0);assert.equal(app.doc.querySelectorAll('.pitch-unavailable').length,2);
- assert.equal(app.doc.querySelectorAll('.lineup-person').length,4);assert.equal(app.doc.querySelectorAll('.coach-row').length,2);
+ for(const id of [home.id,away.id]){
+  await app.click(`[data-lineup-team="${id}"]`);
+  assert.equal(app.doc.querySelectorAll('.pitch-player').length,0);assert.equal(app.doc.querySelectorAll('.pitch-unavailable').length,1);
+  assert.equal(app.doc.querySelectorAll('.lineup-person').length,2);assert.equal(app.doc.querySelectorAll('.coach-row').length,1);
+ }
 });
 test('public HTML consumes compiled config and ignores URL and saved overrides on production',async t=>{
  const {buildConfig}=require('../scripts/v2/build-ui-config.js');
@@ -710,4 +721,105 @@ test('an empty nationality result does not reinsert the old fixed tracking list'
   request:async url=>new URL(url).pathname==='/api/v2/players'?{ok:true,status:200,json:async()=>({players:[],nextCursor:null})}:null});
  await until(()=>app.doc.getElementById('japaneseList')&&!app.doc.querySelector('[data-player-id="jp-old"]'),'empty completed nationality directory');
  assert.doesNotMatch(app.doc.getElementById('japaneseList').textContent,/Former Player/);
+});
+
+test('event icons distinguish cards, goals, substitutions and VAR with readable labels and added time',async t=>{
+ const detail=bundle();
+ const definitions=[
+  ['goal','Normal Goal','goal','ゴール'],['goal','Own Goal','own-goal','オウンゴール'],
+  ['goal','Penalty','goal','PKゴール'],['goal','Missed Penalty','missed','PK失敗'],
+  ['goal','Goal cancelled','cancelled','ゴール取り消し'],
+  ['card','Yellow Card','yellow','イエローカード'],['card','Red Card','red','レッドカード'],
+  ['card','Second Yellow card','second-yellow','2枚目の警告・退場'],
+  ['substitution','Substitution 1','substitution','選手交代'],
+  ['var','Goal cancelled','var','VAR・判定取り消し'],
+  ['other','<img src=x onerror=alert(1)>','other','other'],
+ ];
+ detail.events=definitions.map(([type,description],i)=>({type,detail:description,elapsed:90,extra:4,teamId:home.id,playerId:'af:player:1',relatedPlayerId:i===8?'af:player:3':null}));
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=events',detail});
+ const rows=[...app.doc.querySelectorAll('.event-list .event-row')];
+ assert.equal(rows.length,definitions.length);
+ for(const [i,row] of rows.entries()){
+  assert.equal(row.dataset.eventKind,definitions[i][2]);
+  assert.equal(row.querySelector('.event-copy strong').textContent,definitions[i][3]);
+  assert.equal(row.querySelector('svg').getAttribute('aria-hidden'),'true');
+  assert.equal(row.querySelector('.event-minute').textContent,'90+4′');
+  assert.match(row.textContent,/Home Club/);
+ }
+ assert.match(rows[8].textContent,/OUT Starter 1/);assert.match(rows[8].textContent,/IN Bench 1/);
+ assert.equal(rows[10].querySelector('img'),null,'provider text is escaped');
+});
+
+test('a single acquired lineup remains selectable without inventing the missing team lineup',async t=>{
+ const detail=bundle();detail.lineups=[detail.lineups[1]];
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.equal(app.doc.querySelectorAll('[data-lineup-team]').length,1);
+ assert.equal(app.doc.querySelector('[data-lineup-team]').dataset.lineupTeam,away.id);
+ assert.match(app.doc.querySelector('.lineup-card').textContent,/Starter 2/);
+ assert.doesNotMatch(app.doc.querySelector('.lineup-card').textContent,/Starter 1/);
+});
+
+test('individual match stats preserve zero, missing and nonapplicable values in provider and JFW modes',async t=>{
+ const detail=bundle();Object.assign(detail.playerStats[0],{
+  values:{rating:7,minutes:90,goals:0,passes:31,passesAccurate:25,keyPasses:2,duels:8,duelsWon:5},
+  fieldStates:{assists:{presence:'not_fetched'},penaltiesWon:{presence:'not_applicable'}}
+ });
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',detail});
+ const select='[data-player-stats="af:player:1"]';
+ const requests=app.calls.length;
+ await app.click(select);
+ let panel=app.doc.getElementById(app.doc.querySelector(select).getAttribute('aria-controls'));
+ assert.ok(visible(panel,app.w));
+ assert.equal(panel.querySelector('[data-player-stat=goals] dd').textContent,'0');
+ assert.equal(panel.querySelector('[data-player-stat=minutes] dd').textContent,'90分');
+ assert.equal(panel.querySelector('[data-player-stat=assists] [data-presence]').dataset.presence,'not_fetched');
+ assert.equal(panel.querySelector('[data-player-stat=penaltiesWon] [data-presence]').textContent,'非該当');
+ assert.equal(panel.querySelector('[data-player-stat=passes] dd').textContent,'31');
+ assert.equal(panel.querySelector('[data-player-stat=passesAccurate] dd').textContent,'25');
+ assert.equal(app.calls.length,requests,'stat panels reuse the acquired fixture');
+ await app.click('[data-rating-mode=jfw]');
+ assert.equal(app.doc.querySelector(select).getAttribute('aria-expanded'),'true');
+ assert.match(app.doc.querySelector('.player-match-stats:not([hidden])').textContent,/パス/);
+ await app.click(select);assert.equal(app.doc.querySelector(select).getAttribute('aria-expanded'),'false');
+});
+
+test('goalkeeper stats show acquired saves and penalty saves',async t=>{
+ const detail=bundle();detail.fixture.ingestionState='finalized';
+ Object.assign(detail.playerStats[0],{position:'G',values:{minutes:90,saves:4,goalsConceded:1,penaltiesSaved:0}});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',detail});
+ await app.click('[data-player-stats="af:player:1"]');
+ const panel=app.doc.querySelector('.player-match-stats:not([hidden])');
+ assert.equal(panel.querySelector('[data-player-stat=saves] dd').textContent,'4');
+ assert.equal(panel.querySelector('[data-player-stat=penaltiesSaved] dd').textContent,'0');
+ assert.match(panel.textContent,/試合後の確定データ/);
+});
+
+test('live team selection and expanded player stats survive refresh and adopt final stats',async t=>{
+ const intervals=[];let phase=0;
+ const current=()=>{
+  const result=bundle();
+  result.fixture={...fixture(),dateJst:new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date()),
+   kickoffUtc:new Date().toISOString(),status:{short:phase===2?'FT':'2H'},ingestionState:phase===2?'finalized':'live'};
+  result.playerStats[1].values={minutes:phase===2?90:60+phase,goals:phase,passes:20+phase};
+  return result;
+ };
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',intervals,
+  feed:async()=>({fixtures:[current().fixture]}),
+  request:async url=>new URL(url).pathname.includes('/fixtures/')?{ok:true,status:200,json:async()=>current()}:null});
+ await app.click('[data-lineup-team="af:team:2"]');
+ phase=1;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.lineup-person')?.textContent.includes('61'),'lineup refresh');
+ assert.equal(app.doc.querySelector('[data-lineup-team][aria-pressed=true]').dataset.lineupTeam,away.id);
+ await app.click('[data-detail-tab=ratings]');
+ await app.click('[data-player-stats="af:player:2"]');
+ assert.match(app.doc.querySelector('.player-match-stats:not([hidden])').textContent,/速報・自動更新/);
+ await tick();phase=2;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.player-match-stats:not([hidden])')?.textContent.includes('試合後の確定データ'),'final individual stats');
+ const panel=app.doc.querySelector('.player-match-stats:not([hidden])');
+ assert.equal(panel.querySelector('[data-player-stat=goals] dd').textContent,'2');
+ assert.equal(panel.querySelector('[data-player-stat=minutes] dd').textContent,'90分');
+ assert.equal(app.doc.querySelector('[data-player-stats="af:player:2"]').getAttribute('aria-expanded'),'true');
+ await tick();const calls=app.calls.filter(url=>url.includes('/fixtures/')).length;
+ intervals.find(row=>row.ms===60000).callback();await tick();
+ assert.equal(app.calls.filter(url=>url.includes('/fixtures/')).length,calls);
 });
