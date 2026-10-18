@@ -133,6 +133,31 @@ test('roster publication cannot activate a partially acknowledged upload',async(
   assert.deepEqual(calls.map(c=>c.operation),['player_roster_upsert']);
 });
 
+test('roster publication posts batches and completion to the admin ingest route from an origin or full URL', async () => {
+  const { publishRoster } = await import('../scripts/v2/sync-player-roster.mjs');
+  for (const configured of ['https://admin.test', 'https://admin.test/admin/v1/ingest?old=1#fragment']) {
+    const calls = [];
+    const published = await publishRoster([player()], '2026-10-18', async (url, options) => {
+      assert.equal(url, 'https://admin.test/admin/v1/ingest');
+      assert.equal(options.method, 'POST');
+      assert.equal(options.redirect, 'error');
+      assert.equal(options.headers.authorization, 'Bearer test');
+      const input = JSON.parse(options.body);
+      calls.push(input);
+      const report = input.operation === 'player_roster_upsert'
+        ? { players: input.players.length } : { completed: true, runId: input.runId };
+      return { ok: true, json: async () => ({ ok: true, report }) };
+    }, { ADMIN_INGEST_URL: configured, ADMIN_INGEST_TOKEN: 'test' });
+    assert.equal(published, 1);
+    assert.deepEqual(calls.map(item => item.operation), ['player_roster_upsert', 'player_roster_complete']);
+  }
+  let requested = false;
+  await assert.rejects(publishRoster([player()], '2026-10-18', async () => { requested = true; }, {
+    ADMIN_INGEST_URL: 'https://user:password@admin.test', ADMIN_INGEST_TOKEN: 'test',
+  }), /must not contain credentials/);
+  assert.equal(requested, false);
+});
+
 test('complete current roster pages and literal name searches reach players after the first page',async t=>{
  const db=new DatabaseSync(':memory:');t.after(()=>db.close());applyMigrations(db,path.join(__dirname,'..'));
  db.exec("INSERT INTO provider_sources(code,api_version) VALUES('api-football','v3')");

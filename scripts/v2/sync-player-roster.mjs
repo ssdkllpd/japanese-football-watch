@@ -99,9 +99,14 @@ export async function collectRoster(client) {
 export async function publishRoster(players, observedOn, fetchImpl = fetch, env = process.env, runId = `${observedOn}T00:00:00.000Z`) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(observedOn) || !/^https:\/\//.test(env.ADMIN_INGEST_URL || '')
     || !env.ADMIN_INGEST_TOKEN) throw new Error('Roster publication configuration is missing.');
+  const endpoint = new URL(env.ADMIN_INGEST_URL);
+  if (endpoint.username || endpoint.password) throw new Error('Admin ingest URL must not contain credentials.');
+  endpoint.pathname = '/admin/v1/ingest';
+  endpoint.search = '';
+  endpoint.hash = '';
   for (let i=0;i<players.length;i+=40) assertPlayerRosterRequest({schemaVersion:'jfw-d1-admin-ingest/1',operation:'player_roster_upsert',observedOn,runId,players:players.slice(i,i+40)});
   const post = async payload => {
-    const response = await fetchImpl(env.ADMIN_INGEST_URL, { method: 'POST', redirect: 'error',
+    const response = await fetchImpl(endpoint.toString(), { method: 'POST', redirect: 'error',
       headers: { authorization: `Bearer ${env.ADMIN_INGEST_TOKEN}`, 'content-type': 'application/json' },
       body: JSON.stringify({ schemaVersion: 'jfw-d1-admin-ingest/1', observedOn, runId, ...payload }),
       signal: AbortSignal.timeout(30000) });
