@@ -761,7 +761,7 @@ test('a single acquired lineup remains selectable without inventing the missing 
 
 test('individual match stats preserve zero, missing and nonapplicable values in provider and JFW modes',async t=>{
  const detail=bundle();Object.assign(detail.playerStats[0],{
-  values:{rating:7,minutes:90,goals:0,passes:31,keyPasses:2,duels:8,duelsWon:5},
+  values:{rating:7,minutes:90,goals:0,passes:31,passesAccurate:25,keyPasses:2,duels:8,duelsWon:5},
   fieldStates:{assists:{presence:'not_fetched'},penaltiesWon:{presence:'not_applicable'}}
  });
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',detail});
@@ -775,6 +775,7 @@ test('individual match stats preserve zero, missing and nonapplicable values in 
  assert.equal(panel.querySelector('[data-player-stat=assists] [data-presence]').dataset.presence,'not_fetched');
  assert.equal(panel.querySelector('[data-player-stat=penaltiesWon] [data-presence]').textContent,'非該当');
  assert.equal(panel.querySelector('[data-player-stat=passes] dd').textContent,'31');
+ assert.equal(panel.querySelector('[data-player-stat=passesAccurate] dd').textContent,'25');
  assert.equal(app.calls.length,requests,'stat panels reuse the acquired fixture');
  await app.click('[data-rating-mode=jfw]');
  assert.equal(app.doc.querySelector(select).getAttribute('aria-expanded'),'true');

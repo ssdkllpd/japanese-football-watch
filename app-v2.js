@@ -986,7 +986,7 @@
   function renderPlayerMatchStats(row, bundle) {
     const groups = [
       ['出場・得点', [['minutes','出場時間','分'],['goals','ゴール'],['assists','アシスト'],['shots','シュート'],['shotsOnTarget','枠内シュート']]],
-      ['パス・ドリブル', [['passes','パス'],['keyPasses','キーパス'],['dribbleAttempts','ドリブル試行'],['dribbles','ドリブル成功']]],
+      ['パス・ドリブル', [['passes','パス'],['passesAccurate','成功パス'],['keyPasses','キーパス'],['dribbleAttempts','ドリブル試行'],['dribbles','ドリブル成功']]],
       ['守備・対人', [['tackles','タックル'],['interceptions','インターセプト'],['blocks','ブロック'],['duels','デュエル'],['duelsWon','デュエル勝利'],['dribbledPast','被ドリブル突破']]],
       ['ファウル・カード', [['foulsDrawn','被ファウル'],['foulsCommitted','ファウル'],['yellowCards','イエローカード'],['redCards','レッドカード']]],
       ['PK', [['penaltiesWon','PK獲得'],['penaltiesConceded','PK献上'],['penaltiesScored','PK成功'],['penaltiesMissed','PK失敗']]],

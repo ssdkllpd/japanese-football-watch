@@ -36,7 +36,8 @@ const source=`import liveWorker,{scheduledTick} from ${JSON.stringify(path.join(
    catch(error){return Response.json({error:error.message},{status:500});}
  }};`;
 const bundle=buildSync({stdin:{contents:source,resolveDir:root,sourcefile:'live-test.mjs'},bundle:true,format:'esm',platform:'browser',write:false});
-const base=Math.floor(Date.now()/60000)*60000;
+// Keep the simulated three-hour replay within one JST day regardless of CI's wall clock.
+const base=Math.floor(Date.now()/86400000)*86400000+8*3600000;
 const fixtures=new Map();
 function raw(id,kickoff,status='NS',score=null) {
   return {fixture:{id,date:new Date(kickoff).toISOString(),status:{short:status,long:status,elapsed:status==='1H'?10:null}},league:{id:39,season:2026},
