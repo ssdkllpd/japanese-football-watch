@@ -1580,12 +1580,13 @@
       return configured || (known && known !== canonical ? known : null) || alias || (legacyLabel ? id : '大会名は未取得');
     }
     const known = allKnownTeams().find(item => item.id === id);
+    const rosterTeam = [...player.rosterTeams || [], ...player.rosterHistory || []].find(item => item.id === id);
     const membership = memberships.find(item => item.teamId === id);
     const currentId = player.currentTeamId || player.currentMembership?.teamId;
     // Legacy aggregates already use display names; preserve names explicitly
     // present in this player's data without turning them into another entity ID.
     const legacyLabel = player.club === id || memberships.some(item => (item.club || item.teamName) === id);
-    return known?.name || membership?.teamName || membership?.club
+    return known?.name || player.clubNames?.[id] || rosterTeam?.name || membership?.teamName || membership?.club
       || (currentId === id ? player.club : null) || (legacyLabel ? id : 'クラブ名は未取得');
   }
   function aggregateRows(stats, type, player) {

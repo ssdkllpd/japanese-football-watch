@@ -339,24 +339,23 @@ test('Japanese list and tracked profile refresh from published stats while an un
 test('nationality directory links a Japanese profile and keeps transfer clubs separate',async t=>{
  const metric=value=>({presence:'present',value,observed:1,total:1});
  const row=(teamId,goals)=>({player:{id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan'},
-  team:{id:teamId,name:teamId==='af:team:1'?'Old Club':'New Club'},appearances:1,
+  team:{id:teamId,name:teamId==='af:team:71'?'Old Club':'New Club'},appearances:1,
   goals:metric(goals),assists:metric(0),minutes:metric(90),redCards:metric(0)});
  const profile={id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan',
-  birthDate:'1997-05-20',rosterObservedOn:'2026-10-17',rosterTeams:[{id:'af:team:2',name:'New Club'}]};
+  birthDate:'1997-05-20',rosterObservedOn:'2026-10-17',rosterTeams:[{id:'af:team:72',name:'New Club'}]};
  const app=await boot(t,{hash:'#/japanese?productSeason=jfw%3Aseason%3A2026-27',
   legacy:{_dataIntegrity:{season:'2026-27'},players:[{playerId:'jp-1koq39p',name:'三笘薫',club:'Old Club',trackingStatus:'active'}]},
   request:async url=>{
    const pathname=new URL(url).pathname;
    if(pathname==='/api/v2/players')return {ok:true,status:200,json:async()=>({players:[profile],nextCursor:null})};
-   if(pathname.includes('/seasons/'))return {ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[],teamRows:pathname.includes('competition%3A39')?[row('af:team:1',1),row('af:team:2',0)]:[]}})};
+   if(pathname.includes('/seasons/'))return {ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[],teamRows:pathname.includes('competition%3A39')?[row('af:team:71',1),row('af:team:72',0)]:[]}})};
    return null;
   }});
  await until(()=>app.doc.querySelector('[data-player-id="af:player:106835"]')?.textContent.includes('出場 2'),'Japanese directory stats');
  assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/三笘薫/);
  assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/New Club/);
  await app.click('[data-player-id="af:player:106835"]');
- assert.match(section(app,'クラブ別成績').textContent,/Home Club/);
- assert.match(section(app,'クラブ別成績').textContent,/Away Club/);
+ assert.deepEqual([...section(app,'クラブ別成績').querySelectorAll('.history-row strong')].map(el=>el.textContent),['Old Club','New Club']);
 });
 test('a cold API-Football player link resolves to the tracked Japanese profile by explicit provider ID',async t=>{
  const app=await boot(t,{hash:'#/players/af%3Aplayer%3A42?productSeason=jfw%3Aseason%3A2026-27',
