@@ -35,7 +35,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
@@ -335,6 +335,28 @@ test('Japanese list and tracked profile refresh from published stats while an un
  assert.match(section(app,'今季スタッツ').textContent,/出場/);
  assert.match(app.text(),/海外日本人追跡/);
  assert.doesNotMatch(section(app,'直近試合').textContent,/以前の試合/);
+});
+test('nationality directory links a Japanese profile and keeps transfer clubs separate',async t=>{
+ const metric=value=>({presence:'present',value,observed:1,total:1});
+ const row=(teamId,goals)=>({player:{id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan'},
+  team:{id:teamId,name:teamId==='af:team:1'?'Old Club':'New Club'},appearances:1,
+  goals:metric(goals),assists:metric(0),minutes:metric(90),redCards:metric(0)});
+ const profile={id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan',
+  birthDate:'1997-05-20',rosterObservedOn:'2026-10-17',rosterTeams:[{id:'af:team:2',name:'New Club'}]};
+ const app=await boot(t,{hash:'#/japanese?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'},players:[{playerId:'jp-1koq39p',name:'三笘薫',club:'Old Club',trackingStatus:'active'}]},
+  request:async url=>{
+   const pathname=new URL(url).pathname;
+   if(pathname==='/api/v2/players')return {ok:true,status:200,json:async()=>({players:[profile],nextCursor:null})};
+   if(pathname.includes('/seasons/'))return {ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[],teamRows:pathname.includes('competition%3A39')?[row('af:team:1',1),row('af:team:2',0)]:[]}})};
+   return null;
+  }});
+ await until(()=>app.doc.querySelector('[data-player-id="af:player:106835"]')?.textContent.includes('出場 2'),'Japanese directory stats');
+ assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/三笘薫/);
+ assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/New Club/);
+ await app.click('[data-player-id="af:player:106835"]');
+ assert.match(section(app,'クラブ別成績').textContent,/Home Club/);
+ assert.match(section(app,'クラブ別成績').textContent,/Away Club/);
 });
 test('a cold API-Football player link resolves to the tracked Japanese profile by explicit provider ID',async t=>{
  const app=await boot(t,{hash:'#/players/af%3Aplayer%3A42?productSeason=jfw%3Aseason%3A2026-27',

@@ -350,6 +350,11 @@ ORDER BY
   appearances DESC,
   player.display_name`;
 
+// Preserve each fixture's team when a player moves during the season.
+const COMPETITION_PLAYER_TEAM_STATS_SQL = COMPETITION_PLAYER_STATS_SQL.replace(
+  'GROUP BY player.id\n', 'GROUP BY player.id, record.team_id\n',
+);
+
 function afId(kind, providerId) {
   if (providerId === null || providerId === undefined || providerId === '') return null;
   return `af:${kind}:${String(providerId)}`;
@@ -975,6 +980,73 @@ function playerAggregate(row) {
   };
 }
 
+const PLAYER_DIRECTORY_SQL = `
+SELECT player.canonical_id AS id, player.provider_id AS provider_id,
+  player.display_name AS name, player.nationality, player.birth_date AS birth_date,
+  player.photo_url AS photo,
+  (SELECT observed_on FROM player_roster_observations WHERE player_id = player.id
+   AND run_id=(SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)
+   LIMIT 1) AS roster_observed_on,
+  (SELECT json_group_array(json_object('id', team.canonical_id, 'name', team.name, 'logo', team.logo_url))
+   FROM player_roster_observations observation JOIN teams team ON team.id = observation.team_id
+   WHERE observation.player_id = player.id AND observation.run_id =
+     (SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)
+  ) AS roster_teams
+FROM players player
+WHERE (?1 = 'all' OR player.nationality = ?1)
+  AND player.provider_id > ?2
+  AND (?3 = '' OR player.display_name LIKE '%' || ?3 || '%')
+  AND (?4 = '' OR EXISTS (SELECT 1 FROM player_roster_observations membership
+    JOIN teams club ON club.id=membership.team_id
+    WHERE membership.player_id=player.id AND club.canonical_id=?4
+      AND membership.run_id=(SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)))
+ORDER BY player.provider_id LIMIT 101`;
+
+const PLAYER_PROFILE_SQL = PLAYER_DIRECTORY_SQL.replace(
+  /WHERE \(\?1 = 'all'[\s\S]*ORDER BY player\.provider_id LIMIT 101$/,
+  'WHERE player.canonical_id = ?1 LIMIT 1',
+);
+
+function playerProfile(row) {
+  return { id: row.id, providerId: row.provider_id, name: row.name,
+    nationality: row.nationality, birthDate: row.birth_date, photo: row.photo,
+    rosterObservedOn: row.roster_observed_on,
+    rosterTeams: JSON.parse(row.roster_teams || '[]'),
+  };
+}
+
+async function playerDirectoryResponse(env, url) {
+  const nationality = url.searchParams.get('nationality') || 'Japan';
+  const cursor = Number(url.searchParams.get('after') || 0);
+  const query = (url.searchParams.get('q') || '').trim();
+  const teamId = url.searchParams.get('team') || '';
+  if ((nationality !== 'all' && !/^[A-Za-z][A-Za-z .'-]{0,49}$/.test(nationality))
+    || !Number.isSafeInteger(cursor) || cursor < 0 || query.length > 80
+    || (teamId && !/^af:team:\d+$/.test(teamId))) {
+    return json({ error: 'Invalid player directory filter' }, 400);
+  }
+  const rows = await d1Rows(env, PLAYER_DIRECTORY_SQL, nationality, cursor, query, teamId);
+  const page = rows.slice(0, 100).map(playerProfile);
+  return withHeader(json({ contractVersion: '2.0.0', nationality, players: page,
+    nextCursor: rows.length > 100 ? page.at(-1).providerId : null,
+  }, 200, { 'cache-control': 'public, max-age=120' }), 'x-jfw-data-source', 'd1');
+}
+
+async function singlePlayerResponse(env, playerId) {
+  if (!/^af:player:\d+$/.test(playerId)) return json({ error: 'Invalid player ID' }, 400);
+  const rows = await d1Rows(env, PLAYER_PROFILE_SQL, playerId);
+  if (!rows.length) return json({ error: 'Player not found' }, 404);
+  const history = await d1Rows(env, `SELECT team.canonical_id AS id, team.name,
+    MIN(observation.observed_on) AS first_seen, MAX(observation.observed_on) AS last_seen
+    FROM player_roster_observations observation JOIN teams team ON team.id=observation.team_id
+    JOIN player_roster_sync_runs run ON run.run_id=observation.run_id AND run.completed_at IS NOT NULL
+    JOIN players player ON player.id=observation.player_id
+    WHERE player.canonical_id=?1 GROUP BY team.id ORDER BY last_seen DESC`, playerId);
+  return withHeader(json({ contractVersion: '2.0.0', player: playerProfile(rows[0]),
+    rosterHistory: history.map(row => ({ id: row.id, name: row.name, firstSeen: row.first_seen, lastSeen: row.last_seen })),
+  }, 200, { 'cache-control': 'public, max-age=120' }), 'x-jfw-data-source', 'd1');
+}
+
 export async function buildD1CompetitionSeason(env, competitionId, requestedSeasonId) {
   const summaryRows = await d1Rows(
     env,
@@ -990,9 +1062,10 @@ export async function buildD1CompetitionSeason(env, competitionId, requestedSeas
   if (summaryRows.length !== 1) throw new Error('D1 competition-season identity is not unique.');
   const identity = summaryRows[0];
   const summary = seasonSummary(identity);
-  const [coverageRows, playerRows] = await Promise.all([
+  const [coverageRows, playerRows, teamRows] = await Promise.all([
     d1Rows(env, COMPETITION_SECTION_COVERAGE_SQL, requestedSeasonId),
     d1Rows(env, COMPETITION_PLAYER_STATS_SQL, requestedSeasonId),
+    d1Rows(env, COMPETITION_PLAYER_TEAM_STATS_SQL, requestedSeasonId),
   ]);
   const players = playerRows.map(playerAggregate);
   const detailSections = sectionCoverage(coverageRows, summary.publishedDetailCount);
@@ -1017,6 +1090,7 @@ export async function buildD1CompetitionSeason(env, competitionId, requestedSeas
             && detailSections.playerStats.total > 0 ? 'not_applicable'
             : 'not_fetched',
       rows: players,
+      teamRows: teamRows.map(playerAggregate),
       fieldCoverage,
       limited: false,
     },
@@ -1550,6 +1624,9 @@ async function handle(request, env, context) {
   if (url.pathname === '/health') return json({ ok: true, service: 'football-data-v2' });
   if (url.pathname === '/api/v2/live') return storedLiveResponse(env);
   if (url.pathname === '/api/v2/competitions') return competitionDirectoryResponse(env, context);
+  if (url.pathname === '/api/v2/players') return playerDirectoryResponse(env, url);
+  const playerMatch = url.pathname.match(/^\/api\/v2\/players\/(.+)$/);
+  if (playerMatch) return singlePlayerResponse(env, decodeURIComponent(playerMatch[1]));
 
   const fixtureMatch = url.pathname.match(/^\/api\/v2\/fixtures\/(.+)$/);
   if (fixtureMatch) return fixtureDetailResponse(env, decodeURIComponent(fixtureMatch[1]), context);
