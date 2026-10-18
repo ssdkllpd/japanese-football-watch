@@ -151,3 +151,21 @@ test('complete current roster pages and literal name searches reach players afte
  assert.deepEqual((await get('nationality=all&q=late%20arrival')).players.map(p=>p.providerId),[105]);
  assert.equal((await get('nationality=all&q=%25')).players.length,0);
 });
+
+test('complete roster collection permits more than 1500 nationality lookups within the guarded request budget',async()=>{
+ const {collectRoster}=await import('../scripts/v2/sync-player-roster.mjs');
+ const leagues=[39,40,61,78,88,94,135,140,144,179];
+ const teamIds=leagues.flatMap((_,index)=>Array.from({length:10},(_,i)=>index*10+i+1));
+ let profileCalls=0;
+ const client={get:async(endpoint,params)=>{
+  if(endpoint==='teams')return {data:{response:teamIds.slice(leagues.indexOf(params.league)*10,leagues.indexOf(params.league)*10+10).map(id=>({team:{id,name:`Club ${id}`}}))}};
+  if(endpoint==='players')return {data:{paging:{current:1,total:1},response:[{player:{id:100000+params.league,name:'Existing Player',nationality:'Japan'},statistics:[]}]}};
+  if(endpoint==='players/squads')return {data:{response:[{team:{id:params.team,name:`Club ${params.team}`},players:Array.from({length:16},(_,i)=>({id:params.team*100+i+1,name:'New Player'}))}]}};
+  if(endpoint==='players/profiles'){profileCalls++;return {data:{response:[{player:{id:params.player,name:'New Player',nationality:'Japan'}}]}};}
+  throw new Error('Unexpected endpoint');
+ }};
+ const collected=await collectRoster(client);
+ assert.equal(collected.teamCount,100);
+ assert.equal(profileCalls,1600);
+ assert.equal(collected.profiles.length,1600);
+});
