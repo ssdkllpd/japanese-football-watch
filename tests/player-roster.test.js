@@ -64,6 +64,7 @@ test('roster identities use provider IDs, and fixture team aggregates survive a 
   assert.equal(result.seasonStats.assists, null);
   assert.equal(result.clubStats['af:team:10'].apps, 2);
   assert.equal(result.clubStats['af:team:20'].apps, 1);
+  assert.deepEqual(result.clubNames, { 'af:team:10': 'af:team:10', 'af:team:20': 'af:team:20' });
 });
 
 test('reviewed Japanese bridge preserves explicit legacy IDs without identity collisions', async () => {

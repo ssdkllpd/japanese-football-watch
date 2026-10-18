@@ -41,6 +41,7 @@
         seasonStats: summarize(matches.map(item => item.row)),
         competitionStats: Object.fromEntries([...byCompetition].map(([key, rows]) => [key, summarize(rows)])),
         clubStats: Object.fromEntries([...byClub].map(([key, rows]) => [key, summarize(rows)])),
+        clubNames: Object.fromEntries(matches.filter(item => item.row.team.name).map(item => [item.row.team.id, item.row.team.name])),
         statsSource: 'published',
       }];
     }));
