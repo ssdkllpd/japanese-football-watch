@@ -632,6 +632,8 @@ test('a cold provider profile loads directory facts and published recent matches
  assert.match(app.text(),/Midfielder/);
  assert.match(section(app,'直近試合').textContent,/出場 30分 · 得点 0/);
  assert.ok(section(app,'直近試合').querySelector('[data-fixture="af:fixture:10"]'));
+ const matchRow=section(app,'直近試合').querySelector('[data-fixture="af:fixture:10"]');
+ assert.equal(app.w.getComputedStyle(matchRow).gridTemplateColumns,'minmax(0,1fr) auto');
  assert.equal(app.calls.filter(url=>url.includes('/api/v2/players/af%3Aplayer%3A777')).length,1);
  await app.click('[data-fixture="af:fixture:10"]');
  assert.match(app.w.location.hash,/fixtures\/af%3Afixture%3A10/);
