@@ -34,7 +34,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  if(apiBase) w.FOOTBALL_V2_API_BASE=apiBase;
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
- w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
+ w.fetch=async (url,options)=>{calls.push(String(url));if(request){const response=await request(url,options);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
  for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
@@ -620,7 +620,7 @@ test('today fixture detail refreshes stored live scores and explains stale data'
 
 test('pre-match detail refreshes announced lineups, preserves the active tab on failure, and stops after final publication',async t=>{
  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
- const intervals=[];let phase=0;
+ const intervals=[],cacheModes=[];let phase=0;
  const current=()=>{const value=bundle();value.fixture={...value.fixture,dateJst:today,kickoffUtc:new Date(Date.now()+30*60000).toISOString(),
   status:{short:phase===3?'FT':'NS'},ingestionState:phase===3?'finalized':'scheduled'};
   if(phase===0)value.lineups=[];
@@ -628,8 +628,11 @@ test('pre-match detail refreshes announced lineups, preserves the active tab on 
   return value;
  };
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',intervals,feed:async()=>({fixtures:[current().fixture]}),
-  request:async url=>{
-   if(new URL(url).pathname==='/api/v2/fixtures/af%3Afixture%3A10')return phase===2?{ok:false,status:503,json:async()=>({error:'temporary'})}:{ok:true,status:200,json:async()=>current()};
+  request:async (url,options)=>{
+   if(new URL(url).pathname==='/api/v2/fixtures/af%3Afixture%3A10'){
+    cacheModes.push(options.cache);
+    return phase===2?{ok:false,status:503,json:async()=>({error:'temporary'})}:{ok:true,status:200,json:async()=>current()};
+   }
    return null;
   }});
  await until(()=>app.text().includes('スタメンはまだ発表されていません'),'unannounced lineup');
@@ -646,6 +649,7 @@ test('pre-match detail refreshes announced lineups, preserves the active tab on 
  await tick();const calls=app.calls.filter(url=>url.includes('/api/v2/fixtures/')).length;
  intervals.find(row=>row.ms===60000).callback();await tick();
  assert.equal(app.calls.filter(url=>url.includes('/api/v2/fixtures/')).length,calls);
+ assert.deepEqual(cacheModes,['no-store','no-store','no-store','no-store']);
 });
 
 test('late background fixture details cannot repaint a page that was left',async t=>{
