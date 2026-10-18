@@ -219,9 +219,9 @@
     return ['CANC', 'ABD', 'AWD', 'WO'].includes(statusShort(row));
   }
 
-  async function apiFetch(path) {
+  async function apiFetch(path, { fresh = false } = {}) {
     if (!state.workerBase) throw Object.assign(new Error('not_fetched'), { code: 'not_fetched' });
-    const response = await fetch(`${state.workerBase}${path}`, { headers: { accept: 'application/json' } });
+    const response = await fetch(`${state.workerBase}${path}`, { headers: { accept: 'application/json' }, ...(fresh ? { cache: 'no-store' } : {}) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw Object.assign(new Error(body?.error?.message || body?.error || `HTTP ${response.status}`), { status: response.status, code: body?.code || body?.error?.code || body?.error, availableSeasons: body?.availableSeasons, retryAfter: response.headers?.get('retry-after') });
     return body;
@@ -645,7 +645,7 @@
       return;
     }
     try {
-      const bundle = await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`);
+      const bundle = await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`, { fresh: true });
       if (state.detail !== detailRequest) return;
       detailRequest.bundle = bundle;
       rememberFixtures(bundle.fixture ? [bundle.fixture] : []);
@@ -677,7 +677,7 @@
     if (!fixtureId || !String(fixtureId).startsWith('af:fixture:')) return;
     detail.refreshing=true;
     try {
-      const bundle=await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`);
+      const bundle=await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`, { fresh: true });
       if (bundle.fixture?.id!==fixtureId) throw new Error('Invalid refreshed fixture identity.');
       if (state.detail!==detail) return;
       detail.bundle=bundle;detail.error=null;detail.refreshError=false;
