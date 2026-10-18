@@ -1,0 +1,59 @@
+name: Restore saved player roster once
+
+on:
+  push:
+    branches: [ops/restore-player-roster-20261018]
+    paths: [.github/workflows/player-roster-recover-once.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    concurrency:
+      group: d1-staging-write
+      queue: max
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 15
+    env:
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify existing target and monthly write budget
+        run: |
+          set -euo pipefail
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/roster-recovery/usage-before.json
+      - name: Restore exact saved snapshot without provider calls
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/roster-recovery
+          npx --yes wrangler@4 r2 object get "$R2_BUCKET/audit/player-rosters/2026-10-18T04:05:42.842Z.json" --file .tmp/roster-recovery/snapshot.json --remote
+          jq -e '.schemaVersion == "jfw-player-roster-snapshot/1" and .runId == "2026-10-18T04:05:42.842Z" and .records.teamCount == 186' .tmp/roster-recovery/snapshot.json > /dev/null
+          node scripts/v2/sync-player-roster.mjs --snapshot .tmp/roster-recovery/snapshot.json --execute
+      - name: Independently read completed roster and monthly usage
+        run: |
+          set -euo pipefail
+          node scripts/d1/render-admin-wrangler.mjs --output .tmp/roster-recovery/wrangler.toml
+          npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json --config .tmp/roster-recovery/wrangler.toml --command "SELECT run_id, completed_at, player_count, (SELECT COUNT(DISTINCT player_id) FROM player_roster_observations WHERE run_id=run.run_id) AS players, (SELECT COUNT(DISTINCT team_id) FROM player_roster_observations WHERE run_id=run.run_id AND source='team_squad') AS squad_teams, (SELECT COUNT(DISTINCT player_id) FROM player_roster_observations WHERE run_id=run.run_id AND source='team_squad') AS current_players FROM player_roster_sync_runs run WHERE run_id='2026-10-18T04:05:42.842Z'" > .tmp/roster-recovery/d1-audit.json
+          jq -e '.[0].success == true and .[0].results[0].completed_at != null and .[0].results[0].players == 5982 and .[0].results[0].squad_teams == 186' .tmp/roster-recovery/d1-audit.json > /dev/null
+          jq '.[0].results' .tmp/roster-recovery/d1-audit.json
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/roster-recovery/usage-after.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restored-player-roster-evidence
+          path: .tmp/roster-recovery/*.json
+          retention-days: 14
