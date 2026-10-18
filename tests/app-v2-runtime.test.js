@@ -35,7 +35,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async url=>{calls.push(String(url));if(request){const response=await request(url);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
@@ -314,6 +314,58 @@ test('scope switching uses stored competition aggregates and keeps past tracked 
  const select=app.doc.getElementById('japaneseCompetition');assert.equal(select.disabled,false);assert.ok(![...select.options].some(o=>o.value==='J1'));
  select.value='Premier League';select.dispatchEvent(new app.w.Event('change'));assert.match(app.doc.getElementById('japaneseList').textContent,/G 2/);assert.doesNotMatch(app.doc.getElementById('japaneseList').textContent,/G 99/);
 });
+test('Japanese list and tracked profile refresh from published stats while an unlinked player stays unknown',async t=>{
+ const players=[
+  {playerId:'jp-1',name:'Tracked Player',club:'Club A',league:'Premier League',trackingStatus:'active',rankingEligible:true,providerIds:{apiFootball:{player:42}},seasonStats:{apps:1,goals:9,assists:9}},
+  {playerId:'jp-2',name:'Unlinked Player',club:'Club A',league:'Premier League',trackingStatus:'active',rankingEligible:true,seasonStats:{apps:1,goals:8,assists:8}},
+ ];
+ const app=await boot(t,{hash:'#/japanese?productSeason=jfw%3Aseason%3A2026-27',legacy:{_dataIntegrity:{season:'2026-27'},players,playerMatchStats:[{playerId:'jp-1',providerIds:{apiFootball:{player:42,team:50,league:39}}}]},
+  request:async url=>{
+   if(!String(url).includes('/seasons/')) return null;
+   const id=Number(new URL(url).pathname.match(/competitions\/af%3Acompetition%3A(\d+)/)?.[1]);
+   return {ok:true,status:200,json:async()=>({competition:{id:`af:competition:${id}`,providerId:id},playerStats:{presence:'present',rows:id===39?[{player:{providerId:42,name:'Tracked Player'},team:{id:'af:team:50'},appearances:4,goals:{value:2,presence:'present'},assists:{value:1,presence:'present'},minutes:{value:300,presence:'present'},redCards:{value:0,presence:'present'}}]:[]}})};
+  }});
+ await until(()=>app.doc.getElementById('japaneseList')?.textContent.includes('公開済み試合'),'published stats in list');
+ const linked=app.doc.querySelector('[data-player-id="jp-1"]');
+ assert.match(linked.textContent,/出場 4/);assert.match(linked.textContent,/G 2/);
+ const unlinked=app.doc.querySelector('[data-player-id="jp-2"]');
+ assert.match(unlinked.textContent,/選手ID未連携/);assert.doesNotMatch(unlinked.textContent,/G 8/);
+ await app.click('[data-player-id="jp-1"]');
+ assert.match(section(app,'今季スタッツ').textContent,/公開済み試合から更新/);
+ assert.match(section(app,'今季スタッツ').textContent,/出場/);
+ assert.match(app.text(),/海外日本人追跡/);
+ assert.doesNotMatch(section(app,'直近試合').textContent,/以前の試合/);
+});
+test('nationality directory links a Japanese profile and keeps transfer clubs separate',async t=>{
+ const metric=value=>({presence:'present',value,observed:1,total:1});
+ const row=(teamId,goals)=>({player:{id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan'},
+  team:{id:teamId,name:teamId==='af:team:1'?'Old Club':'New Club'},appearances:1,
+  goals:metric(goals),assists:metric(0),minutes:metric(90),redCards:metric(0)});
+ const profile={id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan',
+  birthDate:'1997-05-20',rosterObservedOn:'2026-10-17',rosterTeams:[{id:'af:team:2',name:'New Club'}]};
+ const app=await boot(t,{hash:'#/japanese?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'},players:[{playerId:'jp-1koq39p',name:'三笘薫',club:'Old Club',trackingStatus:'active'}]},
+  request:async url=>{
+   const pathname=new URL(url).pathname;
+   if(pathname==='/api/v2/players')return {ok:true,status:200,json:async()=>({players:[profile],nextCursor:null})};
+   if(pathname.includes('/seasons/'))return {ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[],teamRows:pathname.includes('competition%3A39')?[row('af:team:1',1),row('af:team:2',0)]:[]}})};
+   return null;
+  }});
+ await until(()=>app.doc.querySelector('[data-player-id="af:player:106835"]')?.textContent.includes('出場 2'),'Japanese directory stats');
+ assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/三笘薫/);
+ assert.match(app.doc.querySelector('[data-player-id="af:player:106835"]').textContent,/New Club/);
+ await app.click('[data-player-id="af:player:106835"]');
+ assert.match(section(app,'クラブ別成績').textContent,/Home Club/);
+ assert.match(section(app,'クラブ別成績').textContent,/Away Club/);
+});
+test('a cold API-Football player link resolves to the tracked Japanese profile by explicit provider ID',async t=>{
+ const app=await boot(t,{hash:'#/players/af%3Aplayer%3A42?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'},players:[{playerId:'jp-1',name:'Tracked Player',league:'Premier League',trackingStatus:'active',providerIds:{apiFootball:{player:42}}}],playerMatchStats:[{playerId:'jp-1',providerIds:{apiFootball:{team:50,league:39}}}]},
+  request:async url=>String(url).includes('/seasons/')?{ok:true,status:200,json:async()=>({competition:{id:'af:competition:39',providerId:39},playerStats:{presence:'present',rows:[{player:{providerId:42},team:{id:'af:team:50'},appearances:2,goals:{value:1,presence:'present'},assists:{value:0,presence:'present'},minutes:{value:150,presence:'present'},redCards:{value:0,presence:'present'}}]}})}:null});
+ await until(()=>section(app,'今季スタッツ').textContent.includes('公開済み試合から更新'),'tracked player profile updated');
+ assert.match(app.text(),/海外日本人追跡/);
+ assert.match(section(app,'今季スタッツ').textContent,/得点/);
+});
 test('known competition seasons can change without losing the selected tab',async t=>{
  const app=await boot(t,{feed:()=>({fixtures:[{...fixture(),fixtureId:'af:fixture:11',seasonId:'af:season:39:2025'},fixture()]})});
  await app.click('[data-page="leagues"]');await app.click('[data-competition-id="af:competition:39"]');await app.click('[data-competition-tab="standings"]');
@@ -565,4 +617,31 @@ test('today fixture detail refreshes stored live scores and explains stale data'
  score=2;stale=true;intervals.find(value=>value.ms===60000).callback();
  await until(()=>app.doc.querySelector('.score-value')?.textContent.trim()==='2 - 0','refreshed live detail');
  assert.match(app.text(),/ライブ更新が遅れています/);
+});
+
+test('a cold provider profile loads directory facts and published recent matches',async t=>{
+ const profile={id:'af:player:777',providerId:777,name:'New Player',nationality:'Japan',pos:'Midfielder',
+  rosterObservedOn:'2026-10-18',rosterTeams:[{id:'af:team:2',name:'New Club'}]};
+ const app=await boot(t,{hash:'#/players/af%3Aplayer%3A777?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'}},request:async url=>{
+   if(new URL(url).pathname==='/api/v2/players/af%3Aplayer%3A777')return {ok:true,status:200,json:async()=>({player:profile,
+    rosterHistory:[{id:'af:team:2',name:'New Club',firstSeen:'2026-10-18',lastSeen:'2026-10-18',current:true}],
+    recentMatches:[{fixtureId:'af:fixture:10',dateJst:'2026-10-17',homeName:'Home Club',awayName:'Away Club',teamName:'New Club',minutes:30,goals:0,assists:null}]})};
+   return null;
+  }});
+ await until(()=>app.text().includes('New Club')&&section(app,'直近試合').textContent.includes('2026-10-17'),'cold provider profile');
+ assert.match(app.text(),/Midfielder/);
+ assert.match(section(app,'直近試合').textContent,/出場 30分 · 得点 0/);
+ assert.ok(section(app,'直近試合').querySelector('[data-fixture="af:fixture:10"]'));
+ assert.equal(app.calls.filter(url=>url.includes('/api/v2/players/af%3Aplayer%3A777')).length,1);
+ await app.click('[data-fixture="af:fixture:10"]');
+ assert.match(app.w.location.hash,/fixtures\/af%3Afixture%3A10/);
+ assert.ok(app.calls.some(url=>url.includes('/api/v2/fixtures/af%3Afixture%3A10')));
+});
+
+test('an empty nationality result does not reinsert the old fixed tracking list',async t=>{
+ const app=await boot(t,{hash:'#/japanese',legacy:{players:[{playerId:'jp-old',name:'Former Player',nationality:'Japan'}]},
+  request:async url=>new URL(url).pathname==='/api/v2/players'?{ok:true,status:200,json:async()=>({players:[],nextCursor:null})}:null});
+ await until(()=>app.doc.getElementById('japaneseList')&&!app.doc.querySelector('[data-player-id="jp-old"]'),'empty completed nationality directory');
+ assert.doesNotMatch(app.doc.getElementById('japaneseList').textContent,/Former Player/);
 });

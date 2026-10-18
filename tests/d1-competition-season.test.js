@@ -163,3 +163,34 @@ test('public competition endpoints serve D1 identity and reject unknown seasons'
   ), env, {});
   assert.equal(missing.status, 404);
 });
+
+test('player profiles and team season rows retain actual fixture teams across transfers', async t => {
+  const worker = await import('../worker/index.mjs');
+  const db = database(); t.after(()=>db.close());
+  db.exec(`
+    INSERT INTO fixtures(id,canonical_id,source_id,provider_id,competition_season_id,home_team_id,away_team_id,
+      kickoff_utc,date_jst,status_short,status_long,ingestion_state)
+      VALUES(2,'af:fixture:9002',1,9002,1,1,2,'2026-09-01T12:00:00.000Z','2026-09-01','FT','Match Finished','finalized');
+    INSERT INTO fixture_revisions(id,fixture_id,revision_no,lifecycle_state,detail_location,content_sha256,created_at,published_at)
+      VALUES(2,2,1,'published','d1','bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','2026-09-01T14:00:00Z','2026-09-01T14:01:00Z');
+    UPDATE fixtures SET published_revision=2 WHERE id=2;
+    INSERT INTO fixture_player_records(id,fixture_id,team_id,player_id,kickoff_utc)
+      VALUES(2,2,2,1,'2026-09-01T12:00:00.000Z');
+    INSERT INTO fixture_player_appearances(id,fixture_revision_id,player_record_id,appearance_state,position,minutes)
+      VALUES(2,2,2,'substitute_used','F',30);
+    INSERT INTO fixture_player_stats(player_appearance_id,minutes,goals,assists) VALUES(2,30,1,0);
+  `);
+  const env={FOOTBALL_DB:createLocalD1(db),APP_ORIGINS:'https://example.github.io'};
+  const stats=await worker.buildD1CompetitionSeason(env,'af:competition:39','af:season:39:2026');
+  assert.equal(stats.playerStats.rows.length,1);
+  assert.equal(stats.playerStats.rows[0].appearances,2);
+  assert.equal(stats.playerStats.rows[0].team,null);
+  assert.deepEqual(stats.playerStats.teamRows.map(r=>[r.team.id,r.appearances,r.goals.value]).sort(),
+    [['af:team:40',1,0],['af:team:50',1,1]]);
+  const response=await worker.default.fetch(new Request('https://worker.test/api/v2/players/af%3Aplayer%3A7',
+    {headers:{origin:'https://example.github.io'}}),env);
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.deepEqual(result.recentMatches.map(r=>[r.fixtureId,r.teamName,r.minutes,r.goals,r.assists]),
+    [['af:fixture:9002','Away FC',30,1,0],['af:fixture:9001','Home FC',90,0,null]]);
+});

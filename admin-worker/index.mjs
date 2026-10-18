@@ -1,4 +1,5 @@
 import { REPAIR_STATUS_OPERATION, REPAIR_AUTHORIZE_OPERATION, REPAIR_ENQUEUE_OPERATION, assertRepairControlRequest, readRepairStatus, authorizeDateRepair, enqueueDateRepair } from './date-repair-control.mjs';
+import { PLAYER_ROSTER_OPERATION, PLAYER_ROSTER_COMPLETE_OPERATION, assertPlayerRosterRequest, publishPlayerRoster, completePlayerRoster } from './player-roster-ingest.mjs';
 import {
   assertValidStandingsPayload,
   standingsIdentityDigestInput,
@@ -102,6 +103,7 @@ function assertRequest(value) {
   }
   if ([REPAIR_STATUS_OPERATION,REPAIR_AUTHORIZE_OPERATION,REPAIR_ENQUEUE_OPERATION].includes(value.operation)) return assertRepairControlRequest(value);
   if (value.operation === FIXED_SNAPSHOT_OPERATION) return assertFixedSnapshotRequest(value);
+  if (value.operation === PLAYER_ROSTER_OPERATION || value.operation === PLAYER_ROSTER_COMPLETE_OPERATION) return assertPlayerRosterRequest(value);
   if (value.operation === FIXTURE_CORRECTION_GUARD_OPERATION) return assertFixtureCorrectionGuardRequest(value);
   if (value.operation === FIXTURE_PUBLISH_BUDGET_OPERATION) return assertFixturePublishBudgetRequest(value);
   if (value.operation === DATE_INDEX_REFRESH_OPERATION) return assertDateIndexRefreshRequest(value);
@@ -357,6 +359,10 @@ export async function handleAdminIngest(request, env) {
     let report;
     if (input.operation === FIXTURE_OPERATION || input.operation === FIXTURE_MIGRATION_OPERATION) {
       report = await publishFixtureFromR2(env, input);
+    } else if (input.operation === PLAYER_ROSTER_OPERATION) {
+      report = await publishPlayerRoster(env, input);
+    } else if (input.operation === PLAYER_ROSTER_COMPLETE_OPERATION) {
+      report = await completePlayerRoster(env, input);
     } else if (input.operation === FIXED_SNAPSHOT_OPERATION) {
       report = await publishFixedSnapshotFromR2(env, input);
     } else if (input.operation === DATE_INDEX_COVERAGE_OPERATION) {

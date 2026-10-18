@@ -23,6 +23,10 @@ jobs:
       - name: Syntax check runtime scripts
         run: |
           node --check app-v2.js
+          node --check all-player-stats.js
+          node --check tracked-player-provider-ids.js
+          node --check scripts/v2/sync-player-roster.mjs
+          node --check admin-worker/player-roster-ingest.mjs
           node --check backfill-merge.js
           node --check backfill-loader.js
           node --check v2-backfill-data.js

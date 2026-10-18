@@ -52,6 +52,10 @@
     {
       "name": "0013_d1_publication_sources.sql",
       "sha256": "93ff3f6d2970e994bf6553b8b7b5814f6187a3085371eedff4def07bf486816e"
+    },
+    {
+      "name": "0014_player_roster.sql",
+      "sha256": "347a1a5089b3dd2dcf7acd33fe68542baa8212f2099028d23ce174eeb04d9f8e"
     }
   ],
   "tables": {

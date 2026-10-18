@@ -1,0 +1,1567 @@
+{
+  "snapshotId": "20260908-021509068Z",
+  "snapshotRun": "https://github.com/ssdkllpd/japanese-football-watch/actions/runs/39028343601",
+  "identities": [
+    {
+      "legacyName": "三笘薫",
+      "providerId": 106835,
+      "source": "pinned_squad",
+      "player": {
+        "id": 106835,
+        "name": "K. Mitoma",
+        "age": 28,
+        "number": 22,
+        "position": "Attacker",
+        "photo": "https://media.api-sports.io/football/players/106835.png"
+      },
+      "teams": [
+        51
+      ]
+    },
+    {
+      "legacyName": "鈴木彩艶",
+      "providerId": 199578,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199578,
+        "name": "Z. Suzuki",
+        "firstname": "Zion",
+        "lastname": "Suzuki",
+        "age": 23,
+        "birth": {
+          "date": "2002-08-21",
+          "place": "Saitama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "190",
+        "weight": "98",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199578.png"
+      },
+      "teams": [
+        66
+      ]
+    },
+    {
+      "legacyName": "田中碧",
+      "providerId": 32966,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32966,
+        "name": "A. Tanaka",
+        "firstname": "Ao",
+        "lastname": "Tanaka",
+        "age": 27,
+        "birth": {
+          "date": "1998-09-10",
+          "place": "Kawasaki",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "180",
+        "weight": "75",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32966.png"
+      },
+      "teams": [
+        63
+      ]
+    },
+    {
+      "legacyName": "高井幸大",
+      "providerId": 337593,
+      "source": "pinned_squad",
+      "player": {
+        "id": 337593,
+        "name": "K. Takai",
+        "age": 21,
+        "number": 14,
+        "position": "Defender",
+        "photo": "https://media.api-sports.io/football/players/337593.png"
+      },
+      "teams": [
+        47
+      ]
+    },
+    {
+      "legacyName": "鎌田大地",
+      "providerId": 2601,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 2601,
+        "name": "D. Kamada",
+        "firstname": "Daichi",
+        "lastname": "Kamada",
+        "age": 29,
+        "birth": {
+          "date": "1996-08-05",
+          "place": "Ehime",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "184",
+        "weight": "76",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/2601.png"
+      },
+      "teams": [
+        52
+      ]
+    },
+    {
+      "legacyName": "遠藤航",
+      "providerId": 8500,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 8500,
+        "name": "W. Endo",
+        "firstname": "Wataru",
+        "lastname": "Endo",
+        "age": 32,
+        "birth": {
+          "date": "1993-02-09",
+          "place": "Yokohama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "178",
+        "weight": "76",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/8500.png"
+      },
+      "teams": [
+        40
+      ]
+    },
+    {
+      "legacyName": "前田大然",
+      "providerId": 33224,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33224,
+        "name": "D. Maeda",
+        "firstname": "Daizen",
+        "lastname": "Maeda",
+        "age": 28,
+        "birth": {
+          "date": "1997-10-20",
+          "place": "Taishi",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "173",
+        "weight": "67",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33224.png"
+      },
+      "teams": [
+        57
+      ]
+    },
+    {
+      "legacyName": "森下龍矢",
+      "providerId": 199150,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199150,
+        "name": "R. Morishita",
+        "firstname": "Ryoya",
+        "lastname": "Morishita",
+        "age": 28,
+        "birth": {
+          "date": "1997-04-11",
+          "place": "Shizuoka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "170",
+        "weight": "65",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199150.png"
+      },
+      "teams": [
+        67
+      ]
+    },
+    {
+      "legacyName": "斉藤光毅",
+      "providerId": 33838,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33838,
+        "name": "K. Saito",
+        "firstname": "Koki",
+        "lastname": "Saito",
+        "age": 24,
+        "birth": {
+          "date": "2001-08-10",
+          "place": "Kanagawa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "170",
+        "weight": "69",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33838.png"
+      },
+      "teams": [
+        72
+      ]
+    },
+    {
+      "legacyName": "松木玖生",
+      "providerId": 351013,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 351013,
+        "name": "K. Matsuki",
+        "firstname": "Kuryu",
+        "lastname": "Matsuki",
+        "age": 22,
+        "birth": {
+          "date": "2003-04-30",
+          "place": "Muroran",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "180",
+        "weight": "78",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/351013.png"
+      },
+      "teams": [
+        41
+      ]
+    },
+    {
+      "legacyName": "大橋祐紀",
+      "providerId": 33147,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33147,
+        "name": "Y. Ohashi",
+        "firstname": "Yuki",
+        "lastname": "Ohashi",
+        "age": 29,
+        "birth": {
+          "date": "1996-07-27",
+          "place": "Matsudo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "180",
+        "weight": "73",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33147.png"
+      },
+      "teams": [
+        67
+      ]
+    },
+    {
+      "legacyName": "岩田智輝",
+      "providerId": 32938,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32938,
+        "name": "T. Iwata",
+        "firstname": "Tomoki",
+        "lastname": "Iwata",
+        "age": 28,
+        "birth": {
+          "date": "1997-04-07",
+          "place": "Usa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "178",
+        "weight": "77",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32938.png"
+      },
+      "teams": [
+        54
+      ]
+    },
+    {
+      "legacyName": "平河悠",
+      "providerId": 348800,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 348800,
+        "name": "Y. Hirakawa",
+        "firstname": "Yu",
+        "lastname": "Hirakawa",
+        "age": 24,
+        "birth": {
+          "date": "2001-01-03",
+          "place": "Kashima",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "171",
+        "weight": "68",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/348800.png"
+      },
+      "teams": [
+        56
+      ]
+    },
+    {
+      "legacyName": "菅原由勢",
+      "providerId": 32887,
+      "source": "pinned_squad",
+      "player": {
+        "id": 32887,
+        "name": "Y. Sugawara",
+        "age": 25,
+        "number": 3,
+        "position": "Defender",
+        "photo": "https://media.api-sports.io/football/players/32887.png"
+      },
+      "teams": [
+        41
+      ]
+    },
+    {
+      "legacyName": "伊藤洋輝",
+      "providerId": 32893,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32893,
+        "name": "H. Ito",
+        "firstname": "Hiroki",
+        "lastname": "Ito",
+        "age": 26,
+        "birth": {
+          "date": "1999-05-12",
+          "place": "Shizuoka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "188",
+        "weight": "84",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32893.png"
+      },
+      "teams": [
+        157
+      ]
+    },
+    {
+      "legacyName": "堂安律",
+      "providerId": 2598,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 2598,
+        "name": "R. Dōan",
+        "firstname": "Ritsu",
+        "lastname": "Dōan",
+        "age": 27,
+        "birth": {
+          "date": "1998-06-16",
+          "place": "Amagasaki",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "172",
+        "weight": "70",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/2598.png"
+      },
+      "teams": [
+        169
+      ]
+    },
+    {
+      "legacyName": "佐野海舟",
+      "providerId": 33889,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33889,
+        "name": "K. Sano",
+        "firstname": "Kaishu",
+        "lastname": "Sano",
+        "age": 25,
+        "birth": {
+          "date": "2000-12-30",
+          "place": "Tsuyama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "176",
+        "weight": "67",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33889.png"
+      },
+      "teams": [
+        164
+      ]
+    },
+    {
+      "legacyName": "町田浩樹",
+      "providerId": 33067,
+      "source": "pinned_squad",
+      "player": {
+        "id": 33067,
+        "name": "K. Machida",
+        "age": 28,
+        "number": 28,
+        "position": "Defender",
+        "photo": "https://media.api-sports.io/football/players/33067.png"
+      },
+      "teams": [
+        167
+      ]
+    },
+    {
+      "legacyName": "鈴木唯人",
+      "providerId": 199143,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199143,
+        "name": "Y. Suzuki",
+        "firstname": "Yuito",
+        "lastname": "Suzuki",
+        "age": 24,
+        "birth": {
+          "date": "2001-10-25",
+          "place": "Miura",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "175",
+        "weight": "70",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199143.png"
+      },
+      "teams": [
+        160
+      ]
+    },
+    {
+      "legacyName": "川﨑颯太",
+      "providerId": 199897,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199897,
+        "name": "S. Kawasaki",
+        "firstname": "Sota",
+        "lastname": "Kawasaki",
+        "age": 24,
+        "birth": {
+          "date": "2001-07-30",
+          "place": "Kōfu",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "172",
+        "weight": "68",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199897.png"
+      },
+      "teams": [
+        164
+      ]
+    },
+    {
+      "legacyName": "小杉啓太",
+      "providerId": 423789,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 423789,
+        "name": "K. Kosugi",
+        "firstname": "Keita",
+        "lastname": "Kosugi",
+        "age": 19,
+        "birth": {
+          "date": "2006-03-18",
+          "place": null,
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "168",
+        "weight": null,
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/423789.png"
+      },
+      "teams": [
+        169
+      ]
+    },
+    {
+      "legacyName": "山本理仁",
+      "providerId": 33805,
+      "source": "pinned_squad",
+      "player": {
+        "id": 33805,
+        "name": "R. Yamamoto",
+        "age": 24,
+        "number": 6,
+        "position": "Midfielder",
+        "photo": "https://media.api-sports.io/football/players/33805.png"
+      },
+      "teams": [
+        160
+      ]
+    },
+    {
+      "legacyName": "後藤啓介",
+      "providerId": 375930,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 375930,
+        "name": "K. Goto",
+        "firstname": "Keisuke",
+        "lastname": "Goto",
+        "age": 20,
+        "birth": {
+          "date": "2005-06-03",
+          "place": null,
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "191",
+        "weight": null,
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/375930.png"
+      },
+      "teams": [
+        160
+      ]
+    },
+    {
+      "legacyName": "宇野禅斗",
+      "providerId": 351084,
+      "source": "pinned_squad",
+      "player": {
+        "id": 351084,
+        "name": "Z. Uno",
+        "age": 22,
+        "number": 6,
+        "position": "Midfielder",
+        "photo": "https://media.api-sports.io/football/players/351084.png"
+      },
+      "teams": [
+        163
+      ]
+    },
+    {
+      "legacyName": "田中聡",
+      "providerId": 33142,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33142,
+        "name": "S. Tanaka",
+        "firstname": "Satoshi",
+        "lastname": "Tanaka",
+        "age": 23,
+        "birth": {
+          "date": "2002-08-13",
+          "place": "Nagano",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "175",
+        "weight": "73",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33142.png"
+      },
+      "teams": [
+        174
+      ]
+    },
+    {
+      "legacyName": "橋岡大樹",
+      "providerId": 33095,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33095,
+        "name": "D. Hashioka",
+        "firstname": "Daiki",
+        "lastname": "Hashioka",
+        "age": 26,
+        "birth": {
+          "date": "1999-05-17",
+          "place": "Saitama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "184",
+        "weight": "73",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33095.png"
+      },
+      "teams": [
+        163
+      ]
+    },
+    {
+      "legacyName": "町野修斗",
+      "providerId": 106851,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 106851,
+        "name": "S. Machino",
+        "firstname": "Shuto",
+        "lastname": "Machino",
+        "age": 26,
+        "birth": {
+          "date": "1999-09-30",
+          "place": "Iga",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "185",
+        "weight": "81",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/106851.png"
+      },
+      "teams": [
+        163
+      ]
+    },
+    {
+      "legacyName": "久保建英",
+      "providerId": 32862,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32862,
+        "name": "T. Kubo",
+        "firstname": "Takefusa",
+        "lastname": "Kubo",
+        "age": 24,
+        "birth": {
+          "date": "2001-06-04",
+          "place": "Kawasaki",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "173",
+        "weight": "64",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32862.png"
+      },
+      "teams": [
+        548
+      ]
+    },
+    {
+      "legacyName": "佐藤龍之介",
+      "providerId": 542861,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 542861,
+        "name": "R. Sato",
+        "firstname": "Ryunosuke",
+        "lastname": "Sato",
+        "age": 19,
+        "birth": {
+          "date": "2006-10-16",
+          "place": null,
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": null,
+        "weight": null,
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/542861.png"
+      },
+      "teams": [
+        532
+      ]
+    },
+    {
+      "legacyName": "上田綺世",
+      "providerId": 72155,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 72155,
+        "name": "A. Ueda",
+        "firstname": "Ayase",
+        "lastname": "Ueda",
+        "age": 27,
+        "birth": {
+          "date": "1998-08-28",
+          "place": "Mito",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "182",
+        "weight": "76",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/72155.png"
+      },
+      "teams": [
+        79,
+        209
+      ]
+    },
+    {
+      "legacyName": "三戸舜介",
+      "providerId": 237131,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 237131,
+        "name": "S. Mito",
+        "firstname": "Shunsuke",
+        "lastname": "Mito",
+        "age": 23,
+        "birth": {
+          "date": "2002-09-28",
+          "place": "Yamaguchi",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "164",
+        "weight": "60",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/237131.png"
+      },
+      "teams": [
+        426
+      ]
+    },
+    {
+      "legacyName": "渡辺剛",
+      "providerId": 32858,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32858,
+        "name": "T. Watanabe",
+        "firstname": "Tsuyoshi",
+        "lastname": "Watanabe",
+        "age": 28,
+        "birth": {
+          "date": "1997-02-05",
+          "place": "Saitama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "184",
+        "weight": "76",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32858.png"
+      },
+      "teams": [
+        209
+      ]
+    },
+    {
+      "legacyName": "市原吏音",
+      "providerId": 422581,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 422581,
+        "name": "R. Ichihara",
+        "firstname": "Rion",
+        "lastname": "Ichihara",
+        "age": 20,
+        "birth": {
+          "date": "2005-07-07",
+          "place": "Saitama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "185 cm",
+        "weight": "78 kg",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/422581.png"
+      },
+      "teams": [
+        201
+      ]
+    },
+    {
+      "legacyName": "毎熊晟矢",
+      "providerId": 199793,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199793,
+        "name": "S. Maikuma",
+        "firstname": "Seiya",
+        "lastname": "Maikuma",
+        "age": 28,
+        "birth": {
+          "date": "1997-10-16",
+          "place": "Nagasaki",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "179",
+        "weight": "69",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199793.png"
+      },
+      "teams": [
+        201
+      ]
+    },
+    {
+      "legacyName": "石渡ネルソン",
+      "providerId": 356714,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 356714,
+        "name": "N. Ishiwatari",
+        "firstname": "Nelson",
+        "lastname": "Ishiwatari",
+        "age": 20,
+        "birth": {
+          "date": "2005-05-10",
+          "place": "Kyoto",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "185 cm",
+        "weight": "71 kg",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/356714.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "小久保玲央ブライアン",
+      "providerId": 162482,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 162482,
+        "name": "L. Kokubo",
+        "firstname": "Leo Brian",
+        "lastname": "Kokubo",
+        "age": 25,
+        "birth": {
+          "date": "2001-01-23",
+          "place": "Chiba",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "193",
+        "weight": "85",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/162482.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "畑大雅",
+      "providerId": 199153,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 199153,
+        "name": "T. Hata",
+        "firstname": "Taiga",
+        "lastname": "Hata",
+        "age": 23,
+        "birth": {
+          "date": "2002-01-20",
+          "place": "Tokyo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "177",
+        "weight": "75",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/199153.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "松澤海斗",
+      "providerId": 415721,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 415721,
+        "name": "K. Matsuzawa",
+        "firstname": "Kaito",
+        "lastname": "Matsuzawa",
+        "age": 24,
+        "birth": {
+          "date": "2001-02-05",
+          "place": "Shizuoka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "174",
+        "weight": "66",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/415721.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "新川志音",
+      "providerId": 510415,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 510415,
+        "name": "S. Shinkawa",
+        "firstname": "Shion",
+        "lastname": "Shinkawa",
+        "age": 18,
+        "birth": {
+          "date": "2007-08-06",
+          "place": "Osaka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "171 cm",
+        "weight": "65 kg",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/510415.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "荒木遼太郎",
+      "providerId": 197972,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 197972,
+        "name": "R. Araki",
+        "firstname": "Ryotaro",
+        "lastname": "Araki",
+        "age": 23,
+        "birth": {
+          "date": "2002-01-29",
+          "place": "Kumamoto",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "170",
+        "weight": "60",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/197972.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "谷口彰悟",
+      "providerId": 32954,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32954,
+        "name": "S. Taniguchi",
+        "firstname": "Shogo",
+        "lastname": "Taniguchi",
+        "age": 34,
+        "birth": {
+          "date": "1991-07-15",
+          "place": "Kumamoto",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "183",
+        "weight": "75",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32954.png"
+      },
+      "teams": [
+        735
+      ]
+    },
+    {
+      "legacyName": "伊東純也",
+      "providerId": 1942,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 1942,
+        "name": "J. Ito",
+        "firstname": "Junya",
+        "lastname": "Ito",
+        "age": 32,
+        "birth": {
+          "date": "1993-03-09",
+          "place": "Yokosuka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "176",
+        "weight": "66",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/1942.png"
+      },
+      "teams": [
+        742
+      ]
+    },
+    {
+      "legacyName": "福井太智",
+      "providerId": 306615,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 306615,
+        "name": "T. Fukui",
+        "firstname": "Taichi",
+        "lastname": "Fukui",
+        "age": 22,
+        "birth": {
+          "date": "2004-07-15",
+          "place": "Kanagawa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "172",
+        "weight": "67",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/306615.png"
+      },
+      "teams": [
+        240
+      ]
+    },
+    {
+      "legacyName": "旗手怜央",
+      "providerId": 180758,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 180758,
+        "name": "R. Hatate",
+        "firstname": "Reo",
+        "lastname": "Hatate",
+        "age": 28,
+        "birth": {
+          "date": "1997-11-21",
+          "place": "Suzuka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "171",
+        "weight": "70",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/180758.png"
+      },
+      "teams": [
+        247,
+        44
+      ]
+    },
+    {
+      "legacyName": "横山歩夢",
+      "providerId": 304918,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 304918,
+        "name": "A. Yokoyama",
+        "firstname": "Ayumu",
+        "lastname": "Yokoyama",
+        "age": 22,
+        "birth": {
+          "date": "2003-03-04",
+          "place": "Tokyo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "170",
+        "weight": "65",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/304918.png"
+      },
+      "teams": [
+        742
+      ]
+    },
+    {
+      "legacyName": "木村誠二",
+      "providerId": 109271,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 109271,
+        "name": "S. Kimura",
+        "firstname": "Seiji",
+        "lastname": "Kimura",
+        "age": 24,
+        "birth": {
+          "date": "2001-08-24",
+          "place": "Chiba",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "186",
+        "weight": "80",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/109271.png"
+      },
+      "teams": [
+        261
+      ]
+    },
+    {
+      "legacyName": "坂本一彩",
+      "providerId": 278950,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 278950,
+        "name": "I. Sakamoto",
+        "firstname": "Isa",
+        "lastname": "Sakamoto",
+        "age": 22,
+        "birth": {
+          "date": "2003-08-26",
+          "place": "Kumamoto",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "173",
+        "weight": "66",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/278950.png"
+      },
+      "teams": [
+        261
+      ]
+    },
+    {
+      "legacyName": "齋藤俊輔",
+      "providerId": 457169,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 457169,
+        "name": "S. Saito",
+        "firstname": "Shunsuke",
+        "lastname": "Saito",
+        "age": 20,
+        "birth": {
+          "date": "2005-04-26",
+          "place": "Kanagawa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "173 cm",
+        "weight": "68 kg",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/457169.png"
+      },
+      "teams": [
+        261
+      ]
+    },
+    {
+      "legacyName": "守田英正",
+      "providerId": 32960,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 32960,
+        "name": "H. Morita",
+        "firstname": "Hidemasa",
+        "lastname": "Morita",
+        "age": 31,
+        "birth": {
+          "date": "1995-05-10",
+          "place": "Osaka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "177",
+        "weight": "69",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32960.png"
+      },
+      "teams": [
+        64
+      ]
+    },
+    {
+      "legacyName": "水多海斗",
+      "providerId": 273142,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 273142,
+        "name": "K. Mizuta",
+        "firstname": "Kaito",
+        "lastname": "Mizuta",
+        "age": 25,
+        "birth": {
+          "date": "2000-04-08",
+          "place": "Tokyo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "182",
+        "weight": "71",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/273142.png"
+      },
+      "teams": [
+        111
+      ]
+    },
+    {
+      "legacyName": "中村草太",
+      "providerId": 508070,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 508070,
+        "name": "S. Nakamura",
+        "firstname": "Sota",
+        "lastname": "Nakamura",
+        "age": 23,
+        "birth": {
+          "date": "2002-10-15",
+          "place": "Takasaki",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "168",
+        "weight": "64",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/508070.png"
+      },
+      "teams": [
+        111
+      ]
+    },
+    {
+      "legacyName": "瀬古歩夢",
+      "providerId": 33165,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33165,
+        "name": "A. Seko",
+        "firstname": "Ayumu",
+        "lastname": "Seko",
+        "age": 25,
+        "birth": {
+          "date": "2000-06-07",
+          "place": "Osaka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "185",
+        "weight": "78",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33165.png"
+      },
+      "teams": [
+        111
+      ]
+    },
+    {
+      "legacyName": "坂元達裕",
+      "providerId": 33462,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33462,
+        "name": "T. Sakamoto",
+        "firstname": "Tatsuhiro",
+        "lastname": "Sakamoto",
+        "age": 29,
+        "birth": {
+          "date": "1996-10-22",
+          "place": "Tokyo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "170",
+        "weight": "63",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33462.png"
+      },
+      "teams": [
+        1346
+      ]
+    },
+    {
+      "legacyName": "冨安健洋",
+      "providerId": 2597,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 2597,
+        "name": "T. Tomiyasu",
+        "firstname": "Takehiro",
+        "lastname": "Tomiyasu",
+        "age": 27,
+        "birth": {
+          "date": "1998-11-05",
+          "place": "Fukuoka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "187",
+        "weight": "84",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/2597.png"
+      },
+      "teams": [
+        52
+      ]
+    },
+    {
+      "legacyName": "板倉滉",
+      "providerId": 38114,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 38114,
+        "name": "K. Itakura",
+        "firstname": "Ko",
+        "lastname": "Itakura",
+        "age": 28,
+        "birth": {
+          "date": "1997-01-27",
+          "place": "Yokohama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "188",
+        "weight": "80",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/38114.png"
+      },
+      "teams": [
+        163,
+        194
+      ]
+    },
+    {
+      "legacyName": "佐野航大",
+      "providerId": 354506,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 354506,
+        "name": "K. Sano",
+        "firstname": "Kodai",
+        "lastname": "Sano",
+        "age": 22,
+        "birth": {
+          "date": "2003-09-25",
+          "place": "Tsuyama",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "176",
+        "weight": "68",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/354506.png"
+      },
+      "teams": [
+        197
+      ]
+    },
+    {
+      "legacyName": "横田大祐",
+      "providerId": 260798,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 260798,
+        "name": "D. Yokota",
+        "firstname": "Daisuke",
+        "lastname": "Yokota",
+        "age": 25,
+        "birth": {
+          "date": "2000-06-15",
+          "place": "Tokyo",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "169",
+        "weight": "66",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/260798.png"
+      },
+      "teams": [
+        257
+      ]
+    },
+    {
+      "legacyName": "藤本寛也",
+      "providerId": 33794,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 33794,
+        "name": "K. Fujimoto",
+        "firstname": "Kanya",
+        "lastname": "Fujimoto",
+        "age": 27,
+        "birth": {
+          "date": "1999-07-01",
+          "place": "Yamanashi",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "176",
+        "weight": "67",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/33794.png"
+      },
+      "teams": [
+        54
+      ]
+    },
+    {
+      "legacyName": "野澤大志ブランドン",
+      "providerId": 109381,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 109381,
+        "name": "T. Nozawa",
+        "firstname": "Taishi Brandon",
+        "lastname": "Nozawa",
+        "age": 23,
+        "birth": {
+          "date": "2002-12-25",
+          "place": "Okinawa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "193",
+        "weight": "90",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/109381.png"
+      },
+      "teams": [
+        740
+      ]
+    },
+    {
+      "legacyName": "綱島悠斗",
+      "providerId": 404352,
+      "source": "pinned_snapshot",
+      "player": {
+        "id": 404352,
+        "name": "Y. Tsunashima",
+        "firstname": "Yuto",
+        "lastname": "Tsunashima",
+        "age": 25,
+        "birth": {
+          "date": "2000-08-15",
+          "place": null,
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "188",
+        "weight": "80",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/404352.png"
+      },
+      "teams": [
+        740
+      ]
+    },
+    {
+      "legacyName": "南野拓実",
+      "providerId": 1101,
+      "source": "provider_lookup",
+      "query": {
+        "player": 1101
+      },
+      "player": {
+        "id": 1101,
+        "name": "T. Minamino",
+        "firstname": "Takumi",
+        "lastname": "Minamino",
+        "age": 31,
+        "birth": {
+          "date": "1995-01-16",
+          "place": "Osaka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "172",
+        "weight": "68",
+        "number": 18,
+        "position": "Midfielder",
+        "photo": "https://media.api-sports.io/football/players/1101.png"
+      },
+      "run": "https://github.com/ssdkllpd/japanese-football-watch/actions/runs/39094489802"
+    },
+    {
+      "legacyName": "小川航基",
+      "providerId": 33289,
+      "source": "provider_lookup",
+      "query": {
+        "player": 33289
+      },
+      "player": {
+        "id": 33289,
+        "name": "Koki Ogawa",
+        "firstname": "Koki",
+        "lastname": "Ogawa",
+        "age": 29,
+        "birth": {
+          "date": "1997-08-08",
+          "place": "Kanagawa",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "186",
+        "weight": "78",
+        "number": 9,
+        "position": "Attacker",
+        "photo": "https://media.api-sports.io/football/players/33289.png"
+      },
+      "run": "https://github.com/ssdkllpd/japanese-football-watch/actions/runs/39094489802"
+    },
+    {
+      "legacyName": "伊藤涼太郎",
+      "providerId": 32923,
+      "source": "provider_lookup",
+      "run": "https://github.com/ssdkllpd/japanese-football-watch/actions/runs/39094303609",
+      "query": {
+        "team": 735,
+        "season": 2024,
+        "page": 1
+      },
+      "player": {
+        "id": 32923,
+        "name": "R. Ito",
+        "firstname": "Ryotaro",
+        "lastname": "Ito",
+        "age": 27,
+        "birth": {
+          "date": "1998-02-06",
+          "place": "Osaka",
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": "174",
+        "weight": "66",
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/32923.png"
+      }
+    },
+    {
+      "legacyName": "神代慶人",
+      "providerId": 457180,
+      "source": "provider_lookup",
+      "run": "https://github.com/ssdkllpd/japanese-football-watch/actions/runs/39094430376",
+      "query": {
+        "id": 457180,
+        "season": 2024
+      },
+      "player": {
+        "id": 457180,
+        "name": "K. Kumashiro",
+        "firstname": "Keito",
+        "lastname": "Kumashiro",
+        "age": 18,
+        "birth": {
+          "date": "2007-10-25",
+          "place": null,
+          "country": "Japan"
+        },
+        "nationality": "Japan",
+        "height": null,
+        "weight": null,
+        "injured": false,
+        "photo": "https://media.api-sports.io/football/players/457180.png"
+      },
+      "teams": [
+        314
+      ]
+    }
+  ]
+}

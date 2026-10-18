@@ -1,0 +1,84 @@
+name: API-Football Player Roster Sync
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/api-football-player-roster-sync.yml']
+  schedule:
+    - cron: '17 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview or publish the complete ten-league roster
+        type: choice
+        required: true
+        default: preview
+        options: [preview, execute]
+      confirmation:
+        description: For execute, enter RUN PLAYER ROSTER SYNC
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || inputs.mode == 'execute' && inputs.confirmation == 'RUN PLAYER ROSTER SYNC'
+    uses: ./.github/workflows/d1-staging-provision.yml
+    secrets: inherit
+
+  roster:
+    needs: provision
+    if: always() && (needs.provision.result == 'success' || github.event_name == 'workflow_dispatch' && inputs.mode == 'preview')
+    concurrency:
+      group: d1-staging-write
+      queue: max
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: d1-staging
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      ADMIN_INGEST_TOKEN: ${{ secrets.ADMIN_INGEST_TOKEN }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify reviewed D1 target and budget
+        env:
+          REQUESTED_MODE: ${{ inputs.mode }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test -n "$API_FOOTBALL_KEY"
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          if [ "${{ github.event_name }}" != workflow_dispatch ] || [ "$REQUESTED_MODE" = execute ]; then
+            test "$CONFIRMATION" = 'RUN PLAYER ROSTER SYNC' || test "${{ github.event_name }}" != workflow_dispatch
+            test -n "$ADMIN_INGEST_TOKEN" && test -n "$ADMIN_INGEST_URL"
+            node scripts/d1/check-paid-backfill-capacity.mjs --out /tmp/player-roster-d1-usage.json
+          fi
+      - name: Collect complete league player pages and team squads
+        run: node scripts/v2/sync-player-roster.mjs --out .tmp/player-roster/snapshot.json
+      - name: Archive acquired data and publish the complete roster
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'execute'
+        run: |
+          set -euo pipefail
+          node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/player-roster/d1-usage.json
+          run_id=$(jq -r '.runId' .tmp/player-roster/snapshot.json)
+          npx --yes wrangler@4 r2 object put "$R2_BUCKET/audit/player-rosters/$run_id.json" --file .tmp/player-roster/snapshot.json --remote
+          node scripts/v2/sync-player-roster.mjs --snapshot .tmp/player-roster/snapshot.json --execute
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: player-roster-snapshot
+          path: .tmp/player-roster/
+          retention-days: 7
