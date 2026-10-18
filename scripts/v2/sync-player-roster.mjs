@@ -83,7 +83,7 @@ export async function collectRoster(client) {
   const pageIds = new Set(pages.filter(row => row.player?.nationality).map(row => row.player?.id));
   const missing = [...new Set(squads.flatMap(row => row.players || []).map(row => row.id))]
     .filter(id => validId(id) && !pageIds.has(id));
-  if (missing.length > 1500) throw new Error('Roster-only identity request budget exceeded.');
+  if (missing.length > 2000) throw new Error('Roster-only identity request budget exceeded.');
   const profiles = [];
   for (const id of missing) {
     let result = (await client.get('players/profiles', { player:id })).data.response || [];
