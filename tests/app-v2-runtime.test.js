@@ -618,3 +618,30 @@ test('today fixture detail refreshes stored live scores and explains stale data'
  await until(()=>app.doc.querySelector('.score-value')?.textContent.trim()==='2 - 0','refreshed live detail');
  assert.match(app.text(),/ライブ更新が遅れています/);
 });
+
+test('a cold provider profile loads directory facts and published recent matches',async t=>{
+ const profile={id:'af:player:777',providerId:777,name:'New Player',nationality:'Japan',pos:'Midfielder',
+  rosterObservedOn:'2026-10-18',rosterTeams:[{id:'af:team:2',name:'New Club'}]};
+ const app=await boot(t,{hash:'#/players/af%3Aplayer%3A777?productSeason=jfw%3Aseason%3A2026-27',
+  legacy:{_dataIntegrity:{season:'2026-27'}},request:async url=>{
+   if(new URL(url).pathname==='/api/v2/players/af%3Aplayer%3A777')return {ok:true,status:200,json:async()=>({player:profile,
+    rosterHistory:[{id:'af:team:2',name:'New Club',firstSeen:'2026-10-18',lastSeen:'2026-10-18',current:true}],
+    recentMatches:[{fixtureId:'af:fixture:10',dateJst:'2026-10-17',homeName:'Home Club',awayName:'Away Club',teamName:'New Club',minutes:30,goals:0,assists:null}]})};
+   return null;
+  }});
+ await until(()=>app.text().includes('New Club')&&section(app,'直近試合').textContent.includes('2026-10-17'),'cold provider profile');
+ assert.match(app.text(),/Midfielder/);
+ assert.match(section(app,'直近試合').textContent,/出場 30分 · 得点 0/);
+ assert.ok(section(app,'直近試合').querySelector('[data-fixture="af:fixture:10"]'));
+ assert.equal(app.calls.filter(url=>url.includes('/api/v2/players/af%3Aplayer%3A777')).length,1);
+ await app.click('[data-fixture="af:fixture:10"]');
+ assert.match(app.w.location.hash,/fixtures\/af%3Afixture%3A10/);
+ assert.ok(app.calls.some(url=>url.includes('/api/v2/fixtures/af%3Afixture%3A10')));
+});
+
+test('an empty nationality result does not reinsert the old fixed tracking list',async t=>{
+ const app=await boot(t,{hash:'#/japanese',legacy:{players:[{playerId:'jp-old',name:'Former Player',nationality:'Japan'}]},
+  request:async url=>new URL(url).pathname==='/api/v2/players'?{ok:true,status:200,json:async()=>({players:[],nextCursor:null})}:null});
+ await until(()=>app.doc.getElementById('japaneseList')&&!app.doc.querySelector('[data-player-id="jp-old"]'),'empty completed nationality directory');
+ assert.doesNotMatch(app.doc.getElementById('japaneseList').textContent,/Former Player/);
+});

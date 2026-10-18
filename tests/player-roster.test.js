@@ -10,11 +10,8 @@ const reviewedIds = require('../tracked-player-provider-ids');
 const player = (nationality = 'Japan', team = 10) => ({ id: 7, name: 'K. Example', nationality,
   birthDate: '2000-01-02', photo: null,
   teams: [{ id: team, name: team === 10 ? 'First Club' : 'Second Club', logo: null, source: 'team_squad' }] });
-const runId = date => `${date}T12:00:00.000Z`;
 const batch = (observedOn, players) => ({ schemaVersion: 'jfw-d1-admin-ingest/1',
-  operation: 'player_roster_upsert', observedOn, runId: runId(observedOn), players });
-const complete = (observedOn, expectedPlayers) => ({ schemaVersion: 'jfw-d1-admin-ingest/1',
-  operation: 'player_roster_complete', observedOn, runId: runId(observedOn), expectedPlayers });
+  operation: 'player_roster_upsert', observedOn, runId: `${observedOn}T00:00:00.000Z`, players });
 
 test('roster upsert preserves player ID and prior team observations after a transfer', async t => {
   const db = new DatabaseSync(':memory:');
@@ -25,6 +22,8 @@ test('roster upsert preserves player ID and prior team observations after a tran
   const { default: worker } = await import('../worker/index.mjs');
   const env = { FOOTBALL_DB: createLocalD1(db), APP_ORIGINS: 'https://example.github.io' };
   await publishPlayerRoster(env, assertPlayerRosterRequest(batch('2026-09-08', [player()])));
+  await completePlayerRoster(env, { observedOn:'2026-09-08', runId:'2026-09-08T00:00:00.000Z', expectedPlayers:1, expectedObservations:1, squadTeamIds:[10] });
+  await publishPlayerRoster(env, assertPlayerRosterRequest(batch('2026-10-17', [player(null, 20)])));
   const get = async url => {
     const response = await worker.fetch(new Request(`https://worker.test${url}`, {
       headers: { origin: 'https://example.github.io' },
@@ -32,13 +31,7 @@ test('roster upsert preserves player ID and prior team observations after a tran
     assert.equal(response.status, 200);
     return response.json();
   };
-  const incomplete = await get('/api/v2/players?nationality=Japan');
-  assert.deepEqual(incomplete.players[0].rosterTeams, []);
-  await completePlayerRoster(env, assertPlayerRosterRequest(complete('2026-09-08', 1)));
-  await publishPlayerRoster(env, assertPlayerRosterRequest(batch('2026-10-17', [player(null, 20)])));
-  const pending = await get('/api/v2/players?nationality=Japan');
-  assert.deepEqual(pending.players[0].rosterTeams.map(item => item.id), ['af:team:10']);
-  await completePlayerRoster(env, assertPlayerRosterRequest(complete('2026-10-17', 1)));
+  await completePlayerRoster(env, { observedOn:'2026-10-17', runId:'2026-10-17T00:00:00.000Z', expectedPlayers:1, expectedObservations:1, squadTeamIds:[20] });
   const japan = await get('/api/v2/players?nationality=Japan');
   assert.equal(japan.players.length, 1);
   assert.equal(japan.players[0].id, 'af:player:7');
@@ -49,7 +42,6 @@ test('roster upsert preserves player ID and prior team observations after a tran
   assert.equal(oldClub.players.length, 0);
   const profile = await get('/api/v2/players/af%3Aplayer%3A7');
   assert.deepEqual(profile.rosterHistory.map(item => item.id), ['af:team:20', 'af:team:10']);
-  await assert.rejects(async () => completePlayerRoster(env, assertPlayerRosterRequest(complete('2026-10-18', 1))), /differs/);
   await assert.rejects(async () => assertPlayerRosterRequest(batch('2026-10-17', [player(), player()])), /Duplicate/);
 });
 
@@ -74,28 +66,6 @@ test('roster identities use provider IDs, and fixture team aggregates survive a 
   assert.equal(result.clubStats['af:team:20'].apps, 1);
 });
 
-test('all-player directory searches beyond the first page with a stable cursor', async t => {
-  const db = new DatabaseSync(':memory:');
-  t.after(() => db.close());
-  applyMigrations(db, path.join(__dirname, '..'));
-  db.exec("INSERT INTO provider_sources(id,code,api_version) VALUES (1,'api-football','v3')");
-  const insert = db.prepare('INSERT INTO players(canonical_id,source_id,provider_id,display_name,nationality) VALUES (?,1,?,?,?)');
-  for (let id = 1; id <= 105; id++) insert.run(`af:player:${id}`, id, id === 105 ? 'Late Arrival' : `Player ${id}`, id % 2 ? 'Japan' : 'France');
-  const { default: worker } = await import('../worker/index.mjs');
-  const env = { FOOTBALL_DB: createLocalD1(db), APP_ORIGINS: 'https://example.github.io' };
-  const get = async query => (await worker.fetch(new Request(`https://worker.test/api/v2/players?${query}`, {
-    headers: { origin: 'https://example.github.io' },
-  }), env)).json();
-  const first = await get('nationality=all');
-  assert.equal(first.players.length, 100);
-  assert.equal(first.nextCursor, 100);
-  const second = await get(`nationality=all&after=${first.nextCursor}`);
-  assert.equal(second.players.length, 5);
-  assert.equal(second.nextCursor, null);
-  const searched = await get('nationality=all&q=Late%20Arrival');
-  assert.deepEqual(searched.players.map(item => item.id), ['af:player:105']);
-});
-
 test('reviewed Japanese bridge preserves explicit legacy IDs without identity collisions', async () => {
   const fs = require('node:fs');
   const legacy = await require('../v2-backfill-data').loadCurrentMergedData({
@@ -111,4 +81,73 @@ test('reviewed Japanese bridge preserves explicit legacy IDs without identity co
     if (explicit.size) assert.deepEqual([...explicit], [reviewedIds[item.name]], item.name);
   }
   assert.deepEqual(legacy.players.filter(item => !reviewedIds[item.name]).map(item => item.name), []);
+  assert.equal(Object.keys(reviewedIds).length,64);
+  const evidence=require('../config/tracked-player-provider-evidence.json');
+  for (const item of evidence.identities) assert.equal(reviewedIds[item.legacyName],item.providerId);
+});
+
+test('unfinished and older runs never replace complete current squads; departing players leave the directory', async t => {
+  const db = new DatabaseSync(':memory:'); t.after(() => db.close());
+  applyMigrations(db, path.join(__dirname, '..'));
+  db.exec("INSERT INTO provider_sources(code,api_version) VALUES ('api-football','v3')");
+  const { publishPlayerRoster, completePlayerRoster, assertPlayerRosterRequest } = await import('../admin-worker/player-roster-ingest.mjs');
+  const { default: worker } = await import('../worker/index.mjs');
+  const env = { FOOTBALL_DB:createLocalD1(db), APP_ORIGINS:'https://example.github.io' };
+  const get = async suffix => {
+    const response = await worker.fetch(new Request('https://worker.test/api/v2/players'+suffix,{headers:{origin:'https://example.github.io'}}),env);
+    assert.equal(response.status,200); return response.json();
+  };
+  const finish = (day, count, observations, teams) => completePlayerRoster(env, {observedOn:day,runId:`${day}T00:00:00.000Z`,expectedPlayers:count,expectedObservations:observations,squadTeamIds:teams});
+  await publishPlayerRoster(env,assertPlayerRosterRequest(batch('2026-09-08',[player()])));
+  await finish('2026-09-08',1,1,[10]);
+  const changed=player('Japan',20);
+  changed.teams.push({...player().teams[0],source:'season_players'});
+  await publishPlayerRoster(env,assertPlayerRosterRequest(batch('2026-10-17',[changed])));
+  assert.deepEqual((await get('?nationality=Japan')).players[0].rosterTeams.map(t=>t.id),['af:team:10']);
+  await assert.rejects(finish('2026-10-17',2,2,[20]),/differs/);
+  await assert.rejects(finish('2026-10-17',1,1,[20]),/differs/);
+  await assert.rejects(finish('2026-10-17',1,2,[10]),/differs/);
+  await finish('2026-10-17',1,2,[20]);
+  assert.deepEqual((await get('?nationality=Japan')).players[0].rosterTeams.map(t=>t.id),['af:team:20']);
+  await publishPlayerRoster(env,assertPlayerRosterRequest(batch('2026-09-09',[player('England')])));
+  await finish('2026-09-09',1,1,[10]);
+  const current=(await get('?nationality=Japan')).players;
+  assert.equal(current[0].nationality,'Japan');
+  assert.deepEqual(current[0].rosterTeams.map(t=>t.id),['af:team:20']);
+  const other={...player(),id:8};
+  await publishPlayerRoster(env,assertPlayerRosterRequest(batch('2026-10-18',[other])));
+  await finish('2026-10-18',1,1,[10]);
+  assert.deepEqual((await get('?nationality=Japan')).players.map(p=>p.providerId),[8]);
+  const old=await get('/af%3Aplayer%3A7');
+  assert.equal(old.player.rosterTeams.length,0);
+  assert.equal(old.rosterHistory.length,2);
+  await assert.rejects(publishPlayerRoster(env,assertPlayerRosterRequest(batch('2026-10-18',[player()]))),/completed/);
+});
+
+test('roster publication cannot activate a partially acknowledged upload',async()=>{
+  const {publishRoster}=await import('../scripts/v2/sync-player-roster.mjs');
+  const calls=[];const env={ADMIN_INGEST_URL:'https://admin.test',ADMIN_INGEST_TOKEN:'test'};
+  await assert.rejects(publishRoster([player()],'2026-10-18',async(url,options)=>{
+    calls.push(JSON.parse(options.body));return {ok:false,status:503,json:async()=>({ok:false})};
+  },env),/rejected/);
+  assert.deepEqual(calls.map(c=>c.operation),['player_roster_upsert']);
+});
+
+test('complete current roster pages and literal name searches reach players after the first page',async t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());applyMigrations(db,path.join(__dirname,'..'));
+ db.exec("INSERT INTO provider_sources(code,api_version) VALUES('api-football','v3')");
+ const {publishPlayerRoster,completePlayerRoster}=await import('../admin-worker/player-roster-ingest.mjs');
+ const {default:worker}=await import('../worker/index.mjs');
+ const env={FOOTBALL_DB:createLocalD1(db),APP_ORIGINS:'https://example.github.io'};
+ const players=Array.from({length:105},(_,i)=>({...player(),id:i+1,name:i===104?'Late Arrival':`Player ${i+1}`}));
+ for(let i=0;i<players.length;i+=40)await publishPlayerRoster(env,batch('2026-10-18',players.slice(i,i+40)));
+ await completePlayerRoster(env,{runId:'2026-10-18T00:00:00.000Z',observedOn:'2026-10-18',expectedPlayers:105,expectedObservations:105,squadTeamIds:[10]});
+ const get=async query=>{
+  const response=await worker.fetch(new Request('https://worker.test/api/v2/players?'+query,{headers:{origin:'https://example.github.io'}}),env);
+  assert.equal(response.status,200);return response.json();
+ };
+ const first=await get('nationality=all');assert.equal(first.players.length,100);assert.equal(first.nextCursor,100);
+ const second=await get('nationality=all&after=100');assert.equal(second.players.length,5);assert.equal(second.nextCursor,null);
+ assert.deepEqual((await get('nationality=all&q=late%20arrival')).players.map(p=>p.providerId),[105]);
+ assert.equal((await get('nationality=all&q=%25')).players.length,0);
 });

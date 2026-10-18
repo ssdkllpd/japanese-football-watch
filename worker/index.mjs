@@ -980,36 +980,32 @@ function playerAggregate(row) {
   };
 }
 
-const PLAYER_DIRECTORY_SQL = `
+const ACTIVE_ROSTER_RUN_SQL = `(SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)`;
+const PLAYER_PROFILE_COLUMNS_SQL = `
 SELECT player.canonical_id AS id, player.provider_id AS provider_id,
   player.display_name AS name, player.nationality, player.birth_date AS birth_date,
-  player.photo_url AS photo,
-  (SELECT observed_on FROM player_roster_observations WHERE player_id = player.id
-   AND run_id=(SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)
-   LIMIT 1) AS roster_observed_on,
+  player.photo_url AS photo, player.position,
+  (SELECT observed_on FROM player_roster_sync_runs WHERE run_id=${ACTIVE_ROSTER_RUN_SQL}) AS roster_observed_on,
   (SELECT json_group_array(json_object('id', team.canonical_id, 'name', team.name, 'logo', team.logo_url))
    FROM player_roster_observations observation JOIN teams team ON team.id = observation.team_id
-   WHERE observation.player_id = player.id AND observation.run_id =
-     (SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)
-  ) AS roster_teams
-FROM players player
+   WHERE observation.player_id = player.id AND observation.source='team_squad'
+     AND observation.run_id=${ACTIVE_ROSTER_RUN_SQL}) AS roster_teams
+FROM players player`;
+const PLAYER_DIRECTORY_SQL = `${PLAYER_PROFILE_COLUMNS_SQL}
 WHERE (?1 = 'all' OR player.nationality = ?1)
   AND player.provider_id > ?2
   AND (?3 = '' OR INSTR(LOWER(player.display_name), LOWER(?3)) > 0)
-  AND (?4 = '' OR EXISTS (SELECT 1 FROM player_roster_observations membership
+  AND EXISTS (SELECT 1 FROM player_roster_observations membership
     JOIN teams club ON club.id=membership.team_id
-    WHERE membership.player_id=player.id AND club.canonical_id=?4
-      AND membership.run_id=(SELECT MAX(run_id) FROM player_roster_sync_runs WHERE completed_at IS NOT NULL)))
+    WHERE membership.player_id=player.id AND membership.source='team_squad'
+      AND membership.run_id=${ACTIVE_ROSTER_RUN_SQL}
+      AND (?4 = '' OR club.canonical_id=?4))
 ORDER BY player.provider_id LIMIT 101`;
-
-const PLAYER_PROFILE_SQL = PLAYER_DIRECTORY_SQL.replace(
-  /WHERE \(\?1 = 'all'[\s\S]*ORDER BY player\.provider_id LIMIT 101$/,
-  'WHERE player.canonical_id = ?1 LIMIT 1',
-);
+const PLAYER_PROFILE_SQL = `${PLAYER_PROFILE_COLUMNS_SQL} WHERE player.canonical_id = ?1 LIMIT 1`;
 
 function playerProfile(row) {
   return { id: row.id, providerId: row.provider_id, name: row.name,
-    nationality: row.nationality, birthDate: row.birth_date, photo: row.photo,
+    nationality: row.nationality, birthDate: row.birth_date, photo: row.photo, pos: row.position,
     rosterObservedOn: row.roster_observed_on,
     rosterTeams: JSON.parse(row.roster_teams || '[]'),
   };
@@ -1025,6 +1021,8 @@ async function playerDirectoryResponse(env, url) {
     || (teamId && !/^af:team:\d+$/.test(teamId))) {
     return json({ error: 'Invalid player directory filter' }, 400);
   }
+  const active = await env.FOOTBALL_DB.prepare(`SELECT run_id FROM player_roster_sync_runs WHERE completed_at IS NOT NULL LIMIT 1`).first();
+  if (!active) return json({ error: 'Player roster has not been initialized' }, 503);
   const rows = await d1Rows(env, PLAYER_DIRECTORY_SQL, nationality, cursor, query, teamId);
   const page = rows.slice(0, 100).map(playerProfile);
   return withHeader(json({ contractVersion: '2.0.0', nationality, players: page,
@@ -1036,14 +1034,29 @@ async function singlePlayerResponse(env, playerId) {
   if (!/^af:player:\d+$/.test(playerId)) return json({ error: 'Invalid player ID' }, 400);
   const rows = await d1Rows(env, PLAYER_PROFILE_SQL, playerId);
   if (!rows.length) return json({ error: 'Player not found' }, 404);
+  const recentMatches = await d1Rows(env, `SELECT fixture.canonical_id AS fixtureId, fixture.date_jst AS dateJst,
+    home.name AS homeName, away.name AS awayName, team.name AS teamName,
+    stats.minutes, stats.goals, stats.assists
+    FROM players player JOIN fixture_player_records record ON record.player_id=player.id
+    JOIN fixtures fixture ON fixture.id=record.fixture_id
+    JOIN teams home ON home.id=fixture.home_team_id JOIN teams away ON away.id=fixture.away_team_id
+    JOIN teams team ON team.id=record.team_id
+    JOIN fixture_player_appearances appearance ON appearance.player_record_id=record.id
+      AND appearance.fixture_revision_id=fixture.published_revision
+      AND appearance.appearance_state IN ('started','substitute_used')
+    LEFT JOIN fixture_player_stats stats ON stats.player_appearance_id=appearance.id
+    WHERE player.canonical_id=?1 ORDER BY fixture.kickoff_utc DESC, fixture.id DESC LIMIT 20`, playerId);
   const history = await d1Rows(env, `SELECT team.canonical_id AS id, team.name,
-    MIN(observation.observed_on) AS first_seen, MAX(observation.observed_on) AS last_seen
+    MIN(observation.observed_on) AS first_seen, MAX(observation.observed_on) AS last_seen,
+    EXISTS (SELECT 1 FROM player_roster_observations current WHERE current.player_id=player.id
+      AND current.team_id=team.id AND current.source='team_squad' AND current.run_id=${ACTIVE_ROSTER_RUN_SQL}) AS is_current
     FROM player_roster_observations observation JOIN teams team ON team.id=observation.team_id
     JOIN player_roster_sync_runs run ON run.run_id=observation.run_id AND run.completed_at IS NOT NULL
     JOIN players player ON player.id=observation.player_id
-    WHERE player.canonical_id=?1 GROUP BY team.id ORDER BY last_seen DESC`, playerId);
-  return withHeader(json({ contractVersion: '2.0.0', player: playerProfile(rows[0]),
-    rosterHistory: history.map(row => ({ id: row.id, name: row.name, firstSeen: row.first_seen, lastSeen: row.last_seen })),
+    WHERE player.canonical_id=?1 AND observation.source='team_squad'
+    GROUP BY team.id ORDER BY last_seen DESC`, playerId);
+  return withHeader(json({ contractVersion: '2.0.0', player: playerProfile(rows[0]), recentMatches,
+    rosterHistory: history.map(row => ({ id: row.id, name: row.name, firstSeen: row.first_seen, lastSeen: row.last_seen, current: row.is_current === 1 })),
   }, 200, { 'cache-control': 'public, max-age=120' }), 'x-jfw-data-source', 'd1');
 }
 
