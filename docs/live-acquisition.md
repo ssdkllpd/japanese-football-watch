@@ -1,6 +1,6 @@
 # Live acquisition operations
 
-The private `jfw-football-live-acquisition` Worker schedules work; the `API-Football Live Acquisition` GitHub workflow acquires provider data and saves provisional scores in the separate `jfw-football-live` D1 database. The provider credential stays in the protected GitHub environment and is absent from both Workers. The scheduler holds only the workflow-dispatch credential. The public Worker and browser read stored data and never call the provider. Existing finalized publication remains separate and takes precedence over provisional scores.
+The private `jfw-football-live-acquisition` Worker schedules work; the `API-Football Live Acquisition` GitHub workflow acquires provider data and saves provisional scores and match details in the separate `jfw-football-live` D1 database. The provider credential stays in the protected GitHub environment and is absent from both Workers. The scheduler holds only the workflow-dispatch credential. The public Worker and browser read stored data and never call the provider. Existing finalized publication remains separate and takes precedence over provisional scores.
 
 This split follows production verification: API calls succeeded from GitHub, while Workers returned provider `rateLimit` errors even at one call per minute. API-Sports documents that shared outbound IPs, including Cloudflare Workers, can hit network protection due to other users' traffic: https://www.api-football.com/news/post/how-ratelimit-works.
 
@@ -12,6 +12,16 @@ This split follows production verification: API calls succeeded from GitHub, whi
 - Thirty minutes without live data triggers a fixture schedule check. A previously observed game disappearing from live results is checked immediately for its final score. A postponement or cancellation removes that game without stopping others.
 - The acquisition window ends six hours after scheduled kickoff. Snapshots older than three minutes are visibly stale. Both today's visible match list and today's non-final fixture detail refresh stored data once per minute; hidden tabs do not refresh.
 - Active acquisition is dispatched at most once per minute. GitHub startup/queue latency can delay an individual update, so this is not an exact one-minute delivery guarantee. Existing queued/running jobs block further dispatches, stale trigger slots older than three minutes are discarded, and jobs have a four-minute timeout. Dispatch alone never fabricates an acquisition heartbeat.
+
+## Provisional match details
+
+The two-hour and one-hour schedule checks also save any available announced lineups. Within the confirmed one-hour window, `fixtures?ids=...` retrieves the available lineups, events, team statistics and player performances in groups of at most 20. Scheduled fixtures are revisited every five minutes; live fixtures every two minutes. The existing 12-request tick limit, 4,000-request daily limit and provider reserve remain unchanged. When simultaneous fixtures exceed a tick's capacity, the oldest details are selected first; delivery can take longer than the target interval.
+
+`live_details` stores one normalized JSON row per fixture in the separate live database, with two-day retention. Score-only `live=all` responses never overwrite it. Explicit empty event arrays replace old events (including VAR reversals); omitted sections retain the last acquired section and are visibly flagged. Failed requests preserve stored data. A final-status ID recheck saves the last provisional detail while core final publication continues independently.
+
+`GET /api/v2/fixtures/<id>` serves stored provisional details for the same fixture, league, season and clubs until a finalized core revision is available. It bypasses the old core-detail cache while checking that transition. Public reads never call the provider. Missing detail storage falls back to existing core/R2 data, and stale details are flagged after three minutes (six minutes for pre-match data). A late update is shown with its acquisition time, never as a newly fetched response.
+
+Visible pre-match and live detail screens re-read this stored endpoint every minute, keeping the selected tab and rating mode. A failed refresh keeps the previous content with an update warning. Final publication ends detail polling. Midnight does not stop an already-live fixture's detail refresh.
 
 ## Budgets and safety
 

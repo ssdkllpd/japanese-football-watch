@@ -8,6 +8,8 @@ on:
       - 'migrations/live/**'
       - 'scripts/live/**'
       - 'shared/live-contract.mjs'
+      - 'shared/live-detail.mjs'
+      - 'scripts/v2/fixture-contract.js'
       - 'config/live-worker-target.json'
       - '.github/workflows/api-football-live.yml'
   workflow_dispatch:

@@ -1581,11 +1581,11 @@ async function r2FixtureArchivePayload(env, archive, fixtureId) {
   return assertFixtureDetailPayload(payload, fixtureId);
 }
 
-async function fixtureDetailResponse(env, fixtureId, context = null) {
+async function coreFixtureDetailResponse(env, fixtureId, context = null, bypassCache = false) {
   if (!enabled(env, 'D1_FIXTURE_DETAIL_ENABLED')) return r2FixturePayload(env, fixtureId);
   const cache = dateResponseCache(env);
   const cacheKey = fixtureDetailResponseCacheKey(fixtureId);
-  const cached = await cacheMatch(cache, cacheKey);
+  const cached = bypassCache ? null : await cacheMatch(cache, cacheKey);
   if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
 
   let response;
@@ -1617,8 +1617,36 @@ async function fixtureDetailResponse(env, fixtureId, context = null) {
     if (response.status === 200) response = withHeader(response, 'x-jfw-cache', 'miss');
     else if (error?.message) response = withHeader(response, 'x-jfw-error', 'unavailable');
   }
-  await cachePut(cache, cacheKey, response, context);
+  if (!bypassCache) await cachePut(cache, cacheKey, response, context);
   return response;
+}
+
+export async function fixtureDetailResponse(env, fixtureId, context = null, now = Date.now()) {
+  if (!/^af:fixture:\d+$/.test(fixtureId)) return json({error:'Invalid fixture ID'},400);
+  let live;
+  if (env.LIVE_DATA_READ_ENABLED === 'true' && env.LIVE_DB) {
+    try {
+      const result=await env.LIVE_DB.prepare('SELECT payload,updated_ms FROM live_details WHERE fixture_id=? AND updated_ms>=?')
+        .bind(fixtureId,now-2*86400000).all();
+      const saved=result.results?.[0];
+      if (result.success!==false && saved) {
+        const bundle=JSON.parse(saved.payload);
+        assertFixtureDetailPayload(bundle,fixtureId);
+        const allowed=allowedCompetitionIds(env);
+        if (!allowed.size || allowed.has(String(bundle.competition.providerId))) live={bundle,updatedMs:saved.updated_ms};
+      }
+    } catch { /* A deployment or D1 outage must not hide existing final data. */ }
+  }
+  const response=await coreFixtureDetailResponse(env,fixtureId,context,Boolean(live));
+  if (!live) return response;
+  if (response.status===200) {
+    const core=await response.clone().json();
+    if (core.fixture?.ingestionState==='finalized') return response;
+    if (core.fixture?.competitionId!==live.bundle.fixture.competitionId || core.fixture?.seasonId!==live.bundle.fixture.seasonId
+      || ['home','away'].some(side=>core.fixture?.teams?.[side]?.id!==live.bundle.fixture.teams[side].id)) return response;
+  } else if (![404,503].includes(response.status)) return response;
+  if (now-live.updatedMs>(live.bundle.fixture.status.short==='NS'?6:3)*60000) live.bundle.fixture.provenance.issues.push('live_detail_stale');
+  return json(live.bundle,200,{'cache-control':'public, max-age=15','x-jfw-data-source':'d1-live'});
 }
 
 async function authorizeFreshDateRead(request,env) {
