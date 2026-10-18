@@ -344,20 +344,28 @@
       const profile = state.playerDirectory.players.get(`af:player:${reviewedId}`)
         || knownPlayers.get(`af:player:${reviewedId}`);
       return { ...player, providerId: reviewedId,
-        club: profile?.rosterTeams?.map(team => team.name).join(' / ') || player.club,
-        rosterHistory: profile?.rosterHistory || null,
+        club: profile ? profile.rosterTeams.map(team => team.name).join(' / ') || null : player.club,
+        rosterHistory: knownPlayers.get(`af:player:${reviewedId}`)?.rosterHistory || profile?.rosterHistory || null,
         nationality: profile?.nationality || player.nationality || null,
         seasonStats: published.seasonStats, competitionStats: published.competitionStats,
         clubStats: published.clubStats, photo: profile?.photo || published.photo || player.photo,
         statsSource: 'published' };
     }
-    if (player.trackingStatus === 'out_of_scope') return { ...player, providerId: reviewedId || null, statsSource: 'historical' };
+    if (player.trackingStatus === 'out_of_scope') {
+      const profile = reviewedId && (state.playerDirectory.players.get(`af:player:${reviewedId}`)
+        || knownPlayers.get(`af:player:${reviewedId}`));
+      return { ...player, providerId: reviewedId || null,
+        club: profile ? profile.rosterTeams.map(team => team.name).join(' / ') || null : player.club,
+        rosterHistory: knownPlayers.get(`af:player:${reviewedId}`)?.rosterHistory || profile?.rosterHistory || null,
+        nationality: profile?.nationality || player.nationality || null,
+        photo: profile?.photo || player.photo, statsSource: 'historical' };
+    }
     if (reviewedId && state.trackedStats.loaded) {
       const profile = state.playerDirectory.players.get(`af:player:${reviewedId}`)
         || knownPlayers.get(`af:player:${reviewedId}`);
       return { ...player, providerId: reviewedId,
-        club: profile?.rosterTeams?.map(team => team.name).join(' / ') || player.club,
-        rosterHistory: profile?.rosterHistory || null,
+        club: profile ? profile.rosterTeams.map(team => team.name).join(' / ') || null : player.club,
+        rosterHistory: knownPlayers.get(`af:player:${reviewedId}`)?.rosterHistory || profile?.rosterHistory || null,
         nationality: profile?.nationality || player.nationality || null,
         photo: profile?.photo || player.photo,
         seasonStats: null,
