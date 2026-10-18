@@ -48,6 +48,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui
 .search-box:focus{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
 .entity-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:54px;padding:8px 10px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
 .entity-row:first-child{border-top:0}
+.entity-row.player-match-row{grid-template-columns:minmax(0,1fr) auto}
 .entity-logo{width:34px;height:34px;border-radius:50%}
 .entity-main{min-width:0}
 .entity-name{font-size:12px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
