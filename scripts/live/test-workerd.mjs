@@ -16,7 +16,7 @@ const {buildSync}=require(require.resolve('esbuild',{paths:[wranglerRoot]}));
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'jfw-live-native-'));
 const source=`import liveWorker,{scheduledTick} from ${JSON.stringify(path.join(root,'live-worker/index.mjs'))};
  import {dispatchLiveTick} from ${JSON.stringify(path.join(root,'live-worker/dispatch.mjs'))};
- import {storedLiveResponse} from ${JSON.stringify(path.join(root,'worker/index.mjs'))};
+ import {storedLiveResponse,fixtureDetailResponse} from ${JSON.stringify(path.join(root,'worker/index.mjs'))};
  export default {async fetch(request,env) {
    const input=await request.json();
    if(input.databaseQuery) {try {
@@ -25,6 +25,7 @@ const source=`import liveWorker,{scheduledTick} from ${JSON.stringify(path.join(
      return Response.json({success:true,result:await db.batch(statements)});
    }catch{return Response.json({success:false},{status:500});}}
    if(input.public) return storedLiveResponse({...env,LIVE_DATA_READ_ENABLED:'true'},input.now);
+   if(input.publicDetail) return fixtureDetailResponse({...env,LIVE_DATA_READ_ENABLED:'true'},input.fixtureId,null,input.now);
    try {if(input.github) {
      const githubEnv={...env,API_FOOTBALL_KEY:undefined,WORKFLOW_DISPATCH_TOKEN:'dispatch-test-only',LIVE_ACQUISITION_ENABLED:'true',LIVE_ACQUISITION_MODE:'github'};
      const event={scheduledTime:input.now};
@@ -102,9 +103,19 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   await send({now:base+2.5*3600000});
   assert.equal(calls.slice(before).filter(url=>url.includes('ids=')).length,1,'thirty minutes without data must trigger schedule confirmation');
   fixtures.set(101,raw(101,base+3*3600000,'1H',1));
+  fixtures.get(101).lineups=[{team:{id:202},formation:'4-3-3',startXI:[{player:{id:900,name:'Native Starter',number:9,pos:'F',grid:'4:1'}}],substitutes:[],coach:{id:8,name:'Native Coach'}}];
+  fixtures.get(101).events=[{time:{elapsed:10},team:{id:202},player:{id:900,name:'Native Starter'},type:'Goal',detail:'Normal Goal'}];
+  fixtures.get(101).statistics=[{team:{id:202},statistics:[{type:'Shots on Goal',value:2}]}];
+  fixtures.get(101).players=[{team:{id:202},players:[{player:{id:900,name:'Native Starter'},statistics:[{games:{minutes:10,rating:'7.8',position:'F'},goals:{total:1}}]}]}];
   const active=await send({now:base+3*3600000});assert.equal(active.body.liveFixtures,1,JSON.stringify(active));
   const snapshot=await db.prepare('SELECT payload FROM live_snapshots WHERE fixture_id=?').bind('af:fixture:101').first();
   assert.equal(JSON.parse(snapshot.payload).home.score,1);
+  const detail=await send({publicDetail:true,fixtureId:'af:fixture:101',now:base+3*3600000});
+  assert.equal(detail.status,200,JSON.stringify(detail));
+  assert.equal(detail.body.lineups[0].startXI[0].name,'Native Starter');
+  assert.equal(detail.body.events[0].type,'goal');
+  assert.equal(detail.body.teamStats[0].values.shots_on_goal,2);
+  assert.equal(detail.body.playerStats[0].values.rating,7.8);
   const count=calls.length;
   const publicReads=await Promise.all(Array.from({length:8},()=>send({public:true,now:base+3*3600000})));
   for(const response of publicReads) {assert.equal(response.body.liveUpdatesEnabled,true);assert.equal(response.body.fixtures[0].home.score,1);}
@@ -116,6 +127,9 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   await send({now:base+3*3600000+120000});
   assert.equal((await row(101)).status,'FT','live disappearance must immediately confirm the final status');
   assert.equal(JSON.parse((await db.prepare('SELECT payload FROM live_snapshots WHERE fixture_id=?').bind('af:fixture:101').first()).payload).home.score,2);
+  const finalDetail=await send({publicDetail:true,fixtureId:'af:fixture:101',now:base+3*3600000+120000});
+  assert.equal(finalDetail.body.fixture.ingestionState,'provisional_final');
+  assert.equal(finalDetail.body.lineups[0].startXI[0].name,'Native Starter');
   const finishedCalls=calls.length;
   assert.equal((await send({now:base+3*3600000+180000})).body.status,'idle');
   assert.equal(calls.length,finishedCalls,'end of all active games stops provider polling');
@@ -146,7 +160,7 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   // Production mode: Workers dispatch, while Node acquires through the REST D1 adapter.
   // Keep this replay away from the JST date boundary.
   const stamp=Math.floor(Date.now()/86400000)*86400000+8*3600000;
-  await db.batch([db.prepare('DELETE FROM live_schedule'),db.prepare('DELETE FROM live_snapshots'),db.prepare('DELETE FROM live_date_checks'),db.prepare('UPDATE live_budget SET remaining=6000,requests=0'),db.prepare('UPDATE live_control SET last_tick_ms=0,lease_until_ms=0,daily_day=NULL,last_core_sync_ms=0')]);
+  await db.batch([db.prepare('DELETE FROM live_schedule'),db.prepare('DELETE FROM live_snapshots'),db.prepare('DELETE FROM live_details'),db.prepare('DELETE FROM live_date_checks'),db.prepare('UPDATE live_budget SET remaining=6000,requests=0'),db.prepare('UPDATE live_control SET last_tick_ms=0,lease_until_ms=0,daily_day=NULL,last_core_sync_ms=0')]);
   fixtures.clear();fixtures.set(103,raw(103,stamp+3*3600000));
   const providerCount=calls.length;
   const dispatches=await Promise.all(Array.from({length:8},()=>send({github:true,defaultGithub:true,now:stamp})));

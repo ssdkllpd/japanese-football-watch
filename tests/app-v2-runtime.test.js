@@ -618,6 +618,67 @@ test('today fixture detail refreshes stored live scores and explains stale data'
  assert.match(app.text(),/ライブ更新が遅れています/);
 });
 
+test('pre-match detail refreshes announced lineups, preserves the active tab on failure, and stops after final publication',async t=>{
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+ const intervals=[];let phase=0;
+ const current=()=>{const value=bundle();value.fixture={...value.fixture,dateJst:today,kickoffUtc:new Date(Date.now()+30*60000).toISOString(),
+  status:{short:phase===3?'FT':'NS'},ingestionState:phase===3?'finalized':'scheduled'};
+  if(phase===0)value.lineups=[];
+  if(phase===3)value.lineups[0].startXI[0].name='Confirmed Starter';
+  return value;
+ };
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',intervals,feed:async()=>({fixtures:[current().fixture]}),
+  request:async url=>{
+   if(new URL(url).pathname==='/api/v2/fixtures/af%3Afixture%3A10')return phase===2?{ok:false,status:503,json:async()=>({error:'temporary'})}:{ok:true,status:200,json:async()=>current()};
+   return null;
+  }});
+ await until(()=>app.text().includes('スタメンはまだ発表されていません'),'unannounced lineup');
+ phase=1;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.text().includes('Starter 1'),'announced lineup after polling');
+ assert.equal(app.doc.querySelector('[role=tab][aria-selected=true]').textContent,'ラインナップ');
+ assert.match(app.w.location.hash,/tab=lineup/);
+ await tick();phase=2;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.text().includes('試合詳細の更新が遅れています'),'detail fetch failure');
+ assert.match(app.text(),/Starter 1/);
+ await tick();phase=3;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.text().includes('Confirmed Starter'),'final fixture replaces provisional detail');
+ assert.doesNotMatch(app.text(),/試合詳細の更新が遅れています/);
+ await tick();const calls=app.calls.filter(url=>url.includes('/api/v2/fixtures/')).length;
+ intervals.find(row=>row.ms===60000).callback();await tick();
+ assert.equal(app.calls.filter(url=>url.includes('/api/v2/fixtures/')).length,calls);
+});
+
+test('late background fixture details cannot repaint a page that was left',async t=>{
+ const intervals=[];let pending=null;
+ const live={...bundle(),fixture:{...fixture(),dateJst:'2026-10-17',status:{short:'1H'},ingestionState:'live'}};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=events',intervals,detail:live,
+  request:async url=>new URL(url).pathname.includes('/fixtures/')&&pending?pending:null});
+ await until(()=>app.doc.querySelector('[data-detail-tab="events"]'),'initial fixture');
+ let resolve;pending=new Promise(done=>{resolve=done;});
+ intervals.find(row=>row.ms===60000).callback();await tick();
+ await app.click('[data-page="leagues"]');
+ const returned={...live,events:[{type:'goal',detail:'Late response',elapsed:40}]};
+ resolve({ok:true,status:200,json:async()=>returned});await tick();await tick();
+ assert.doesNotMatch(app.text(),/Late response/);
+ assert.equal(app.doc.getElementById('pageTitle').textContent,'リーグ');
+});
+
+test('an older score snapshot cannot replace a newer provisional final detail',async t=>{
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+ const stamp=Date.now();
+ const detail={...bundle(),fixture:{...fixture(),dateJst:today,kickoffUtc:new Date(stamp-90*60000).toISOString(),
+  status:{short:'FT'},ingestionState:'provisional_final',reconciledAt:new Date(stamp).toISOString(),score:{goals:{home:3,away:0}}}};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=overview',detail,feed:async()=>({fixtures:[detail.fixture]}),
+  request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({liveUpdatesEnabled:true,fixtures:[{
+   fixtureId:'af:fixture:10',competitionId:'af:competition:39',seasonId:'af:season:39:2026',dateJst:today,
+   kickoffUtc:detail.fixture.kickoffUtc,updatedAt:new Date(stamp-120000).toISOString(),status:{short:'1H'},
+   home:{teamId:home.id,name:home.name,score:1},away:{teamId:away.id,name:away.name,score:0},
+  }]})}:null});
+ await until(()=>app.calls.some(url=>url.endsWith('/api/v2/live')),'older score request');await tick();
+ assert.equal(app.doc.querySelector('.score-value').textContent.trim(),'3 - 0');
+ assert.equal(app.doc.querySelector('.status-pill').textContent,'FT');
+});
+
 test('a cold provider profile loads directory facts and published recent matches',async t=>{
  const profile={id:'af:player:777',providerId:777,name:'New Player',nationality:'Japan',pos:'Midfielder',
   rosterObservedOn:'2026-10-18',rosterTeams:[{id:'af:team:2',name:'New Club'}]};

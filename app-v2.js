@@ -438,6 +438,13 @@
     if (route.kind === 'following') renderFollowing();
   }
 
+  function fixtureWithLiveScore(stored) {
+    if (!stored || stored.ingestionState==='finalized') return stored;
+    const live=state.fixtures.find(item=>item.fixtureId===(stored.fixtureId || stored.id));
+    const detailTime=Date.parse(stored.reconciledAt || stored.provenance?.fetchedAt);
+    return live?.isLiveSnapshot && !(detailTime>Date.parse(live.reconciledAt)) ? {...stored,...live} : stored;
+  }
+
   async function loadMatches({ background = false, date = state.date } = {}) {
     const loadSequence = ++state.matchLoadSequence;
     const requestedDate = date;
@@ -642,8 +649,7 @@
       if (state.detail !== detailRequest) return;
       detailRequest.bundle = bundle;
       rememberFixtures(bundle.fixture ? [bundle.fixture] : []);
-      for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) rememberPlayer({playerId:player.id,name:player.name,photo:player.photo,pos:player.position});
-      for (const row of bundle.playerStats || []) rememberPlayer({ playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position });
+      rememberBundlePlayers(bundle);
     } catch (error) {
       if (state.detail !== detailRequest) return;
       detailRequest.error = error;
@@ -653,14 +659,45 @@
     renderFixtureDetail();
   }
 
+  function rememberBundlePlayers(bundle) {
+    for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) rememberPlayer({playerId:player.id,name:player.name,photo:player.photo,pos:player.position});
+    for (const row of bundle.playerStats || []) rememberPlayer({ playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position });
+  }
+
+  function fixtureNeedsRefresh(row) {
+    if (!row || row.ingestionState==='finalized' || isCancelled(row) || statusShort(row)==='PST') return false;
+    const kickoff=Date.parse(row.kickoffUtc);
+    return isLive(row) || Number.isFinite(kickoff) && kickoff<=Date.now()+2*3600000 && kickoff>=Date.now()-6*3600000;
+  }
+
+  async function refreshFixtureDetail() {
+    const detail=state.detail,route=router.parseHash(location.hash);
+    if (route.kind!=='fixture' || !detail || detail.loading || detail.refreshing) return;
+    const fixtureId=route.fixtureId || detail.bundle?.fixture?.id || detail.summary?.fixtureId;
+    if (!fixtureId || !String(fixtureId).startsWith('af:fixture:')) return;
+    detail.refreshing=true;
+    try {
+      const bundle=await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`);
+      if (bundle.fixture?.id!==fixtureId) throw new Error('Invalid refreshed fixture identity.');
+      if (state.detail!==detail) return;
+      detail.bundle=bundle;detail.error=null;detail.refreshError=false;
+      rememberFixtures([bundle.fixture]);rememberBundlePlayers(bundle);
+    } catch {
+      if (state.detail!==detail) return;
+      detail.refreshError=true;
+    } finally {
+      detail.refreshing=false;
+      if (state.detail===detail && router.parseHash(location.hash).kind==='fixture') renderFixtureDetail();
+    }
+  }
+
   function renderFixtureDetail() {
     eyebrow.textContent = '試合詳細';
     title.textContent = '試合';
     const detail = state.detail || {};
     const bundle = detail.bundle || {};
     const stored = bundle.fixture || detail.summary || {};
-    const live = state.fixtures.find(item => item.fixtureId === (stored.fixtureId || stored.id));
-    const row = stored.ingestionState !== 'finalized' && live?.isLiveSnapshot ? { ...stored, ...live } : stored;
+    const row = fixtureWithLiveScore(stored);
     const home = row?.teams?.home || {};
     const away = row?.teams?.away || {};
     const comp = bundle?.competition?.name || detail.summary?.competitionName || detail.summary?.competitionId || '大会未取得';
@@ -676,7 +713,9 @@
       ['ratings', '選手評価'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div>
-      ${state.liveNotice && row.dateJst === todayJst() && row.ingestionState !== 'finalized' ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : ''}
+      ${state.liveNotice && fixtureNeedsRefresh(row) ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : ''}
+      ${detail.refreshError || bundle.fixture?.provenance?.issues?.some(issue=>issue==='live_detail_stale'||issue.startsWith('live_retained_')) ? '<div class="notice" role="status">試合詳細の更新が遅れています。最後に取得した内容を表示しています。</div>' : ''}
+      ${bundle.fixture?.provenance?.issues?.includes('live_provisional') ? '<p class="notice">試合前・試合中の速報データです。試合終了後に確定データへ切り替わります。</p>' : ''}
       <section class="detail-card score-hero"><div class="score-meta">${esc(comp)} · ${esc(row.round || '節は未取得')} · ${['PST', 'TBD'].includes(statusShort(row)) ? '日程未定' : `${esc(row.dateJst || '日付は未取得')} ${esc(formatKickoff(row.kickoffUtc))} JST`}</div><div class="score-grid"><div class="score-team">${homeLogo}<strong>${esc(home.name || 'Home')}</strong>${followTeamButton(home)}</div><div class="score-value">${valueCell(row?.score?.goals?.home)} - ${valueCell(row?.score?.goals?.away)}</div><div class="score-team">${awayLogo}<strong>${esc(away.name || 'Away')}</strong>${followTeamButton(away)}</div></div></section>
       <p class="entity-sub">更新: ${row.reconciledAt || row.provenance?.fetchedAt ? esc(row.reconciledAt || row.provenance.fetchedAt) : valueCell(null)} · ${watchLabel(row)} · ${attentionLabel(row)}</p>${renderAnnotations(bundle.annotations)}
       <div class="detail-tabs" role="tablist" aria-label="試合詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${state.detailTab === tab ? ' is-active' : ''}" id="fixture-tab-${tab}" aria-controls="fixture-panel" data-detail-tab="${tab}" type="button" role="tab" aria-selected="${state.detailTab === tab}">${label}</button>`).join('')}</div>
@@ -766,6 +805,7 @@
 
   function renderLineups(bundle) {
     const lineups = Array.isArray(bundle.lineups) ? bundle.lineups : [];
+    if (statusShort(bundle.fixture)==='NS' && data.section(bundle,'lineups')==='present' && !lineups.some(row=>row.startXI?.length)) return '<p class="notice">スタメンはまだ発表されていません。発表後、取得でき次第表示します。</p>';
     if (data.section(bundle,'lineups') !== 'present' || !lineups.length) return emptySection(bundle,'lineups');
     return lineups.map(lineup => {
       const starters = Array.isArray(lineup.startXI) ? lineup.startXI : [];
@@ -1851,13 +1891,17 @@
   let liveRefreshPending = false;
   window.setInterval(() => {
     const route = router.parseHash(location.hash, { date: state.date });
-    const detailRow = state.detail?.bundle?.fixture || state.detail?.summary;
-    const liveDetail = route.kind === 'fixture' && detailRow?.dateJst === todayJst() && detailRow?.ingestionState !== 'finalized';
+    const storedDetail = state.detail?.bundle?.fixture || state.detail?.summary;
+    const detailRow = fixtureWithLiveScore(storedDetail);
+    const liveDetail = route.kind === 'fixture' && fixtureNeedsRefresh(detailRow);
     const liveList = route.kind === 'matches' && state.date === todayJst();
     if (document.visibilityState === 'visible' && state.workerBase && (liveList || liveDetail)
         && !state.loading && !liveRefreshPending) {
       liveRefreshPending = true;
-      loadMatches({ background: true, date: liveDetail ? todayJst() : state.date }).catch(() => {}).finally(() => { liveRefreshPending = false; });
+      Promise.allSettled([
+        loadMatches({ background: true, date: liveDetail ? detailRow.dateJst || todayJst() : state.date }),
+        ...(liveDetail ? [refreshFixtureDetail()] : []),
+      ]).finally(() => { liveRefreshPending = false; });
     }
   }, 60000);
   window.addEventListener('popstate', scheduleRouteApply);

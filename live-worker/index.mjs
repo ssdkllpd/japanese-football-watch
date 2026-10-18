@@ -1,4 +1,5 @@
 import {dispatchLiveTick} from './dispatch.mjs';
+import {providerDetail,DETAIL_SECTIONS} from '../shared/live-detail.mjs';
 import { LIVE_STATUSES, CLOSED_STATUSES, MINUTE, jstDate, allowedLeagues, providerFixture, isCandidate, precheckStage, liveEligible } from '../shared/live-contract.mjs';
 
 export const LIMITS = Object.freeze({ reserve:1200, dailyRequests:4000, dailyRows:100000, maxFixtures:240, perTickRequests:12 });
@@ -83,18 +84,73 @@ async function saveSchedule(env,dto,now,{stage=null,snapshot=false,seen=false,re
     WHERE excluded.updated_ms>=live_snapshots.updated_ms`).bind(dto.fixtureId,payload,now));
   await db.batch(commands);
 }
+async function saveDetails(env,records,now,allowed) {
+  if (!records.length) return;
+  const priorRows=await all(env.LIVE_DB,`SELECT fixture_id,payload FROM live_details WHERE fixture_id IN (${records.map(()=>'?').join(',')})`,...records.map(raw=>`af:fixture:${raw.fixture.id}`));
+  const previous=new Map(priorRows.map(row=>[row.fixture_id,row]));
+  const statements=[];
+  for (const raw of records) {
+    const bundle=providerDetail(raw,allowed,now);
+    if (!bundle) throw new Error('live_detail_scope_mismatch');
+    const prior=previous.get(bundle.fixture.id);
+    if (prior) {
+      const saved=JSON.parse(prior.payload);
+      // Missing sections do not erase acquired lineups; explicit empty arrays do
+      // replace events, allowing VAR removals and other provider corrections.
+      if (saved.fixture?.competitionId!==bundle.fixture.competitionId || saved.fixture?.seasonId!==bundle.fixture.seasonId
+        || ['home','away'].some(side=>saved.fixture.teams?.[side]?.id!==bundle.fixture.teams[side].id)) throw new Error('live_detail_identity_changed');
+      for (const [input,key] of Object.entries(DETAIL_SECTIONS)) if (!Object.hasOwn(raw,input)) {
+        bundle[key]=saved[key];bundle.sectionStates[key]=saved.sectionStates[key];
+        bundle.fixture.provenance.issues.push(`live_retained_${key}`);
+      }
+    }
+    statements.push(env.LIVE_DB.prepare(`INSERT INTO live_details(fixture_id,payload,updated_ms) VALUES(?,?,?)
+      ON CONFLICT(fixture_id) DO UPDATE SET payload=excluded.payload,updated_ms=excluded.updated_ms
+      WHERE excluded.updated_ms>=live_details.updated_ms`).bind(bundle.fixture.id,JSON.stringify(bundle),now));
+  }
+  await env.LIVE_DB.batch(statements);
+}
 async function refreshIds(env,session,rows,now,allowed,stages=null) {
   for(const part of chunks(rows)) {
     const response=await session.read('/fixtures',{ids:part.map(row=>row.provider_id).join('-')});
     const expected=new Map(part.map(row=>[row.fixture_id,row]));
-    const seen=new Set();
+    const seen=new Set(),validated=[];
     for(const raw of response.response) {
       const dto=providerFixture(raw,allowed);
       if(!dto || !expected.has(dto.fixtureId) || seen.has(dto.fixtureId)) throw new Error('schedule_scope_mismatch');
       seen.add(dto.fixtureId);
-      await saveSchedule(env,dto,now,{stage:stages?.get(dto.fixtureId),snapshot:liveEligible(expected.get(dto.fixtureId),now)||CLOSED_STATUSES.has(dto.status.short),resetMissing:true});
+      providerDetail(raw,allowed,now);
+      validated.push({raw,dto});
     }
     if(seen.size!==expected.size) throw new Error('schedule_fixture_missing');
+    await saveDetails(env,validated.map(item=>item.raw),now,allowed);
+    for(const {dto} of validated) {
+      await saveSchedule(env,dto,now,{stage:stages?.get(dto.fixtureId),snapshot:liveEligible(expected.get(dto.fixtureId),now)||CLOSED_STATUSES.has(dto.status.short),resetMissing:true});
+    }
+  }
+}
+async function refreshDetails(env,session,rows,now,allowed) {
+  const saved=new Map((await all(env.LIVE_DB,'SELECT fixture_id,updated_ms FROM live_details')).map(row=>[row.fixture_id,row.updated_ms]));
+  const due=rows.filter(row=>now-(saved.get(row.fixture_id)||0)>=(row.status==='NS'?5:2)*MINUTE)
+    .sort((a,b)=>(saved.get(a.fixture_id)||0)-(saved.get(b.fixture_id)||0)||a.kickoff_ms-b.kickoff_ms);
+  // Keep the existing per-tick and daily request limits. Oldest details go first
+  // when simultaneous matches cannot fit into one tick.
+  for (const part of chunks(due)) {
+    if (session.calls>=LIMITS.perTickRequests) break;
+    const body=await session.read('/fixtures',{ids:part.map(row=>row.provider_id).join('-')});
+    const expected=new Set(part.map(row=>row.fixture_id)),seen=new Set(),validated=[];
+    for (const raw of body.response) {
+      const dto=providerFixture(raw,allowed);
+      if (!dto||!expected.has(dto.fixtureId)||seen.has(dto.fixtureId)) throw new Error('detail_scope_mismatch');
+      seen.add(dto.fixtureId);
+      providerDetail(raw,allowed,now);
+      validated.push({raw,dto});
+    }
+    if (seen.size!==expected.size) throw new Error('detail_fixture_missing');
+    await saveDetails(env,validated.map(item=>item.raw),now,allowed);
+    for (const {dto} of validated) {
+      await saveSchedule(env,dto,now,{snapshot:true,resetMissing:true});
+    }
   }
 }
 async function seedCore(env,now,allowed) {
@@ -149,6 +205,7 @@ async function runTick(env,now,request) {
     await db.prepare('UPDATE live_control SET daily_day=? WHERE id=1').bind(day).run();
     await db.batch([
       db.prepare('DELETE FROM live_snapshots WHERE updated_ms<?').bind(now-2*86400000),
+      db.prepare('DELETE FROM live_details WHERE updated_ms<?').bind(now-2*86400000),
       db.prepare('DELETE FROM live_schedule WHERE kickoff_ms<?').bind(now-3*86400000),
       db.prepare('DELETE FROM live_budget WHERE utc_day<?').bind(new Date(now-7*86400000).toISOString().slice(0,10)),
       db.prepare('DELETE FROM live_date_checks WHERE date_jst<?').bind(jstDate(now-3*86400000)),
@@ -186,6 +243,8 @@ async function runTick(env,now,request) {
   for(const row of active.filter(row=>!seen.has(row.fixture_id))) {
     await db.prepare('UPDATE live_schedule SET missing_since_ms=COALESCE(missing_since_ms,?),last_seen_ms=NULL WHERE fixture_id=?').bind(now,row.fixture_id).run();
   }
+  const current=await all(db,'SELECT * FROM live_schedule WHERE kickoff_ms>=? ORDER BY kickoff_ms LIMIT 1001',now-6*3600000);
+  await refreshDetails(env,session,current.filter(row=>liveEligible(row,now)),now,allowed);
   await db.prepare('UPDATE live_control SET last_poll_ms=? WHERE id=1').bind(now).run();
   return {status:'polling',nextStart:null,providerCalls:session.calls,liveFixtures:seen.size};
 }
