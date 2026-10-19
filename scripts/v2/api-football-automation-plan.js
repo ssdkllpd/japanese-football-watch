@@ -90,14 +90,17 @@ function validatePolicy(policy) {
   }
   exactKeys(policy.limits, [
     'dailyRequestReserve', 'minimumRequestIntervalMs', 'maxProviderRequestsPerRun',
-    'maxFinalDetailFixturesPerRun', 'maxFinalDetailFixturesPerDay', 'maxStandingsPerRun', 'standingsMinimumIntervalHours',
+    'maxFinalDetailFixturesPerRun', 'maxFinalDetailFixturesPerDay', 'maxCorrectionFixturesPerDay', 'maxStandingsPerRun', 'standingsMinimumIntervalHours',
   ], 'limits');
-  for (const key of Object.keys(policy.limits)) positiveInteger(policy.limits[key], `limits.${key}`);
+  for (const key of Object.keys(policy.limits)) positiveInteger(policy.limits[key], `limits.${key}`, key === 'maxCorrectionFixturesPerDay');
   if (policy.limits.maxFinalDetailFixturesPerRun > 20) {
     throw new Error('maxFinalDetailFixturesPerRun exceeds the reviewed hard cap of 20.');
   }
   if (policy.limits.maxFinalDetailFixturesPerDay > AUTOMATION_DAILY_CAP) {
     throw new Error('maxFinalDetailFixturesPerDay exceeds the reviewed daily cap of 40.');
+  }
+  if (policy.limits.maxCorrectionFixturesPerDay > 8) {
+    throw new Error('maxCorrectionFixturesPerDay exceeds the correction sub-limit of 8.');
   }
   if (policy.limits.dailyRequestReserve < 100
     || policy.limits.minimumRequestIntervalMs < 300
@@ -328,7 +331,8 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const candidates = fixtures
     .map(fixture => ({ fixture, stage: nextDueStage(policy, state, fixture, nowMs) }))
     .filter(item => item.stage)
-    .sort((left, right) => compareText(left.stage.dueAt, right.stage.dueAt)
+    .sort((left, right) => Number(right.stage.stage === 'initial') - Number(left.stage.stage === 'initial')
+      || compareText(left.stage.dueAt, right.stage.dueAt)
       || compareText(left.fixture.kickoffUtc, right.fixture.kickoffUtc)
       || compareText(left.fixture.fixtureId, right.fixture.fixtureId));
   const discoveryRequestCount = dates.length + 1; // includes the quota-free status call
@@ -347,6 +351,16 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const statePublishedToday = Object.values(state.fixtures)
     .filter(fixture => fixture.lastDetailFetchedAt?.slice(0, 10) === dateUtc);
   for (const fixture of statePublishedToday) publishedToday.add(fixture.fixtureId);
+  const correctionsToday = new Set(statePublishedToday
+    .filter(fixture => fixture.completedStages.at(-1) !== 'initial')
+    .map(fixture => fixture.fixtureId));
+  const stateTodayIds = new Set(statePublishedToday.map(fixture => fixture.fixtureId));
+  // A receipt may survive a failed state write without carrying its recheck
+  // stage. Reserve it conservatively as correction work until recovery.
+  for (const id of dailyBudget?.automationFixtureIds || []) {
+    if (!stateTodayIds.has(id)) correctionsToday.add(id);
+  }
+  let correctionCapacity = Math.max(0, policy.limits.maxCorrectionFixturesPerDay - correctionsToday.size);
   let publishCapacity = Math.max(0, policy.limits.maxFinalDetailFixturesPerDay - publishedToday.size);
   let globalCapacity = dailyBudget?.remaining ?? 240;
   let requestCapacity = policy.limits.maxProviderRequestsPerRun - discoveryRequestCount;
@@ -360,6 +374,10 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     if (state.fixtures[candidate.fixture.fixtureId]?.lastDetailFetchedAt?.slice(0, 10) === dateUtc) continue;
     const recoveryOnly = publishedToday.has(candidate.fixture.fixtureId);
     if (!recoveryOnly && publishCapacity === 0) continue;
+    const correction = candidate.stage.stage !== 'initial';
+    // Complete already-receipted work even when either daily limit is full;
+    // retries repair coverage/state without charging a second distinct slot.
+    if (correction && !recoveryOnly && correctionCapacity === 0) continue;
     const requiresGlobalSlot = !globallyPublishedToday.has(candidate.fixture.fixtureId);
     if (requiresGlobalSlot && globalCapacity === 0) continue;
     const previousDate = stored.get(candidate.fixture.fixtureId);
@@ -368,6 +386,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
         ? { previousDateJst: previousDate } : {}) });
     requestCapacity -= 5;
     if (!recoveryOnly) publishCapacity -= 1;
+    if (correction && !correctionsToday.has(candidate.fixture.fixtureId)) correctionCapacity -= 1;
     if (requiresGlobalSlot) globalCapacity -= 1;
   }
   const competitionScopes = new Map(policy.competitionSeasons.map(item => [item.league, item]));
@@ -388,6 +407,13 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
   const activeDetails = enabled ? detailFetches : [];
   const activeStandings = enabled ? standingsFetches : [];
   const estimatedProviderRequests = discoveryRequestCount + activeDetails.length * 5 + activeStandings.length;
+  const pendingInitial = candidates.filter(item => item.stage.stage === 'initial');
+  const initialBacklog = new Map();
+  for (const {fixture} of pendingInitial) {
+    const date = dateJst(fixture.kickoffUtc);
+    initialBacklog.set(date, (initialBacklog.get(date) || 0) + 1);
+  }
+  const selectedInitialFixtureCount = activeDetails.filter(item => item.recheckStage === 'initial').length;
   return {
     schemaVersion: PLAN_VERSION,
     publicationSource: 'automation',
@@ -400,6 +426,19 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     retainedFixtureCount: fixtures.length - discoveredFixtures.length,
     excludedFixtureCount,
     dueDetailFixtureCount: candidates.length,
+    dueInitialFixtureCount: pendingInitial.length,
+    dueCorrectionFixtureCount: candidates.length - pendingInitial.length,
+    eligibleDetailFixtureCount: candidates.filter(item =>
+      state.fixtures[item.fixture.fixtureId]?.lastDetailFetchedAt?.slice(0, 10) !== dateUtc).length,
+    selectedInitialFixtureCount,
+    selectedCorrectionFixtureCount: activeDetails.length - selectedInitialFixtureCount,
+    deferredInitialFixtureCount: pendingInitial.length - selectedInitialFixtureCount,
+    initialBacklogByDate: [...initialBacklog].sort(([left], [right]) => compareText(left, right))
+      .map(([dateJst, count]) => ({dateJst, count})),
+    pendingInitialFixtures: pendingInitial.map(({fixture}) => ({
+      fixtureId: fixture.fixtureId, competitionId: fixture.competitionId,
+      dateJst: dateJst(fixture.kickoffUtc),
+    })),
     pendingFixtures: discoveredFixtures.filter(fixture => FINAL_STATUSES.has(fixture.status)),
     detailFetches: activeDetails,
     standingsFetches: activeStandings,
@@ -411,6 +450,8 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
       fixturePublishesRemaining: publishCapacity,
       globalFixturePublishesRemaining: globalCapacity,
       automaticFixturesUsedToday: publishedToday.size,
+      correctionFixturesUsedToday: correctionsToday.size,
+      correctionFixtureSlotsRemaining: Math.max(0, correctionCapacity),
       manualFixturesPublishedToday: dailyBudget?.manualFixtureIds.length ?? 0,
     },
   };

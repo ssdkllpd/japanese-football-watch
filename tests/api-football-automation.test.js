@@ -45,6 +45,7 @@ test('reviewed automation policy permits activation within unchanged limits', ()
   assert.equal(value.competitionSeasons.length, 10);
   assert.equal(value.limits.maxFinalDetailFixturesPerRun, 20);
   assert.equal(value.limits.maxFinalDetailFixturesPerDay, 40);
+  assert.equal(value.limits.maxCorrectionFixturesPerDay, 8);
 });
 
 test('planner includes only reviewed competition-season identities and finalized fixtures', () => {
@@ -147,7 +148,10 @@ test('D1 daily receipts bound successive runs and allow the next UTC day', () =>
   next.preview = false;
   next.state = args.state;
   next.dailyBudget = { dateUtc: '2026-09-18', fixtureIds: [], automationFixtureIds: [], manualFixtureIds: [], remaining: 240 };
-  assert.equal(planAutomation(next).detailFetches.length, 20);
+  const nextDay = planAutomation(next);
+  assert.equal(nextDay.detailFetches.filter(item => item.recheckStage === 'initial').length, 5);
+  assert.equal(nextDay.detailFetches.filter(item => item.recheckStage !== 'initial').length, 8);
+  assert.equal(nextDay.detailFetches.length, 13);
 });
 
 test('unfinished discovery remains anchored across JST midnight and advances in bounded batches', () => {
