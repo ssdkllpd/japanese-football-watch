@@ -898,3 +898,28 @@ test('live team selection and expanded player stats survive refresh and adopt fi
  intervals.find(row=>row.ms===60000).callback();await tick();
  assert.equal(app.calls.filter(url=>url.includes('/fixtures/')).length,calls);
 });
+
+test('a completed provisional match explains final publication waiting without a live-age warning',async t=>{
+ const detail=bundle();detail.fixture.ingestionState='provisional_final';
+ detail.fixture.provenance={issues:['live_provisional','live_detail_stale']};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.match(app.text(),/試合終了時の速報データ/);
+ assert.match(app.text(),/試合後の確定データの反映を待っています/);
+ assert.doesNotMatch(app.text(),/試合詳細の更新が遅れています/);
+ assert.doesNotMatch(app.text(),/試合前・試合中/);
+ assert.match(app.text(),/Starter 1/);
+});
+
+test('final waiting still reports retained sections and live matches still report stale updates',async t=>{
+ const detail=bundle();detail.fixture.ingestionState='provisional_final';
+ detail.fixture.provenance={issues:['live_provisional','live_detail_stale','live_retained_events']};
+ const final=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.match(final.text(),/試合詳細の更新が遅れています/);
+ assert.match(final.text(),/試合後の確定データの反映を待っています/);
+ detail.fixture.status={short:'2H'};detail.fixture.ingestionState='live';
+ detail.fixture.provenance.issues=['live_provisional','live_detail_stale'];
+ const live=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.match(live.text(),/試合詳細の更新が遅れています/);
+ assert.match(live.text(),/試合前・試合中/);
+ assert.doesNotMatch(live.text(),/確定データの反映を待っています/);
+});

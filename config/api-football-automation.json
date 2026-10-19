@@ -32,6 +32,7 @@
     "maxProviderRequestsPerRun": 150,
     "maxFinalDetailFixturesPerRun": 20,
     "maxFinalDetailFixturesPerDay": 40,
+    "maxCorrectionFixturesPerDay": 8,
     "maxStandingsPerRun": 10,
     "standingsMinimumIntervalHours": 6
   }

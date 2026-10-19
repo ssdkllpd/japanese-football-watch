@@ -200,6 +200,8 @@ jobs:
           echo "action_count=$((details + standings))" >> "$GITHUB_OUTPUT"
           echo "daily_remaining=$(jq -r '.quota.dailyRemaining // empty' "$plan")" >> "$GITHUB_OUTPUT"
           jq '{mode, generatedAt, discoveredFixtureCount, retainedFixtureCount, dueDetailFixtureCount,
+            dueInitialFixtureCount, dueCorrectionFixtureCount, eligibleDetailFixtureCount,
+            selectedInitialFixtureCount, selectedCorrectionFixtureCount, deferredInitialFixtureCount, initialBacklogByDate,
             detailFetches: (.detailFetches | length), standingsFetches: (.standingsFetches | length), quota}' "$plan"
 
       - name: Checkpoint discovered final fixtures before fetching details

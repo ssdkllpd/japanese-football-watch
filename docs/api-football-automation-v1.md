@@ -4,7 +4,7 @@
 
 The reviewed policy permits activation after the October 15 live-data validation. The repository switch remains the final operational gate.
 
-- `config/api-football-automation.json` has `scheduledSynchronizationEnabled: true`. The ten-season scope and all request/publication limits are unchanged.
+- `config/api-football-automation.json` has `scheduledSynchronizationEnabled: true`. The ten-season scope and existing request/publication ceilings are unchanged. Correction rechecks have an additional daily sub-limit.
 - Scheduled runs also require the repository variable `API_FOOTBALL_AUTOMATION_ENABLED=true`.
 - A manual `execute` run additionally requires the exact confirmation `RUN API-FOOTBALL AUTOMATION`.
 - A manual `preview` may fetch and validate artifacts, but every R2, D1, and state-write step is gated to `execute`.
@@ -20,7 +20,7 @@ This unit automates two existing, already reviewed data paths for the ten config
 
 The 15-minute workflow trigger is a discovery cadence, not a promise to publish every 15 minutes. Newly discovered final fixtures may be checkpointed in R2 even when their detail is deferred; no due work publishes no fixture or standings object.
 
-Public request-time live provider fetches were disabled on October 16 to protect shared provider quota. `/api/v2/live` returns an explicit paused response with no live overrides; the UI continues showing stored date-index data. Public browsing must never call API-Football, including on cache misses. Future live ingestion must run separately and publish stored live data for public reads. A basic date-feed response must never replace an existing rich fixture bundle.
+Public browsing never calls API-Football, including on cache misses. Live acquisition runs separately and writes provisional snapshots and rich fixture details to the live D1 database; the public Worker reads those stored values. Live acquisition has its own counters and cannot write the core fixture-publication ledger. Both paths still share the API-key account balance. A basic date-feed response must never replace an existing rich fixture bundle.
 
 ## Request budget
 
@@ -28,6 +28,8 @@ Public request-time live provider fetches were disabled on October 16 to protect
 - Before those charged requests, the API-Football `status` endpoint supplies the current daily balance. This endpoint does not count against the daily quota; missing or malformed status data stops discovery.
 - Requests are serialized with at least 300 ms between starts.
 - At most 20 complete fixture details are fetched per run, and 40 distinct fixtures are processed by automation per UTC day (09:00 JST reset), including correction rechecks and unchanged details. Each detail uses five provider requests. Successful unchanged details are counted by durable automation state; changed publications are also counted by source-tagged D1 receipts, so a failed state write cannot erase a publication from the daily count. Manual publications do not consume the automatic allowance. The Paid manual catch-up allowance remains 120 fixtures per UTC day (Free mode remains 20), excluding automatic receipts. All paths still share the D1 limit of 240 changed publications per UTC day and one changed publication per fixture per UTC day. Exhausted work remains pending for the next day.
+- Initial finalized-detail acquisition is selected before correction rechecks, with the oldest kickoff/due time first within each class. Initial acquisition may use all 40 daily slots. Corrections may use at most eight distinct fixtures per UTC day, reserving at least 32 slots for initial work, including matches that finish later that day. Unused initial slots are not borrowed by corrections. Unchanged corrections consume the correction sub-limit through durable state. An automatic D1 receipt whose stage is not yet recorded is conservatively reserved as a correction until recovery; already-receipted recovery remains allowed when either daily limit is full. The existing state schema and 240-publication ledger are unchanged.
+- Plans report initial and correction demand separately, selected counts, deferred initial work, and an initial backlog grouped by JST date with fixture IDs. The combined due count includes correction stages and must not be described as a count of fixtures with no data.
 - At most ten standings scopes are fetched per run.
 - A run is capped at 150 provider calls including the uncharged status call, and preserves at least 100 reported daily requests.
 - Missing quota headers stop executable planning; they are never treated as unlimited capacity.
@@ -44,7 +46,7 @@ The workflow uses one shared `d1-staging-write` concurrency group and follows th
 6. Publish through the protected Admin Worker. After the fixtures, rebuild complete generic and competition date indexes from the D1 date rows, publish them to R2, and verify their coverage in D1. Then run `migration_verify`.
 7. Mark detail stages complete and upload durable state only after the Admin Worker succeeds.
 
-A failure during discovery retains the saved date for the next run. A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. A changed fixture already published on the same UTC day waits until the next day. Direct `wrangler d1 execute` and migration application are not part of this workflow.
+For provisional finished matches, the UI explains that it is showing the end-of-match snapshot while awaiting final publication. The live-age warning alone is not shown for that expected wait; actual fetch failures and retained/missing sections remain visible.\n\nA failure during discovery retains the saved date for the next run. A failure after the discovery checkpoint retains the pending fixtures without marking a detail stage complete. A failed index rebuild leaves the stage pending; the next run retries publication and coverage repair. If a stored D1 correction lacks a canonical R2 override, publication stops before replacing that fixture. A changed fixture already published on the same UTC day waits until the next day. Direct `wrangler d1 execute` and migration application are not part of this workflow.
 
 Migrations through `0013_d1_publication_sources.sql` and the matching Admin Worker version must be applied to the reviewed staging target before enabling execution. Historical receipts retain the `legacy` source and count conservatively against manual catch-up; they never consume automatic capacity. Missing or inconsistent source partitions stop planning. Both manual fixture workflows validate their D1 mirror plans before R2 publication; a fixture with manual overrides requires reviewed Git correction definitions and is blocked before any write until that workflow supports them.
 

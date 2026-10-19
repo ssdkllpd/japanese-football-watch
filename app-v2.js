@@ -705,6 +705,11 @@
     const awayLogo = away.logo ? `<img src="${esc(away.logo)}" data-logo-fallback="entity" alt="">` : '';
     const returnToCompetition = state.fixtureReturn === 'competition' && state.competitionDetail;
     const returnLabel = returnToCompetition ? 'リーグ' : state.fixtureReturn === 'team' ? 'クラブ' : '試合一覧';
+    const detailIssues = bundle.fixture?.provenance?.issues || [];
+    const provisional = detailIssues.includes('live_provisional');
+    const finalPending = provisional && isFinal(bundle.fixture || {});
+    const detailDelayed = detail.refreshError || detailIssues.some(issue => issue.startsWith('live_retained_'))
+      || (!finalPending && detailIssues.includes('live_detail_stale'));
     const tabs = [
       ['overview', '概要'],
       ['lineup', 'ラインナップ'],
@@ -714,8 +719,8 @@
     ];
     main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div>
       ${state.liveNotice && fixtureNeedsRefresh(row) ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : ''}
-      ${detail.refreshError || bundle.fixture?.provenance?.issues?.some(issue=>issue==='live_detail_stale'||issue.startsWith('live_retained_')) ? '<div class="notice" role="status">試合詳細の更新が遅れています。最後に取得した内容を表示しています。</div>' : ''}
-      ${bundle.fixture?.provenance?.issues?.includes('live_provisional') ? '<p class="notice">試合前・試合中の速報データです。試合終了後に確定データへ切り替わります。</p>' : ''}
+      ${detailDelayed ? '<div class="notice" role="status">試合詳細の更新が遅れています。最後に取得した内容を表示しています。</div>' : ''}
+      ${provisional ? `<p class="notice">${finalPending ? '試合終了時の速報データを表示しています。試合後の確定データの反映を待っています。' : '試合前・試合中の速報データです。試合終了後に確定データへ切り替わります。'}</p>` : ''}
       <section class="detail-card score-hero"><div class="score-meta">${esc(comp)} · ${esc(row.round || '節は未取得')} · ${['PST', 'TBD'].includes(statusShort(row)) ? '日程未定' : `${esc(row.dateJst || '日付は未取得')} ${esc(formatKickoff(row.kickoffUtc))} JST`}</div><div class="score-grid"><div class="score-team">${homeLogo}<strong>${esc(home.name || 'Home')}</strong>${followTeamButton(home)}</div><div class="score-value">${valueCell(row?.score?.goals?.home)} - ${valueCell(row?.score?.goals?.away)}</div><div class="score-team">${awayLogo}<strong>${esc(away.name || 'Away')}</strong>${followTeamButton(away)}</div></div></section>
       <p class="entity-sub">更新: ${row.reconciledAt || row.provenance?.fetchedAt ? esc(row.reconciledAt || row.provenance.fetchedAt) : valueCell(null)} · ${watchLabel(row)} · ${attentionLabel(row)}</p>${renderAnnotations(bundle.annotations)}
       <div class="detail-tabs" role="tablist" aria-label="試合詳細">${tabs.map(([tab, label]) => `<button class="detail-tab${state.detailTab === tab ? ' is-active' : ''}" id="fixture-tab-${tab}" aria-controls="fixture-panel" data-detail-tab="${tab}" type="button" role="tab" aria-selected="${state.detailTab === tab}">${label}</button>`).join('')}</div>
