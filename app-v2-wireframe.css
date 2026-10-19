@@ -510,6 +510,19 @@ summary:focus-visible,
 .icon-live-dot { color:var(--live); }
 
 /* Fixture events, team selection and individual match statistics. */
+/* Separate goal/assist rows keep contribution stacks clear of shirt numbers. */
+.pitch-contributions { position:absolute; left:-10px; top:-6px; display:grid; gap:3px; pointer-events:none; }
+.pitch-contribution-stack { position:relative; display:block; width:calc(18px + (var(--stack-size) - 1) * 6px); height:18px; color:#10251b; font-size:11px; line-height:1; }
+.pitch-contribution-badge { position:absolute; left:calc(var(--stack-index) * 6px); top:0; display:grid; place-items:center; width:18px; height:18px; border:1px solid #172c22; border-radius:50%; background:#fff; box-shadow:0 1px 2px #0006; }
+.pitch-contribution-stack.is-assist .pitch-contribution-badge { background:#b9e8ff; color:#123b59; border-color:#123b59; }
+.pitch-contribution-badge .event-icon { width:14px; height:14px; color:inherit; }
+.pitch-assist-symbol { font-size:11px; font-weight:900; line-height:1; }
+.pitch-contribution-total { position:absolute; left:calc(100% - 1px); top:1px; padding:2px 3px; border-radius:4px; background:#10251b; color:#fff; font-size:10px; font-weight:900; white-space:nowrap; }
+.pitch-contribution-legend { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; padding:8px 12px; background:var(--panel); color:var(--text); font-size:12px; text-shadow:none; }
+.pitch-contribution-legend > span { display:inline-flex; align-items:center; gap:4px; }
+.pitch-contribution-legend .event-icon { width:16px; height:16px; color:var(--text); }
+.pitch-contribution-legend .pitch-assist-symbol { display:grid; place-items:center; width:16px; height:16px; border:1px solid #123b59; border-radius:50%; background:#b9e8ff; color:#123b59; }
+.pitch-contribution-legend small { color:var(--muted); font-size:11px; }
 .event-list .event-row { grid-template-columns:48px 32px minmax(0,1fr); gap:10px; padding:14px 12px; align-items:start; }
 .event-list .event-minute { padding-top:4px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .event-symbol { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:var(--panel3); }
