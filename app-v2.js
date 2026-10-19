@@ -862,6 +862,40 @@
     }).join('')}</section>`;
   }
 
+  function pitchContributionCount(playerId, teamId, key, bundle) {
+    if (!playerId || !teamId) return null;
+    const retainedStats = bundle.fixture?.provenance?.issues?.includes('live_retained_playerStats');
+    const stats = !retainedStats && data.section(bundle, 'playerStats') === 'present'
+      ? (bundle.playerStats || []).find(row => row.playerId === playerId && row.teamId === teamId) : null;
+    const value = stats?.values?.[key];
+    const presence = data.presence(value, stats?.fieldStates?.[key]);
+    if (presence === 'conflict') return null;
+    if (presence === 'present' && Number.isSafeInteger(value) && value >= 0) return value;
+    if (data.section(bundle, 'events') !== 'present') return null;
+    // Event fallback counts confirmed scoring actions only; own goals and
+    // missed/cancelled penalties never award a goal or an assist to the player.
+    return (bundle.events || []).filter(event => event.type === 'goal'
+      && event.teamId === teamId && eventAppearance(event)[0] === 'goal'
+      && (key === 'goals' ? event.playerId : event.relatedPlayerId) === playerId).length;
+  }
+
+  function pitchContributionStack(kind, count) {
+    if (!Number.isSafeInteger(count) || count <= 0) return '';
+    const label = `${kind === 'goal' ? 'ゴール' : 'アシスト'} ${count}回`;
+    // Keep even exceptional scores inside the player marker. The count is
+    // explicit once the stack reaches its maximum of three visible badges.
+    const visible = Math.min(count, 3);
+    const symbol = kind === 'goal' ? eventIcon('goal') : '<span class="pitch-assist-symbol">A</span>';
+    return `<span class="pitch-contribution-stack is-${kind}" role="img" aria-label="${label}" title="${label}" data-contribution="${kind}" data-count="${count}" style="--stack-size:${visible}">${Array.from({length:visible}, (_, index) => `<span class="pitch-contribution-badge" style="--stack-index:${index}" aria-hidden="true">${symbol}</span>`).join('')}${count > visible ? `<span class="pitch-contribution-total" aria-hidden="true">×${count}</span>` : ''}</span>`;
+  }
+
+  function renderPitchContributions(player, teamId, bundle) {
+    const playerId = player.id || player.playerId;
+    const goals = pitchContributionStack('goal', pitchContributionCount(playerId, teamId, 'goals', bundle));
+    const assists = pitchContributionStack('assist', pitchContributionCount(playerId, teamId, 'assists', bundle));
+    return goals || assists ? `<span class="pitch-contributions">${goals}${assists}</span>` : '';
+  }
+
   function renderLineups(bundle) {
     const lineups = Array.isArray(bundle.lineups) ? bundle.lineups : [];
     if (statusShort(bundle.fixture)==='NS' && data.section(bundle,'lineups')==='present' && !lineups.some(row=>row.startXI?.length)) return '<p class="notice">スタメンはまだ発表されていません。発表後、取得でき次第表示します。</p>';
@@ -888,7 +922,7 @@
       const teamTitle = team?.id
         ? `<button class="lineup-team-link" data-team-id="${esc(team.id)}" type="button">${esc(team.name || team.id)} · ${esc(lineup.formation || 'フォーメーション未取得')}</button>`
         : `<span>${esc(team?.name || lineup.teamId || 'Team')} · ${esc(lineup.formation || 'フォーメーション未取得')}</span>`;
-      return `<section id="selected-lineup" class="detail-card lineup-card"><div class="pitch-card"><div class="pitch-title">${teamTitle}${confidence === 'high' ? '' : `<span class="estimate confidence-${esc(confidence)}">${icon('estimated')} ${confidence === 'low' ? '推定（低確度）' : confidence === 'none' ? '配置は未取得' : '推定'}</span>`}</div><div class="pitch confidence-${esc(confidence)}">${confidence === 'none' ? '<div class="pitch-unavailable">配置は未取得です</div>' : laidOut.map(player => `<div class="pitch-player" style="left:${Number.isFinite(player.x) ? player.x : 50}%;top:${Number.isFinite(player.y) ? player.y : 50}%"><span class="pitch-portrait">${personAvatar(player)}<span class="pitch-disc">${esc(player.number ?? '—')}</span></span><span class="pitch-name" title="${esc(displayPlayerName(player))}">${esc(displayPlayerName(player, 'pitch') || '選手')}</span></div>`).join('')}</div></div>
+      return `<section id="selected-lineup" class="detail-card lineup-card"><div class="pitch-card"><div class="pitch-title">${teamTitle}${confidence === 'high' ? '' : `<span class="estimate confidence-${esc(confidence)}">${icon('estimated')} ${confidence === 'low' ? '推定（低確度）' : confidence === 'none' ? '配置は未取得' : '推定'}</span>`}</div><div class="pitch confidence-${esc(confidence)}">${confidence === 'none' ? '<div class="pitch-unavailable">配置は未取得です</div>' : laidOut.map(player => `<div class="pitch-player" style="left:${Number.isFinite(player.x) ? player.x : 50}%;top:${Number.isFinite(player.y) ? player.y : 50}%"><span class="pitch-portrait">${personAvatar(player)}<span class="pitch-disc">${esc(player.number ?? '—')}</span>${renderPitchContributions(player, lineup.teamId, bundle)}</span><span class="pitch-name" title="${esc(displayPlayerName(player))}">${esc(displayPlayerName(player, 'pitch') || '選手')}</span></div>`).join('')}</div><div class="pitch-contribution-legend" aria-label="選手バッジの凡例"><span>${eventIcon('goal')} ゴール</span><span><b class="pitch-assist-symbol">A</b> アシスト</span><small>回数に応じて重ねて表示</small></div></div>
         <div class="lineup-list"><h3>先発 ${Array.isArray(lineup.startXI) ? starters.length : valueCell(null)}</h3>${starters.map(player => lineupPersonRow(player, bundle, 'starter')).join('') || (Array.isArray(lineup.startXI) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
         <div class="lineup-list"><h3>ベンチ ${Array.isArray(lineup.substitutes) ? substitutes.length : valueCell(null)}</h3>${substitutes.map(player => lineupPersonRow(player, bundle, 'substitute')).join('') || (Array.isArray(lineup.substitutes) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
         <div class="coach-row">${personAvatar(coach, 'coach')}<div><span>監督</span><strong>${esc(coach?.name || '監督未取得')}</strong></div></div>

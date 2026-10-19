@@ -23,6 +23,81 @@ const home = team(1, 'Home Club'), away = team(2, 'Away Club');
 function visible(el,w) { for(let node=el;node;node=node.parentElement){const css=w.getComputedStyle(node);if(node.hidden || css.display === 'none' || css.visibility === 'hidden') return false;}return true;}
 function fixture() { return { id: 'af:fixture:10', fixtureId: 'af:fixture:10', competitionId: 'af:competition:39', competitionName: 'League', seasonId: 'af:season:39:2026', dateJst: '2026-09-01', kickoffUtc: '2026-09-01T12:00:00Z', status: { short: 'FT' }, teams: { home, away }, score: { goals: { home: 0, away: 1 } } }; }
 function bundle() { return { fixture: fixture(), sectionStates: Object.fromEntries(['lineups','events','teamStats','playerStats'].map(key => [key, { presence: 'present' }])), lineups: [home,away].map((t,i) => ({ teamId:t.id, formation:'4-4-2', startXI:[{id:`af:player:${i+1}`,name:`Starter ${i+1}`,number:i+9,position:'F'}], substitutes:[{id:`af:player:${i+3}`,name:`Bench ${i+1}`,number:20}], coach:{ name:`Coach ${i+1}`,photo:`https://photos.test/coach${i}.png` } })), playerStats:[home,away].map((t,i)=>({ teamId:t.id, playerId:`af:player:${i+1}`,playerName:`Starter ${i+1}`,position:'F',values:{rating:7+i},jfwRating:{value:8,factors:{attack:1}} })), teamStats:[{teamId:home.id,values:{shots_on_goal:0,ball_possession:null},fieldStates:{ball_possession:{presence:'not_fetched'}}},{teamId:away.id,values:{shots_on_goal:2,ball_possession:null},fieldStates:{ball_possession:{presence:'not_applicable'}}}], events:[] }; }
+
+test('formation overlays distinct stacked goal and assist badges without changing names or shirt numbers',async t=>{
+ const detail=bundle();detail.playerStats[0].values={goals:2,assists:3};detail.playerStats[1].values={goals:0,assists:1};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const marker=app.doc.querySelector('.pitch-player');
+ for(const [kind,count,label] of [['goal',2,'ゴール 2回'],['assist',3,'アシスト 3回']]){
+  const stack=marker.querySelector(`[data-contribution="${kind}"]`);
+  assert.equal(stack.dataset.count,String(count));assert.equal(stack.getAttribute('aria-label'),label);
+  assert.equal(stack.querySelectorAll('.pitch-contribution-badge').length,count);
+  assert.deepEqual([...stack.querySelectorAll('.pitch-contribution-badge')].map(el=>el.style.getPropertyValue('--stack-index')),Array.from({length:count},(_,i)=>String(i)));
+ }
+ assert.ok(marker.querySelector('[data-contribution=goal] svg'));
+ assert.equal(marker.querySelector('[data-contribution=assist] .pitch-assist-symbol').textContent,'A');
+ assert.equal(marker.querySelector('.pitch-disc').textContent,'9');assert.equal(marker.querySelector('.pitch-name').textContent,'Starter 1');
+ assert.match(app.doc.querySelector('.pitch-contribution-legend').textContent,/ゴール.*アシスト/);
+ await app.click('[data-lineup-team="af:team:2"]');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=goal]'),null);
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=assist]').dataset.count,'1');
+});
+
+test('formation event fallback excludes own goals, missed penalties and cancelled goals and respects team identity',async t=>{
+ const detail=bundle();detail.playerStats=[];
+ detail.events=['Normal Goal','Penalty','Own Goal','Missed Penalty','Goal cancelled'].map((description,i)=>({type:'goal',detail:description,teamId:home.id,playerId:'af:player:1',relatedPlayerId:'af:player:3',elapsed:i+1}));
+ detail.events.push({type:'goal',detail:'Normal Goal',teamId:away.id,playerId:'af:player:1',relatedPlayerId:'af:player:3'});
+ detail.lineups[0].startXI.push({id:'af:player:3',name:'Assist Player',number:10,position:'F'});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const players=app.doc.querySelectorAll('.pitch-player');
+ assert.equal(players[0].querySelector('[data-contribution=goal]').dataset.count,'2');
+ assert.equal(players[0].querySelector('[data-contribution=assist]'),null);
+ assert.equal(players[1].querySelector('[data-contribution=assist]').dataset.count,'2');
+ assert.equal(players[1].querySelector('[data-contribution=goal]'),null);
+});
+
+test('formation uses acquired zero over old events and never fabricates badges from missing or conflicting stats',async t=>{
+ const detail=bundle();detail.playerStats[0].values={goals:0,assists:2};detail.playerStats[0].fieldStates={assists:{presence:'conflict'}};
+ detail.events=[{type:'goal',detail:'Normal Goal',teamId:home.id,playerId:'af:player:1',relatedPlayerId:'af:player:1'}];
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ assert.equal(app.doc.querySelectorAll('.pitch-player .pitch-contribution-stack').length,0);
+ await app.click('[data-lineup-team="af:team:2"]');
+ assert.equal(app.doc.querySelectorAll('.pitch-player .pitch-contribution-stack').length,0);
+});
+
+test('exceptional contribution counts stay bounded while exposing the exact total',async t=>{
+ const detail=bundle();detail.playerStats[0].values={goals:9,assists:0};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const stack=app.doc.querySelector('.pitch-player [data-contribution=goal]');
+ assert.equal(stack.querySelectorAll('.pitch-contribution-badge').length,3);
+ assert.equal(stack.getAttribute('aria-label'),'ゴール 9回');assert.equal(stack.querySelector('.pitch-contribution-total').textContent,'×9');
+});
+
+test('formation badges follow live goals and assists, retained-stat fallback, and final corrections',async t=>{
+ const intervals=[];let phase=0;
+ const current=()=>{
+  const result=bundle();result.fixture={...fixture(),kickoffUtc:new Date().toISOString(),status:{short:phase===3?'FT':'2H'},ingestionState:phase===3?'finalized':'live'};
+  result.playerStats[1].values={goals:phase===3?1:phase===0?0:2,assists:phase===3?0:1};
+  if(phase===2){result.fixture.provenance={issues:['live_retained_playerStats']};result.playerStats[1].values={goals:0,assists:0};result.events=[{type:'goal',detail:'Normal Goal',teamId:away.id,playerId:'af:player:2'}];}
+  return result;
+ };
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',intervals,
+  feed:async()=>({fixtures:[current().fixture]}),
+  request:async url=>new URL(url).pathname.includes('/fixtures/')?{ok:true,status:200,json:async()=>current()}:null});
+ await app.click('[data-lineup-team="af:team:2"]');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=goal]'),null);
+ phase=1;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.pitch-player [data-contribution=goal]')?.dataset.count==='2','live scoring badge');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=assist]').dataset.count,'1');
+ await tick();phase=2;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.pitch-player [data-contribution=goal]')?.dataset.count==='1','fresh event replaces retained stats');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=assist]'),null);
+ await tick();phase=3;intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.status-pill')?.textContent==='FT','final correction');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=goal]').dataset.count,'1');
+ assert.equal(app.doc.querySelector('.pitch-player [data-contribution=assist]'),null);
+ assert.equal(app.doc.querySelector('[data-lineup-team][aria-pressed=true]').dataset.lineupTeam,away.id);
+});
 async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},detail=bundle(),feed,catalog={competitions:[]},seasonDetail={},standings={groups:[]},storage={},apiBase='https://api.test',publicConfig,search='',request,intervals}={}) {
  const dom = new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:`https://football.test/${search}${hash}`,runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window, calls=[], scrollCalls=[];
