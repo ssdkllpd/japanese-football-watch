@@ -24,6 +24,69 @@ function visible(el,w) { for(let node=el;node;node=node.parentElement){const css
 function fixture() { return { id: 'af:fixture:10', fixtureId: 'af:fixture:10', competitionId: 'af:competition:39', competitionName: 'League', seasonId: 'af:season:39:2026', dateJst: '2026-09-01', kickoffUtc: '2026-09-01T12:00:00Z', status: { short: 'FT' }, teams: { home, away }, score: { goals: { home: 0, away: 1 } } }; }
 function bundle() { return { fixture: fixture(), sectionStates: Object.fromEntries(['lineups','events','teamStats','playerStats'].map(key => [key, { presence: 'present' }])), lineups: [home,away].map((t,i) => ({ teamId:t.id, formation:'4-4-2', startXI:[{id:`af:player:${i+1}`,name:`Starter ${i+1}`,number:i+9,position:'F'}], substitutes:[{id:`af:player:${i+3}`,name:`Bench ${i+1}`,number:20}], coach:{ name:`Coach ${i+1}`,photo:`https://photos.test/coach${i}.png` } })), playerStats:[home,away].map((t,i)=>({ teamId:t.id, playerId:`af:player:${i+1}`,playerName:`Starter ${i+1}`,position:'F',values:{rating:7+i},jfwRating:{value:8,factors:{attack:1}} })), teamStats:[{teamId:home.id,values:{shots_on_goal:0,ball_possession:null},fieldStates:{ball_possession:{presence:'not_fetched'}}},{teamId:away.id,values:{shots_on_goal:2,ball_possession:null},fieldStates:{ball_possession:{presence:'not_applicable'}}}], events:[] }; }
 
+test('bench portraits show stacked scoring contributions alongside the incoming minute, photo and shirt number',async t=>{
+ const detail=bundle();
+ detail.lineups[0].substitutes[0].photo='https://photos.test/bench.png';
+ detail.playerStats.push({teamId:home.id,playerId:'af:player:3',values:{minutes:30,goals:2,assists:3}});
+ detail.events=[{type:'substitution',teamId:home.id,playerId:'af:player:1',relatedPlayerId:'af:player:3',elapsed:60}];
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const row=app.doc.querySelector('[data-player-id="af:player:3"]').closest('.lineup-person');
+ for(const [kind,count,label] of [['goal',2,'ゴール 2回'],['assist',3,'アシスト 3回']]){
+  const stack=row.querySelector(`.lineup-portrait [data-contribution="${kind}"]`);
+  assert.equal(stack.dataset.count,String(count));assert.equal(stack.getAttribute('aria-label'),label);
+  assert.equal(stack.querySelectorAll('.pitch-contribution-badge').length,count);
+ }
+ assert.ok(row.querySelector('[data-contribution=goal] svg'));
+ assert.equal(row.querySelector('[data-contribution=assist] .pitch-assist-symbol').textContent,'A');
+ assert.equal(row.querySelector('img').getAttribute('src'),'https://photos.test/bench.png');
+ assert.equal(row.querySelector('strong').textContent,'Bench 1');
+ assert.equal(row.querySelector('.shirt-number').textContent,'20');
+ assert.equal(row.querySelector('.substitution').textContent,'IN 60′');
+ assert.match(row.textContent,/出場 30分/);
+ await app.click('[data-lineup-team="af:team:2"]');
+ assert.equal(app.doc.querySelector('.lineup-person .pitch-contribution-stack'),null);
+});
+
+test('bench scoring falls back to confirmed same-team events without awarding cancelled or own goals',async t=>{
+ const detail=bundle();detail.playerStats=[];
+ detail.events=[
+  {type:'goal',detail:'Normal Goal',teamId:home.id,playerId:'af:player:3'},
+  {type:'goal',detail:'Normal Goal',teamId:home.id,playerId:'af:player:1',relatedPlayerId:'af:player:3'},
+  ...['Own Goal','Missed Penalty','Goal cancelled'].map(description=>({type:'goal',detail:description,teamId:home.id,playerId:'af:player:3',relatedPlayerId:'af:player:3'})),
+  {type:'goal',detail:'Normal Goal',teamId:away.id,playerId:'af:player:3',relatedPlayerId:'af:player:3'},
+ ];
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
+ const row=app.doc.querySelector('[data-player-id="af:player:3"]').closest('.lineup-person');
+ assert.equal(row.querySelector('[data-contribution=goal]').dataset.count,'1');
+ assert.equal(row.querySelector('[data-contribution=assist]').dataset.count,'1');
+});
+
+test('bench contributions appear during live refresh and follow final corrections without losing the selected team',async t=>{
+ const intervals=[];let phase=0;
+ const current=()=>{
+  const result=bundle();
+  result.fixture={...fixture(),kickoffUtc:new Date().toISOString(),status:{short:phase===2?'FT':'2H'},ingestionState:phase===2?'finalized':'live'};
+  result.playerStats.push({teamId:away.id,playerId:'af:player:4',values:{minutes:30,goals:phase===0?0:phase===1?2:1,assists:phase===1?1:0}});
+  result.events=[{type:'substitution',teamId:away.id,playerId:'af:player:2',relatedPlayerId:'af:player:4',elapsed:60}];
+  return result;
+ };
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',intervals,
+  feed:async()=>({fixtures:[current().fixture]}),
+  request:async url=>new URL(url).pathname.includes('/fixtures/')?{ok:true,status:200,json:async()=>current()}:null});
+ await app.click('[data-lineup-team="af:team:2"]');
+ const row=()=>app.doc.querySelector('[data-player-id="af:player:4"]').closest('.lineup-person');
+ assert.equal(row().querySelector('.pitch-contributions'),null);
+ phase=1;intervals.find(item=>item.ms===60000).callback();
+ await until(()=>row().querySelector('[data-contribution=goal]')?.dataset.count==='2','live substitute goal');
+ assert.equal(row().querySelector('[data-contribution=assist]').dataset.count,'1');
+ await tick();phase=2;intervals.find(item=>item.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.status-pill')?.textContent==='FT','final substitute stats');
+ assert.equal(row().querySelector('[data-contribution=goal]').dataset.count,'1');
+ assert.equal(row().querySelector('[data-contribution=assist]'),null);
+ assert.equal(row().querySelector('.substitution').textContent,'IN 60′');
+ assert.equal(app.doc.querySelector('[data-lineup-team][aria-pressed=true]').dataset.lineupTeam,away.id);
+});
+
 test('formation overlays distinct stacked goal and assist badges without changing names or shirt numbers',async t=>{
  const detail=bundle();detail.playerStats[0].values={goals:2,assists:3};detail.playerStats[1].values={goals:0,assists:1};
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',detail});
