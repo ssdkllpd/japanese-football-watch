@@ -928,8 +928,8 @@
         ? `<button class="lineup-team-link" data-team-id="${esc(team.id)}" type="button">${esc(team.name || team.id)} · ${esc(lineup.formation || 'フォーメーション未取得')}</button>`
         : `<span>${esc(team?.name || lineup.teamId || 'Team')} · ${esc(lineup.formation || 'フォーメーション未取得')}</span>`;
       return `<section id="selected-lineup" class="detail-card lineup-card"><div class="pitch-card"><div class="pitch-title">${teamTitle}${confidence === 'high' ? '' : `<span class="estimate confidence-${esc(confidence)}">${icon('estimated')} ${confidence === 'low' ? '推定（低確度）' : confidence === 'none' ? '配置は未取得' : '推定'}</span>`}</div><div class="pitch confidence-${esc(confidence)}">${confidence === 'none' ? '<div class="pitch-unavailable">配置は未取得です</div>' : laidOut.map(player => `<div class="pitch-player" style="left:${Number.isFinite(player.x) ? player.x : 50}%;top:${Number.isFinite(player.y) ? player.y : 50}%"><span class="pitch-portrait">${personAvatar(player)}<span class="pitch-disc">${esc(player.number ?? '—')}</span>${renderPitchContributions(player, lineup.teamId, bundle)}</span><span class="pitch-name" title="${esc(displayPlayerName(player))}">${esc(displayPlayerName(player, 'pitch') || '選手')}</span></div>`).join('')}</div><div class="pitch-contribution-legend" aria-label="選手バッジの凡例"><span>${eventIcon('goal')} ゴール</span><span><b class="pitch-assist-symbol">A</b> アシスト</span><small>回数に応じて重ねて表示</small></div></div>
-        <div class="lineup-list"><h3>先発 ${Array.isArray(lineup.startXI) ? starters.length : valueCell(null)}</h3>${starters.map(player => lineupPersonRow(player, bundle, 'starter')).join('') || (Array.isArray(lineup.startXI) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
-        <div class="lineup-list"><h3>ベンチ ${Array.isArray(lineup.substitutes) ? substitutes.length : valueCell(null)}</h3>${substitutes.map(player => lineupPersonRow(player, bundle, 'substitute')).join('') || (Array.isArray(lineup.substitutes) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
+        <div class="lineup-list"><h3>先発 ${Array.isArray(lineup.startXI) ? starters.length : valueCell(null)}</h3>${starters.map(player => lineupPersonRow(player, bundle, 'starter', lineup.teamId)).join('') || (Array.isArray(lineup.startXI) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
+        <div class="lineup-list"><h3>ベンチ ${Array.isArray(lineup.substitutes) ? substitutes.length : valueCell(null)}</h3>${substitutes.map(player => lineupPersonRow(player, bundle, 'substitute', lineup.teamId)).join('') || (Array.isArray(lineup.substitutes) ? '<p class="empty-result">該当なし</p>' : valueCell(null))}</div>
         <div class="coach-row">${personAvatar(coach, 'coach')}<div><span>監督</span><strong>${esc(coach?.name || '監督未取得')}</strong></div></div>
       </section>`;
     }).join('');
@@ -993,11 +993,11 @@
     return `${role === 'starter' ? 'OUT' : 'IN'} ${event.elapsed ?? '—'}′${event.extra ? `+${event.extra}` : ''}`;
   }
 
-  function lineupPersonRow(player, bundle, role) {
+  function lineupPersonRow(player, bundle, role, teamId) {
     const substitution = substitutionForPlayer(player, bundle, role);
     const stats = (bundle.playerStats || []).find(row => row.playerId === player.id);
     const nationality = player.nationality || stats?.nationality;
-    return `<div class="lineup-person">${personAvatar(player)}<span class="shirt-number">${esc(player.number ?? '—')}</span><div><strong>${player.id ? `<button class="lineup-team-link" data-player-id="${esc(player.id)}" type="button">${esc(displayPlayerName(player) || '選手')}</button>` : esc(displayPlayerName(player) || '選手')}</strong><span>${esc(player.position || '')} ${nationality ? esc(nationality) : ''} · 出場 ${valueCell(stats?.values?.minutes)}分</span></div>${substitution ? `<b class="substitution ${role === 'starter' ? 'is-out' : 'is-in'}">${esc(substitution)}</b>` : ''}</div>`;
+    return `<div class="lineup-person"><span class="lineup-portrait">${personAvatar(player)}${renderPitchContributions(player, teamId, bundle)}</span><span class="shirt-number">${esc(player.number ?? '—')}</span><div><strong>${player.id ? `<button class="lineup-team-link" data-player-id="${esc(player.id)}" type="button">${esc(displayPlayerName(player) || '選手')}</button>` : esc(displayPlayerName(player) || '選手')}</strong><span>${esc(player.position || '')} ${nationality ? esc(nationality) : ''} · 出場 ${valueCell(stats?.values?.minutes)}分</span></div>${substitution ? `<b class="substitution ${role === 'starter' ? 'is-out' : 'is-in'}">${esc(substitution)}</b>` : ''}</div>`;
   }
 
   function renderPlayerRatings(bundle) {
