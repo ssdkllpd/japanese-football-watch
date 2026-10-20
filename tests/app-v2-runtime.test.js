@@ -552,6 +552,64 @@ test('legacy date fallback canonicalizes known leagues and does not leak J1 into
  assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
  assert.doesNotMatch(app.text(),/J1/);
 });
+test('standings show the complete record, official points and readable recent results and link to the club',async t=>{
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
+ const standings={generatedAt:'2026-10-20T03:46:01.113Z',groups:[{name:'Premier League',table:[{
+  rank:12,team:{...home,logo:'https://logos.test/home.png'},points:9,
+  overall:{played:8,wins:3,draws:1,losses:4,goalsFor:9,goalsAgainst:12},goalDifference:-3,form:'WDLWW',
+ }]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=standings',catalog,standings});
+ await until(()=>app.doc.querySelector('.standings-table tbody tr'),'standings table');
+ const table=app.doc.querySelector('.standings-table');
+ assert.deepEqual([...table.querySelectorAll('thead th')].map(el=>el.textContent),['順位','クラブ','勝点','試合','勝','分','敗','得点','失点','得失点差','直近5試合']);
+ assert.equal(table.querySelector('tbody th').getAttribute('scope'),'row');
+ assert.deepEqual([...table.querySelectorAll('tbody tr > *')].map(el=>el.textContent),['12','Home Club','9','8','3','1','4','9','12','-3','勝分敗勝勝']);
+ assert.deepEqual([...table.querySelectorAll('.standings-form-result')].map(el=>el.getAttribute('aria-label')),['勝利','引分','敗戦','勝利','勝利']);
+ assert.equal(table.querySelector('img').getAttribute('src'),'https://logos.test/home.png');
+ assert.equal(table.closest('[role=region]').getAttribute('tabindex'),'0');
+ assert.match(app.text(),/順位表更新: 2026-10-20T03:46:01.113Z/);
+ await app.click('.standings-table a.standings-team');
+ await until(()=>app.doc.querySelector('.entity-hero h2')?.textContent==='Home Club','club link');
+ assert.match(app.w.location.hash,/teams\/af%3Ateam%3A1/);
+ assert.deepEqual([...section(app,'順位表').querySelectorAll('tbody tr > *')].map(el=>el.textContent),['12','Home Club','9','8','3','1','4','9','12','-3','勝分敗勝勝']);
+ await app.click('[data-entity-back]');
+ await until(()=>app.doc.querySelector('[data-competition-tab=standings][aria-selected=true]'),'return to standings');
+});
+
+test('standings distinguish acquired zero, missing and conflicting values and never pad short form records',async t=>{
+ const standings={groups:[{name:'League',table:[
+  {rank:1,team:home,points:0,overall:{played:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0},goalDifference:0,form:null},
+  {rank:2,team:away,points:null,overall:{played:2,wins:null,draws:null,losses:null,goalsFor:null,goalsAgainst:null},goalDifference:null,form:'WD',fieldStates:{wins:{presence:'conflict'},draws:{presence:'provider_missing'}}},
+ ]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=standings',standings});
+ await until(()=>app.doc.querySelectorAll('.standings-table tbody tr').length===2,'standings missing states');
+ const [zero,missing]=app.doc.querySelectorAll('.standings-table tbody tr');
+ assert.deepEqual([...zero.children].slice(2,10).map(el=>el.textContent),Array(8).fill('0'));
+ assert.equal(zero.querySelectorAll('.standings-form-result').length,0);
+ assert.equal(zero.lastElementChild.querySelector('[data-presence=not_fetched]').textContent,'未取得');
+ assert.equal(missing.children[2].textContent,'未取得');
+ assert.equal(missing.children[4].querySelector('[data-presence=conflict]').textContent,'確認中');
+ assert.equal(missing.children[5].querySelector('[data-presence=provider_missing]').textContent,'非該当');
+ assert.equal(missing.querySelectorAll('.standings-form-result').length,2);
+ assert.equal(missing.children[9].textContent,'未取得');
+});
+
+test('standings keep separate groups and supplied ranks without treating unknown form as match results',async t=>{
+ const standings={groups:[
+  {name:'Group A',table:[{rank:2,team:{...home,name:'<Club & One>'},points:7,form:'W?L'}]},
+  {name:'Group B',table:[{rank:1,team:away,points:3,form:'WWW',fieldStates:{form:{presence:'conflict'}}}]},
+ ]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&tab=standings',standings});
+ await until(()=>app.doc.querySelectorAll('.standings-table').length===2,'grouped standings');
+ const [a,b]=app.doc.querySelectorAll('.standings-table');
+ assert.equal(a.getAttribute('aria-label'),'Group Aの順位表');assert.equal(b.getAttribute('aria-label'),'Group Bの順位表');
+ assert.equal(a.querySelector('.standings-rank').textContent,'2');assert.equal(b.querySelector('.standings-rank').textContent,'1');
+ assert.equal(a.querySelector('tbody th').textContent,'<Club & One>');assert.equal(a.querySelector('club'),null);
+ assert.equal(a.querySelector('tbody tr').lastElementChild.textContent,'W?L');
+ assert.equal(b.querySelector('tbody tr').lastElementChild.textContent,'確認中');
+ assert.equal(app.doc.querySelectorAll('.standings-form-result').length,0);
+});
+
 test('overview, player stats and team stats render stored D1 values without inventing missing values',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
  const seasonDetail={competition:catalog.competitions[0],season:{id:'af:season:39:2026',startsOn:'2026-08-01',endsOn:'2027-05-31'},summary:{teamCount:20,fixtureCount:380,completedFixtureCount:30,publishedDetailCount:29,standingsUpdatedAt:'2026-09-08T02:15:09.068Z',detailUpdatedAt:'2026-09-08T02:00:00.000Z'},detailSections:{lineups:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},events:{present:20,presentEmpty:2,providerMissing:7,notFetched:0},teamStats:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},playerStats:{present:28,presentEmpty:0,providerMissing:0,notFetched:1}},playerStats:{presence:'present',rows:[{player:{id:'af:player:7',name:'Test Player',photo:null},team:{id:'af:team:1',name:'Home Club'},teamCount:1,appearances:3,starts:2,minutes:{value:180,presence:'present'},goals:{value:0,presence:'present'},assists:{value:null,presence:'not_fetched'},averageRating:{value:7.4,presence:'present'}}]}};

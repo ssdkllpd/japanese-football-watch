@@ -1351,12 +1351,29 @@
     if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
     const updated = detail.standings?.generatedAt
       ? `<p class="data-updated">順位表更新: ${esc(detail.standings.generatedAt)}</p>` : '';
-    return `${updated}${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div><div class="standings-card"><div class="standings-row standings-head"><span>#</span><span>クラブ</span><span>試</span><span>差</span><span>勝点</span></div>${(group.table || []).map(standingRow).join('')}</div></section>`).join('')}`;
+    return `${updated}${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div>${renderStandingsTable(group.table || [], group.name || '順位表')}</section>`).join('')}`;
+  }
+
+  function renderStandingsTable(rows, label) {
+    return `<p class="standings-help">横にスクロールして全項目を表示 <span>直近：勝＝勝利・分＝引分・敗＝敗戦</span></p><div class="standings-card standings-scroll" role="region" aria-label="${esc(label)}の順位表（横スクロール）" tabindex="0"><table class="standings-table" aria-label="${esc(label)}の順位表"><colgroup><col class="standings-rank-col"><col class="standings-club-col">${'<col class="standings-number-col">'.repeat(8)}<col class="standings-form-col"></colgroup><thead><tr class="standings-row standings-head">${['順位','クラブ','勝点','試合','勝','分','敗','得点','失点','得失点差','直近5試合'].map(label => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${rows.map(standingRow).join('')}</tbody></table></div>${rows.length ? '' : '<p class="empty-result">該当なし</p>'}`;
+  }
+
+  function standingForm(row) {
+    if (data.presence(row?.form, row?.fieldStates?.form) !== 'present') return valueCell(row?.form, row?.fieldStates?.form);
+    const form = String(row.form).trim().toUpperCase();
+    if (!/^[WDL]{1,5}$/.test(form)) return valueCell(row.form);
+    const results = { W:['win','勝','勝利'], D:['draw','分','引分'], L:['loss','敗','敗戦'] };
+    return `<span class="standings-form">${[...form].map(result => {
+      const [kind, symbol, label] = results[result];
+      return `<span class="standings-form-result is-${kind}" role="img" aria-label="${label}" title="${label}">${symbol}</span>`;
+    }).join('')}</span>`;
   }
 
   function standingRow(row) {
     const team = row?.team || {};
-    return `<div class="standings-row${team.id ? ' is-link' : ''}"${team.id ? ` data-team-id="${esc(team.id)}"` : ''}><span class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</span><span class="standings-team">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(team.name || team.id || '未取得')}</b></span><span>${valueCell(row?.overall?.played,row?.fieldStates?.played)}</span><span>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</span><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></div>`;
+    const name = team.name || team.id || '未取得';
+    const club = `${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(name)}</b>`;
+    return `<tr class="standings-row"><td class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</td><th scope="row" class="standings-club">${team.id ? `<a class="standings-team" data-team-id="${esc(team.id)}" href="${esc(router.entityHash('teams', team.id, currentProductSeason()))}" title="${esc(name)}">${club}</a>` : `<span class="standings-team">${club}</span>`}</th><td class="standings-points"><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></td>${['played','wins','draws','losses','goalsFor','goalsAgainst'].map(key => `<td>${valueCell(row?.overall?.[key],row?.fieldStates?.[key])}</td>`).join('')}<td>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</td><td>${standingForm(row)}</td></tr>`;
   }
 
   function competitionSeasonState(detail) {
@@ -1653,8 +1670,11 @@
   }
 
   function bindTeamRows() {
-    main.querySelectorAll('[data-team-id]').forEach(row => row.addEventListener('click', () => {
-
+    main.querySelectorAll('[data-team-id]').forEach(row => row.addEventListener('click', event => {
+      if (row.tagName === 'A') {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+      }
       setRoute(router.entityHash('teams', row.dataset.teamId, currentProductSeason()));
       applyCurrentRoute();
     }));
@@ -1677,7 +1697,7 @@
     const players = sameSeason ? roster.filter(player => player.rosterTeams?.some(team => team.id === teamId))
       .map(player => ({ ...directoryPlayerView(player), displayStats: state.trackedStats.allPlayers?.get(player.id)?.clubStats?.[teamId] })) : [];
     const hasRoster = sameSeason && Array.isArray(knownTeamRosters.get(teamId));
-    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2></div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (['PST', 'TBD'].includes(statusShort(row)) || Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? `<div class="standings-card">${standingRow(standing)}</div>` : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（名簿取得分）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
+    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2></div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (['PST', 'TBD'].includes(statusShort(row)) || Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? renderStandingsTable([standing], team.name || 'クラブ') : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（名簿取得分）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
     bindEntityBack();
     bindFixtureRows('team');
     bindPlayerRows();
