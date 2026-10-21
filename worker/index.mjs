@@ -613,9 +613,11 @@ function fixtureIndexEntryFromD1(row) {
   };
 }
 
-async function applyD1DateFixtureCorrections(env, date, fixtures, competitionId = null) {
-  const byId = new Map(fixtures.map(fixture => [fixture.fixtureId, fixture]));
-  const corrections = await d1Rows(env, DATE_FIXTURE_CORRECTIONS_SQL, date);
+async function applyD1DateFixtureCorrections(env,date,fixtures,competitionId=null) {
+  return applyFixtureIndexCorrections(fixtures,await d1Rows(env,DATE_FIXTURE_CORRECTIONS_SQL,date),competitionId);
+}
+function applyFixtureIndexCorrections(fixtures,corrections,competitionId=null) {
+  const byId=new Map(fixtures.map(fixture=>[fixture.fixtureId,fixture]));
   for (const correction of corrections) {
     if (competitionId !== null && correction.competition_id !== competitionId) continue;
     const fixture = byId.get(correction.fixture_id);
@@ -1317,8 +1319,8 @@ async function publishedCupData(env,id,seasonId) {
       WHERE season.canonical_id=? AND fixture.published_revision IS NOT NULL ORDER BY fixture.kickoff_utc,fixture.canonical_id`,seasonId),
   ]);
   let fixtures=rows.map(row=>({...fixtureIndexEntryFromD1(row),round:row.round}));
-  const dates=[...new Set(fixtures.map(f=>f.dateJst))];
-  fixtures=(await Promise.all(dates.map(date=>applyD1DateFixtureCorrections(env,date,fixtures.filter(f=>f.dateJst===date),id)))).flat();
+  const corrections=await d1Rows(env,DATE_FIXTURE_CORRECTIONS_SQL.replace('fixture.date_jst = ?1','season.canonical_id = ?1 AND fixture.published_revision IS NOT NULL'),seasonId);
+  fixtures=applyFixtureIndexCorrections(fixtures,corrections,id);
   return {seasonData,fixtures};
 }
 async function dateIndexResponse(env,date,competitionId=null,context=null,fresh=false) {

@@ -55,8 +55,8 @@ test('backfill plans only unpublished final fixtures through today, without refe
   assert.equal(plan.missingFixtureCount, 1);
   assert.equal(plan.deferredRecentCount, 1);
   assert.equal(plan.alreadyPublishedCount, 1);
-  assert.equal(plan.standingsFetches.length, 13);
-  assert.equal(plan.quota.estimatedProviderRequests, 43);
+  assert.equal(plan.standingsFetches.length, 10);
+  assert.equal(plan.quota.estimatedProviderRequests, 40);
 });
 
 test('backfill publishes at most 20 per UTC day and resumes the next day', async () => {

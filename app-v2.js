@@ -1354,7 +1354,8 @@
       if (!groups.has(label)) groups.set(label, []);
       groups.get(label).push(fixture);
     }
-    return `<p class="notice">${snapshot.cupSnapshot.automaticUpdates ? '日程を定期更新しています。ライブ速報・メンバー・試合詳細は取得できた項目から表示します。' : '日程・結果の取得分を表示しています。'}</p><p class="data-updated">更新日時: ${valueCell(snapshot.cupSnapshot.generatedAt)}</p><div class="control-row" aria-label="カップ戦の試合を絞り込み">${[['all','すべて'],['upcoming','今後'],['final','終了']].map(([key,label]) => `<button type="button" class="chip${selected === key ? ' is-active' : ''}" data-cup-filter="${key}" aria-pressed="${selected === key}">${label}</button>`).join('')}<span class="meta">${fixtures.length}試合</span></div>${groups.size ? [...groups].map(([label,rows]) => `<section class="section"><h3>${esc(label)}</h3><div class="match-card">${rows.map(fixtureRow).join('')}</div></section>`).join('') : '<p class="empty-result">取得済みの範囲に該当する試合はありません。</p>'}`;
+    const liveNote=snapshot.cupSnapshot.automaticUpdates && state.liveNotice ? `<p class="notice" role="status">${esc(state.liveNotice)}</p>` : '';
+    return `${liveNote}<p class="notice">${snapshot.cupSnapshot.automaticUpdates ? '日程を定期更新しています。ライブ速報・メンバー・試合詳細は取得できた項目から表示します。' : '日程・結果の取得分を表示しています。'}</p><p class="data-updated">更新日時: ${valueCell(snapshot.cupSnapshot.generatedAt)}</p><div class="control-row" aria-label="カップ戦の試合を絞り込み">${[['all','すべて'],['upcoming','今後'],['final','終了']].map(([key,label]) => `<button type="button" class="chip${selected === key ? ' is-active' : ''}" data-cup-filter="${key}" aria-pressed="${selected === key}">${label}</button>`).join('')}<span class="meta">${fixtures.length}試合</span></div>${groups.size ? [...groups].map(([label,rows]) => `<section class="section"><h3>${esc(label)}</h3><div class="match-card">${rows.map(fixtureRow).join('')}</div></section>`).join('') : '<p class="empty-result">取得済みの範囲に該当する試合はありません。</p>'}`;
   }
 
   function renderCompetitionMatches(detail) {

@@ -116,7 +116,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   }
   const capacity = Math.min(policy.limits.maxProviderRequestsPerRun - (1 + policy.competitionSeasons.length),
     Math.max(0, remaining - policy.limits.dailyRequestReserve));
-  const tableScopes=policy.competitionSeasons.filter(scope=>!require('../../config/cup-competitions.json').competitions.some(c=>c.providerId===scope.league&&!c.standings));
+  const tableScopes=policy.competitionSeasons.filter(scope=>!require('../../config/cup-competitions.json').competitions.some(c=>c.providerId===scope.league&&!c.standings)).slice(0,policy.limits.maxStandingsPerRun);
   const standingsFetches = capacity >= tableScopes.length
     ? tableScopes.map(scope => ({
       ...scope,
