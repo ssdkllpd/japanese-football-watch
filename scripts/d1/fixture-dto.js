@@ -221,6 +221,8 @@ function buildAvailableBundle(header, detailRows, stateRows) {
     teamId: row.value.teamId,
     playerId: row.value.playerId,
     relatedPlayerId: row.value.relatedPlayerId,
+    ...(row.value.playerName ? { playerName: row.value.playerName } : {}),
+    ...(row.value.relatedPlayerName ? { relatedPlayerName: row.value.relatedPlayerName } : {}),
     provenance: baseProvenance,
   }));
 

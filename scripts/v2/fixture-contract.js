@@ -167,6 +167,13 @@ function canonicalEventType(type) {
 }
 
 function normalizeEvents(fixture, fixtureProviderId, fetchedAt) {
+  const known = new Set([
+    ...(fixture.lineups || []).flatMap(lineup => [...(lineup.startXI || []), ...(lineup.substitutes || [])]
+      .map(item => providerPlayerId(item?.player?.id))),
+    ...(fixture.players || []).flatMap(block => (block.players || []).map(item => providerPlayerId(item?.player?.id))),
+  ]);
+  const eventName = player => providerPlayerId(player?.id) !== null && !known.has(providerPlayerId(player?.id))
+    ? text(player?.name) : null;
   return (fixture.events || []).map((event, index) => ({
     id: `af:event:${fixtureProviderId}:${index}`,
     type: canonicalEventType(event?.type),
@@ -177,6 +184,8 @@ function normalizeEvents(fixture, fixtureProviderId, fetchedAt) {
     teamId: afId('team', numeric(event?.team?.id) ?? event?.team?.id ?? null),
     playerId: afId('player', providerPlayerId(event?.player?.id)),
     relatedPlayerId: afId('player', providerPlayerId(event?.assist?.id)),
+    ...(eventName(event?.player) ? { playerName: eventName(event.player) } : {}),
+    ...(eventName(event?.assist) ? { relatedPlayerName: eventName(event.assist) } : {}),
     provenance: recordProvenance(fetchedAt),
   }));
 }

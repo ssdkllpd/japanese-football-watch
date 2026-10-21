@@ -254,3 +254,19 @@ test('R2 keys preserve fixture as canonical access unit with explicit JST index'
   assert.equal(contract.r2FixturePointerKey(bundle.fixture.id), 'football/v2/indexes/fixture/af:fixture:123456.json');
   assert.equal(contract.r2DateIndexKey(bundle.fixture.dateJst), 'football/v2/indexes/date-jst/2026-08-22.json');
 });
+
+
+test('events retain scorer and assist identities when lineups and player stats are unavailable', () => {
+  const raw = sampleFixture();
+  raw.lineups = [];
+  raw.players = [];
+  const bundle = contract.normalizeFixtureBundle(raw, { fetchedAt: '2026-10-21T08:00:00Z', finalized: true });
+  assert.equal(bundle.events[0].playerName, 'Player One');
+  assert.equal(bundle.events[0].relatedPlayerName, 'Player Two');
+  assert.deepEqual(bundle.lineups, []);
+  assert.deepEqual(bundle.playerStats, []);
+  raw.events[0].player = { id: null, name: 'Unidentified' };
+  const missing = contract.normalizeFixtureBundle(raw);
+  assert.equal(missing.events[0].playerId, null);
+  assert.equal(Object.hasOwn(missing.events[0], 'playerName'), false);
+});
