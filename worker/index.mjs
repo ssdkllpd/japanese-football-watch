@@ -1,3 +1,5 @@
+import {readCupCatalog,cupResponse} from './cup-snapshots.mjs';
+import {cupConfig} from '../shared/cup-snapshot-contract.mjs';
 import {
   assertValidDateIndexPayload,
   fixtureIdDigestInput,
@@ -1308,6 +1310,7 @@ async function degradedR2StandingsObject(env, key, competitionId, requestedSeaso
 }
 
 async function dateIndexResponse(env, date, competitionId = null, context = null, fresh = false) {
+  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {date});
   const flag = competitionId === null
     ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
   const r2Key = competitionId === null
@@ -1341,6 +1344,7 @@ async function dateIndexResponse(env, date, competitionId = null, context = null
 }
 
 async function standingsResponse(env, competitionId, requestedSeasonId, context = null) {
+  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {seasonId:requestedSeasonId,standings:true});
   const key = standingsLatestKey(competitionId, requestedSeasonId);
   if (!enabled(env, 'D1_STANDINGS_ENABLED')) return r2JsonObject(env, key);
   const cache = dateResponseCache(env);
@@ -1369,11 +1373,22 @@ async function standingsResponse(env, competitionId, requestedSeasonId, context 
   }
 }
 
+async function appendCupDirectory(response, env) {
+  try {
+    const cups = await readCupCatalog(env);
+    if (!cups.length) return response;
+    const payload = await response.clone().json();
+    const existing = new Set(payload.competitions.map(c => c.id));
+    payload.competitions.push(...cups.filter(c => !existing.has(c.id)).map(({snapshotKey,snapshotSha256,...c})=>c));
+    return new Response(JSON.stringify(payload), {status:response.status, headers:response.headers});
+  } catch { return response; }
+}
+
 async function competitionDirectoryResponse(env, context = null) {
   const cache = dateResponseCache(env);
   const cacheKey = competitionDirectoryResponseCacheKey();
   const cached = await cacheMatch(cache, cacheKey);
-  if (cached) return withHeader(cached, 'x-jfw-cache', 'hit');
+  if (cached) return appendCupDirectory(withHeader(cached, 'x-jfw-cache', 'hit'), env);
   try {
     const payload = await buildD1CompetitionDirectory(env);
     const response = json(payload, 200, {
@@ -1382,7 +1397,7 @@ async function competitionDirectoryResponse(env, context = null) {
       'x-jfw-cache': 'miss',
     });
     await cachePut(cache, cacheKey, response, context);
-    return response;
+    return appendCupDirectory(response, env);
   } catch {
     return json({ error: 'Competition directory is unavailable' }, 503, {
       'x-jfw-data-source': 'unavailable',
@@ -1392,6 +1407,7 @@ async function competitionDirectoryResponse(env, context = null) {
 }
 
 async function competitionSeasonResponse(env, competitionId, requestedSeasonId, context = null) {
+  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {seasonId:requestedSeasonId});
   const cache = dateResponseCache(env);
   const cacheKey = competitionSeasonResponseCacheKey(competitionId, requestedSeasonId);
   const cached = await cacheMatch(cache, cacheKey);

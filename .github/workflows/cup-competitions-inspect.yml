@@ -1,11 +1,6 @@
 name: Inspect and archive cup competitions
 on:
   workflow_dispatch:
-  push:
-    branches: [main, feat/cup-competitions-20261021]
-    paths:
-      - scripts/cups/inspect.mjs
-      - .github/workflows/cup-competitions-inspect.yml
 permissions:
   contents: read
 concurrency:

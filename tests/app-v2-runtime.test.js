@@ -1001,3 +1001,24 @@ test('final waiting still reports retained sections and live matches still repor
  assert.match(live.text(),/試合前・試合中/);
  assert.doesNotMatch(live.text(),/確定データの反映を待っています/);
 });
+
+
+test('UEFA and domestic cups have separate searchable entries and acquired rounds without fabricating knockout tables',async t=>{
+ const league={id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]};
+ const cl={id:'af:competition:2',name:'UEFA Champions League',country:'World',seasons:[{id:'af:season:2:2026',status:'active'}]};
+ const cup={id:'af:competition:48',name:'League Cup',country:'England',seasons:[{id:'af:season:48:2026',status:'active'}]};
+ const match={...fixture(),competitionId:cup.id,seasonId:cup.seasons[0].id,round:'Quarter-finals'};
+ const app=await boot(t,{hash:'#/competitions',catalog:{competitions:[league,cl,cup]},
+  seasonDetail:{competition:cup,season:cup.seasons[0],fixtures:[match],cupSnapshot:{generatedAt:'2026-10-21T04:00:00.000Z',automaticUpdates:false,standingsAvailable:false}},feed:async()=>({fixtures:[]})});
+ assert.ok(section(app,'欧州カップ').querySelector('[data-competition-id="af:competition:2"]'));
+ assert.ok(section(app,'国内カップ').querySelector('[data-competition-id="af:competition:48"]'));
+ const input=app.doc.getElementById('leagueSearch');input.value='カラバオ';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelectorAll('[data-competition-id]').length,1);
+ await app.click('[data-competition-id="af:competition:48"]');
+ await until(()=>app.text().includes('Quarter-finals'),'cup season rounds');
+ assert.match(app.text(),/自動更新と試合詳細は未対応/);assert.match(app.text(),/Home Club/);
+ await app.click('[data-cup-filter="upcoming"]');assert.equal(app.doc.querySelector('[data-fixture]'),null);
+ await app.click('[data-cup-filter="final"]');assert.ok(app.doc.querySelector('[data-fixture]'));
+ await app.click('[data-competition-tab="standings"]');assert.match(app.text(),/リーグ順位表はありません/);
+ assert.ok(!app.calls.some(url=>url.includes('competition%3A48')&&url.endsWith('/standings')));
+});

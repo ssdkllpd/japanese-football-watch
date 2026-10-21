@@ -1,0 +1,51 @@
+name: Publish cup schedules and standings
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feat/cup-competitions-20261021]
+    paths:
+      - config/cup-competitions.json
+      - scripts/cups/prepare.mjs
+      - scripts/cups/publish.mjs
+      - .github/workflows/cup-competitions-publish.yml
+permissions:
+  contents: read
+concurrency:
+  group: cup-snapshot-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned R2 CLI
+        run: npm install --prefix .tmp/cup-tools --ignore-scripts --no-audit --no-fund wrangler@4.147.0
+      - name: Prepare the already archived provider snapshot without API-Football requests
+        run: |
+          test "$R2_BUCKET" = jfw-football-data
+          mkdir -p .tmp/cups
+          snapshot_key=$(jq -r .source.snapshotKey config/cup-competitions.json)
+          node .tmp/cup-tools/node_modules/wrangler/bin/wrangler.js r2 object get "$R2_BUCKET/$snapshot_key" --file .tmp/cups/snapshot.json --remote
+          node scripts/cups/prepare.mjs
+      - name: Publish verified cup objects and then the catalog pointer
+        if: github.ref == 'refs/heads/main'
+        run: node scripts/cups/publish.mjs
+      - name: Verify public directory, schedules and UEFA tables after deployment
+        if: github.ref == 'refs/heads/main'
+        run: node scripts/cups/verify-public.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cup-publication-${{ github.run_id }}
+          path: .tmp/cups/public/catalog.json
+          retention-days: 30
+          if-no-files-found: warn

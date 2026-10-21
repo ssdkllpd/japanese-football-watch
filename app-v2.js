@@ -142,12 +142,16 @@
     return config.competitionAliases?.[label] || null;
   }
 
+  function configuredCup(id) {
+    return config.scope?.cupCompetitions?.find(item => item.id === id);
+  }
+
   function canonicalCompetitionName(id, fallback) {
-    return config.scope?.trackingLeagues?.find(item => item.id === id)?.label || fallback;
+    return config.scope?.trackingLeagues?.find(item => item.id === id)?.label || configuredCup(id)?.label || fallback;
   }
 
   function isDirectoryCompetitionId(id) {
-    return Boolean(config.scope?.trackingLeagues?.some(item => item.id === id));
+    return Boolean(config.scope?.trackingLeagues?.some(item => item.id === id) || configuredCup(id));
   }
 
   function readFollows() {
@@ -356,7 +360,7 @@
     state.competitionCatalogLoading = true;
     state.competitionCatalogError = null;
     try {
-      const payload = await apiFetch('/api/v2/competitions');
+      const payload = await apiFetch('/api/v2/competitions', {fresh:true});
       state.competitionCatalog = Array.isArray(payload?.competitions) ? payload.competitions : [];
       for (const competition of state.competitionCatalog) {
         const seasons = Array.isArray(competition.seasons) ? competition.seasons : [];
@@ -1107,18 +1111,19 @@
 
   function leagueDirectorySections(leagues, query) {
     const q = String(query || '').trim().toLowerCase();
-    const filtered = leagues.filter(item => !q || item.name.toLowerCase().includes(q));
+    const filtered = leagues.filter(item => !q || [item.name,item.country,...(configuredCup(item.id)?.aliases || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
     const followed = filtered.filter(isCompetitionFollowing);
     const all = filtered.filter(item => !isCompetitionFollowing(item));
     if (!filtered.length) return '<div class="empty-state"><strong>該当する大会なし</strong>検索条件を変えてください。</div>';
-    return `${followed.length ? `<section class="section"><div class="section-title"><h2>フォロー中</h2><span class="meta">${followed.length}</span></div><div class="list-card">${leagueRows(followed)}</div></section>` : ''}<section class="section"><div class="section-title"><h2>すべての大会</h2><span class="meta">${all.length}</span></div><div class="list-card">${leagueRows(all)}</div></section>`;
+    const sections = [['リーグ', all.filter(item => !configuredCup(item.id))], ['欧州カップ', all.filter(item => configuredCup(item.id)?.category === '欧州カップ')], ['国内カップ', all.filter(item => configuredCup(item.id)?.category === '国内カップ')]];
+    return `${followed.length ? `<section class="section"><div class="section-title"><h2>フォロー中</h2><span class="meta">${followed.length}</span></div><div class="list-card">${leagueRows(followed)}</div></section>` : ''}${sections.filter(([,items]) => items.length).map(([label,items]) => `<section class="section"><div class="section-title"><h2>${label}</h2><span class="meta">${items.length}</span></div><div class="list-card">${leagueRows(items)}</div></section>`).join('')}`;
   }
 
   function leagueRows(leagues) {
     if (!leagues.length) return '<div class="empty-state"><strong>大会なし</strong>この区分に表示できる大会はありません。</div>';
     return leagues.map(item => {
       const on = isCompetitionFollowing(item);
-      return `<div class="entity-row is-link" data-competition-id="${esc(item.id)}" data-competition-name="${esc(item.name)}" data-competition-logo="${esc(item.logo || '')}" data-competition-season="${esc(item.seasonId || '')}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(item.seasonId ? `シーズン ${seasonLabel(item.seasonId)}` : item.id)}</div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">${icon('follow',on)}</button></div>`;
+      return `<div class="entity-row is-link" data-competition-id="${esc(item.id)}" data-competition-name="${esc(item.name)}" data-competition-logo="${esc(item.logo || '')}" data-competition-season="${esc(item.seasonId || '')}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc([item.country || configuredCup(item.id)?.country,item.seasonId ? `シーズン ${seasonLabel(item.seasonId)}` : item.id].filter(Boolean).join(' · '))}</div></div><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">${icon('follow',on)}</button></div>`;
     }).join('');
   }
 
@@ -1188,6 +1193,7 @@
       const payload = await apiFetch(`/api/v2/competitions/${encodeURIComponent(detail.id)}/seasons/${encodeURIComponent(detail.seasonId)}`);
       if (state.competitionDetail !== detail) return;
       detail.seasonData = payload;
+      if (payload.cupSnapshot && Array.isArray(payload.fixtures)) rememberFixtures(payload.fixtures);
       applyCompetitionIdentity(detail, payload);
       for (const row of payload?.playerStats?.rows || []) if (row.player?.id) {
         rememberPlayer({
@@ -1239,6 +1245,11 @@
   async function loadCompetitionStandings() {
     const detail = state.competitionDetail;
     if (!detail || !detail.seasonId || detail.id.startsWith('legacy:')) return;
+    if (configuredCup(detail.id)?.standings === false) {
+      detail.standingsNotApplicable = true;
+      renderCompetitionDetailIfVisible();
+      return;
+    }
     detail.standingsLoading = true;
     detail.standingsError = null;
     renderCompetitionDetailIfVisible();
@@ -1305,6 +1316,10 @@
       renderCompetitionDetail();
       loadCompetitionMatches();
     }));
+    main.querySelectorAll('[data-cup-filter]').forEach(button => button.addEventListener('click', () => {
+      detail.cupFilter = button.dataset.cupFilter;
+      renderCompetitionDetail();
+    }));
     bindFixtureRows('competition');
     bindFollowButtons();
     bindTeamRows();
@@ -1328,7 +1343,21 @@
     }).join('')}</div>`;
   }
 
+  function renderCupMatches(detail) {
+    const snapshot = detail.seasonData;
+    const selected = detail.cupFilter || 'all';
+    const fixtures = (snapshot.fixtures || []).filter(row => selected === 'all' || (selected === 'final' ? isFinal(row) : !isFinal(row) && !isCancelled(row)));
+    const groups = new Map();
+    for (const fixture of fixtures) {
+      const label = `${fixture.dateJst} · ${fixture.round || 'ラウンド未取得'}`;
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(fixture);
+    }
+    return `<p class="notice">日程・結果の取得分を表示しています。自動更新と試合詳細は未対応です。</p><p class="data-updated">更新日時: ${valueCell(snapshot.cupSnapshot.generatedAt)}</p><div class="control-row" aria-label="カップ戦の試合を絞り込み">${[['all','すべて'],['upcoming','今後'],['final','終了']].map(([key,label]) => `<button type="button" class="chip${selected === key ? ' is-active' : ''}" data-cup-filter="${key}" aria-pressed="${selected === key}">${label}</button>`).join('')}<span class="meta">${fixtures.length}試合</span></div>${groups.size ? [...groups].map(([label,rows]) => `<section class="section"><h3>${esc(label)}</h3><div class="match-card">${rows.map(fixtureRow).join('')}</div></section>`).join('') : '<p class="empty-result">取得済みの範囲に該当する試合はありません。</p>'}`;
+  }
+
   function renderCompetitionMatches(detail) {
+    if (detail.seasonData?.cupSnapshot) return renderCupMatches(detail);
     const finished = detail.fixtures.filter(isFinal).length;
     const live = detail.fixtures.filter(isLive).length;
     const summary = detail.matchesPresence === 'present' && !detail.matchesLoading
@@ -1344,6 +1373,7 @@
   }
 
   function renderCompetitionStandings(detail) {
+    if (detail.standingsNotApplicable) return '<p class="notice">この大会は勝ち抜き方式のため、リーグ順位表はありません。「試合」から日程と結果を確認できます。</p>';
     if (detail.standingsLoading) return '<div class="notice">順位表を読み込み中…</div>';
     if (detail.standingsError) return errorNotice(detail.standingsError);
     const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
@@ -1415,6 +1445,7 @@
   }
 
   function renderCompetitionTeams(detail) {
+    if (detail.standingsNotApplicable) return '<p class="notice">この大会の順位表を使ったチーム成績は対象外です。</p>';
     if (detail.standingsLoading) return '<div class="notice">チーム成績を読み込み中…</div>';
     if (detail.standingsError) return errorNotice(detail.standingsError);
     const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
