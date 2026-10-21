@@ -9,6 +9,7 @@ on:
       - 'config/d1-targets.json'
       - 'config/d1-constraints.lock.json'
       - 'config/public-worker-target.json'
+      - 'config/cup-competitions.json'
       - 'config/live-worker-target.json'
       - 'scripts/live/target.mjs'
       - 'migrations/**'

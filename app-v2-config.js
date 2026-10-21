@@ -76,7 +76,172 @@ window.FOOTBALL_V2_CONFIG = Object.freeze({
       "friendlyIncluded": false,
       "preseasonIncluded": false,
       "unknownCompetitionIncluded": false
-    }
+    },
+    "cupCompetitions": [
+      {
+        "id": "af:competition:2",
+        "providerId": 2,
+        "label": "UEFA Champions League",
+        "country": "World",
+        "category": "欧州カップ",
+        "aliases": [
+          "CL",
+          "チャンピオンズリーグ"
+        ],
+        "standings": true
+      },
+      {
+        "id": "af:competition:3",
+        "providerId": 3,
+        "label": "UEFA Europa League",
+        "country": "World",
+        "category": "欧州カップ",
+        "aliases": [
+          "EL",
+          "ヨーロッパリーグ"
+        ],
+        "standings": true
+      },
+      {
+        "id": "af:competition:848",
+        "providerId": 848,
+        "label": "UEFA Europa Conference League",
+        "country": "World",
+        "category": "欧州カップ",
+        "aliases": [
+          "ECL",
+          "UECL",
+          "カンファレンス"
+        ],
+        "standings": true
+      },
+      {
+        "id": "af:competition:48",
+        "providerId": 48,
+        "label": "League Cup",
+        "country": "England",
+        "category": "国内カップ",
+        "aliases": [
+          "カラバオ",
+          "EFL",
+          "リーグカップ"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:45",
+        "providerId": 45,
+        "label": "FA Cup",
+        "country": "England",
+        "category": "国内カップ",
+        "aliases": [
+          "FA杯"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:81",
+        "providerId": 81,
+        "label": "DFB Pokal",
+        "country": "Germany",
+        "category": "国内カップ",
+        "aliases": [
+          "DFB",
+          "ポカール"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:90",
+        "providerId": 90,
+        "label": "KNVB Beker",
+        "country": "Netherlands",
+        "category": "国内カップ",
+        "aliases": [
+          "KNVB",
+          "オランダ杯"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:147",
+        "providerId": 147,
+        "label": "Cup",
+        "country": "Belgium",
+        "category": "国内カップ",
+        "aliases": [
+          "ベルギー杯"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:143",
+        "providerId": 143,
+        "label": "Copa del Rey",
+        "country": "Spain",
+        "category": "国内カップ",
+        "aliases": [
+          "コパデルレイ",
+          "国王杯"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:137",
+        "providerId": 137,
+        "label": "Coppa Italia",
+        "country": "Italy",
+        "category": "国内カップ",
+        "aliases": [
+          "コッパイタリア"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:96",
+        "providerId": 96,
+        "label": "Taça de Portugal",
+        "country": "Portugal",
+        "category": "国内カップ",
+        "aliases": [
+          "ポルトガル杯"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:97",
+        "providerId": 97,
+        "label": "Taça da Liga",
+        "country": "Portugal",
+        "category": "国内カップ",
+        "aliases": [
+          "ポルトガルリーグカップ"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:181",
+        "providerId": 181,
+        "label": "FA Cup",
+        "country": "Scotland",
+        "category": "国内カップ",
+        "aliases": [
+          "スコティッシュカップ"
+        ],
+        "standings": false
+      },
+      {
+        "id": "af:competition:185",
+        "providerId": 185,
+        "label": "League Cup",
+        "country": "Scotland",
+        "category": "国内カップ",
+        "aliases": [
+          "スコットランドリーグカップ"
+        ],
+        "standings": false
+      }
+    ]
   },
   "competitionAliases": {
     "スコットランド": "af:competition:179",
@@ -106,6 +271,37 @@ window.FOOTBALL_V2_CONFIG = Object.freeze({
     "Ligue 1": "af:competition:61",
     "Serie A": "af:competition:135",
     "Scottish Premiership": "af:competition:179",
-    "Primeira Liga": "af:competition:94"
+    "Primeira Liga": "af:competition:94",
+    "CL": "af:competition:2",
+    "チャンピオンズリーグ": "af:competition:2",
+    "EL": "af:competition:3",
+    "ヨーロッパリーグ": "af:competition:3",
+    "UEFA Europa Conference League": "af:competition:848",
+    "ECL": "af:competition:848",
+    "UECL": "af:competition:848",
+    "カンファレンス": "af:competition:848",
+    "カラバオ": "af:competition:48",
+    "EFL": "af:competition:48",
+    "リーグカップ": "af:competition:48",
+    "FA杯": "af:competition:45",
+    "DFB Pokal": "af:competition:81",
+    "DFB": "af:competition:81",
+    "ポカール": "af:competition:81",
+    "KNVB Beker": "af:competition:90",
+    "KNVB": "af:competition:90",
+    "オランダ杯": "af:competition:90",
+    "Cup": "af:competition:147",
+    "ベルギー杯": "af:competition:147",
+    "Copa del Rey": "af:competition:143",
+    "コパデルレイ": "af:competition:143",
+    "国王杯": "af:competition:143",
+    "Coppa Italia": "af:competition:137",
+    "コッパイタリア": "af:competition:137",
+    "Taça de Portugal": "af:competition:96",
+    "ポルトガル杯": "af:competition:96",
+    "Taça da Liga": "af:competition:97",
+    "ポルトガルリーグカップ": "af:competition:97",
+    "スコティッシュカップ": "af:competition:181",
+    "スコットランドリーグカップ": "af:competition:185"
   }
 });

@@ -1,0 +1,11 @@
+# Cup competition snapshots
+
+The October 21 request adds UEFA Champions League, Europa League, Conference League and domestic cups alongside the existing ten-league application. The inspection workflow verified actual provider identities and season coverage, then archived 1,803 fixtures across fourteen competitions. The 2026 Coupe de France season was absent from the provider metadata at inspection time and is not listed as acquired.
+
+`config/cup-competitions.json` pins the inspection run, immutable R2 source key and SHA256. `scripts/cups/prepare.mjs` reuses the existing fixture and standings normalizers and validates every scoped date index. It supports cups with more than 100 teams and seasons ending within the starting calendar year, without relaxing the old D1 migration gates.
+
+The publication workflow reads that archived source without additional provider requests. On a branch it only prepares artifacts. On main it uploads content-addressed objects, verifies each object's roundtrip hash and publishes the small catalog last. The public Worker reads only these R2 objects. It verifies snapshot hashes and identities, and merges acquired cups into the existing directory. Missing or invalid cup storage cannot hide the existing D1 league directory. The global daily match feed and the league acquisition/live allowlists are unchanged.
+
+Individual cup pages show acquired schedules/results by date and round, filters for upcoming/finished matches and supported UEFA tables. They show the acquisition time and explicitly explain that cup automatic updates and detailed match acquisition are not enabled. There are no synthetic knockout tables, future fixtures or missing statistics.
+
+To refresh, run the inspection workflow, examine the new coverage/fixture summary and stored archive, then update the pinned source in the cup config and regenerate `app-v2-config.js` with `FOOTBALL_V2_PUBLIC_API_BASE` set to the existing public Worker origin. The publication workflow prepares and verifies the new source before main publication. Update the reviewed competition list only from returned provider metadata. This is a manual snapshot process; adding cups to the existing live/final acquisition requires separate capacity and lifecycle work.
