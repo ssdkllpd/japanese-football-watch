@@ -1,3 +1,4 @@
+import {CUP_CATALOG_OPERATION,assertCupCatalogRequest,publishCupCatalog} from './cup-catalog-ingest.mjs';
 import { REPAIR_STATUS_OPERATION, REPAIR_AUTHORIZE_OPERATION, REPAIR_ENQUEUE_OPERATION, assertRepairControlRequest, readRepairStatus, authorizeDateRepair, enqueueDateRepair } from './date-repair-control.mjs';
 import { PLAYER_ROSTER_OPERATION, PLAYER_ROSTER_COMPLETE_OPERATION, assertPlayerRosterRequest, publishPlayerRoster, completePlayerRoster } from './player-roster-ingest.mjs';
 import {
@@ -98,6 +99,7 @@ async function requireAdminToken(request, env) {
 function assertRequest(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Admin ingest request must be an object.');
   if (value.schemaVersion !== REQUEST_SCHEMA) throw new Error(`schemaVersion must be ${REQUEST_SCHEMA}.`);
+  if (value.operation === CUP_CATALOG_OPERATION) return assertCupCatalogRequest(value);
   if (value.operation === FIXTURE_OPERATION || value.operation === FIXTURE_MIGRATION_OPERATION) {
     return assertFixtureRequest(value);
   }
@@ -357,7 +359,9 @@ export async function handleAdminIngest(request, env) {
     authenticated = true;
     const input = assertRequest(await requestJson(request));
     let report;
-    if (input.operation === FIXTURE_OPERATION || input.operation === FIXTURE_MIGRATION_OPERATION) {
+    if (input.operation === CUP_CATALOG_OPERATION) {
+      report = await publishCupCatalog(env,input);
+    } else if (input.operation === FIXTURE_OPERATION || input.operation === FIXTURE_MIGRATION_OPERATION) {
       report = await publishFixtureFromR2(env, input);
     } else if (input.operation === PLAYER_ROSTER_OPERATION) {
       report = await publishPlayerRoster(env, input);
