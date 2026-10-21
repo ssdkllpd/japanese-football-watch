@@ -54,6 +54,9 @@ export const FIXTURE_DETAIL_SCHEMA = Object.freeze({
           "playerId": {
             "type": "any"
           },
+          "playerName": {
+            "type": "any"
+          },
           "provenance": {
             "type": "object",
             "properties": {
@@ -73,6 +76,9 @@ export const FIXTURE_DETAIL_SCHEMA = Object.freeze({
             }
           },
           "relatedPlayerId": {
+            "type": "any"
+          },
+          "relatedPlayerName": {
             "type": "any"
           },
           "teamId": {

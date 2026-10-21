@@ -784,6 +784,12 @@ test('event-only cup details publish and round-trip without fabricated player ap
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixture_player_records').get().n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM players').get().n, 2);
   assert.equal(resolved.bundle.events[0].playerName, 'Scorer Only');
+  const worker = await import('../worker/index.mjs');
+  const publicResponse = await worker.fixtureDetailResponse({ ...fixtureEnv(db, bundle),
+    D1_FIXTURE_DETAIL_ENABLED: 'true' }, bundle.fixture.id);
+  assert.equal(publicResponse.status, 200, JSON.stringify(await publicResponse.clone().json()));
+  assert.equal(publicResponse.headers.get('x-jfw-data-source'), 'd1');
+  assert.deepEqual(await publicResponse.json(), resolved.bundle);
   const retry = await admin.default.fetch(request(input), fixtureEnv(db, bundle));
   assert.equal(retry.status, 200);
   assert.equal((await retry.json()).report.reason, 'already_published');
