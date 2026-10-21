@@ -8,6 +8,8 @@ const PLAN_VERSION = 'jfw-api-football-automation-plan/1';
 const FINAL_STATUSES = new Set(['FT', 'AET', 'PEN']);
 const REVIEWED_SCOPES = ['39:2026', '40:2026', '61:2026', '78:2026', '88:2026', '94:2026',
   '135:2026', '140:2026', '144:2026', '179:2026'];
+const CUPS = require('../../config/cup-competitions.json');
+const EXTENDED_SCOPES = [...REVIEWED_SCOPES, ...CUPS.competitions.map(c => `${c.providerId}:${CUPS.providerSeason}`)];
 const REVIEWED_RECHECKS = [
   { stage: 'initial', afterHours: 0 },
   { stage: 'correction_6h', afterHours: 6 },
@@ -45,8 +47,8 @@ function validatePolicy(policy) {
   }
   if (policy.timeZone !== 'Asia/Tokyo') throw new Error('Automation timeZone must be Asia/Tokyo.');
   if (policy.cron !== '*/15 * * * *') throw new Error('Automation cron must stay at the reviewed 15-minute cadence.');
-  if (!Array.isArray(policy.competitionSeasons) || policy.competitionSeasons.length !== 10) {
-    throw new Error('competitionSeasons must declare the reviewed ten-league scope.');
+  if (!Array.isArray(policy.competitionSeasons) || ![REVIEWED_SCOPES.length, EXTENDED_SCOPES.length].includes(policy.competitionSeasons.length)) {
+    throw new Error('competitionSeasons must declare the reviewed league or league-and-cup scope.');
   }
   const scopes = new Set();
   for (const [index, scope] of policy.competitionSeasons.entries()) {
@@ -57,8 +59,8 @@ function validatePolicy(policy) {
     if (scopes.has(key)) throw new Error(`competitionSeasons contains duplicate scope ${key}.`);
     scopes.add(key);
   }
-  if (JSON.stringify([...scopes].sort()) !== JSON.stringify([...REVIEWED_SCOPES].sort())) {
-    throw new Error('competitionSeasons differs from the reviewed ten-league 2026 scope.');
+  if (![REVIEWED_SCOPES, EXTENDED_SCOPES].some(expected => JSON.stringify([...scopes].sort()) === JSON.stringify([...expected].sort()))) {
+    throw new Error('competitionSeasons differs from the reviewed 2026 scope.');
   }
   exactKeys(policy.discovery, [
     'lookbackDays', 'lookaheadDays', 'eligibleAfterKickoffHours',
@@ -389,7 +391,7 @@ function planAutomation({ policy, state, fixturesByDate, now, quota = {}, previe
     if (correction && !correctionsToday.has(candidate.fixture.fixtureId)) correctionCapacity -= 1;
     if (requiresGlobalSlot) globalCapacity -= 1;
   }
-  const competitionScopes = new Map(policy.competitionSeasons.map(item => [item.league, item]));
+  const competitionScopes = new Map(policy.competitionSeasons.filter(item => !CUPS.competitions.some(c => c.providerId === item.league && !c.standings)).map(item => [item.league, item]));
   const standingsFetches = [];
   for (const league of [...competitionScopes.keys()].sort((a, b) => a - b)) {
     if (standingsFetches.length >= policy.limits.maxStandingsPerRun || requestCapacity < 1) break;

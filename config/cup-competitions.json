@@ -171,5 +171,6 @@
     "observedAt": "2026-10-21T04:06:40.225Z",
     "snapshotKey": "audit/cup-competitions/2026-10-21T04-06-40-225Z/07d650f49a7d430f8329b2dcf9a41aa2a2d57b574f05b95cdefb2a9ca21984d9.json",
     "snapshotSha256": "07d650f49a7d430f8329b2dcf9a41aa2a2d57b574f05b95cdefb2a9ca21984d9"
-  }
+  },
+  "acquisitionEnabled": true
 }

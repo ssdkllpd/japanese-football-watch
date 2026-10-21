@@ -1,4 +1,4 @@
-import {CUP_CATALOG_KEY,cupConfig,cupSnapshotKey,assertCupSnapshot,cupDirectoryEntry} from '../shared/cup-snapshot-contract.mjs';
+import {CUP_CATALOG_KEY,cupConfig,cupSnapshotKey,assertCupSnapshot,cupDirectoryEntry,CUP_ACQUISITION_ENABLED} from '../shared/cup-snapshot-contract.mjs';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8',
   'cache-control':status===200?'public, max-age=300':'no-store','x-jfw-data-source':'r2-cup-snapshot'}});
 export async function readCupCatalog(env) {
@@ -23,7 +23,7 @@ export async function loadCupSnapshot(env,entry,seasonId){
     if(digest!==entry.snapshotSha256)throw new Error('Cup snapshot hash mismatch');
     return assertCupSnapshot(JSON.parse(raw),entry.id,seasonId);
 }
-export async function cupResponse(env,id,{seasonId,date,standings=false}={}) {
+export async function cupResponse(env,id,{seasonId,date,standings=false,loadPublished=null}={}) {
   try{
     const entry=(await readCupCatalog(env)).find(c=>c.id===id);
     if(!entry)return json({error:'Cup snapshot has not been acquired'},404);
@@ -31,14 +31,21 @@ export async function cupResponse(env,id,{seasonId,date,standings=false}={}) {
     if(seasonId&&seasonId!==expected)return json({error:'Cup season not acquired',availableSeasons:[expected]},404);
     const value=await loadCupSnapshot(env,entry,expected);
     if(standings)return value.standings?json(value.standings):json({error:'This cup has no league table',code:'not_applicable'},404);
+    let published=null;
+    let degraded=false;
+    if(loadPublished && CUP_ACQUISITION_ENABLED) {try {published=await loadPublished(expected);} catch {degraded=true;}}
+    const fixtures=new Map(value.fixtures.map(f=>[f.fixtureId,f]));
+    for(const f of published?.fixtures||[]) fixtures.set(f.fixtureId,{...fixtures.get(f.fixtureId),...f});
+    const rows=[...fixtures.values()].sort((a,b)=>a.kickoffUtc.localeCompare(b.kickoffUtc)||a.fixtureId.localeCompare(b.fixtureId));
     if(date){
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00.000Z'))||new Date(date+'T00:00:00.000Z').toISOString().slice(0,10)!==date)return json({error:'Invalid date'},400);
       return json({contractVersion:'2.0.0',timeZone:'Asia/Tokyo',date,competition:value.competition,
-        fixtures:value.fixtures.filter(f=>f.dateJst===date).map(({round,...f})=>f),generatedAt:value.generatedAt});
+        fixtures:rows.filter(f=>f.dateJst===date).map(({round,...f})=>f),generatedAt:value.generatedAt});
     }
-    const summary=cupDirectoryEntry(value).seasons[0].summary;
-    return json({contractVersion:'2.0.0',competition:value.competition,season:value.season,summary,
-      fixtures:value.fixtures,cupSnapshot:{generatedAt:value.generatedAt,automaticUpdates:false,standingsAvailable:value.standings!==null},
-      playerStats:{presence:'not_fetched',rows:[]},detailSections:{}});
+    const summary=cupDirectoryEntry({...value,fixtures:rows}).seasons[0].summary;
+    return json({contractVersion:'2.0.0',competition:value.competition,season:value.season,degraded,
+      fixtures:rows,cupSnapshot:{generatedAt:value.generatedAt,automaticUpdates:CUP_ACQUISITION_ENABLED,standingsAvailable:value.standings!==null},
+      summary:{...summary,publishedDetailCount:published?.seasonData?.summary?.publishedDetailCount||0},
+      playerStats:published?.seasonData?.playerStats||{presence:'not_fetched',rows:[]},detailSections:published?.seasonData?.detailSections||{}});
   }catch{return json({error:'Cup snapshot is unavailable'},503);}
 }

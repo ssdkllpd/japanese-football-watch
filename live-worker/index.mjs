@@ -1,3 +1,4 @@
+import {CUP_ACQUISITION_ENABLED} from '../shared/cup-snapshot-contract.mjs';
 import {dispatchLiveTick} from './dispatch.mjs';
 import {providerDetail,DETAIL_SECTIONS} from '../shared/live-detail.mjs';
 import { LIVE_STATUSES, CLOSED_STATUSES, MINUTE, jstDate, allowedLeagues, providerFixture, isCandidate, precheckStage, liveEligible } from '../shared/live-contract.mjs';
@@ -10,6 +11,12 @@ async function all(db,sql,...params) {
   const result=await db.prepare(sql).bind(...params).all();
   if(result.success===false || !Array.isArray(result.results)) throw new Error('live_database_read_failed');
   return result.results;
+}
+export async function scheduleDiscoveryDue(env,now) {
+  if(!CUP_ACQUISITION_ENABLED)return false;
+  const dates=[jstDate(now),jstDate(now+86400000)];
+  const checked=await all(env.LIVE_DB,'SELECT date_jst,checked_ms FROM live_date_checks WHERE date_jst IN (?,?)',...dates);
+  return dates.some(date=>!checked.some(row=>row.date_jst===date&&now-row.checked_ms<15*MINUTE));
 }
 export async function providerSession(env, now, request=fetch) {
   const db=env.LIVE_DB, day=new Date(now).toISOString().slice(0,10);
@@ -112,6 +119,7 @@ async function saveDetails(env,records,now,allowed) {
 }
 async function refreshIds(env,session,rows,now,allowed,stages=null) {
   for(const part of chunks(rows)) {
+    if (session.calls>=LIMITS.perTickRequests-2) break;
     const response=await session.read('/fixtures',{ids:part.map(row=>row.provider_id).join('-')});
     const expected=new Map(part.map(row=>[row.fixture_id,row]));
     const seen=new Set(),validated=[];
@@ -181,6 +189,9 @@ async function runTick(env,now,request) {
   const db=env.LIVE_DB,allowed=allowedLeagues(env),day=jstDate(now);
   const control=(await all(db,'SELECT * FROM live_control WHERE id=1'))[0];
   const daily=control.daily_day!==day;
+  // Newly drawn cup ties can appear after the day's initial schedule fetch.
+  // The same acquisition budget and shared two-date queries cover every competition.
+  const discoveryDue = await scheduleDiscoveryDue(env,now);
   // Follow newly committed core schedule changes without spending provider calls.
   if(!control.last_core_sync_ms || now-control.last_core_sync_ms>=15*MINUTE) {
     await seedCore(env,now,allowed);
@@ -189,17 +200,24 @@ async function runTick(env,now,request) {
   let rows=await all(db,'SELECT * FROM live_schedule WHERE kickoff_ms>=? ORDER BY kickoff_ms LIMIT 1001',now-6*3600000);
   if(rows.length>1000) throw new Error('schedule_inventory_limit');
   const needs=rows.some(row=>precheckStage(row,now)||liveEligible(row,now));
-  if(!daily && !needs) {
+  if(!daily && !discoveryDue && !needs) {
     const next=rows.filter(row=>isCandidate(row,now)).map(row=>row.kickoff_ms-3600000);
     return {status:'idle',nextStart:next.length?Math.min(...next):null};
   }
   const session=await providerSession(env,now,request);
-  if(daily) {
+  if(daily || discoveryDue) {
     for(const date of [day,jstDate(now+86400000)]) {
       const checked=(await all(db,'SELECT checked_ms FROM live_date_checks WHERE date_jst=?',date))[0];
-      if(checked && jstDate(checked.checked_ms)===day) continue;
+      if(checked && (CUP_ACQUISITION_ENABLED ? now-checked.checked_ms<15*MINUTE : jstDate(checked.checked_ms)===day)) continue;
       const body=await session.read('/fixtures',{date,timezone:'Asia/Tokyo'});
-      for(const raw of body.response) {const dto=providerFixture(raw,allowed);if(dto) await saveSchedule(env,dto,now);}
+      const previous=new Map(rows.map(row=>[row.fixture_id,row]));
+      for(const raw of body.response) {
+        const dto=providerFixture(raw,allowed);if(!dto)continue;
+        const closed=CLOSED_STATUSES.has(dto.status.short)&&previous.get(dto.fixtureId)?.status!==dto.status.short;
+        await saveSchedule(env,dto,now,{snapshot:closed});
+        // Date discovery may observe FT before live=all's disappearance check.
+        if(closed)await saveDetails(env,[raw],now,allowed);
+      }
       await db.prepare('INSERT INTO live_date_checks VALUES(?,?) ON CONFLICT(date_jst) DO UPDATE SET checked_ms=excluded.checked_ms').bind(date,now).run();
     }
     await db.prepare('UPDATE live_control SET daily_day=? WHERE id=1').bind(day).run();

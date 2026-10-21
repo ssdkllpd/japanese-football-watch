@@ -3,7 +3,10 @@
 const fs = require('node:fs');
 const { createClientFromEnv } = require('../api-football/client');
 const { canonicalFixture } = require('./api-football-automation-plan');
-const policy = require('../../config/api-football-automation.json');
+const policy = {...require('../../config/api-football-automation.json')};
+const cupIds = new Set(require('../../config/cup-competitions.json').competitions.map(c => c.providerId));
+// Cup rounds grow during the season and use the verified R2 schedule refresher.
+policy.competitionSeasons = policy.competitionSeasons.filter(scope => !cupIds.has(scope.league));
 
 const MUTABLE = new Set(['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO', 'SUSP', 'INT']);
 

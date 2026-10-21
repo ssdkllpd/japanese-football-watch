@@ -438,6 +438,7 @@
     if (route.kind === 'matches') renderMatches();
     if (route.kind === 'fixture' && state.detail) renderFixtureDetail();
     if (route.kind === 'competitions') renderLeagues();
+    if (route.kind === 'competition' && state.competitionDetail?.seasonData?.cupSnapshot) renderCompetitionDetailIfVisible();
     if (route.kind === 'team') renderTeamDetail(route.entityId, route.productSeason);
     if (route.kind === 'following') renderFollowing();
   }
@@ -1346,14 +1347,14 @@
   function renderCupMatches(detail) {
     const snapshot = detail.seasonData;
     const selected = detail.cupFilter || 'all';
-    const fixtures = (snapshot.fixtures || []).filter(row => selected === 'all' || (selected === 'final' ? isFinal(row) : !isFinal(row) && !isCancelled(row)));
+    const fixtures = (snapshot.fixtures || []).map(fixtureWithLiveScore).filter(row => selected === 'all' || (selected === 'final' ? isFinal(row) : !isFinal(row) && !isCancelled(row)));
     const groups = new Map();
     for (const fixture of fixtures) {
       const label = `${fixture.dateJst} · ${fixture.round || 'ラウンド未取得'}`;
       if (!groups.has(label)) groups.set(label, []);
       groups.get(label).push(fixture);
     }
-    return `<p class="notice">日程・結果の取得分を表示しています。自動更新と試合詳細は未対応です。</p><p class="data-updated">更新日時: ${valueCell(snapshot.cupSnapshot.generatedAt)}</p><div class="control-row" aria-label="カップ戦の試合を絞り込み">${[['all','すべて'],['upcoming','今後'],['final','終了']].map(([key,label]) => `<button type="button" class="chip${selected === key ? ' is-active' : ''}" data-cup-filter="${key}" aria-pressed="${selected === key}">${label}</button>`).join('')}<span class="meta">${fixtures.length}試合</span></div>${groups.size ? [...groups].map(([label,rows]) => `<section class="section"><h3>${esc(label)}</h3><div class="match-card">${rows.map(fixtureRow).join('')}</div></section>`).join('') : '<p class="empty-result">取得済みの範囲に該当する試合はありません。</p>'}`;
+    return `<p class="notice">${snapshot.cupSnapshot.automaticUpdates ? '日程を定期更新しています。ライブ速報・メンバー・試合詳細は取得できた項目から表示します。' : '日程・結果の取得分を表示しています。'}</p><p class="data-updated">更新日時: ${valueCell(snapshot.cupSnapshot.generatedAt)}</p><div class="control-row" aria-label="カップ戦の試合を絞り込み">${[['all','すべて'],['upcoming','今後'],['final','終了']].map(([key,label]) => `<button type="button" class="chip${selected === key ? ' is-active' : ''}" data-cup-filter="${key}" aria-pressed="${selected === key}">${label}</button>`).join('')}<span class="meta">${fixtures.length}試合</span></div>${groups.size ? [...groups].map(([label,rows]) => `<section class="section"><h3>${esc(label)}</h3><div class="match-card">${rows.map(fixtureRow).join('')}</div></section>`).join('') : '<p class="empty-result">取得済みの範囲に該当する試合はありません。</p>'}`;
   }
 
   function renderCompetitionMatches(detail) {
@@ -2072,13 +2073,15 @@
     const storedDetail = state.detail?.bundle?.fixture || state.detail?.summary;
     const detailRow = fixtureWithLiveScore(storedDetail);
     const liveDetail = route.kind === 'fixture' && fixtureNeedsRefresh(detailRow);
+    const liveCup = route.kind === 'competition' && state.competitionDetail?.seasonData?.cupSnapshot?.automaticUpdates;
     const liveList = route.kind === 'matches' && state.date === todayJst();
-    if (document.visibilityState === 'visible' && state.workerBase && (liveList || liveDetail)
+    if (document.visibilityState === 'visible' && state.workerBase && (liveList || liveDetail || liveCup)
         && !state.loading && !liveRefreshPending) {
       liveRefreshPending = true;
       Promise.allSettled([
-        loadMatches({ background: true, date: liveDetail ? detailRow.dateJst || todayJst() : state.date }),
+        loadMatches({ background: true, date: liveDetail ? detailRow.dateJst || todayJst() : liveCup ? todayJst() : state.date }),
         ...(liveDetail ? [refreshFixtureDetail()] : []),
+        ...(liveCup ? [loadCompetitionSeason()] : []),
       ]).finally(() => { liveRefreshPending = false; });
     }
   }, 60000);

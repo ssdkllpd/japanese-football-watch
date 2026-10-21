@@ -11,6 +11,9 @@ on:
       - 'shared/live-detail.mjs'
       - 'scripts/v2/fixture-contract.js'
       - 'config/live-worker-target.json'
+      - 'config/public-worker-target.json'
+      - 'config/cup-competitions.json'
+      - 'shared/cup-snapshot-contract.mjs'
       - '.github/workflows/api-football-live.yml'
   workflow_dispatch:
 permissions:

@@ -1,6 +1,7 @@
 import config from '../config/cup-competitions.json' with {type:'json'};
 import {assertValidDateIndexPayload,compareDateIndexFixtures} from './date-index-contract.mjs';
 import {assertValidStandingsPayload} from './standings-contract.mjs';
+export const CUP_ACQUISITION_ENABLED=config.acquisitionEnabled===true;
 export const CUP_CATALOG_KEY='football/v2/cups/catalog.json';
 export const CUP_COMPETITIONS=config.competitions;
 export const cupConfig=id=>CUP_COMPETITIONS.find(c=>c.id===id);

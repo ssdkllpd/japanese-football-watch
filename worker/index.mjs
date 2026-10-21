@@ -1,5 +1,5 @@
-import {readCupCatalog,cupResponse} from './cup-snapshots.mjs';
-import {cupConfig} from '../shared/cup-snapshot-contract.mjs';
+import {readCupCatalog,loadCupSnapshot,cupResponse} from './cup-snapshots.mjs';
+import {cupConfig,CUP_ACQUISITION_ENABLED} from '../shared/cup-snapshot-contract.mjs';
 import {
   assertValidDateIndexPayload,
   fixtureIdDigestInput,
@@ -1309,8 +1309,40 @@ async function degradedR2StandingsObject(env, key, competitionId, requestedSeaso
   });
 }
 
-async function dateIndexResponse(env, date, competitionId = null, context = null, fresh = false) {
-  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {date});
+async function publishedCupData(env,id,seasonId) {
+  if (!env.FOOTBALL_DB) return null;
+  const [seasonData,rows]=await Promise.all([
+    buildD1CompetitionSeason(env,id,seasonId),
+    d1Rows(env,`SELECT ${FIXTURE_INDEX_COLUMNS_SQL},fixture.round FROM fixtures fixture ${FIXTURE_INDEX_JOINS_SQL}
+      WHERE season.canonical_id=? AND fixture.published_revision IS NOT NULL ORDER BY fixture.kickoff_utc,fixture.canonical_id`,seasonId),
+  ]);
+  let fixtures=rows.map(row=>({...fixtureIndexEntryFromD1(row),round:row.round}));
+  const dates=[...new Set(fixtures.map(f=>f.dateJst))];
+  fixtures=(await Promise.all(dates.map(date=>applyD1DateFixtureCorrections(env,date,fixtures.filter(f=>f.dateJst===date),id)))).flat();
+  return {seasonData,fixtures};
+}
+async function dateIndexResponse(env,date,competitionId=null,context=null,fresh=false) {
+  if (cupConfig(competitionId)) return cupResponse(env,competitionId,{date,loadPublished:season=>publishedCupData(env,competitionId,season)});
+  const response=await coreDateIndexResponse(env,date,competitionId,context,fresh);
+  if (fresh || competitionId || response.status!==200 || !CUP_ACQUISITION_ENABLED
+      || ![...allowedCompetitionIds(env)].some(id=>cupConfig(`af:competition:${id}`))) return response;
+  try {
+    const cups=await readCupCatalog(env);
+    if(!cups.length)return response;
+    const snapshots=await Promise.all(cups.map(c=>loadCupSnapshot(env,c,c.seasons[0].id)));
+    const feed=await response.clone().json(),fixtures=new Map();
+    const moved=await d1Rows(env,`SELECT fixture.canonical_id FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id
+      JOIN competitions competition ON competition.id=season.competition_id
+      WHERE fixture.published_revision IS NOT NULL AND fixture.date_jst<>? AND competition.canonical_id IN (${cups.map(()=>'?').join(',')})`,date,...cups.map(c=>c.id));
+    const relocated=new Set(moved.map(row=>row.canonical_id));
+    for(const c of snapshots)for(const f of c.fixtures)if(f.dateJst===date&&!relocated.has(f.fixtureId)){const {round,...row}=f;fixtures.set(f.fixtureId,row);}
+    for(const f of feed.fixtures)fixtures.set(f.fixtureId,f);
+    feed.fixtures=[...fixtures.values()].sort((a,b)=>a.kickoffUtc.localeCompare(b.kickoffUtc)||a.fixtureId.localeCompare(b.fixtureId));
+    return new Response(JSON.stringify(feed),{status:response.status,headers:response.headers});
+  } catch { return response; }
+}
+
+async function coreDateIndexResponse(env, date, competitionId = null, context = null, fresh = false) {
   const flag = competitionId === null
     ? 'D1_DATE_INDEX_ENABLED' : 'D1_COMPETITION_DATE_INDEX_ENABLED';
   const r2Key = competitionId === null
@@ -1344,7 +1376,14 @@ async function dateIndexResponse(env, date, competitionId = null, context = null
 }
 
 async function standingsResponse(env, competitionId, requestedSeasonId, context = null) {
-  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {seasonId:requestedSeasonId,standings:true});
+  if (cupConfig(competitionId)) {
+    const saved=await cupResponse(env,competitionId,{seasonId:requestedSeasonId,standings:true});
+    if(!CUP_ACQUISITION_ENABLED||!saved.ok||!env.FOOTBALL_DB)return saved;
+    try {
+      const current=await buildD1Standings(env,competitionId,requestedSeasonId),snapshot=await saved.clone().json();
+      return current && current.generatedAt>snapshot.generatedAt ? json(current,200,{'cache-control':'public, max-age=300','x-jfw-data-source':'d1'}) : saved;
+    } catch { return saved; }
+  }
   const key = standingsLatestKey(competitionId, requestedSeasonId);
   if (!enabled(env, 'D1_STANDINGS_ENABLED')) return r2JsonObject(env, key);
   const cache = dateResponseCache(env);
@@ -1378,8 +1417,13 @@ async function appendCupDirectory(response, env) {
     const cups = await readCupCatalog(env);
     if (!cups.length) return response;
     const payload = await response.clone().json();
-    const existing = new Set(payload.competitions.map(c => c.id));
-    payload.competitions.push(...cups.filter(c => !existing.has(c.id)).map(({snapshotKey,snapshotSha256,...c})=>c));
+    const merged=new Map(payload.competitions.map(c=>[c.id,c]));
+    for(const {snapshotKey,snapshotSha256,...cup} of cups) {
+      const stored=merged.get(cup.id);
+      merged.set(cup.id,{...cup,seasons:cup.seasons.map(season=>({...season,summary:{...season.summary,
+        publishedDetailCount:stored?.seasons?.find(s=>s.id===season.id)?.summary?.publishedDetailCount||0}}))});
+    }
+    payload.competitions=[...merged.values()];
     return new Response(JSON.stringify(payload), {status:response.status, headers:response.headers});
   } catch { return response; }
 }
@@ -1407,7 +1451,7 @@ async function competitionDirectoryResponse(env, context = null) {
 }
 
 async function competitionSeasonResponse(env, competitionId, requestedSeasonId, context = null) {
-  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {seasonId:requestedSeasonId});
+  if (cupConfig(competitionId)) return cupResponse(env, competitionId, {seasonId:requestedSeasonId,loadPublished:season=>publishedCupData(env,competitionId,season)});
   const cache = dateResponseCache(env);
   const cacheKey = competitionSeasonResponseCacheKey(competitionId, requestedSeasonId);
   const cached = await cacheMatch(cache, cacheKey);

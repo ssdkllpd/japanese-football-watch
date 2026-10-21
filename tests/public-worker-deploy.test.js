@@ -40,7 +40,7 @@ test('public Worker target and rendered configuration lock the reviewed origins 
   assert.match(rendered, /binding = "FOOTBALL_DATA"/);
   assert.match(rendered, /binding = "FOOTBALL_DB"/);
   assert.match(rendered, /APP_ORIGINS = "https:\/\/ssdkllpd.github.io"/);
-  assert.match(rendered, /LIVE_COMPETITION_IDS = "39,40,61,78,88,94,135,140,144,179"/);
+  assert.match(rendered, /LIVE_COMPETITION_IDS = "2,3,39,40,45,48,61,78,81,88,90,94,96,97,135,137,140,143,144,147,179,181,185,848"/);
   for (const flag of Object.keys(target.d1ReadFlags)) {
     assert.match(rendered, new RegExp(`${flag} = "true"`));
   }

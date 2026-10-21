@@ -119,6 +119,12 @@ jobs:
           node scripts/d1/capture-schedule-audit.mjs .tmp/schedule-sync/plan.json \
             .tmp/schedule-sync/inventory.json .tmp/schedule-sync/audit
 
+      - name: Refresh complete cup schedules, drawn rounds and UEFA tables in the same schedule cycle
+        if: github.event_name == 'schedule' || inputs.mode == 'execute'
+        run: |
+          npm install --prefix .tmp/cup-tools --ignore-scripts --no-audit --no-fund wrangler@4.147.0
+          node scripts/cups/refresh.mjs
+
       - name: Fail visibly if initial date repairs remain incomplete
         if: github.event_name == 'schedule' || inputs.mode == 'execute'
         run: jq -e '.passed == true' .tmp/schedule-sync/repair-report.json >/dev/null

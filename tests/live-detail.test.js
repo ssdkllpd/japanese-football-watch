@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {DatabaseSync}=require('node:sqlite');
 const {createLocalD1}=require('../scripts/d1/local-d1');
 
-async function harness(t) {
+async function harness(t,league=39) {
  const db=new DatabaseSync(':memory:');t.after(()=>db.close());
  for(const name of fs.readdirSync(path.join(__dirname,'../migrations/live')).filter(n=>n.endsWith('.sql')).sort())db.exec(fs.readFileSync(path.join(__dirname,'../migrations/live',name),'utf8'));
  const binding=createLocalD1(db);
@@ -13,12 +13,12 @@ async function harness(t) {
  };
  const now=Date.parse('2026-10-18T10:00:00Z');
  const raw={fixture:{id:10,date:new Date(now+30*60000).toISOString(),status:{short:'NS',elapsed:null}},
-  league:{id:39,season:2026,name:'Premier League'},teams:{home:{id:1,name:'Home Club'},away:{id:2,name:'Away Club'}},
+  league:{id:league,season:2026,name:'Premier League'},teams:{home:{id:1,name:'Home Club'},away:{id:2,name:'Away Club'}},
   goals:{home:null,away:null},lineups:[],events:[],statistics:[],players:[]};
  const {providerFixture}=await import('../shared/live-contract.mjs');
- const dto=providerFixture(raw,new Set([39]));
+ const dto=providerFixture(raw,new Set([league]));
  db.prepare('INSERT INTO live_schedule(fixture_id,provider_id,competition_id,kickoff_ms,status,payload,check_2h_ms,check_1h_ms) VALUES(?,?,?,?,?,?,?,?)')
-  .run(dto.fixtureId,10,39,Date.parse(dto.kickoffUtc),'NS',JSON.stringify(dto),now-3600000,now-60000);
+  .run(dto.fixtureId,10,league,Date.parse(dto.kickoffUtc),'NS',JSON.stringify(dto),now-3600000,now-60000);
  db.prepare('UPDATE live_control SET daily_day=?,last_core_sync_ms=?').run('2026-10-18',now);
  const calls=[],fixtures=new Map([[10,raw]]);
  const request=async url=>{
@@ -32,7 +32,7 @@ async function harness(t) {
  };
  const {normalizeFixtureBundle}=require('../scripts/v2/fixture-contract');
  let core=normalizeFixtureBundle(raw,{fetchedAt:new Date(now).toISOString()});
- const env={LIVE_DB:binding,LIVE_ACQUISITION_ENABLED:'true',API_FOOTBALL_KEY:'unit-only',LIVE_COMPETITION_IDS:'39',
+ const env={LIVE_DB:binding,LIVE_ACQUISITION_ENABLED:'true',API_FOOTBALL_KEY:'unit-only',LIVE_COMPETITION_IDS:String(league),
   LIVE_DATA_READ_ENABLED:'true',FOOTBALL_DB:{prepare:()=>({bind:()=>({all:async()=>({success:true,results:[]})})})},
   FOOTBALL_DATA:{get:async key=>key.includes('/indexes/')?{text:async()=>JSON.stringify({fixtureId:'af:fixture:10',key:'fixture.json'})}:{text:async()=>JSON.stringify(core)}}};
  const {scheduledTick}=await import('../live-worker/index.mjs');
@@ -110,4 +110,20 @@ test('simultaneous fixtures use batches of at most twenty without extra detail c
  assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM live_details').get().n,22);
  const before=h.calls.length;await h.tick(h.now+60000);
  assert.equal(h.calls.slice(before).filter(url=>url.includes('ids=')).length,0);
+});
+
+for(const league of [2,3,848,48])test(`cup ${league} discovers announced lineups, live goals and provisional final details through the shared pipeline`,async t=>{
+ const h=await harness(t,league);
+ h.raw.lineups=[{team:{id:1},formation:'4-3-3',startXI:[{player:{id:100,name:'Cup Starter',number:9,pos:'F',grid:'4:1'}}],substitutes:[]}];
+ await h.tick(h.now);
+ assert.equal((await h.read(h.now)).body.lineups[0].startXI[0].name,'Cup Starter');
+ h.raw.fixture.status={short:'1H',elapsed:12};h.raw.goals={home:1,away:0};
+ h.raw.events=[{time:{elapsed:12},team:{id:1},player:{id:100,name:'Cup Starter'},type:'Goal',detail:'Normal Goal'}];
+ await h.tick(h.now+30*60000);
+ const live=(await h.read(h.now+30*60000)).body;
+ assert.equal(live.fixture.competitionId,`af:competition:${league}`);assert.equal(live.events[0].type,'goal');
+ h.raw.fixture.status={short:'PEN',elapsed:120};h.raw.score={penalty:{home:5,away:4}};
+ await h.tick(h.now+45*60000);
+ const final=(await h.read(h.now+45*60000)).body;
+ assert.equal(final.fixture.ingestionState,'provisional_final');assert.equal(final.fixture.score.penalty.home,5);
 });

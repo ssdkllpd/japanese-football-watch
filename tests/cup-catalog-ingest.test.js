@@ -9,7 +9,8 @@ async function setup(t){
  const bundle=normalizeFixtureBundle(raw,{fetchedAt:'2026-10-21T04:00:00.000Z',finalized:true});
  const value={schemaVersion:'jfw-cup-public-snapshot/1',competition:bundle.competition,season:{...bundle.season,startsOn:'2026-07-01',endsOn:'2026-12-31',status:'active'},generatedAt:bundle.fixture.reconciledAt,fixtures:[{...fixtureIndexEntry(bundle),round:'League stage'}],standings:null};
  const text=JSON.stringify(value),sha=crypto.createHash('sha256').update(text).digest('hex');
- const key=`football/v2/cups/snapshots/${sha}.json`,catalog={schemaVersion:'jfw-cup-catalog/1',competitions:[{id:bundle.competition.id,seasons:[bundle.season],snapshotKey:key,snapshotSha256:sha}]};
+ const {cupDirectoryEntry}=await import('../shared/cup-snapshot-contract.mjs');
+ const key=`football/v2/cups/snapshots/${sha}.json`,catalog={schemaVersion:'jfw-cup-catalog/1',competitions:[{...cupDirectoryEntry(value),snapshotKey:key,snapshotSha256:sha}]};
  const env={FOOTBALL_DB:createLocalD1(db),FOOTBALL_DATA:{get:async k=>({text:async()=>k.endsWith('catalog.json')?JSON.stringify(catalog):text})}};
  const request={schemaVersion:'jfw-d1-admin-ingest/1',operation:'cup_catalog_publish',competitionId:bundle.competition.id,seasonId:bundle.season.id,snapshotSha256:sha};
  return {db,env,request,bundle};
@@ -26,6 +27,17 @@ test('reviewed cup catalog initializes same-year metadata and reuses the normal 
  assert.equal(report.imported,true);
  assert.equal(db.prepare('SELECT publication_source FROM fixture_detail_publish_days').get().publication_source,'automation');
  assert.equal(db.prepare('SELECT COUNT(*) n FROM fixture_revisions WHERE lifecycle_state=\'published\'').get().n,1);
+ const worker=(await import('../worker/index.mjs')).default;
+ env.APP_ORIGINS='https://app.test';env.D1_FIXTURE_DETAIL_ENABLED='true';
+ const get=async suffix=>{const r=await worker.fetch(new Request('https://api.test/api/v2/'+suffix,{headers:{origin:'https://app.test'}}),env,{});assert.equal(r.status,200);return r.json();};
+ const season=await get('competitions/af%3Acompetition%3A2/seasons/af%3Aseason%3A2%3A2026');
+ assert.equal(season.degraded,false);assert.equal(season.fixtures[0].ingestionState,'finalized');assert.equal(season.fixtures[0].score.goals.home,1);
+ assert.equal(season.summary.publishedDetailCount,1);assert.equal(season.cupSnapshot.automaticUpdates,true);
+ const directory=await get('competitions');assert.equal(directory.competitions[0].seasons[0].summary.fixtureCount,1);
+ assert.equal(directory.competitions[0].seasons[0].summary.publishedDetailCount,1);
+ const date=await get('competitions/af%3Acompetition%3A2/dates/2026-10-21');assert.equal(date.fixtures[0].ingestionState,'finalized');
+ const detail=await get('fixtures/af%3Afixture%3A900001');assert.equal(detail.fixture.ingestionState,'finalized');
+
 });
 test('cup catalog refuses unreviewed scopes and a changed publication source',async t=>{
  const {env,request}=await setup(t),{publishCupCatalog,assertCupCatalogRequest}=await import('../admin-worker/cup-catalog-ingest.mjs');

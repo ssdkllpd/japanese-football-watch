@@ -50,13 +50,13 @@ test('backfill plans only unpublished final fixtures through today, without refe
     policy, inventory: inventory([1]), dateInventory: dateInventory({ 1: '2026-09-20' }),
     dailyBudget: budget(), client, now, preview: true,
   });
-  assert.equal(client.calls.length, 10);
+  assert.equal(client.calls.length, 24);
   assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:2']);
   assert.equal(plan.missingFixtureCount, 1);
   assert.equal(plan.deferredRecentCount, 1);
   assert.equal(plan.alreadyPublishedCount, 1);
-  assert.equal(plan.standingsFetches.length, 10);
-  assert.equal(plan.quota.estimatedProviderRequests, 26);
+  assert.equal(plan.standingsFetches.length, 13);
+  assert.equal(plan.quota.estimatedProviderRequests, 43);
 });
 
 test('backfill publishes at most 20 per UTC day and resumes the next day', async () => {

@@ -1016,9 +1016,27 @@ test('UEFA and domestic cups have separate searchable entries and acquired round
  assert.equal(app.doc.querySelectorAll('[data-competition-id]').length,1);
  await app.click('[data-competition-id="af:competition:48"]');
  await until(()=>app.text().includes('Quarter-finals'),'cup season rounds');
- assert.match(app.text(),/自動更新と試合詳細は未対応/);assert.match(app.text(),/Home Club/);
+ assert.match(app.text(),/日程・結果の取得分/);assert.match(app.text(),/Home Club/);
  await app.click('[data-cup-filter="upcoming"]');assert.equal(app.doc.querySelector('[data-fixture]'),null);
  await app.click('[data-cup-filter="final"]');assert.ok(app.doc.querySelector('[data-fixture]'));
  await app.click('[data-competition-tab="standings"]');assert.match(app.text(),/順位表はAPIで提供されていません/);
  assert.ok(!app.calls.some(url=>url.includes('competition%3A48')&&url.endsWith('/standings')));
+});
+
+test('a cup competition polls stored live scores every minute and keeps the selected round filter',async t=>{
+ const intervals=[];let phase=0;
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
+ const cup={id:'af:competition:2',name:'UEFA Champions League',seasons:[{id:'af:season:2:2026',status:'active'}]};
+ const match={...fixture(),dateJst:today,kickoffUtc:new Date().toISOString(),competitionId:cup.id,seasonId:cup.seasons[0].id,round:'League stage',status:{short:'NS'},ingestionState:'scheduled'};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A2?season=af%3Aseason%3A2%3A2026',intervals,catalog:{competitions:[cup]},
+  seasonDetail:{competition:cup,season:cup.seasons[0],fixtures:[match],cupSnapshot:{generatedAt:new Date().toISOString(),automaticUpdates:true,standingsAvailable:true}},
+  feed:async()=>({fixtures:[match]}),request:async url=>new URL(url).pathname==='/api/v2/live'?{ok:true,status:200,json:async()=>({liveUpdatesEnabled:true,fixtures:phase?[{fixtureId:match.fixtureId,competitionId:cup.id,seasonId:match.seasonId,dateJst:today,kickoffUtc:match.kickoffUtc,status:{short:'1H',elapsed:12},home:{teamId:home.id,name:home.name,score:3},away:{teamId:away.id,name:away.name,score:0},updatedAt:new Date().toISOString()}]:[]})}:null});
+ await until(()=>app.text().includes('League stage'),'cup rounds');
+ await app.click('[data-cup-filter="upcoming"]');
+ phase=1;const before=app.calls.filter(url=>url.endsWith('/api/v2/live')).length;
+ intervals.find(row=>row.ms===60000).callback();
+ await until(()=>app.doc.querySelector('.status-pill.is-live'),'cup live score');
+ assert.ok(app.calls.filter(url=>url.endsWith('/api/v2/live')).length>before);
+ assert.equal(app.doc.querySelector('[data-cup-filter="upcoming"]').getAttribute('aria-pressed'),'true');
+ assert.match(app.text(),/3/);
 });

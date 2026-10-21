@@ -42,7 +42,7 @@ function input(rows, now = '2026-09-17T12:00:00.000Z', customPolicy = policy()) 
 test('reviewed automation policy permits activation within unchanged limits', () => {
   const value = validatePolicy(policy());
   assert.equal(value.scheduledSynchronizationEnabled, true);
-  assert.equal(value.competitionSeasons.length, 10);
+  assert.equal(value.competitionSeasons.length, 24);
   assert.equal(value.limits.maxFinalDetailFixturesPerRun, 20);
   assert.equal(value.limits.maxFinalDetailFixturesPerDay, 40);
   assert.equal(value.limits.maxCorrectionFixturesPerDay, 8);
@@ -60,7 +60,7 @@ test('planner includes only reviewed competition-season identities and finalized
   const plan = planAutomation(input(rows));
   assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:1']);
   assert.equal(plan.excludedFixtureCount, 2);
-  assert.deepEqual(plan.standingsFetches.map(item => item.league), [39, 40, 61, 78, 88, 94, 135, 140, 144, 179]);
+  assert.deepEqual(plan.standingsFetches.map(item => item.league), [2, 3, 39, 40, 61, 78, 88, 94, 135, 140]);
 });
 
 test('disabled policy produces no side effects unless explicitly previewed', () => {
@@ -206,6 +206,9 @@ test('standings refresh independently every six hours, including matchless leagu
   assert.equal(plan.standingsFetches.length, 10);
   args.state = advanceAutomationState(args.state, plan, '2026-09-17T12:01:00Z');
 
+  const remaining=planAutomation(args);
+  assert.deepEqual(remaining.standingsFetches.map(s=>s.league),[144,179,848]);
+  args.state=advanceAutomationState(args.state,remaining,'2026-09-17T12:02:00Z');
   Object.assign(args, input({}, '2026-09-17T17:59:00Z'), { state: args.state });
   assert.equal(planAutomation(args).standingsFetches.length, 0);
   Object.assign(args, input({}, '2026-09-17T18:02:00Z'), { state: args.state });
@@ -225,8 +228,8 @@ test('planner rejects duplicate provider fixtures and policy drift', () => {
   unknown.unreviewed = true;
   assert.throws(() => validatePolicy(unknown), /must contain exactly/);
   const changedScope = policy();
-  changedScope.competitionSeasons[0].league = 2;
-  assert.throws(() => validatePolicy(changedScope), /reviewed ten-league/);
+  changedScope.competitionSeasons[0].league = 9999;
+  assert.throws(() => validatePolicy(changedScope), /reviewed 2026 scope/);
   const changedRecheck = policy();
   changedRecheck.finalDetailRechecks[3].afterHours = 96;
   assert.throws(() => validatePolicy(changedRecheck), /reviewed 0\/6\/24\/72-hour/);
@@ -301,4 +304,17 @@ test('source partitions cannot omit, duplicate or invent published fixtures', ()
   assert.throws(() => validatePublicationBudget({ ...b, manualFixtureIds: [] }, b.dateUtc), /partition/);
   assert.throws(() => validatePublicationBudget({ ...b, automationFixtureIds: ['af:fixture:1'] }, b.dateUtc), /partition/);
   assert.throws(() => validatePublicationBudget({ ...b, manualFixtureIds: ['af:fixture:2'] }, b.dateUtc), /partition/);
+});
+
+test('cups and leagues share the same final-detail budget; domestic knockout cups never request standings',()=>{
+ const rows=policy().competitionSeasons.map((scope,index)=>fixture(9000+index,scope.league,index%2?'PEN':'AET','2026-09-17T06:00:00Z'));
+ const args=input({'2026-09-17':rows}),plan=planAutomation(args);
+ assert.equal(plan.detailFetches.length,20);
+ assert.ok(plan.detailFetches.some(f=>f.league===2));assert.ok(plan.detailFetches.some(f=>f.league===39));
+ const ids=new Set(require('../config/cup-competitions.json').competitions.filter(c=>!c.standings).map(c=>c.providerId));
+ assert.ok(plan.standingsFetches.every(s=>!ids.has(s.league)));
+ args.state=advanceAutomationState(args.state,plan,args.now);
+ const second=planAutomation(args);assert.equal(second.detailFetches.length,4);
+ args.state=advanceAutomationState(args.state,second,args.now);
+ assert.equal(planAutomation(args).detailFetches.length,0);
 });
