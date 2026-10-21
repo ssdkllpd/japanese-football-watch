@@ -346,7 +346,8 @@ export async function executeAdminIngestPlan(plan, options) {
       const body = await response.json().catch(() => null);
       if (!response.ok || body?.ok !== true) {
         results.push({ operation: request.operation, identity, passed: false, status: response.status,
-          ...(body?.report ? { report: body.report } : {}) });
+          ...(body?.report ? { report: body.report } : {}),
+          ...(typeof body?.detail==='string' ? {error:body.detail.split(options.token).join('[redacted]').slice(0,2000)} : {}) });
         failed = true;
       } else {
         results.push({ operation: request.operation, identity, passed: true, status: response.status, report: body.report });
