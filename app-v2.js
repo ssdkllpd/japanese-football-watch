@@ -1373,7 +1373,7 @@
   }
 
   function renderCompetitionStandings(detail) {
-    if (detail.standingsNotApplicable) return '<p class="notice">この大会は勝ち抜き方式のため、リーグ順位表はありません。「試合」から日程と結果を確認できます。</p>';
+    if (detail.standingsNotApplicable) return '<p class="notice">この大会の順位表はAPIで提供されていません。「試合」から日程と結果を確認できます。</p>';
     if (detail.standingsLoading) return '<div class="notice">順位表を読み込み中…</div>';
     if (detail.standingsError) return errorNotice(detail.standingsError);
     const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];

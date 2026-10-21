@@ -1019,6 +1019,6 @@ test('UEFA and domestic cups have separate searchable entries and acquired round
  assert.match(app.text(),/自動更新と試合詳細は未対応/);assert.match(app.text(),/Home Club/);
  await app.click('[data-cup-filter="upcoming"]');assert.equal(app.doc.querySelector('[data-fixture]'),null);
  await app.click('[data-cup-filter="final"]');assert.ok(app.doc.querySelector('[data-fixture]'));
- await app.click('[data-competition-tab="standings"]');assert.match(app.text(),/リーグ順位表はありません/);
+ await app.click('[data-competition-tab="standings"]');assert.match(app.text(),/順位表はAPIで提供されていません/);
  assert.ok(!app.calls.some(url=>url.includes('competition%3A48')&&url.endsWith('/standings')));
 });
