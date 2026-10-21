@@ -1,0 +1,77 @@
+name: Retry and verify event-only cup details once
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/cup-event-repair-once.yml]
+permissions:
+  contents: read
+jobs:
+  retry:
+    uses: ./.github/workflows/api-football-automation.yml
+    with:
+      mode: execute
+      confirmation: RUN API-FOOTBALL AUTOMATION
+    secrets: inherit
+  verify:
+    needs: retry
+    if: always()
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify four published D1 revisions and public scorer identities
+        run: |
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          mkdir -p .tmp/cup-event-verification
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import {setTimeout as delay} from 'node:timers/promises';
+          import {remoteDatabase} from './scripts/live/remote-d1.mjs';
+          const ids=[1646584,1646586,1646587,1646593].map(id=>`af:fixture:${id}`);
+          const db=remoteDatabase({account:process.env.CLOUDFLARE_ACCOUNT_ID,token:process.env.CLOUDFLARE_API_TOKEN,databaseId:process.env.D1_DATABASE_ID,readOnly:true});
+          const rows=(await db.prepare(`SELECT f.canonical_id AS fixture_id, r.revision_no AS revision FROM fixtures f JOIN fixture_revisions r ON r.id=f.published_revision AND r.lifecycle_state='published' WHERE f.canonical_id IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(ids)).all()).results;
+          assert.equal(rows.length,4,'All four fixtures must have a published D1 revision');
+          const target=JSON.parse(fs.readFileSync('config/public-worker-target.json','utf8'));
+          const reports=[];
+          for(const id of ids){
+            let response;
+            for(let attempt=0;attempt<20;attempt++){
+              response=await fetch(`${target.workerOrigin}/api/v2/fixtures/${encodeURIComponent(id)}`,{headers:{Origin:target.appOrigin},signal:AbortSignal.timeout(20000)});
+              if(response.ok&&response.headers.get('x-jfw-data-source')==='d1')break;
+              if(attempt<19)await delay(20000);
+            }
+            assert.equal(response.status,200,id);
+            assert.equal(response.headers.get('x-jfw-data-source'),'d1',`${id} must be served from D1`);
+            const bundle=await response.json();
+            assert.equal(bundle.fixture.id,id);
+            assert.equal(bundle.detailAvailability,'available');
+            assert.ok(bundle.events.length>0,`${id} must retain events`);
+            const known=new Set([...(bundle.lineups||[]).flatMap(l=>[...(l.startXI||[]),...(l.substitutes||[])].map(p=>p.id)),...(bundle.playerStats||[]).map(p=>p.playerId)]);
+            for(const e of bundle.events) for(const [field,name] of [['playerId','playerName'],['relatedPlayerId','relatedPlayerName']]){
+              if(e[field]&&!known.has(e[field]))assert.ok(typeof e[name]==='string'&&e[name].trim(),`${id} ${field} must retain a provider name`);
+            }
+            fs.writeFileSync(`.tmp/cup-event-verification/${id.split(':')[2]}.json`,JSON.stringify(bundle,null,2));
+            reports.push({fixtureId:id,source:'d1',revision:bundle.fixture.revision,events:bundle.events.length,goals:bundle.events.filter(e=>e.type==='goal').length,lineups:bundle.lineups.length,playerStats:bundle.playerStats.length});
+          }
+          fs.writeFileSync('.tmp/cup-event-verification/report.json',JSON.stringify({passed:true,rows,fixtures:reports},null,2));
+          console.log(JSON.stringify({passed:true,fixtures:reports}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cup-event-verification-${{ github.run_id }}
+          path: .tmp/cup-event-verification/*.json
+          retention-days: 14
