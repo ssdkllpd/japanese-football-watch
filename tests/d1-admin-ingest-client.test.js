@@ -72,15 +72,16 @@ test('admin ingest client stops dependent requests after the first failure', asy
     url: 'https://admin.example', token: 'secret-token', planDirectory: directory,
     async fetchImpl() {
       call += 1;
-      return new Response(JSON.stringify({ error: 'rejected' }), { status: 422 });
+      return new Response(JSON.stringify({ error: 'rejected',detail:'Invalid fixture secret-token identity' }), { status: 422 });
     },
   });
   assert.equal(report.passed, false);
   assert.deepEqual(report.summary, { total: 3, passed: 0, failed: 3 });
   assert.deepEqual(report.results.map(item => item.status), [422, null, null]);
-  assert.deepEqual(report.results.map(item => item.error || null), [null,
+  assert.deepEqual(report.results.map(item => item.error || null), ['Invalid fixture [redacted] identity',
     'skipped_after_failure', 'skipped_after_failure']);
   assert.equal(call, 1);
+  assert.equal(JSON.stringify(report).includes('secret-token'),false);
   assert.equal(report.productionReady, false);
 });
 
