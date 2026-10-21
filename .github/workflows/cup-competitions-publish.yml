@@ -11,12 +11,12 @@ on:
       - .github/workflows/cup-competitions-publish.yml
 permissions:
   contents: read
-concurrency:
-  group: d1-staging-write
-  queue: max
-  cancel-in-progress: false
 jobs:
   publish:
+    concurrency:
+      group: d1-staging-write
+      queue: max
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment: d1-staging
     timeout-minutes: 20
@@ -44,9 +44,6 @@ jobs:
           node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
           node scripts/d1/check-paid-backfill-capacity.mjs --out .tmp/cups/usage.json
           node scripts/cups/refresh.mjs
-      - name: Verify public directory, schedules and UEFA tables after deployment
-        if: github.ref == 'refs/heads/main'
-        run: node scripts/cups/verify-public.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -54,3 +51,18 @@ jobs:
           path: .tmp/cups/public/catalog.json
           retention-days: 30
           if-no-files-found: warn
+  verify:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: cup-publication-${{ github.run_id }}
+          path: .tmp/cups/public
+      - name: Verify public schedules and acquisition after releasing the shared deployment write queue
+        run: node scripts/cups/verify-public.mjs
