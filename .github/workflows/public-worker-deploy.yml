@@ -21,6 +21,8 @@ on:
       - 'scripts/d1/read-api-football-automation-budget.mjs'
       - 'scripts/v2/render-public-wrangler.mjs'
       - 'scripts/d1/fixture-repository.js'
+      - 'scripts/d1/fixture-dto.js'
+      - 'scripts/d1/fixture-bundle-importer*.js'
       - 'worker/**'
       - 'shared/**'
   workflow_dispatch:

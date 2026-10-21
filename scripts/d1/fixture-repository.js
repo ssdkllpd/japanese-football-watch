@@ -97,6 +97,16 @@ FROM (
       'teamId', team.canonical_id,
       'playerId', player.canonical_id,
       'relatedPlayerId', related.canonical_id,
+      'playerName', CASE WHEN NOT EXISTS (
+        SELECT 1 FROM fixture_player_appearances appearance
+        JOIN fixture_player_records record ON record.id = appearance.player_record_id
+        WHERE appearance.fixture_revision_id = event.fixture_revision_id AND record.player_id = event.player_id
+      ) THEN player.display_name END,
+      'relatedPlayerName', CASE WHEN NOT EXISTS (
+        SELECT 1 FROM fixture_player_appearances appearance
+        JOIN fixture_player_records record ON record.id = appearance.player_record_id
+        WHERE appearance.fixture_revision_id = event.fixture_revision_id AND record.player_id = event.related_player_id
+      ) THEN related.display_name END,
       'elapsed', event.elapsed,
       'extraMinute', event.extra_minute,
       'eventOrder', event.event_order,

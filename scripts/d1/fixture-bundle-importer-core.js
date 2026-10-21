@@ -258,6 +258,19 @@ function validateBundle(bundle, catalog = {}) {
       }
     }
     if (event.teamId !== null && !teams.has(event.teamId)) throw new Error(`${path}.teamId must be a fixture team or null.`);
+    // Lower divisions may publish events without either lineups or player stats.
+    // Preserve provider identities and names from those events, without inventing appearances.
+    for (const [idField, nameField] of [['playerId', 'playerName'], ['relatedPlayerId', 'relatedPlayerName']]) {
+      if (event[nameField] !== undefined) {
+        if (!/^af:player:[1-9]\d*$/.test(event[idField] || '')
+          || typeof event[nameField] !== 'string' || !event[nameField].trim()) {
+          throw new Error(`${path}.${nameField} requires a canonical player ID and a non-empty name.`);
+        }
+        if (!players.has(event[idField])) addEntity(players, {
+          id: event[idField], providerId: Number(event[idField].split(':')[2]), name: event[nameField],
+        }, 'player', `${path}.${idField}`);
+      }
+    }
     for (const field of ['playerId', 'relatedPlayerId']) {
       if (event[field] !== null && !players.has(event[field])) throw new Error(`${path}.${field} lacks canonical player metadata.`);
     }

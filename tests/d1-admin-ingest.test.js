@@ -761,3 +761,50 @@ test('source migration preserves existing receipt rows without guessing their or
   assert.deepEqual(b.manualFixtureIds, ['af:fixture:1']);
   assert.deepEqual(b.automationFixtureIds, []);
 });
+
+
+test('event-only cup details publish and round-trip without fabricated player appearances', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fixturePayload();
+  bundle.lineups = [];
+  bundle.playerStats = [];
+  bundle.events[0].playerName = 'Scorer Only';
+  bundle.events[0].relatedPlayerId = 'af:player:102';
+  bundle.events[0].relatedPlayerName = 'Assist Only';
+  const input = fixtureIngestBody(bundle);
+  input.catalog.competition.type = 'Cup';
+  const response = await admin.default.fetch(request(input), fixtureEnv(db, bundle));
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const resolved = await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+  const comparison = compareFixtureBundles(bundle, resolved.bundle);
+  assert.equal(comparison.equal, true, JSON.stringify(comparison.differences));
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixture_player_appearances').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixture_player_records').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM players').get().n, 2);
+  assert.equal(resolved.bundle.events[0].playerName, 'Scorer Only');
+  const retry = await admin.default.fetch(request(input), fixtureEnv(db, bundle));
+  assert.equal(retry.status, 200);
+  assert.equal((await retry.json()).report.reason, 'already_published');
+});
+
+test('event-only identities without a provider name or with malformed IDs remain rejected', async t => {
+  const admin = await import('../admin-worker/index.mjs');
+  for (const invalid of ['missing', 'bad_id', 'blank']) {
+    const db = database();
+    t.after(() => db.close());
+    const bundle = fixturePayload();
+    bundle.lineups = [];
+    bundle.playerStats = [];
+    bundle.events[0].playerName = 'Scorer Only';
+    bundle.events[0].relatedPlayerId = 'af:player:102';
+  bundle.events[0].relatedPlayerName = 'Assist Only';
+    if (invalid === 'missing') delete bundle.events[0].playerName;
+    if (invalid === 'bad_id') bundle.events[0].playerId = 'other:player:1';
+    if (invalid === 'blank') bundle.events[0].playerName = '   ';
+    const response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle));
+    assert.equal(response.status, 422);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixtures').get().n, 0);
+  }
+});

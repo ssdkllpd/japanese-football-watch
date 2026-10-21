@@ -417,6 +417,13 @@ function reconcilePlayerDisplayNames(bundle, catalog = {}) {
   for (const stat of nextBundle.playerStats || []) {
     register(stat.playerId, stat.playerProviderId, stat.playerName, value => { stat.playerName = value; });
   }
+  for (const event of nextBundle.events || []) {
+    for (const [idField, nameField] of [['playerId', 'playerName'], ['relatedPlayerId', 'relatedPlayerName']]) {
+      if (/^af:player:[1-9]\d*$/.test(event[idField] || '')) {
+        register(event[idField], Number(event[idField].split(':')[2]), event[nameField], value => { event[nameField] = value; });
+      }
+    }
+  }
 
   for (const entries of groups.values()) {
     const providerIds = new Set(entries.map(entry => entry.providerId));
