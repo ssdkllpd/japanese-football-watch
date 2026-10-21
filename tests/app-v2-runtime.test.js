@@ -552,7 +552,7 @@ test('legacy date fallback canonicalizes known leagues and does not leak J1 into
  assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
  assert.doesNotMatch(app.text(),/J1/);
 });
-test('overview, player stats and team stats render stored D1 values without inventing missing values',async t=>{
+test('overview, player stats, team stats and standings render stored D1 values without inventing missing values',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
  const seasonDetail={competition:catalog.competitions[0],season:{id:'af:season:39:2026',startsOn:'2026-08-01',endsOn:'2027-05-31'},summary:{teamCount:20,fixtureCount:380,completedFixtureCount:30,publishedDetailCount:29,standingsUpdatedAt:'2026-09-08T02:15:09.068Z',detailUpdatedAt:'2026-09-08T02:00:00.000Z'},detailSections:{lineups:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},events:{present:20,presentEmpty:2,providerMissing:7,notFetched:0},teamStats:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},playerStats:{present:28,presentEmpty:0,providerMissing:0,notFetched:1}},playerStats:{presence:'present',rows:[{player:{id:'af:player:7',name:'Test Player',photo:null},team:{id:'af:team:1',name:'Home Club'},teamCount:1,appearances:3,starts:2,minutes:{value:180,presence:'present'},goals:{value:0,presence:'present'},assists:{value:null,presence:'not_fetched'},averageRating:{value:7.4,presence:'present'}}]}};
  const standings={competition:catalog.competitions[0],season:{id:'af:season:39:2026'},generatedAt:'2026-09-08T02:15:09.068Z',groups:[{name:'Premier League',table:[{rank:1,team:{id:'af:team:1',name:'Home Club',logo:null},overall:{played:3,wins:2,draws:1,losses:0,goalsFor:5,goalsAgainst:1},goalDifference:4,points:7,form:'WWD'}]}]};
@@ -563,6 +563,21 @@ test('overview, player stats and team stats render stored D1 values without inve
  assert.match(app.text(),/Test Player/);assert.match(app.text(),/未取得/);assert.match(app.text(),/0/);
  await app.click('[data-competition-tab="teams"]');
  assert.match(app.text(),/Home Club/);assert.match(app.text(),/直近/);assert.doesNotMatch(app.text(),/準備中/);
+ await app.click('[data-competition-tab="standings"]');
+ const table=app.doc.querySelector('.standings-table');
+ assert.deepEqual([...table.querySelectorAll('thead th')].map(el=>el.textContent),['順位','クラブ','試','勝','分','敗','得','失','差','勝点','直近成績']);
+ assert.deepEqual([...table.querySelector('tbody tr').children].slice(0,10).map(el=>el.textContent),['1','Home Club','3','2','1','0','5','1','4','7']);
+ assert.deepEqual([...table.querySelectorAll('.form-result')].map(el=>el.textContent),['勝','勝','分']);
+ assert.match(app.doc.querySelector('.data-updated').textContent,/2026-09-08/);
+ await app.click('.standings-club-link');
+ assert.match(app.w.location.hash,/#\/teams\/af%3Ateam%3A1/);
+ assert.ok(section(app,'順位表').querySelector('.standings-row'));
+ standings.groups.push({name:'Another group',table:[{rank:2,team:{name:'Unknown Club'},overall:{played:0,wins:0,draws:null,losses:0,goalsFor:0,goalsAgainst:null},goalDifference:-2,points:0,form:null}]});
+ app.w.history.back();
+ await until(()=>app.doc.querySelectorAll('.standings-table').length===2,'return to grouped standings');
+ const unknown=app.doc.querySelectorAll('.standings-table')[1].querySelector('tbody tr');
+ assert.deepEqual([...unknown.children].map(el=>el.textContent),['2','Unknown Club','0','0','未取得','0','0','未取得','-2','0','未取得']);
+ assert.equal(unknown.querySelector('[data-team-id]'),null);
 });
 test('failed competition logo switches to a stable placeholder',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',logo:'https://logos.test/missing.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};

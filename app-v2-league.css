@@ -269,3 +269,96 @@
   color: var(--muted);
   font-weight: 900;
 }
+
+/* Keep club identity visible while the statistics scroll on narrow screens. */
+.standings-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.standings-table {
+  --standings-rank-width: 40px;
+  width: 100%;
+  min-width: 820px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.standings-rank-col { width: var(--standings-rank-width); }
+.standings-number-col { width: 52px; }
+.standings-form-col { width: 164px; }
+
+.standings-table th,
+.standings-table td {
+  height: 48px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  vertical-align: middle;
+}
+
+.standings-table thead th {
+  background: var(--panel2);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.standings-table tbody tr:last-child > * { border-bottom: 0; }
+.standings-table tbody tr:hover > * { background: var(--panel2); }
+
+.standings-table .standings-rank,
+.standings-table .standings-club {
+  position: sticky;
+  z-index: 1;
+}
+
+.standings-table .standings-rank { left: 0; }
+.standings-table .standings-club {
+  left: var(--standings-rank-width);
+  text-align: left;
+  box-shadow: 1px 0 var(--line);
+}
+
+.standings-club-link {
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.standings-points { font-weight: 900; color: var(--accent2); }
+.standings-form { display: inline-flex; gap: 3px; }
+.form-result {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  font-weight: 800;
+}
+.form-w { background: #176b43; color: #fff; }
+.form-d { background: #59616c; color: #fff; }
+.form-l { background: #a52d3b; color: #fff; }
+
+.standings-table .presence {
+  max-width: 100%;
+  padding: 2px;
+  font-size: 11px;
+}
+
+@media (max-width: 520px) {
+  .standings-table { --standings-rank-width: 36px; min-width: 760px; }
+}
