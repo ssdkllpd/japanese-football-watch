@@ -1489,6 +1489,7 @@ async function competitionSeasonResponse(env, competitionId, requestedSeasonId, 
 // are still valid in R2 and must not be rejected, so it is allowed but not
 // required. Everything else is required at both versions.
 const FIXTURE_DETAIL_OPTIONAL_ROOT_FIELDS = new Set(['detailAvailability']);
+const FIXTURE_DETAIL_OPTIONAL_FIELDS = new Set(['events[].playerName', 'events[].relatedPlayerName']);
 const FIXTURE_DETAIL_DEGRADED_OPTIONAL_FIELDS = new Set(['fixture.reconciledAt']);
 
 function assertClosedFixtureDetailValue(value, schema, pathName, contractVersion, optionalFields) {
@@ -1542,7 +1543,8 @@ function assertFixtureDetailPayload(payload, fixtureId, { degraded = false } = {
     FIXTURE_DETAIL_SCHEMA,
     '',
     payload.contractVersion,
-    degraded ? FIXTURE_DETAIL_DEGRADED_OPTIONAL_FIELDS : new Set(),
+    degraded ? new Set([...FIXTURE_DETAIL_OPTIONAL_FIELDS, ...FIXTURE_DETAIL_DEGRADED_OPTIONAL_FIELDS])
+      : FIXTURE_DETAIL_OPTIONAL_FIELDS,
   );
   if (!fixture || fixture.id !== fixtureId) throw new Error('Fixture detail identity does not match the requested fixture.');
   if (!fixture.competitionId?.startsWith('af:competition:')) throw new Error('Fixture detail competition identity is invalid.');

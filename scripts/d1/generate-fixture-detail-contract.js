@@ -106,7 +106,7 @@ function contractSamples() {
     { kind: 'event', payload: JSON.stringify({
       eventKey: 'af:event:9001:0', type: 'goal', detail: 'Normal Goal', comments: null,
       elapsed: 10, extraMinute: null, teamId: 'af:team:40', playerId: 'af:player:1',
-      relatedPlayerId: null,
+      relatedPlayerId: null, playerName: 'Event Player', relatedPlayerName: 'Related Event Player',
     }) },
     { kind: 'team_stat', payload: JSON.stringify({
       teamId: 'af:team:40', valuesJson: JSON.stringify({ possession: 55 }), extraStatsJson: '{}',
