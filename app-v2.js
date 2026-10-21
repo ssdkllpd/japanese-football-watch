@@ -1351,7 +1351,26 @@
     if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
     const updated = detail.standings?.generatedAt
       ? `<p class="data-updated">順位表更新: ${esc(detail.standings.generatedAt)}</p>` : '';
-    return `${updated}${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div><div class="standings-card"><div class="standings-row standings-head"><span>#</span><span>クラブ</span><span>試</span><span>差</span><span>勝点</span></div>${(group.table || []).map(standingRow).join('')}</div></section>`).join('')}`;
+    return `${updated}${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || '順位表')}</h2><span class="meta">${group.table?.length || 0}クラブ</span></div>${standingsTable(group)}</section>`).join('')}`;
+  }
+
+  function standingsForm(row) {
+    const form = row?.form;
+    if (data.presence(form, row?.fieldStates?.form) !== 'present' || !/^[WDL]+$/.test(form)) {
+      return valueCell(form, row?.fieldStates?.form);
+    }
+    const labels = {W: '勝', D: '分', L: '敗'};
+    return `<span class="standings-form" aria-label="直近成績 ${esc([...form].map(result => labels[result]).join('・'))}">${[...form].map(result => `<span class="form-result form-${result.toLowerCase()}" title="${labels[result]}">${labels[result]}</span>`).join('')}</span>`;
+  }
+
+  function standingsTable(group) {
+    const columns = [['試', '試合数'], ['勝', '勝利'], ['分', '引き分け'], ['敗', '敗戦'], ['得', '得点'], ['失', '失点'], ['差', '得失点差'], ['勝点', '勝点']];
+    return `<div class="standings-scroll" tabindex="0" role="region" aria-label="${esc(group.name || '順位表')}・横にスクロールできます"><table class="standings-table"><caption class="sr-only">${esc(group.name || '順位表')}。直近成績はAPI掲載順。</caption><colgroup><col class="standings-rank-col"><col>${columns.map(() => '<col class="standings-number-col">').join('')}<col class="standings-form-col"></colgroup><thead><tr><th scope="col" class="standings-rank">順位</th><th scope="col" class="standings-club">クラブ</th>${columns.map(([label, title]) => `<th scope="col" title="${title}">${label}</th>`).join('')}<th scope="col">直近成績</th></tr></thead><tbody>${(group.table || []).map(row => {
+      const team = row?.team || {};
+      const name = esc(team.name || team.id || '未取得');
+      const club = `${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${name}</b>`;
+      return `<tr><td class="standings-rank">${valueCell(row?.rank, row?.fieldStates?.rank)}</td><th scope="row" class="standings-club">${team.id ? `<button type="button" class="standings-team standings-club-link" data-team-id="${esc(team.id)}" title="${name}">${club}</button>` : `<span class="standings-team" title="${name}">${club}</span>`}</th>${['played', 'wins', 'draws', 'losses', 'goalsFor', 'goalsAgainst'].map(key => `<td>${valueCell(row?.overall?.[key], row?.fieldStates?.[key])}</td>`).join('')}<td>${valueCell(row?.goalDifference, row?.fieldStates?.goalDifference)}</td><td class="standings-points">${valueCell(row?.points, row?.fieldStates?.points)}</td><td>${standingsForm(row)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
   }
 
   function standingRow(row) {
