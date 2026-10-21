@@ -20,6 +20,7 @@ jobs:
       D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
       ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
       D1_ADMIN_PUBLISH_ENABLED: ${{ vars.D1_ADMIN_PUBLISH_ENABLED }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
     steps:
