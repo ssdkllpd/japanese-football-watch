@@ -30,11 +30,14 @@ export function prepareCups(raw,{source=config.source}={}) {
     competitions:objects.map(o=>({...o.entry,snapshotKey:o.key,snapshotSha256:o.sha256}))};
   return {objects,catalog,catalogKey:CUP_CATALOG_KEY};
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const prepared=prepareCups(fs.readFileSync(process.argv[2]||'.tmp/cups/snapshot.json','utf8'));
-  const dir='.tmp/cups/public';fs.mkdirSync(dir,{recursive:true});
+export function writePreparedCups(prepared,dir='.tmp/cups/public') {
+  fs.mkdirSync(dir,{recursive:true});
   for(const object of prepared.objects)fs.writeFileSync(`${dir}/${object.sha256}.json`,object.text);
   fs.writeFileSync(`${dir}/catalog.json`,JSON.stringify(prepared.catalog));
   fs.writeFileSync(`${dir}/uploads.json`,JSON.stringify(prepared.objects.map(o=>({key:o.key,file:`${dir}/${o.sha256}.json`,sha256:o.sha256}))));
+}
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+  const prepared=prepareCups(fs.readFileSync(process.argv[2]||'.tmp/cups/snapshot.json','utf8'));
+  writePreparedCups(prepared);
   console.log(JSON.stringify({cups:prepared.objects.length,fixtures:prepared.catalog.competitions.reduce((n,c)=>n+c.seasons[0].summary.fixtureCount,0),generatedAt:prepared.catalog.generatedAt}));
 }

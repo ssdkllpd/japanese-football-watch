@@ -7,7 +7,8 @@ const test = require('node:test');
 const { createLocalD1 } = require('../scripts/d1/local-d1');
 const { applyMigrations } = require('../scripts/d1/migration-inventory');
 const { planScheduleSync } = require('../scripts/v2/plan-fixture-schedule-sync');
-const policy = require('../config/api-football-automation.json');
+const cupIds=new Set(require('../config/cup-competitions.json').competitions.map(c=>c.providerId));
+const policy={competitionSeasons:require('../config/api-football-automation.json').competitionSeasons.filter(c=>!cupIds.has(c.league))};
 
 test('complete season scan selects only changed unpublished fixtures and holds rich details', async () => {
   const rows = [];

@@ -1,5 +1,5 @@
 import {jstDate,MINUTE,precheckStage,liveEligible} from '../shared/live-contract.mjs';
-import {scheduledTick,LIMITS} from './index.mjs';
+import {scheduleDiscoveryDue,scheduledTick,LIMITS} from './index.mjs';
 const BASE='https://api.github.com/repos/ssdkllpd/japanese-football-watch/actions/workflows/api-football-live.yml';
 async function rows(db,sql,...params) {
  const result=await db.prepare(sql).bind(...params).all();
@@ -17,7 +17,7 @@ export async function dispatchLiveTick(event,env,request=fetch,now=Date.now()) {
  if(inventory.length>1000)throw new Error('schedule_inventory_limit');
  const budget=(await rows(db,'SELECT * FROM live_budget WHERE utc_day=?',day))[0];
  const paused=budget&&(budget.requests>=LIMITS.dailyRequests||budget.rows_written>=LIMITS.dailyRows-10000||(budget.remaining!==null&&budget.remaining<=LIMITS.reserve+LIMITS.perTickRequests));
- const needs=control.daily_day!==jstDate(now)||!control.last_core_sync_ms||now-control.last_core_sync_ms>=15*MINUTE
+ const needs=await scheduleDiscoveryDue(env,now)||control.daily_day!==jstDate(now)||!control.last_core_sync_ms||now-control.last_core_sync_ms>=15*MINUTE
   ||inventory.some(row=>precheckStage(row,now)||liveEligible(row,now));
  // Idle and budget-paused ticks stay local and make no provider requests.
  if(!needs||paused)return scheduledTick(event,env,request,now);

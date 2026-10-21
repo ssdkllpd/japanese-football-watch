@@ -114,10 +114,11 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
     throw new Error('API-Football daily remaining quota is unavailable.');
   }
-  const capacity = Math.min(policy.limits.maxProviderRequestsPerRun - 11,
+  const capacity = Math.min(policy.limits.maxProviderRequestsPerRun - (1 + policy.competitionSeasons.length),
     Math.max(0, remaining - policy.limits.dailyRequestReserve));
-  const standingsFetches = capacity >= policy.competitionSeasons.length
-    ? policy.competitionSeasons.map(scope => ({
+  const tableScopes=policy.competitionSeasons.filter(scope=>!require('../../config/cup-competitions.json').competitions.some(c=>c.providerId===scope.league&&!c.standings)).slice(0,policy.limits.maxStandingsPerRun);
+  const standingsFetches = capacity >= tableScopes.length
+    ? tableScopes.map(scope => ({
       ...scope,
       competitionId: `af:competition:${scope.league}`,
       seasonId: `af:season:${scope.league}:${scope.season}`,
@@ -154,7 +155,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     quota: {
       dailyRemaining: remaining,
       reserve: policy.limits.dailyRequestReserve,
-      estimatedProviderRequests: 11 + 5 * detailFetches.length + standingsFetches.length,
+      estimatedProviderRequests: 1 + policy.competitionSeasons.length + 5 * detailFetches.length + standingsFetches.length,
       fixturePublishesRemaining: publishCapacity - detailFetches.length,
     },
   };

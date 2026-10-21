@@ -71,7 +71,7 @@ const outbound=async request=>{
 try {
   runtime=new Miniflare(convertV4MiniflareOptions({modulesRoot:temp,modules:[{type:'ESModule',path:path.join(temp,'harness.mjs'),contents:bundle.outputFiles[0].text}],
     compatibilityDate:'2026-10-08',d1Databases:['LIVE_DB','FOOTBALL_DB'],
-    bindings:{API_FOOTBALL_KEY:'native-test-only',LIVE_COMPETITION_IDS:'39'},
+    bindings:{API_FOOTBALL_KEY:'native-test-only',LIVE_COMPETITION_IDS:'39,2'},
     outboundService:outbound}));
   const db=await runtime.getD1Database('LIVE_DB'),core=await runtime.getD1Database('FOOTBALL_DB');
   const schema=fs.readdirSync(path.join(root,'migrations/live')).filter(name=>name.endsWith('.sql')).sort().map(name=>fs.readFileSync(path.join(root,'migrations/live',name),'utf8')).join('\n');
@@ -85,6 +85,7 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   const row=async id=>db.prepare('SELECT * FROM live_schedule WHERE fixture_id=?').bind(`af:fixture:${id}`).first();
   const control=()=>db.prepare('SELECT * FROM live_control WHERE id=1').first();
   await db.prepare('UPDATE live_control SET daily_day=? WHERE id=1').bind(jstDate(base)).run();
+  for(const date of [jstDate(base),jstDate(base+86400000)])await db.prepare('INSERT INTO live_date_checks(date_jst,checked_ms) VALUES(?,?)').bind(date,base).run();
   const off=await send({now:base,enabled:false});assert.equal(off.body.status,'disabled');assert.equal(calls.length,0);
   fixtures.set(101,raw(101,base+3*3600000));fixtures.set(102,raw(102,base+3*3600000));
   for(const value of fixtures.values()) {
@@ -94,7 +95,7 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   }
   assert.equal((await send({now:base+60000})).body.status,'idle');assert.equal(calls.length,0,'no continuous provider calls before the window');
   const two=await send({now:base+3600000});assert.equal(two.status,200,JSON.stringify(two));assert.equal(two.body.status,'idle');
-  assert.ok((await row(101)).check_2h_ms);assert.equal((await row(101)).check_1h_ms,null);assert.equal(calls.length,2,'status plus one grouped schedule request');
+  assert.ok((await row(101)).check_2h_ms);assert.equal((await row(101)).check_1h_ms,null);assert.equal(calls.length,4,'status plus today/tomorrow discovery and one grouped schedule request');
   // One fixture moves; the other must still start live polling at its one-hour check.
   fixtures.set(102,raw(102,base+8*3600000));
   const one=await send({now:base+2*3600000});assert.equal(one.body.status,'polling',JSON.stringify(one));
@@ -146,6 +147,7 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   // Fresh daily acquisition, including the core read and both JST dates.
   fixtures.clear();await db.prepare('DELETE FROM live_schedule').run();
   await db.prepare('UPDATE live_control SET daily_day=NULL').run();
+  await db.prepare('DELETE FROM live_date_checks').run();
   const dailyBefore=calls.length;
   const daily=await send({now:base+3*3600000+420000});assert.equal(daily.body.status,'idle',JSON.stringify(daily));
   assert.equal(calls.length-dailyBefore,3,'one daily check is status plus today/tomorrow schedule reads');
@@ -162,7 +164,7 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   // Keep this replay away from the JST date boundary.
   const stamp=Math.floor(Date.now()/86400000)*86400000+8*3600000;
   await db.batch([db.prepare('DELETE FROM live_schedule'),db.prepare('DELETE FROM live_snapshots'),db.prepare('DELETE FROM live_details'),db.prepare('DELETE FROM live_date_checks'),db.prepare('UPDATE live_budget SET remaining=6000,requests=0'),db.prepare('UPDATE live_control SET last_tick_ms=0,lease_until_ms=0,daily_day=NULL,last_core_sync_ms=0')]);
-  fixtures.clear();fixtures.set(103,raw(103,stamp+3*3600000));
+  fixtures.clear();fixtures.set(103,raw(103,stamp+3*3600000));fixtures.get(103).league.id=2;
   const providerCount=calls.length;
   const dispatches=await Promise.all(Array.from({length:8},()=>send({github:true,defaultGithub:true,now:stamp})));
   assert.equal(dispatches.filter(row=>row.body.status==='accepted').length,1,JSON.stringify(dispatches));
@@ -183,15 +185,15 @@ CREATE TABLE teams(id INTEGER,provider_id INTEGER,name TEXT,logo_url TEXT);`;
   const node=await acquireOnce({env:runEnv,request:remoteRequest,now:stamp,paceMs:0});
   assert.equal(node.source,'github-actions');assert.equal(node.status,'idle');assert.equal((await control()).daily_day,jstDate(stamp));
   assert.equal(calls.length-providerCount,3,'Node performs status and both daily schedule reads');
-  assert.ok((await row(103)),'Node saves real provider DTOs through native D1 REST batching');
-  fixtures.set(103,raw(103,stamp,'1H',4));
+  assert.equal((await row(103)).competition_id,2,'a cup with no core fixture is discovered and saved through native D1 REST batching');
+  fixtures.set(103,raw(103,stamp,'1H',4));fixtures.get(103).league.id=2;
   await db.prepare("UPDATE live_schedule SET kickoff_ms=?,status='1H' WHERE fixture_id='af:fixture:103'").bind(stamp).run();
   const nodeGoal=await acquireOnce({env:{...runEnv,LIVE_TRIGGER_SLOT:new Date(stamp+60000).toISOString()},request:remoteRequest,now:stamp+60000,paceMs:0});
   assert.equal(nodeGoal.liveFixtures,1);
   const beforeGoalRead=calls.length,goalRead=await send({public:true,now:stamp+60000});
   assert.equal(goalRead.body.fixtures.find(row=>row.fixtureId==='af:fixture:103').home.score,4,'Node live snapshots reach the actual public reader');
   assert.equal(calls.length,beforeGoalRead);
-  fixtures.set(103,raw(103,stamp,'FT',5));
+  fixtures.set(103,raw(103,stamp,'FT',5));fixtures.get(103).league.id=2;
   await acquireOnce({env:{...runEnv,LIVE_TRIGGER_SLOT:new Date(stamp+120000).toISOString()},request:remoteRequest,now:stamp+120000,paceMs:0});
   const finalRead=await send({public:true,now:stamp+120000});
   assert.equal(finalRead.body.fixtures.find(row=>row.fixtureId==='af:fixture:103').status.short,'FT');
