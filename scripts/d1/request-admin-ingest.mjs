@@ -73,7 +73,7 @@ function resolveArtifact(root, relativePath, label) {
   return JSON.parse(fs.readFileSync(real, 'utf8'));
 }
 
-export function validatePlan(plan, directory) {
+export function validatePlan(plan, directory, { allowEmpty = false } = {}) {
   if (plan?.schemaVersion !== PLAN_VERSION) throw new Error(`schemaVersion must be ${PLAN_VERSION}.`);
   const allowed = new Set([
     'schemaVersion', 'fixedSnapshot', 'standings', 'fixtures', 'dateIndexCoverages',
@@ -110,7 +110,7 @@ export function validatePlan(plan, directory) {
     || typeof plan.fixedSnapshot !== 'object' || Array.isArray(plan.fixedSnapshot))) {
     throw new Error('fixedSnapshot must be an object when supplied.');
   }
-  if (!plan.fixedSnapshot
+  if (!allowEmpty && !plan.fixedSnapshot
     && plan.standings.length + plan.fixtures.length + dateIndexCoverages.length === 0) {
     throw new Error('Admin ingest plan is empty.');
   }

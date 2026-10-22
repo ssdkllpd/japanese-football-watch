@@ -47,3 +47,17 @@ test('build injects a fixed public origin and leaves tracking and attention gate
  assert.throws(()=>buildConfig('https://user:secret@public-api.test'));
  assert.throws(()=>buildConfig('https://public-api.test/api'));
 });
+
+test('confirmed goals reveal absent or understated stats without treating incomplete events as zero',()=>{
+ const row={playerId:'af:player:1',teamId:'af:team:1',values:{}};
+ const b={fixture:{status:{short:'FT'}},sectionStates:{events:{presence:'present'}},events:[{type:'goal',detail:'Normal Goal',elapsed:45,playerId:row.playerId,teamId:row.teamId}]};
+ assert.deepEqual(data.goalStatEvidence(row,b),{count:1,value:null});
+ assert.deepEqual(data.goalStatEvidence({...row,values:{goals:0}},b),{count:1,value:0});
+ for(const goals of [1,2])assert.equal(data.goalStatEvidence({...row,values:{goals}},b),null);
+ for(const detail of ['Own Goal','Missed Penalty','Goal cancelled'])assert.equal(data.goalStatEvidence(row,{...b,events:[{...b.events[0],detail}]}),null);
+ assert.equal(data.goalStatEvidence(row,{...b,events:[]}),null);
+ assert.equal(data.goalStatEvidence(row,{...b,sectionStates:{events:{presence:'not_fetched'}}}),null);
+ assert.equal(data.goalStatEvidence(row,{...b,fixture:{status:{short:'PEN'}},events:[{...b.events[0],detail:'Penalty'}]}),null);
+ assert.equal(data.goalStatEvidence(row,{...b,events:[{...b.events[0],teamId:'af:team:2'}]}),null);
+ assert.equal(data.goalStatEvidence(row,{...b,events:[...b.events,{type:'var',detail:'Goal cancelled'}]}),null);
+});

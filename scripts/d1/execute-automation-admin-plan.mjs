@@ -6,7 +6,7 @@ import { executeAdminIngestPlan, validatePlan } from './request-admin-ingest.mjs
 // Each fixture owns its publication and both date refreshes. A failed fixture
 // remains retryable without marking unrelated fixtures as completed.
 export async function executeAutomationAdminPlan(plan, options) {
-  validatePlan(plan, options.planDirectory);
+  validatePlan(plan, options.planDirectory, { allowEmpty: true });
   const ready = options.readyFixtures ? new Set(options.readyFixtures) : null;
   const outcomes = (plan.quarantined || []).map(item => ({ ...item, passed:false }));
   const successfulFixtures = [];

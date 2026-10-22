@@ -149,3 +149,27 @@ test('the correction allowance can be reduced to zero but cannot expand beyond e
   assert.deepEqual(planAutomation(value).detailFetches.map(row=>row.fixtureId),['af:fixture:999']);
   for(const count of [-1,1.5,9]){p.limits.maxCorrectionFixturesPerDay=count;assert.throws(()=>validatePolicy(p));}
 });
+
+test('an overdue correction covers elapsed checkpoints in one verified fetch without increasing any budget',()=>{
+ const value=args([correction(1)]);
+ const first=planAutomation(value);
+ assert.equal(first.detailFetches[0].recheckStage,'correction_72h');
+ const next=advanceAutomationState(value.state,first,'2026-10-20T00:01:00Z');
+ assert.deepEqual(next.fixtures['af:fixture:1'].completedStages,['initial','correction_6h','correction_24h','correction_72h']);
+ value.state=next;moveDay(value,'2026-10-21T00:00:00Z');
+ assert.equal(planAutomation(value).detailFetches.length,0);
+ assert.equal(first.selectedCorrectionFixtureCount,1);
+});
+
+test('a late initial publication retains initial priority and a failed correction remains due',()=>{
+ const value=args([retained(2,'2026-10-10T00:00:00Z')]);
+ const first=planAutomation(value);
+ assert.equal(first.detailFetches[0].recheckStage,'initial');
+ value.state=advanceAutomationState(value.state,first,'2026-10-20T00:01:00Z');
+ moveDay(value,'2026-10-21T00:00:00Z');
+ const retry=planAutomation(value);
+ assert.equal(retry.detailFetches[0].recheckStage,'correction_72h');
+ const failed=advanceAutomationState(value.state,{...retry,detailFetches:[]},'2026-10-21T00:01:00Z');
+ assert.deepEqual(failed.fixtures['af:fixture:2'].completedStages,['initial']);
+ assert.equal(planAutomation({...value,state:failed}).detailFetches[0].recheckStage,'correction_72h');
+});

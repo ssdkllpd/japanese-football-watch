@@ -135,3 +135,16 @@ test('automation admin plan rejects a fixture pointer or date-index key drift', 
   assert.equal(report.standings.length, 1);
   assert.match(report.quarantined[0].error, /publish manifest is invalid/);
 });
+
+test('all-quarantined automation produces a failed report for checkpointing without an Admin request',async()=>{
+ const {executeAutomationAdminPlan}=await import('../scripts/d1/execute-automation-admin-plan.mjs');
+ const plan={schemaVersion:'jfw-d1-admin-ingest-plan/1',fixtures:[],standings:[],dateIndexRefreshes:[],dateIndexCoverages:[],expectedTotals:null,
+ quarantined:[{identity:'af:competition:2/af:season:2:2026',stage:'fetch',error:'Provider team ID missing'}]};
+ let calls=0;
+ const report=await executeAutomationAdminPlan(plan,{planDirectory:'.',fetchImpl:async()=>{calls++;throw new Error('unexpected request');}});
+ assert.equal(calls,0);assert.equal(report.passed,false);
+ assert.deepEqual(report.successfulFixtures,[]);assert.deepEqual(report.successfulStandings,[]);
+ assert.equal(report.outcomes[0].error,'Provider team ID missing');
+ assert.equal((await executeAutomationAdminPlan({...plan,quarantined:[]},{planDirectory:'.'})).passed,true);
+ await assert.rejects(executeAutomationAdminPlan({...plan,unexpected:true},{planDirectory:'.'}),/unknown fields/);
+});
