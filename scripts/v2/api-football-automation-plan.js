@@ -257,7 +257,10 @@ function nextDueStage(policy, state, fixture, nowMs) {
   const eligibleAt = Date.parse(fixture.kickoffUtc)
     + policy.discovery.eligibleAfterKickoffHours * 60 * 60 * 1000;
   const completed = completedStages(state, fixture.fixtureId);
-  for (const stage of policy.finalDetailRechecks) {
+  // A late first fetch remains initial work. For subsequent corrections, a
+  // current snapshot covers every older checkpoint that is already due.
+  const stages = completed.size === 0 ? policy.finalDetailRechecks.slice(0, 1) : [...policy.finalDetailRechecks].reverse();
+  for (const stage of stages) {
     const dueAt = eligibleAt + stage.afterHours * 60 * 60 * 1000;
     if (!completed.has(stage.stage) && nowMs >= dueAt) {
       return { ...stage, dueAt: new Date(dueAt).toISOString() };
@@ -504,7 +507,9 @@ function advanceAutomationState(state, plan, completedAt) {
   const timestamp = new Date(completedAt || Date.now()).toISOString();
   const next = structuredClone(state);
   for (const item of plan.detailFetches || []) {
+    if (!RECHECK_STAGES.has(item.recheckStage)) throw new Error('Unknown completed recheck stage.');
     const prior = next.fixtures[item.fixtureId] || { completedStages: [] };
+    if ((prior.completedStages || []).length > REVIEWED_RECHECKS.findIndex(stage => stage.stage === item.recheckStage) + 1) throw new Error('Completed recheck stage must not move backwards.');
     next.fixtures[item.fixtureId] = {
       providerFixtureId: item.providerFixtureId,
       fixtureId: item.fixtureId,
@@ -514,7 +519,7 @@ function advanceAutomationState(state, plan, completedAt) {
       season: item.season,
       kickoffUtc: item.kickoffUtc,
       lastStatus: item.status,
-      completedStages: [...new Set([...(prior.completedStages || []), item.recheckStage])],
+      completedStages: REVIEWED_RECHECKS.slice(0, REVIEWED_RECHECKS.findIndex(stage => stage.stage === item.recheckStage) + 1).map(stage => stage.stage),
       lastDetailFetchedAt: timestamp,
     };
   }

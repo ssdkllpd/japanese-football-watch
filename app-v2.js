@@ -655,6 +655,7 @@
       detailRequest.bundle = bundle;
       rememberFixtures(bundle.fixture ? [bundle.fixture] : []);
       rememberBundlePlayers(bundle);
+      for (const team of [bundle.fixture?.teams?.home, bundle.fixture?.teams?.away]) if (team?.id) loadTeamRoster(team.id);
     } catch (error) {
       if (state.detail !== detailRequest) return;
       detailRequest.error = error;
@@ -665,8 +666,8 @@
   }
 
   function rememberBundlePlayers(bundle) {
-    for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) rememberPlayer({playerId:player.id,name:player.name,photo:player.photo,pos:player.position});
-    for (const row of bundle.playerStats || []) rememberPlayer({ playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position });
+    for (const lineup of bundle.lineups || []) for (const player of [...(lineup.startXI || []), ...(lineup.substitutes || [])]) rememberPlayer({playerId:player.id,name:player.name,photo:player.photo,pos:player.position,nationality:player.nationality || knownPlayers.get(player.id)?.nationality});
+    for (const row of bundle.playerStats || []) rememberPlayer({ playerId: row.playerId, name: row.playerName, photo: row.playerPhoto, pos: row.position, nationality: row.nationality || knownPlayers.get(row.playerId)?.nationality });
   }
 
   function fixtureNeedsRefresh(row) {
@@ -816,7 +817,7 @@
     const presence = data.presence(value, state);
     if (presence === 'present') return esc(value);
     const text = ['not_applicable','provider_missing'].includes(presence) ? '非該当' : presence === 'conflict' ? '確認中' : '未取得';
-    return `<span class="presence presence-${esc(presence)}" data-presence="${esc(presence)}" title="${esc(label)}${presence === 'not_applicable' ? '：非該当' : ''}">${text}</span>`;
+    return `<span class="presence presence-${esc(presence)}" data-presence="${esc(presence)}" title="${esc(label)}${presence === 'not_applicable' ? '：非該当' : presence === 'provider_missing' ? '：提供元にデータなし' : ''}">${text}</span>`;
   }
   function emptySection(bundle, key) {
     const presence = data.section(bundle,key);
@@ -1001,7 +1002,7 @@
   function lineupPersonRow(player, bundle, role, teamId) {
     const substitution = substitutionForPlayer(player, bundle, role);
     const stats = (bundle.playerStats || []).find(row => row.playerId === player.id);
-    const nationality = player.nationality || stats?.nationality;
+    const nationality = player.nationality || stats?.nationality || knownPlayers.get(player.id)?.nationality;
     return `<div class="lineup-person"><span class="lineup-portrait">${personAvatar(player)}${renderPitchContributions(player, teamId, bundle)}</span><span class="shirt-number">${esc(player.number ?? '—')}</span><div><strong>${player.id ? `<button class="lineup-team-link" data-player-id="${esc(player.id)}" type="button">${esc(displayPlayerName(player) || '選手')}</button>` : esc(displayPlayerName(player) || '選手')}</strong><span>${esc(player.position || '')} ${nationality ? esc(nationality) : ''} · 出場 ${valueCell(stats?.values?.minutes)}分</span></div>${substitution ? `<b class="substitution ${role === 'starter' ? 'is-out' : 'is-in'}">${esc(substitution)}</b>` : ''}</div>`;
   }
 
@@ -1019,28 +1020,30 @@
       const jfwValue = typeof row.jfwRating === 'number' ? row.jfwRating : row.jfwRating?.value;
       const value = state.ratingMode === 'jfw' ? valueCell(jfwValue, jfwState) : valueCell(row.values?.rating, row.fieldStates?.rating);
       const actionable = state.ratingMode === 'jfw' && playerId && !['not_applicable','not_fetched'].includes(jfwState) && row.jfwRating?.factors;
-      const ratingRow = `<button class="rating-row" data-rating-player="${esc(playerId || '')}" type="button"${actionable ? '' : ' disabled'}>${personAvatar({ playerId, name: row.playerName, photo: row.playerPhoto })}<span><strong>${esc(displayPlayerName({playerId:row.playerId || row.id,name:row.playerName}) || '選手')}</strong><small>${esc(lineupPlayer?.number ?? '')} · ${esc(row.position || lineupPlayer?.position || '')} ${esc(row.nationality || lineupPlayer?.nationality || '')} · 出場 ${valueCell(row.values?.minutes)}分</small></span><b>${value}</b></button>`;
+      const ratingRow = `<button class="rating-row" data-rating-player="${esc(playerId || '')}" type="button"${actionable ? '' : ' disabled'}>${personAvatar({ playerId, name: row.playerName, photo: row.playerPhoto })}<span><strong>${esc(displayPlayerName({playerId:row.playerId || row.id,name:row.playerName}) || '選手')}</strong><small>${esc(lineupPlayer?.number ?? '')} · ${esc(row.position || lineupPlayer?.position || '')} ${esc(row.nationality || lineupPlayer?.nationality || knownPlayers.get(playerId)?.nationality || '')} · 出場 ${valueCell(row.values?.minutes)}分</small></span><b>${value}</b></button>`;
       const expanded = Boolean(playerId && state.detail.statsPlayerId === playerId);
       const panelId = `player-match-stats-${esc(row.teamId || 'team')}-${index}`;
       return `<div class="player-match-entry"><div class="player-match-entry-header">${ratingRow}${playerId ? `<button class="player-stats-toggle" type="button" data-player-stats="${esc(playerId)}" aria-expanded="${expanded}" aria-controls="${panelId}" aria-label="${esc(displayPlayerName({playerId,name:row.playerName}) || '選手')}の試合スタッツ">スタッツ <span aria-hidden="true">${expanded ? '−' : '+'}</span></button>` : ''}</div>${playerId ? `<div id="${panelId}" class="player-match-stats"${expanded ? '' : ' hidden'}>${expanded ? renderPlayerMatchStats(row, bundle) : ''}</div>` : ''}</div>`;
     };
-    return `<div class="rating-switch" role="group" aria-label="評価方式"><button class="chip${state.ratingMode === 'provider' ? ' is-active' : ''}" data-rating-mode="provider" aria-pressed="${state.ratingMode === 'provider'}" type="button">API-Football</button><button class="chip${state.ratingMode === 'jfw' ? ' is-active' : ''}" data-rating-mode="jfw" aria-pressed="${state.ratingMode === 'jfw'}" type="button">JFW 独自評価</button></div><h2>${modeLabel}</h2><p class="entity-sub player-stats-help">各選手の「スタッツ」から、この試合の個人成績を確認できます。</p>${teams.map(team => `<section class="detail-card" data-rating-team="${esc(team.id)}"><div class="section-title"><h3>${esc(team.name || 'チーム')}</h3></div>${rows.filter(row => row.teamId === team.id).map(renderRow).join('') || valueCell(null)}</section>`).join('')}${state.ratingPlayerId ? renderRatingBreakdown(rows.find(row => String(row.playerId || row.id) === String(state.ratingPlayerId))) : ''}`;
+    return `<div class="rating-switch" role="group" aria-label="評価方式"><button class="chip${state.ratingMode === 'provider' ? ' is-active' : ''}" data-rating-mode="provider" aria-pressed="${state.ratingMode === 'provider'}" type="button">API-Football</button><button class="chip${state.ratingMode === 'jfw' ? ' is-active' : ''}" data-rating-mode="jfw" aria-pressed="${state.ratingMode === 'jfw'}" type="button">JFW 独自評価</button></div><h2>${modeLabel}</h2>${state.ratingMode === 'jfw' && rows.every(row => row.jfwRating == null) ? '<p class="notice">この試合の独自評価は未算出です。現行の取得データには、算出に必要なオウンゴール・退場区分などの規律項目が揃っていません。</p>' : ''}<p class="entity-sub player-stats-help">各選手の「スタッツ」から、この試合の個人成績を確認できます。</p>${teams.map(team => `<section class="detail-card" data-rating-team="${esc(team.id)}"><div class="section-title"><h3>${esc(team.name || 'チーム')}</h3></div>${rows.filter(row => row.teamId === team.id).map(renderRow).join('') || valueCell(null)}</section>`).join('')}${state.ratingPlayerId ? renderRatingBreakdown(rows.find(row => String(row.playerId || row.id) === String(state.ratingPlayerId))) : ''}`;
   }
 
   function renderPlayerMatchStats(row, bundle) {
     const groups = [
-      ['出場・得点', [['minutes','出場時間','分'],['goals','ゴール'],['assists','アシスト'],['shots','シュート'],['shotsOnTarget','枠内シュート']]],
+      ['出場・得点', [['minutes','出場時間','分'],['goals','ゴール'],['assists','アシスト'],['shots','シュート'],['shotsOnTarget','枠内シュート'],['offsides','オフサイド']]],
       ['パス・ドリブル', [['passes','パス'],['passesAccurate','成功パス'],['keyPasses','キーパス'],['dribbleAttempts','ドリブル試行'],['dribbles','ドリブル成功']]],
       ['守備・対人', [['tackles','タックル'],['interceptions','インターセプト'],['blocks','ブロック'],['duels','デュエル'],['duelsWon','デュエル勝利'],['dribbledPast','被ドリブル突破']]],
       ['ファウル・カード', [['foulsDrawn','被ファウル'],['foulsCommitted','ファウル'],['yellowCards','イエローカード'],['redCards','レッドカード']]],
       ['PK', [['penaltiesWon','PK獲得'],['penaltiesConceded','PK献上'],['penaltiesScored','PK成功'],['penaltiesMissed','PK失敗']]],
     ];
-    if (['G','GK','GOALKEEPER'].includes(String(row.position || '').toUpperCase()) || row.values?.saves != null) {
+    if (['G','GK','GOALKEEPER'].includes(String(row.position || '').toUpperCase())) {
       groups.push(['ゴールキーパー', [['goalsConceded','失点'],['saves','セーブ'],['penaltiesSaved','PKセーブ']]]);
     }
+    const evidence = data.goalStatEvidence(row, bundle);
+    const evidenceNotice = evidence ? `<p class="notice" data-player-stat-evidence="goals">得点イベントに${evidence.count}ゴールの記録がありますが、個人成績の得点は${evidence.value === null ? '提供されていません' : '一致していません'}。確認が必要です。</p>` : '';
     const final = bundle.fixture?.ingestionState === 'finalized';
     const label = final ? '試合後の確定データ' : isFinal(bundle.fixture || {}) ? '試合終了・確定データ反映待ち' : '速報・自動更新';
-    return `<div class="player-stats-heading"><h4>${esc(displayPlayerName({playerId:row.playerId,name:row.playerName}) || '選手')} · この試合</h4><span class="player-stats-phase">${label}</span></div>${groups.map(([title, fields]) => `<section class="player-stat-group"><h5>${title}</h5><dl>${fields.map(([key, name, unit]) => `<div data-player-stat="${key}"><dt>${name}</dt><dd>${valueCell(row.values?.[key], row.fieldStates?.[key], name)}${unit && data.presence(row.values?.[key],row.fieldStates?.[key]) === 'present' ? unit : ''}</dd></div>`).join('')}</dl></section>`).join('')}`;
+    return `<div class="player-stats-heading"><h4>${esc(displayPlayerName({playerId:row.playerId,name:row.playerName}) || '選手')} · この試合</h4><span class="player-stats-phase">${label}</span></div>${evidenceNotice}${groups.map(([title, fields]) => `<section class="player-stat-group"><h5>${title}</h5><dl>${fields.map(([key, name, unit]) => `<div data-player-stat="${key}"><dt>${name}</dt><dd>${valueCell(row.values?.[key], row.fieldStates?.[key], name)}${unit && data.presence(row.values?.[key],row.fieldStates?.[key]) === 'present' ? unit : ''}</dd></div>`).join('')}</dl></section>`).join('')}`;
   }
 
   function renderRatingBreakdown(row) {
@@ -1688,7 +1691,9 @@
       } while (after !== null);
       knownTeamRosters.set(teamId, players);
       for (const player of players) rememberPlayer({ ...player, playerId: player.id });
-      if (router.parseHash(location.hash).kind === 'team') repaint();
+      const route = router.parseHash(location.hash);
+      if (route.kind === 'team') repaint();
+      else if (route.kind === 'fixture' && [state.detail?.bundle?.fixture?.teams?.home?.id, state.detail?.bundle?.fixture?.teams?.away?.id].includes(teamId)) renderFixtureDetail();
     } catch { knownTeamRosters.delete(teamId); }
   }
 

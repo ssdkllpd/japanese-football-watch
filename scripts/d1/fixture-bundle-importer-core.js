@@ -234,7 +234,7 @@ function validateBundle(bundle, catalog = {}) {
       if (value === null || value === undefined) throw new Error(`${path}.values.${key} must be omitted instead of null.`);
       if (DEPRECATED_PLAYER_STATS.has(key)) throw new Error(`${path}.values.${key} is deprecated; use passesAccurate.`);
     }
-    validateTypedStats(stat.values, PLAYER_STAT_COLUMNS, PLAYER_REAL_STATS, `${path}.values`);
+    validateTypedStats(stat.values, { ...PLAYER_STAT_COLUMNS, offsides: 'extra_stats_json' }, PLAYER_REAL_STATS, `${path}.values`);
     if (Object.hasOwn(stat.values, 'rating') && stat.values.rating > 10) {
       throw new Error(`${path}.values.rating must be between 0 and 10.`);
     }

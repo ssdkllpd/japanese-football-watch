@@ -21,6 +21,20 @@
       && Number.isFinite(Date.parse(p.from)) && Date.parse(p.from) <= when
       && (!p.to || when < Date.parse(p.to)));
   }
+  // Positive event evidence is a lower bound, never a reason to invent zero.
+  function goalStatEvidence(row, bundle) {
+    if (section(bundle, 'events') !== 'present' || !row?.playerId || !row?.teamId) return null;
+    const events = bundle.events || [];
+    if (events.some(event => /goal/i.test(event.detail || '') && /cancel|disallow/i.test(event.detail || ''))) return null;
+    const count = events.filter(event => event.type === 'goal' && event.teamId === row.teamId
+      && event.playerId === row.playerId && ['Normal Goal', 'Penalty'].includes(event.detail)
+      && Number.isSafeInteger(event.elapsed) && event.elapsed >= 0 && event.elapsed <= 120
+      && !(event.detail === 'Penalty' && bundle.fixture?.status?.short === 'PEN')
+      && !/shoot.?out|cancel|disallow/i.test(event.comments || '')).length;
+    const value = row.values?.goals;
+    return count > 0 && (presence(value, row.fieldStates?.goals) !== 'present' || value < count)
+      ? { count, value: presence(value, row.fieldStates?.goals) === 'present' ? value : null } : null;
+  }
   // Worker supplies the already decayed, rounded neutral score. Only the local
   // integer percentage is applied here, with exact positive HALF_UP cents.
   function cents(value) {
@@ -69,5 +83,5 @@
       }
     }
   }
-  return { presence, section, trackedFixture, rankCandidates, loadAttention };
+  return { presence, section, trackedFixture, goalStatEvidence, rankCandidates, loadAttention };
 });

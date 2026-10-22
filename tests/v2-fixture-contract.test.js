@@ -270,3 +270,32 @@ test('events retain scorer and assist identities when lineups and player stats a
   assert.equal(missing.events[0].playerId, null);
   assert.equal(Object.hasOwn(missing.events[0], 'playerName'), false);
 });
+
+test('individual offsides preserve positive values and zero while explicit provider nulls keep their cause', () => {
+  for (const offsides of [0, 3, null]) {
+    const raw = sampleFixture(), stats = raw.players[0].players[0].statistics[0];
+    stats.offsides = offsides; stats.goals.total = null; stats.shots = null;
+    delete stats.dribbles.past;
+    const row = contract.normalizeFixtureBundle(raw).playerStats[0];
+    if (offsides === null) {
+      assert.equal(Object.hasOwn(row.values, 'offsides'), false);
+      assert.equal(row.fieldStates.offsides.presence, 'provider_missing');
+    } else assert.equal(row.values.offsides, offsides);
+    assert.equal(row.fieldStates.goals.presence, 'provider_missing');
+    assert.equal(row.fieldStates.shots.presence, 'provider_missing');
+    assert.equal(row.fieldStates.dribbledPast, undefined);
+    assert.equal(Object.hasOwn(row.values, 'goals'), false);
+    assert.equal(row.values.assists, 0);
+  }
+});
+
+test('goalkeeper-only metrics are non-applicable to outfield players even when the provider supplies zero', () => {
+  for (const position of ['F', 'G', 'GK', 'GOALKEEPER', null]) {
+    const raw = sampleFixture(), stats = raw.players[0].players[0].statistics[0];
+    stats.games.position = position; stats.goals.saves = 0;
+    const row = contract.normalizeFixtureBundle(raw).playerStats[0];
+    assert.equal(row.values.saves, 0);
+    assert.equal(row.fieldStates.saves?.presence, position === 'F' ? 'not_applicable' : undefined);
+    assert.equal(row.fieldStates.penaltiesSaved.presence, position === 'F' ? 'not_applicable' : 'provider_missing');
+  }
+});

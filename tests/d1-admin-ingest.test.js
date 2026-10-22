@@ -814,3 +814,27 @@ test('event-only identities without a provider name or with malformed IDs remain
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixtures').get().n, 0);
   }
 });
+
+test('provider offsides and null field states survive normalization, Admin, D1 and the closed public contract', async t => {
+  const {normalizeFixtureBundle}=require('../scripts/v2/fixture-contract');
+  const admin=await import('../admin-worker/index.mjs');
+  const worker=await import('../worker/index.mjs');
+  for (const offsides of [0,3,null]) {
+    const db=database(); t.after(()=>db.close());
+    const bundle=fixturePayload();
+    const normalized=normalizeFixtureBundle({fixture:{id:9001},players:[{team:{id:40},players:[{player:{id:1001,name:'Player'},statistics:[{
+      games:{minutes:90,position:'F',rating:'8.2'},offsides,goals:{total:null,assists:0,saves:0},penalty:{won:null,saved:null}
+    }]}]}]},{fetchedAt:bundle.fixture.reconciledAt});
+    Object.assign(bundle.playerStats[0],{values:normalized.playerStats[0].values,fieldStates:normalized.playerStats[0].fieldStates});
+    const response=await admin.default.fetch(request(fixtureIngestBody(bundle)),fixtureEnv(db,bundle));
+    assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+    const publicResponse=await worker.fixtureDetailResponse({...fixtureEnv(db,bundle),D1_FIXTURE_DETAIL_ENABLED:'true'},bundle.fixture.id);
+    assert.equal(publicResponse.headers.get('x-jfw-data-source'),'d1');
+    const actual=await publicResponse.json();
+    assert.deepEqual(actual.playerStats[0].values,bundle.playerStats[0].values);
+    assert.deepEqual(actual.playerStats[0].fieldStates,bundle.playerStats[0].fieldStates);
+    assert.equal(compareFixtureBundles(bundle,actual).equal,true);
+    assert.equal(actual.playerStats[0].fieldStates.goals.presence,'provider_missing');
+    assert.equal(actual.playerStats[0].fieldStates.saves.presence,'not_applicable');
+  }
+});

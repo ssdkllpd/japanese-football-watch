@@ -332,3 +332,10 @@ test('the importer rejects pre-2.1 bundles instead of silently upcasting persist
 
   assert.throws(() => validateBundle(oldBundle, catalog()), /contractVersion must be 2\.1\.0/);
 });
+
+test('individual offsides in extensible stats reject negative, fractional, unsafe and nonnumeric values',()=>{
+ for(const offsides of [-1,0.5,Number.MAX_SAFE_INTEGER+1,'3',{},Infinity]){
+  const bundle=fixtureBundle();bundle.playerStats[0].values.offsides=offsides;
+  assert.throws(()=>validateBundle(bundle, catalog()),/offsides/);
+ }
+});

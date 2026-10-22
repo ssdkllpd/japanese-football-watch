@@ -1040,3 +1040,48 @@ test('a cup competition polls stored live scores every minute and keeps the sele
  assert.equal(app.doc.querySelector('[data-cup-filter="upcoming"]').getAttribute('aria-pressed'),'true');
  assert.match(app.text(),/3/);
 });
+
+test('outfield zero saves never creates a goalkeeper panel and acquired offsides stay numeric',async t=>{
+ const detail=bundle();detail.playerStats[0].values={minutes:90,saves:0,offsides:0};
+ detail.playerStats[0].fieldStates={goals:{presence:'provider_missing'}};
+ detail.events=[{type:'goal',detail:'Normal Goal',teamId:home.id,playerId:'af:player:1',elapsed:45}];
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',detail});
+ await app.click('[data-player-stats="af:player:1"]');
+ assert.equal(app.doc.querySelector('[data-player-stat="offsides"] dd').textContent,'0');
+ assert.equal(app.doc.querySelector('[data-player-stat="saves"]'),null);
+ assert.match(app.doc.querySelector('[data-player-stat-evidence="goals"]').textContent,/1ゴール/);
+ assert.equal(app.doc.querySelector('[data-player-stat="goals"] [data-presence]').title,'ゴール：提供元にデータなし');
+});
+
+test('explicit goalkeeper aliases show the goalkeeper panel even when saves are missing',async t=>{
+ for(const position of ['G','GK','GOALKEEPER']){
+  const detail=bundle();detail.playerStats[0].position=position;
+  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',detail});
+  await app.click('[data-player-stats="af:player:1"]');
+  assert.ok(app.doc.querySelector('[data-player-stat="saves"]'));
+ }
+});
+
+test('match nationality uses paginated team profiles by canonical ID and late metadata preserves the active view',async t=>{
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup',request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players')return null;
+  const homeTeam=u.searchParams.get('team')===home.id,second=u.searchParams.get('after')==='1';
+  const body={players:homeTeam?[{id:second?'af:player:3':'af:player:1',providerId:second?3:1,name:second?'Bench 1':'Starter 1',nationality:second?'France':'Japan'}]:[],nextCursor:homeTeam&&!second?1:null};
+  return {ok:true,status:200,json:async()=>body};
+ }});
+ await until(()=>app.doc.querySelector('.lineup-list')?.textContent.includes('Japan'),'roster nationality');
+ assert.match(app.doc.querySelector('.lineup-card').textContent,/France/);
+ await app.click('[data-detail-tab="ratings"]');
+ assert.match(app.doc.querySelector('[data-rating-player="af:player:1"]').textContent,/Japan/);
+ const directoryCalls=app.calls.filter(url=>url.includes('/api/v2/players?'));
+ assert.equal(directoryCalls.length,3);
+ assert.equal(app.calls.filter(url=>/\/api\/v2\/players\/af/.test(url)).length,0);
+ await app.click('[data-detail-tab="lineup"]');assert.match(app.doc.querySelector('.lineup-list').textContent,/Japan/);
+});
+
+test('fresh JFW mode explains the missing required inputs without inventing a rating',async t=>{
+ const detail=bundle();for(const row of detail.playerStats)delete row.jfwRating;
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
+ assert.match(app.text(),/独自評価は未算出/);assert.match(app.text(),/オウンゴール・退場区分/);
+ assert.equal(app.doc.querySelectorAll('.rating-row b [data-presence="not_fetched"]').length,2);
+});

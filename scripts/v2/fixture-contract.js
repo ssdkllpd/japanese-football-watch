@@ -205,40 +205,48 @@ function normalizePlayerStats(fixture, fetchedAt) {
       const playerProviderId = identity.providerId;
       const stats = Array.isArray(item?.statistics) ? (item.statistics[0] || {}) : {};
       const values = {};
-      assignNumeric(values, 'minutes', stats?.games?.minutes);
-      assignNumeric(values, 'rating', stats?.games?.rating);
-      assignNumeric(values, 'goals', stats?.goals?.total);
-      assignNumeric(values, 'assists', stats?.goals?.assists);
-      assignNumeric(values, 'goalsConceded', stats?.goals?.conceded);
-      assignNumeric(values, 'saves', stats?.goals?.saves);
-      assignNumeric(values, 'shots', stats?.shots?.total);
-      assignNumeric(values, 'shotsOnTarget', stats?.shots?.on);
-      assignNumeric(values, 'passes', stats?.passes?.total);
-      assignNumeric(values, 'keyPasses', stats?.passes?.key);
-      assignNumeric(values, 'passesAccurate', stats?.passes?.accuracy);
-      assignNumeric(values, 'tackles', stats?.tackles?.total);
-      assignNumeric(values, 'blocks', stats?.tackles?.blocks);
-      assignNumeric(values, 'interceptions', stats?.tackles?.interceptions);
-      assignNumeric(values, 'duels', stats?.duels?.total);
-      assignNumeric(values, 'duelsWon', stats?.duels?.won);
-      assignNumeric(values, 'dribbleAttempts', stats?.dribbles?.attempts);
-      assignNumeric(values, 'dribbles', stats?.dribbles?.success);
-      assignNumeric(values, 'dribbledPast', stats?.dribbles?.past);
-      assignNumeric(values, 'foulsDrawn', stats?.fouls?.drawn);
-      assignNumeric(values, 'foulsCommitted', stats?.fouls?.committed);
-      assignNumeric(values, 'yellowCards', stats?.cards?.yellow);
-      assignNumeric(values, 'redCards', stats?.cards?.red);
-      assignNumeric(values, 'penaltiesWon', stats?.penalty?.won);
-      assignNumeric(values, 'penaltiesConceded', stats?.penalty?.commited);
-      assignNumeric(values, 'penaltiesScored', stats?.penalty?.scored);
-      assignNumeric(values, 'penaltiesMissed', stats?.penalty?.missed);
-      assignNumeric(values, 'penaltiesSaved', stats?.penalty?.saved);
-
-      const position = text(stats?.games?.position)?.toUpperCase() || text(player?.position)?.toUpperCase() || null;
       const fieldStates = {};
-      if (position && position !== 'G' && position !== 'GK' && !Object.prototype.hasOwnProperty.call(values, 'saves')) {
-        fieldStates.saves = { presence: 'not_applicable' };
-        fieldStates.penaltiesSaved = { presence: 'not_applicable' };
+      const paths = {
+        minutes: 'games.minutes',
+        rating: 'games.rating',
+        goals: 'goals.total',
+        assists: 'goals.assists',
+        goalsConceded: 'goals.conceded',
+        saves: 'goals.saves',
+        shots: 'shots.total',
+        shotsOnTarget: 'shots.on',
+        passes: 'passes.total',
+        keyPasses: 'passes.key',
+        passesAccurate: 'passes.accuracy',
+        tackles: 'tackles.total',
+        blocks: 'tackles.blocks',
+        interceptions: 'tackles.interceptions',
+        duels: 'duels.total',
+        duelsWon: 'duels.won',
+        dribbleAttempts: 'dribbles.attempts',
+        dribbles: 'dribbles.success',
+        dribbledPast: 'dribbles.past',
+        foulsDrawn: 'fouls.drawn',
+        foulsCommitted: 'fouls.committed',
+        yellowCards: 'cards.yellow',
+        redCards: 'cards.red',
+        penaltiesWon: 'penalty.won',
+        penaltiesConceded: 'penalty.commited',
+        penaltiesScored: 'penalty.scored',
+        penaltiesMissed: 'penalty.missed',
+        penaltiesSaved: 'penalty.saved',
+        offsides: 'offsides',
+      };
+      for (const [key, path] of Object.entries(paths)) {
+        // An explicit null came back from the provider. A missing property
+        // carries no evidence that this particular metric was supplied.
+        const value = path.split('.').reduce((node, part) => node === null ? null : node?.[part], stats);
+        assignNumeric(values, key, value);
+        if (value === null) fieldStates[key] = { presence: 'provider_missing' };
+      }
+      const position = text(stats?.games?.position)?.toUpperCase() || text(player?.position)?.toUpperCase() || null;
+      if (position && !['G', 'GK', 'GOALKEEPER'].includes(position)) {
+        for (const key of ['saves', 'penaltiesSaved']) fieldStates[key] = { presence: 'not_applicable' };
       }
 
       rows.push({
