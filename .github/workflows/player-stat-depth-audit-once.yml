@@ -1,0 +1,88 @@
+name: Audit player statistic sources once
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/player-stat-depth-audit-once.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 12
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+      ADMIN_INGEST_URL: ${{ vars.ADMIN_INGEST_URL }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify scope and install pinned R2 read client
+        run: |
+          node scripts/d1/verify-d1-target.mjs --manifest config/d1-targets.json --target staging
+          npm install --prefix .tmp/stat-audit-tools --ignore-scripts --no-audit --no-fund wrangler@4.147.0
+      - name: Compare provider responses, normalization, R2, D1 and public fields without publishing
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          import {createRequire} from 'node:module';
+          import {remoteDatabase} from './scripts/live/remote-d1.mjs';
+          const require=createRequire(import.meta.url);
+          const {createClientFromEnv}=require('./scripts/api-football/client.js');
+          const {normalizeFixtureBundle}=require('./scripts/v2/fixture-contract.js');
+          const {PLAYER_STAT_COLUMNS}=require('./scripts/d1/fixture-bundle-importer.js');
+          const ids=[1557436,1563150,1552787,1575189,1552191,1575458,1550153,1570389,1556678,1635647];
+          const out='.tmp/player-stat-depth';fs.mkdirSync(out,{recursive:true});
+          const save=(name,value)=>fs.writeFileSync(`${out}/${name}.json`,JSON.stringify(value,null,2));
+          const target=JSON.parse(fs.readFileSync('config/public-worker-target.json','utf8'));
+          const db=remoteDatabase({account:process.env.CLOUDFLARE_ACCOUNT_ID,token:process.env.CLOUDFLARE_API_TOKEN,databaseId:process.env.D1_DATABASE_ID,readOnly:true});
+          const stored=(await db.prepare(`SELECT f.canonical_id AS fixture_id,p.canonical_id AS player_id,t.canonical_id AS team_id,s.* FROM fixtures f JOIN fixture_player_appearances a ON a.fixture_revision_id=f.published_revision JOIN fixture_player_records r ON r.id=a.player_record_id JOIN players p ON p.id=r.player_id JOIN teams t ON t.id=r.team_id JOIN fixture_player_stats s ON s.player_appearance_id=a.id WHERE f.canonical_id IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(ids.map(id=>`af:fixture:${id}`))).all()).results;
+          save('d1-player-stats',stored);
+          const client=createClientFromEnv(process.env,{minimumIntervalMs:1500,dailyReserve:1200});
+          const before=await client.refreshDailyQuota();
+          assert.ok(before.dailyRemaining>1200+ids.length,'Preserve the provider reserve');
+          const reports=[];
+          for(const id of ids){
+            const response=await fetch(`${target.workerOrigin}/api/v2/fixtures/af:fixture:${id}`,{headers:{Origin:target.appOrigin},signal:AbortSignal.timeout(30000)});
+            assert.equal(response.status,200,`public fixture ${id}`);
+            const published=await response.json();save(`public-${id}`,published);
+            assert.equal(published.fixture.id,`af:fixture:${id}`);
+            const key=`football/v2/competitions/${published.fixture.competitionId}/seasons/${published.fixture.seasonId}/fixtures/${published.fixture.id}.json`;
+            execFileSync(process.execPath,['.tmp/stat-audit-tools/node_modules/wrangler/bin/wrangler.js','r2','object','get',`${process.env.R2_BUCKET}/${key}`,'--file',`${out}/r2-${id}.json`,'--remote'],{stdio:'pipe'});
+            const r2=JSON.parse(fs.readFileSync(`${out}/r2-${id}.json`,'utf8'));
+            const raw=await client.get('fixtures/players',{fixture:id});save(`provider-${id}`,raw.data);
+            assert.ok(Array.isArray(raw.data.response)&&raw.data.response.length<=2,'Bound provider team blocks');
+            const source={fixture:{id,date:published.fixture.kickoffUtc,status:published.fixture.status},league:{id:published.competition.providerId,season:published.season.providerSeason},teams:{home:{id:published.fixture.teams.home.providerId,name:published.fixture.teams.home.name},away:{id:published.fixture.teams.away.providerId,name:published.fixture.teams.away.name}},players:raw.data.response};
+            const normalized=normalizeFixtureBundle(source,{fetchedAt:new Date().toISOString()});save(`normalized-${id}`,normalized.playerStats);
+            const rk=row=>`${row.playerId}|${row.teamId}`;
+            const r2Rows=new Map(r2.playerStats.map(r=>[rk(r),r]));
+            const publicRows=new Map(published.playerStats.map(r=>[rk(r),r]));
+            const dbRows=new Map(stored.filter(r=>r.fixture_id===`af:fixture:${id}`).map(r=>[`${r.player_id}|${r.team_id}`,r]));
+            const mismatches=[];
+            for(const row of normalized.playerStats){
+              const prior=r2Rows.get(rk(row)),pub=publicRows.get(rk(row)),dbRow=dbRows.get(rk(row));
+              for(const [field,column] of Object.entries(PLAYER_STAT_COLUMNS)){
+                const values={providerNormalized:row.values[field]??null,r2:prior?.values?.[field]??null,d1:dbRow?.[column]??null,public:pub?.values?.[field]??null};
+                if(new Set(Object.values(values)).size>1)mismatches.push({playerId:row.playerId,teamId:row.teamId,field,values});
+              }
+            }
+            reports.push({fixtureId:id,competition:published.competition.name,publicSource:response.headers.get('x-jfw-data-source'),providerRows:normalized.playerStats.length,r2Rows:r2.playerStats.length,publicRows:published.playerStats.length,mismatches});
+          }
+          save('report',{auditedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA,readOnly:true,providerRequests:ids.length,quotaBefore:before,quotaAfter:client.lastQuota,fixtures:reports});
+          console.log(JSON.stringify({readOnly:true,providerRequests:ids.length,fixtures:reports.map(r=>({fixtureId:r.fixtureId,competition:r.competition,providerRows:r.providerRows,mismatches:r.mismatches.length}))}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: player-stat-depth-${{ github.run_id }}
+          path: .tmp/player-stat-depth/*.json
+          retention-days: 14
