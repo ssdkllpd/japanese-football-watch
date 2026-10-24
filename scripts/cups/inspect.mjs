@@ -57,6 +57,8 @@ export function summarize(snapshot) {
       id:c.metadata?.league?.id??null,status:c.status,fixtures:c.fixtures?.length??null,
       teams:c.fixtures?new Set(c.fixtures.flatMap(f=>[f.teams?.home?.id,f.teams?.away?.id]).filter(Boolean)).size:null,
       standingsGroups:c.standings?.flatMap(r=>r.league?.standings||[]).length??null,
+      invalidStandingsRows:(c.standings||[]).flatMap(r=>r.league?.standings||[]).flat()
+        .filter(row=>!Number.isSafeInteger(row?.team?.id)||row.team.id<=0),
       coverage:c.season?.coverage??null,start:c.season?.start??null,end:c.season?.end??null})),quota:snapshot.quota};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
