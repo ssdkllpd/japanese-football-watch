@@ -59,6 +59,7 @@ export function summarize(snapshot) {
       id:c.metadata?.league?.id??null,status:c.status,fixtures:c.fixtures?.length??null,
       teams:c.fixtures?new Set(c.fixtures.flatMap(f=>[f.teams?.home?.id,f.teams?.away?.id]).filter(Boolean)).size:null,
       standingsGroups:c.standings?.flatMap(r=>r.league?.standings||[]).length??null,
+      standingsTeamCatalog:c.standingsTeams||[],
       standingsIdentityCandidates:(c.standingsTeams||[]).filter(team=>(c.standings||[])
         .flatMap(r=>r.league?.standings||[]).flat().some(row=>row?.team?.id==null
           &&row.team.name?.normalize('NFKC').toLowerCase()===team.name?.normalize('NFKC').toLowerCase())),
