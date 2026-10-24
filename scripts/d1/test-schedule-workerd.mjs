@@ -112,6 +112,14 @@ INSERT INTO fixtures(canonical_id,source_id,provider_id,competition_season_id,ho
   const raw={fixture:{id:9101,date:'2026-11-12T10:00:00.000Z',status:{short:'FT',long:'Match Finished',elapsed:90}},
     league:{id:39,season:2026,name:'PL',country:'England'},teams:{home:{id:40,name:'Home'},away:{id:50,name:'Away'}},
     goals:{home:1,away:0},score:{},events:[],lineups:[],players:[],statistics:[]};
+  // Reproduce sparse provider cup stats: every nullable metric is explicit.
+  // Verify the full supported 80-player envelope on real D1, not just sqlite.
+  raw.players=[40,50].map((teamId,teamIndex)=>({team:{id:teamId},players:Array.from({length:40},(_,i)=>({
+    player:{id:10000+teamIndex*40+i,name:`Player ${teamIndex}-${i}`},statistics:[{
+      games:{minutes:null,rating:null,position:'F'},goals:null,shots:null,passes:null,
+      tackles:null,duels:null,dribbles:null,fouls:null,cards:null,penalty:null,offsides:null
+    }]
+  }))}));
   const artifactRoot=path.join(temp,'artifacts');
   const artifactDir=path.join(artifactRoot,'fixtures','9101');
   writeFixtureEnvelope(artifactDir,{fixture:raw,quota:{}},{finalized:true,fetchedAt:'2026-11-12T13:00:00.000Z'});
@@ -127,6 +135,8 @@ INSERT INTO fixtures(canonical_id,source_id,provider_id,competition_season_id,ho
   const partial=await publish();assert.equal(partial.passed,false,'R2 failure after result D1 commit must be visible');
   assert.ok(await count('date_index_repair_queue')>0);
   const retried=await publish();assert.equal(retried.passed,true,JSON.stringify(retried));
+  assert.equal(await count('field_states'),80*29,'All missing metric states must survive real D1 publication');
+  assert.ok(batches.every(batch=>batch.length<=37),'Bulk states must retain the D1 query budget');
   assert.deepEqual(ids(dateIndexR2Key('2026-11-11')),[]);
   assert.deepEqual(ids(competitionDateIndexR2Key('af:competition:39','2026-11-11')),[]);
   assert.deepEqual(ids(dateIndexR2Key('2026-11-12')),['af:fixture:9101']);

@@ -838,3 +838,28 @@ test('provider offsides and null field states survive normalization, Admin, D1 a
     assert.equal(actual.playerStats[0].fieldStates.saves.presence,'not_applicable');
   }
 });
+
+
+test('a full 80-player fixture retains every explicit missing metric within the D1 query budget', async t => {
+  const {normalizeFixtureBundle}=require('../scripts/v2/fixture-contract');
+  const admin=await import('../admin-worker/index.mjs');
+  const db=database(); t.after(()=>db.close());
+  const bundle=eightyEndpointRowsFixture();
+  const stats={games:{minutes:null,rating:null,position:'F'},goals:null,shots:null,passes:null,
+    tackles:null,duels:null,dribbles:null,fouls:null,cards:null,penalty:null,offsides:null};
+  const normalized=normalizeFixtureBundle({fixture:{id:9001},players:[{team:{id:40},players:[{
+    player:{id:1001,name:'Player'},statistics:[stats]
+  }]}]},{fetchedAt:bundle.fixture.reconciledAt});
+  for(const row of bundle.playerStats) {
+    row.values=structuredClone(normalized.playerStats[0].values);
+    row.fieldStates=structuredClone(normalized.playerStats[0].fieldStates);
+  }
+  const expected=bundle.playerStats.length*Object.keys(normalized.playerStats[0].fieldStates).length
+    +bundle.lineups.reduce((n,row)=>n+Object.keys(row.fieldStates).length,0);
+  assert.ok(expected>2000);
+  const response=await admin.default.fetch(request(fixtureIngestBody(bundle)),fixtureEnv(db,bundle));
+  const result=await response.json();
+  assert.equal(response.status,200,JSON.stringify(result));
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM field_states').get().n,expected);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM field_states WHERE presence='not_applicable'").get().n,160);
+});
