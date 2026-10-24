@@ -109,6 +109,35 @@ function selectLeagueBlock(providerRows, options = {}) {
   return matches[0];
 }
 
+function missingTeamIdentity(providerRows) {
+  return providerRows.some(block => (block?.league?.standings || []).flat()
+    .some(row => row?.team?.id === null || row?.team?.id === undefined));
+}
+
+// Only an exact name from this provider's declared competition/season may
+// repair an absent ID. Ambiguous names and malformed nonempty IDs stay rejected.
+function recoverStandingTeam(row, teams) {
+  if (row?.team?.id !== null && row?.team?.id !== undefined) return row;
+  const name = text(row?.team?.name);
+  const key = value => text(value)?.normalize('NFKC').toLowerCase();
+  const matches = teams.filter(team => name && key(team?.name) === key(name)
+    && Number.isSafeInteger(team?.id) && team.id > 0);
+  const ids = new Set(matches.map(team => team.id));
+  if (ids.size !== 1) throw new Error(`Standings team ID is missing and cannot be uniquely recovered: ${name || '(unnamed)'}.`);
+  return { ...row, team: { ...row.team, id: matches[0].id }, recoveredTeamId: true };
+}
+
+async function fetchStandingsTeams(client, providerRows, query) {
+  if (!missingTeamIdentity(providerRows)) return [];
+  const result = await client.get('teams', { league: query.league, season: query.season });
+  const rows = responseArray(result);
+  if (Number(result.data?.paging?.total ?? 1) !== 1
+    || Number(result.data?.results ?? rows.length) !== rows.length) {
+    throw new Error('Standings team catalog response is incomplete.');
+  }
+  return rows.map(row => row.team);
+}
+
 function normalizeStandings(providerRows, options = {}) {
   const block = selectLeagueBlock(providerRows, options);
   const league = block.league || {};
@@ -118,7 +147,12 @@ function normalizeStandings(providerRows, options = {}) {
   const rawGroups = Array.isArray(league.standings) ? league.standings : [];
   const groups = rawGroups.map((rawGroup, groupIndex) => {
     const rows = (Array.isArray(rawGroup) ? rawGroup : [])
-      .map(row => normalizeStandingRow(row, fetchedAt))
+      .map(row => {
+        const recovered = recoverStandingTeam(row, options.teams || []);
+        const normalized = normalizeStandingRow(recovered, fetchedAt);
+        if (recovered.recoveredTeamId) normalized.provenance.issues.push('team_id_recovered_from_provider_team_catalog');
+        return normalized;
+      })
       .sort((left, right) => {
         const rankDifference = (left.rank ?? Number.MAX_SAFE_INTEGER)
           - (right.rank ?? Number.MAX_SAFE_INTEGER);
@@ -167,7 +201,7 @@ function validateStandings(snapshot) {
   if (!snapshot?.season?.id?.startsWith('af:season:')) errors.push('season.id is required.');
   for (const group of snapshot?.groups || []) {
     for (const row of group?.table || []) {
-      if (!row?.team?.id?.startsWith('af:team:')) errors.push('Every standings row requires a provider-native team ID.');
+      if (!/^af:team:[1-9]\d*$/.test(row?.team?.id || '')) errors.push('Every standings row requires a provider-native team ID.');
     }
   }
   return errors;
@@ -223,7 +257,9 @@ async function main() {
   const query = { league: args.league, season: args.season };
   const client = createClientFromEnv(process.env);
   const result = await client.get('standings', query);
+  const teams = await fetchStandingsTeams(client, responseArray(result), query);
   const snapshot = normalizeStandings(responseArray(result), {
+    teams,
     league: args.league,
     season: args.season,
     fetchedAt: new Date().toISOString(),
@@ -241,6 +277,8 @@ if (require.main === module) {
 
 module.exports = {
   STANDINGS_CONTRACT_VERSION,
+  fetchStandingsTeams,
+  missingTeamIdentity,
   normalizeRecordScope,
   normalizeStandingRow,
   normalizeStandings,

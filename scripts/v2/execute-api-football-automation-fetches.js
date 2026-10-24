@@ -5,7 +5,7 @@ const path = require('node:path');
 const { createClientFromEnv } = require('../api-football/client');
 const { PLAN_VERSION } = require('./api-football-automation-plan');
 const { fetchFixtureEnvelope, writeFixtureEnvelope } = require('./fetch-fixture-vertical-slice');
-const { normalizeStandings, responseArray, writeStandings } = require('./fetch-standings');
+const { fetchStandingsTeams, normalizeStandings, responseArray, writeStandings } = require('./fetch-standings');
 
 function parseArgs(argv) {
   const values = {};
@@ -55,9 +55,10 @@ async function executeAutomationFetches({ plan, outputRoot, client, now = () => 
   for (const item of plan.standingsFetches) {
     try {
     const result = await client.get('standings', { league: item.league, season: item.season });
+    const teams = await fetchStandingsTeams(client, responseArray(result), item);
     const fetchedAt = now().toISOString();
     const snapshot = normalizeStandings(responseArray(result), {
-      league: item.league, season: item.season, fetchedAt,
+      league: item.league, season: item.season, fetchedAt, teams,
     });
     const directory = path.join(root, 'standings', `${item.league}-${item.season}`);
     const manifest = writeStandings(directory, snapshot, {

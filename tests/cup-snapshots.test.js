@@ -54,3 +54,19 @@ test('the global stored daily feed includes cup ties that have not received a co
  const {assertValidDateIndexPayload}=await import('../shared/date-index-contract.mjs');
  assert.doesNotThrow(()=>assertValidDateIndexPayload(feed,{expectedDate:'2026-10-21',expectedCompetitionId:null}));
 });
+
+test('cup preparation repairs an absent standings ID from archived provider teams without inventing or discarding rows',async()=>{
+ const {prepareCups}=await import('../scripts/cups/prepare.mjs');
+ const snapshot=source(),cup=snapshot.cups[0],id=cup.metadata.league.id;
+ const scope={played:3,win:1,draw:0,lose:2,goals:{for:3,against:6}};
+ cup.standings=[{league:{id,season:2026,name:cup.metadata.league.name,country:'World',standings:[[
+  {rank:25,team:{id:null,name:'Sabah FC',logo:null},points:3,goalsDiff:-3,all:scope,home:scope,away:scope}
+ ]]}}];
+ cup.standingsTeams=[{id:9876,name:'Sabah FC'}];
+ const raw=JSON.stringify(snapshot),prepared=prepareCups(raw,{source:{snapshotSha256:createHash('sha256').update(raw).digest('hex')}});
+ const standings=JSON.parse(prepared.objects[0].text).standings;
+ assert.equal(standings.groups[0].table[0].team.id,'af:team:9876');
+ assert.equal(standings.groups[0].table[0].points,3);
+ assert.equal(standings.groups[0].table[0].rank,25);
+ assert.equal(prepared.objects.length,14);
+});

@@ -52,5 +52,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   fs.writeFileSync(args.report, `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify({ passed: report.passed, fixtures: report.successfulFixtures.length,
     standings: report.successfulStandings.length }));
+  for (const outcome of report.outcomes.filter(item => !item.passed)) {
+    const failure = outcome.report?.results.find(item => !item.passed) || outcome;
+    console.error(JSON.stringify({ identity: outcome.identity, status: failure.status ?? null,
+      error: failure.error || failure.reason || 'publication_failed' }));
+  }
   // The workflow persists the verified subset before failing visibly on partial success.
 }

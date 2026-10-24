@@ -21,7 +21,7 @@ export function prepareCups(raw,{source=config.source}={}) {
         const bundle=fixturesModule.normalizeFixtureBundle(raw,{fetchedAt:snapshot.observedAt});
         return {...fixturesModule.fixtureIndexEntry(bundle),round:bundle.fixture.round};
       }).sort((a,b)=>a.kickoffUtc.localeCompare(b.kickoffUtc)||a.fixtureId.localeCompare(b.fixtureId)),
-      standings:cup.standings?.length?standingsModule.normalizeStandings(cup.standings,{league:target.providerId,season:config.providerSeason,fetchedAt:snapshot.observedAt}):null};
+      standings:cup.standings?.length?standingsModule.normalizeStandings(cup.standings,{league:target.providerId,season:config.providerSeason,fetchedAt:snapshot.observedAt,teams:cup.standingsTeams||cup.fixtures.flatMap(f=>[f.teams.home,f.teams.away])}):null};
     assertCupSnapshot(value,target.id,season.id);
     const text=JSON.stringify(value),sha256=hash(text);
     objects.push({key:cupSnapshotKey(sha256),sha256,text,entry:cupDirectoryEntry(value)});

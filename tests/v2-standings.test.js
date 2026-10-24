@@ -100,3 +100,32 @@ test('standings writer publishes an immutable snapshot and a latest object', () 
   assert.ok(fs.existsSync(path.join(outputDir, 'standings.json')));
   assert.ok(fs.existsSync(path.join(outputDir, 'manifest.json')));
 });
+
+test('missing standings IDs use only one exact provider team catalog identity, preserving the row and audit trail', async () => {
+  const {fetchStandingsTeams}=require('../scripts/v2/fetch-standings');
+  const raw=providerResponse();
+  raw[0].league.standings[0][1].team={id:null,name:'Sabah FC',logo:null};
+  const calls=[];
+  const teams=await fetchStandingsTeams({get:async (endpoint,query)=>{
+    calls.push({endpoint,query});
+    return {data:{response:[{team:{id:9876,name:'Sabah FC'}}],results:1,paging:{total:1}}};
+  }},raw,{league:39,season:2026});
+  assert.deepEqual(calls,[{endpoint:'teams',query:{league:39,season:2026}}]);
+  const snapshot=normalizeStandings(raw,{league:39,season:2026,teams});
+  const row=snapshot.groups[0].table[1];
+  assert.equal(row.team.id,'af:team:9876');
+  assert.equal(row.team.name,'Sabah FC');
+  assert.equal(row.points,null);
+  assert.deepEqual(row.provenance.issues,['team_id_recovered_from_provider_team_catalog']);
+  assert.equal(raw[0].league.standings[0][1].team.id,null,'Raw evidence must remain unchanged');
+  const {assertValidStandingsPayload}=await import('../shared/standings-contract.mjs');
+  // The original fixture intentionally omits home/away on its second row.
+  row.home={played:null,wins:null,draws:null,losses:null,goalsFor:null,goalsAgainst:null};
+  row.away=structuredClone(row.home);
+  assert.doesNotThrow(()=>assertValidStandingsPayload(snapshot,{expectedCompetitionId:'af:competition:39',expectedSeasonId:'af:season:39:2026'}));
+  for(const candidates of [[],[{id:9876,name:'Sabah'}],[{id:9876,name:'Sabah FC'},{id:9877,name:'Sabah FC'}]]) {
+    assert.throws(()=>normalizeStandings(raw,{teams:candidates}),/cannot be uniquely recovered/);
+  }
+  await fetchStandingsTeams({get:()=>assert.fail('No extra team request for complete standings')},providerResponse(),{league:39,season:2026});
+  await assert.rejects(()=>fetchStandingsTeams({get:async()=>({data:{response:[],paging:{total:2}}})},raw,{league:39,season:2026}),/incomplete/);
+});

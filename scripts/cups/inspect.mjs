@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import clientModule from '../api-football/client.js';
+import standingsModule from '../v2/fetch-standings.js';
 import {remoteDatabase} from '../live/remote-d1.mjs';
 
 const TARGETS = [
@@ -46,8 +47,9 @@ export async function inspectCups({client,database,season=2026,now=new Date().to
     }
     const standings=providerSeason.coverage?.standings===true
       ?responseRows(await client.get('standings',{league:id,season}),`${name} standings`):null;
+    const standingsTeams=standings ? await standingsModule.fetchStandingsTeams(client,standings,{league:id,season}) : [];
     cups.push({country,requestedName:name,status:fixtures.length?'available':'fixtures_not_yet_available',
-      metadata:meta,season:providerSeason,fixtures,standings});
+      metadata:meta,season:providerSeason,fixtures,standings,standingsTeams});
   }
   return {schemaVersion:'jfw-cup-inspection/1',observedAt:now,season,stored,cups,quota:client.lastQuota};
 }
@@ -57,6 +59,9 @@ export function summarize(snapshot) {
       id:c.metadata?.league?.id??null,status:c.status,fixtures:c.fixtures?.length??null,
       teams:c.fixtures?new Set(c.fixtures.flatMap(f=>[f.teams?.home?.id,f.teams?.away?.id]).filter(Boolean)).size:null,
       standingsGroups:c.standings?.flatMap(r=>r.league?.standings||[]).length??null,
+      standingsIdentityCandidates:(c.standingsTeams||[]).filter(team=>(c.standings||[])
+        .flatMap(r=>r.league?.standings||[]).flat().some(row=>row?.team?.id==null
+          &&row.team.name?.normalize('NFKC').toLowerCase()===team.name?.normalize('NFKC').toLowerCase())),
       invalidStandingsRows:(c.standings||[]).flatMap(r=>r.league?.standings||[]).flat()
         .filter(row=>!Number.isSafeInteger(row?.team?.id)||row.team.id<=0),
       coverage:c.season?.coverage??null,start:c.season?.start??null,end:c.season?.end??null})),quota:snapshot.quota};
