@@ -10,6 +10,7 @@ const {
 } = require('./fixture-contract');
 
 const STANDINGS_CONTRACT_VERSION = '2.0.0';
+const TEAM_ALIASES = require('../../config/provider-standings-team-aliases.json').aliases;
 
 function parseArgs(argv) {
   const result = {};
@@ -114,14 +115,22 @@ function missingTeamIdentity(providerRows) {
     .some(row => row?.team?.id === null || row?.team?.id === undefined));
 }
 
-// Only an exact name from this provider's declared competition/season may
-// repair an absent ID. Ambiguous names and malformed nonempty IDs stay rejected.
-function recoverStandingTeam(row, teams) {
+// Use exact provider names or a reviewed, season-scoped provider alias.
+// Ambiguous names and malformed nonempty IDs stay rejected.
+function recoverStandingTeam(row, teams, scope) {
   if (row?.team?.id !== null && row?.team?.id !== undefined) return row;
   const name = text(row?.team?.name);
   const key = value => text(value)?.normalize('NFKC').toLowerCase();
-  const matches = teams.filter(team => name && key(team?.name) === key(name)
+  let matches = teams.filter(team => name && key(team?.name) === key(name)
     && Number.isSafeInteger(team?.id) && team.id > 0);
+  if (!matches.length) {
+    // A reviewed provider naming discrepancy, scoped to this one season.
+    // Still require its actual ID and current name in the freshly fetched catalog.
+    const alias = TEAM_ALIASES.find(item => item.league === scope.league
+      && item.season === scope.season && item.standingsName === name);
+    if (alias) matches = teams.filter(team => team?.id === alias.providerId
+      && team.name === alias.providerName);
+  }
   const ids = new Set(matches.map(team => team.id));
   if (ids.size !== 1) throw new Error(`Standings team ID is missing and cannot be uniquely recovered: ${name || '(unnamed)'}.`);
   return { ...row, team: { ...row.team, id: matches[0].id }, recoveredTeamId: true };
@@ -148,7 +157,7 @@ function normalizeStandings(providerRows, options = {}) {
   const groups = rawGroups.map((rawGroup, groupIndex) => {
     const rows = (Array.isArray(rawGroup) ? rawGroup : [])
       .map(row => {
-        const recovered = recoverStandingTeam(row, options.teams || []);
+        const recovered = recoverStandingTeam(row, options.teams || [], {league:competitionProviderId,season:providerSeason});
         const normalized = normalizeStandingRow(recovered, fetchedAt);
         if (recovered.recoveredTeamId) normalized.provenance.issues.push('team_id_recovered_from_provider_team_catalog');
         return normalized;

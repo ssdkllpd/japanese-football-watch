@@ -129,3 +129,21 @@ test('missing standings IDs use only one exact provider team catalog identity, p
   await fetchStandingsTeams({get:()=>assert.fail('No extra team request for complete standings')},providerResponse(),{league:39,season:2026});
   await assert.rejects(()=>fetchStandingsTeams({get:async()=>({data:{response:[],paging:{total:2}}})},raw,{league:39,season:2026}),/incomplete/);
 });
+
+test('the reviewed Sabah provider alias is restricted to its exact competition, season, ID and catalog name',()=>{
+  const raw=providerResponse();
+  raw[0].league.id=2;
+  raw[0].league.standings[0][1].team={id:null,name:'Sabah FC',logo:null};
+  const teams=[{id:13976,name:'Sabah FA'}];
+  const snapshot=normalizeStandings(raw,{teams});
+  assert.equal(snapshot.groups[0].table[1].team.id,'af:team:13976');
+  assert.equal(snapshot.groups[0].table[1].team.name,'Sabah FC');
+  assert.equal(snapshot.groups[0].table.length,2);
+  for(const wrongTeams of [[{id:13977,name:'Sabah FA'}],[{id:13976,name:'Sabah'}],[]]) {
+    assert.throws(()=>normalizeStandings(raw,{teams:wrongTeams}),/cannot be uniquely recovered/);
+  }
+  for(const change of [r=>r[0].league.id=3,r=>r[0].league.season=2027]) {
+    const wrong=structuredClone(raw);change(wrong);
+    assert.throws(()=>normalizeStandings(wrong,{teams}),/cannot be uniquely recovered/);
+  }
+});

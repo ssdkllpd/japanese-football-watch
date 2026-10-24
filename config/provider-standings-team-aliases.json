@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "jfw-provider-standings-team-aliases/1",
+  "aliases": [
+    {
+      "league": 2,
+      "season": 2026,
+      "providerId": 13976,
+      "providerName": "Sabah FA",
+      "standingsName": "Sabah FC",
+      "evidenceRunId": 40054909744
+    }
+  ]
+}
