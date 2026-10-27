@@ -59,6 +59,36 @@ test('backfill plans only unpublished final fixtures through today, without refe
   assert.equal(plan.quota.estimatedProviderRequests, 40);
 });
 
+test('already published cup fixtures are not treated as missing', async () => {
+  const client = fakeClient({ 2: [fixture(450, 2), fixture(451, 2)] });
+  const plan = await planManualFixtureBackfill({ policy, inventory: inventory([450]),
+    dateInventory: dateInventory({ 450: '2026-09-20', 451: '2026-09-20' }),
+    dailyBudget: budget(), client, now });
+  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:451']);
+  assert.equal(plan.alreadyPublishedCount, 1);
+});
+
+test('manual backfill start date limits final fixtures by Japan date', async () => {
+  const client = fakeClient({ 39: [fixture(10, 39, 'FT', '2026-09-20T12:00:00Z'),
+    fixture(11, 39, 'FT', '2026-09-23T16:00:00Z'), fixture(12, 39, 'FT', '2026-09-24T16:00:00Z')] });
+  const args = { policy, inventory: inventory([]), dateInventory: dateInventory({}),
+    dailyBudget: budget(), client, now, fromDate: '2026-09-24' };
+  const plan = await planManualFixtureBackfill(args);
+  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:11', 'af:fixture:12']);
+  assert.equal(plan.fromDate, '2026-09-24');
+  await assert.rejects(() => planManualFixtureBackfill({ ...args, fromDate: '2026-02-30' }), /valid YYYY-MM-DD/);
+});
+
+test('explicit fixture IDs exclude all other fixtures and standings and retain published guard', async () => {
+  const client = fakeClient({39:[fixture(10,39),fixture(11,39),fixture(12,39),fixture(13,39)]});
+  const args={policy,inventory:inventory([10]),dateInventory:dateInventory({}),dailyBudget:budget(),client,now,
+    fixtureIds:'af:fixture:10,af:fixture:11,af:fixture:12'};
+  const plan=await planManualFixtureBackfill(args);
+  assert.deepEqual(plan.detailFetches.map(item=>item.fixtureId),['af:fixture:11','af:fixture:12']);
+  assert.deepEqual(plan.standingsFetches,[]);
+  await assert.rejects(()=>planManualFixtureBackfill({...args,fixtureIds:'af:fixture:11,af:fixture:11'}),/unique canonical IDs/);
+});
+
 test('backfill publishes at most 20 per UTC day and resumes the next day', async () => {
   const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index + 1, 39));
   const args = { policy, inventory: inventory([]), dateInventory: dateInventory({}), dailyBudget: budget(),
@@ -189,6 +219,9 @@ test('a partial Admin failure recovers indexes for only fixtures already publish
 test('manual workflow keeps a separate execution gate and read-only preview', () => {
   const workflow = fs.readFileSync(path.join(__dirname, '..',
     '.github/workflows/api-football-manual-backfill.yml'), 'utf8');
+  assert.doesNotMatch(workflow, /season\.canonical_id IN \(\$scopes\)/);
+  assert.match(workflow, /FROM fixtures fixture JOIN fixture_revisions revision/);
+  assert.match(workflow, /FROM fixtures fixture ORDER BY fixture\.canonical_id/);
   assert.match(workflow, /group: d1-staging-write/);
   assert.match(workflow, /RUN API-FOOTBALL BACKFILL/);
   assert.match(workflow, /verify-d1-target\.mjs/);
