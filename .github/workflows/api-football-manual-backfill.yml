@@ -123,14 +123,13 @@ jobs:
           set -euo pipefail
           mkdir -p .tmp/manual-backfill
           node scripts/d1/render-admin-wrangler.mjs --output .tmp/manual-backfill/wrangler.toml
-          scopes="'af:season:39:2026','af:season:40:2026','af:season:61:2026','af:season:78:2026','af:season:88:2026','af:season:94:2026','af:season:135:2026','af:season:140:2026','af:season:144:2026','af:season:179:2026'"
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/manual-backfill/wrangler.toml \
-            --command "SELECT fixture.canonical_id, COUNT(*) OVER () AS total FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE season.canonical_id IN ($scopes) AND revision.lifecycle_state='published' ORDER BY fixture.canonical_id" \
+            --command "SELECT fixture.canonical_id, COUNT(*) OVER () AS total FROM fixtures fixture JOIN fixture_revisions revision ON revision.id=fixture.published_revision AND revision.fixture_id=fixture.id WHERE revision.lifecycle_state='published' ORDER BY fixture.canonical_id" \
             > .tmp/manual-backfill/published.json
           npx --yes wrangler@4 d1 execute "$D1_DATABASE_NAME" --remote --json \
             --config .tmp/manual-backfill/wrangler.toml \
-            --command "SELECT fixture.canonical_id, fixture.date_jst, COUNT(*) OVER () AS total FROM fixtures fixture JOIN competition_seasons season ON season.id=fixture.competition_season_id WHERE season.canonical_id IN ($scopes) ORDER BY fixture.canonical_id" \
+            --command "SELECT fixture.canonical_id, fixture.date_jst, COUNT(*) OVER () AS total FROM fixtures fixture ORDER BY fixture.canonical_id" \
             > .tmp/manual-backfill/stored-dates.json
           node scripts/d1/read-api-football-automation-budget.mjs \
             --out .tmp/manual-backfill/budget.json
@@ -170,7 +169,7 @@ jobs:
               --content-type application/json --remote
           fi
 
-      - name: Discover all ten seasons and plan unpublished final fixtures
+      - name: Discover configured seasons and plan unpublished final fixtures
         id: plan
         shell: bash
         run: |
