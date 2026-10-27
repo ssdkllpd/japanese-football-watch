@@ -1,0 +1,23 @@
+name: Inspect API-Football quota
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/provider-quota-20261027]
+    paths:
+      - scripts/api-football/inspect-quota.js
+      - .github/workflows/api-football-quota-inspect.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read account quota without acquiring match data
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: node scripts/api-football/inspect-quota.js
