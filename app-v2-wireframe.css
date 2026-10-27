@@ -499,7 +499,7 @@ summary:focus-visible,
 .nav-item,.rail-item { min-width:0; }
 .nav-item span,.rail-item span { font-size:12px; line-height:1.5; font-weight:850; overflow-wrap:anywhere; }
 #themeButton { font-size:11px; }
-.watch-label { display:block; font-size:11px; line-height:1.5; color:var(--muted); margin-top:3px; }
+.player-nationality { display:inline-block; font-size:12px; line-height:1.5; color:var(--muted); font-weight:normal; margin-inline-start:4px; }
 .stat-inline { flex-wrap:wrap; }
 .pitch-title { flex-wrap:wrap; gap:6px; }
 .team-stat-row { grid-template-columns:minmax(0,1fr) minmax(80px,1.2fr) minmax(0,1fr); }

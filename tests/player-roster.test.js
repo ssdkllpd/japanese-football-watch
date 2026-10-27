@@ -178,6 +178,34 @@ test('complete current roster pages and literal name searches reach players afte
  assert.equal((await get('nationality=all&q=%25')).players.length,0);
 });
 
+test('nationality options cover the complete current roster independently of page and name filters',async t=>{
+ const db=new DatabaseSync(':memory:');t.after(()=>db.close());applyMigrations(db,path.join(__dirname,'..'));
+ db.exec("INSERT INTO provider_sources(code,api_version) VALUES('api-football','v3')");
+ const {publishPlayerRoster,completePlayerRoster}=await import('../admin-worker/player-roster-ingest.mjs');
+ const {default:worker}=await import('../worker/index.mjs');
+ const env={FOOTBALL_DB:createLocalD1(db),APP_ORIGINS:'https://example.github.io'};
+ await publishPlayerRoster(env,batch('2026-10-17',[{...player('Germany'),id:999}]));
+ await completePlayerRoster(env,{runId:'2026-10-17T00:00:00.000Z',observedOn:'2026-10-17',expectedPlayers:1,expectedObservations:1,squadTeamIds:[10]});
+ const players=Array.from({length:104},(_,i)=>({...player(i===101?'France':i===102?"Côte d'Ivoire":i===103?null:'Japan'),id:i+1,name:`Player ${i+1}`}));
+ for(let i=0;i<players.length;i+=40)await publishPlayerRoster(env,batch('2026-10-18',players.slice(i,i+40)));
+ await completePlayerRoster(env,{runId:'2026-10-18T00:00:00.000Z',observedOn:'2026-10-18',expectedPlayers:104,expectedObservations:104,squadTeamIds:[10]});
+ const get=async params=>{
+  const response=await worker.fetch(new Request('https://worker.test/api/v2/players?'+new URLSearchParams(params),{headers:{origin:'https://example.github.io'}}),env);
+  assert.equal(response.status,200);return response.json();
+ };
+ const first=await get({nationality:'all',includeNationalities:'1'});
+ assert.equal(first.players.length,100);assert.equal(first.nextCursor,100);
+ assert.deepEqual(first.nationalities,["Côte d'Ivoire",'France','Japan']);
+ assert.ok(first.players.every(p=>p.nationality==='Japan'));
+ const empty=await get({nationality:'Japan',q:'not-present',includeNationalities:'1'});
+ assert.equal(empty.players.length,0);assert.deepEqual(empty.nationalities,first.nationalities);
+ const ivory=await get({nationality:"Côte d'Ivoire"});
+ assert.deepEqual(ivory.players.map(p=>p.providerId),[103]);assert.equal(ivory.nationalities,undefined);
+ const second=await get({nationality:'all',after:'100'});
+ assert.equal(second.players.at(-1).nationality,null);
+ assert.ok(!first.nationalities.includes('Germany'));
+});
+
 test('complete roster collection permits more than 1500 nationality lookups within the guarded request budget',async()=>{
  const {collectRoster}=await import('../scripts/v2/sync-player-roster.mjs');
  const leagues=[39,40,61,78,88,94,135,140,144,179];

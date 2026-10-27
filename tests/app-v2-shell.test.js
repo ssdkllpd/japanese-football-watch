@@ -9,7 +9,7 @@ test('both published entry files have the same five text-only primary destinatio
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
  assert.equal(html,fs.readFileSync(path.join(root,'app-v2.html'),'utf8'));
  const doc=new JSDOM(html).window.document;
- assert.deepEqual([...doc.querySelectorAll('.bottom-nav button')].map(el=>el.textContent),['試合','リーグ','フォロー中','日本人','その他']);
+ assert.deepEqual([...doc.querySelectorAll('.bottom-nav button')].map(el=>el.textContent),['試合','リーグ','フォロー中','選手一覧','その他']);
  assert.deepEqual([...doc.querySelectorAll('.desktop-rail [data-page]')].map(el=>el.dataset.page),['matches','leagues','following','japanese','more']);
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest'))).name,'Football Companion');
  for(const asset of doc.querySelectorAll('script[src],link[rel="stylesheet"]')) {
