@@ -36,6 +36,10 @@ on:
         required: true
         default: '12'
         type: string
+      from_date:
+        description: Optional earliest fixture date in Japan (YYYY-MM-DD)
+        required: false
+        type: string
   workflow_call:
     inputs:
       billing_mode:
@@ -54,6 +58,10 @@ on:
       batches_left:
         required: true
         type: string
+      from_date:
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -84,6 +92,7 @@ jobs:
       API_FOOTBALL_MIN_INTERVAL_MS: '300'
       API_FOOTBALL_DAILY_RESERVE: '100'
       JFW_MANUAL_DETAIL_DAILY_CAP: ${{ inputs.billing_mode == 'paid' && '120' || '20' }}
+      JFW_MANUAL_FROM_DATE: ${{ inputs.from_date }}
     steps:
       - uses: actions/checkout@v4
 
@@ -369,4 +378,5 @@ jobs:
             -f confirmation='RUN API-FOOTBALL BACKFILL' \
             -f auto_continue=true \
             -f billing_mode="$BILLING_MODE" \
+            -f from_date="$JFW_MANUAL_FROM_DATE" \
             -f batches_left="$((BATCHES_LEFT - 1))"

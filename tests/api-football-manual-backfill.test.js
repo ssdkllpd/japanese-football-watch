@@ -68,6 +68,17 @@ test('already published cup fixtures are not treated as missing', async () => {
   assert.equal(plan.alreadyPublishedCount, 1);
 });
 
+test('manual backfill start date limits final fixtures by Japan date', async () => {
+  const client = fakeClient({ 39: [fixture(10, 39, 'FT', '2026-09-20T12:00:00Z'),
+    fixture(11, 39, 'FT', '2026-09-23T16:00:00Z'), fixture(12, 39, 'FT', '2026-09-24T16:00:00Z')] });
+  const args = { policy, inventory: inventory([]), dateInventory: dateInventory({}),
+    dailyBudget: budget(), client, now, fromDate: '2026-09-24' };
+  const plan = await planManualFixtureBackfill(args);
+  assert.deepEqual(plan.detailFetches.map(item => item.fixtureId), ['af:fixture:11', 'af:fixture:12']);
+  assert.equal(plan.fromDate, '2026-09-24');
+  await assert.rejects(() => planManualFixtureBackfill({ ...args, fromDate: '2026-02-30' }), /valid YYYY-MM-DD/);
+});
+
 test('backfill publishes at most 20 per UTC day and resumes the next day', async () => {
   const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index + 1, 39));
   const args = { policy, inventory: inventory([]), dateInventory: dateInventory({}), dailyBudget: budget(),
