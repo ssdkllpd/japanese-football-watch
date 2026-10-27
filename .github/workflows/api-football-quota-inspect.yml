@@ -1,11 +1,6 @@
 name: Inspect API-Football quota
 on:
   workflow_dispatch:
-  push:
-    branches: [fix/provider-quota-20261027]
-    paths:
-      - scripts/api-football/inspect-quota.js
-      - .github/workflows/api-football-quota-inspect.yml
 permissions:
   contents: read
 jobs:

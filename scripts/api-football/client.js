@@ -34,6 +34,30 @@ class ApiFootballError extends Error {
   }
 }
 
+// Distinguish an account/key whose whole daily plan cannot run this batch
+// from a sufficient plan whose balance is temporarily exhausted. Never spend
+// discovery requests on a batch that cannot finish above the configured reserve.
+function assertQuotaCapacity(quota, { reserve, requests, label }) {
+  if (!Number.isSafeInteger(reserve) || reserve < 0
+    || !Number.isSafeInteger(requests) || requests < 1) {
+    throw new ApiFootballError('Invalid provider quota capacity requirement.');
+  }
+  const required = reserve + requests;
+  if (Number.isSafeInteger(quota?.dailyLimit) && quota.dailyLimit < required) {
+    throw new ApiFootballError(
+      `API-Football daily plan limit (${quota.dailyLimit}) cannot cover ${label} (${requests} requests) plus reserve (${reserve}). Check the active provider plan and the configured API key; no match data was requested.`,
+      { quota },
+    );
+  }
+  if (!Number.isSafeInteger(quota?.dailyRemaining) || quota.dailyRemaining < required) {
+    throw new ApiFootballError(
+      `API-Football daily reserve reached or insufficient provider quota for ${label} (${quota?.dailyRemaining ?? 'unknown'} remaining; ${required} required including reserve ${reserve}). Acquisition is paused; no match data was requested.`,
+      { quota },
+    );
+  }
+  return quota;
+}
+
 class ApiFootballClient {
   constructor({
     apiKey,
@@ -212,6 +236,7 @@ function createClientFromEnv(env = process.env, options = {}) {
 module.exports = {
   ApiFootballClient,
   ApiFootballError,
+  assertQuotaCapacity,
   DEFAULT_BASE_URL,
   createClientFromEnv,
   extractQuota,

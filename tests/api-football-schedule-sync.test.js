@@ -141,3 +141,13 @@ test('schedule relocation survives interrupted index write, retries, and a secon
       WHERE canonical_id='af:fixture:9001';`);
   assert.equal((await send(update(second, third, 'PST', 'NS'))).status, 422);
 });
+
+test('schedule discovery reports an incompatible plan before acquiring any season',async()=>{
+  const scope=policy.competitionSeasons[0];let charged=0;
+  const inventory=[{success:true,results:[{fixture_id:'af:fixture:1',competition_id:`af:competition:${scope.league}`,
+    season_id:`af:season:${scope.league}:${scope.season}`,kickoff_utc:'2026-10-27T00:00:00Z',total:1}]}];
+  await assert.rejects(()=>planScheduleSync({inventory,client:{
+    refreshDailyQuota:async()=>({dailyLimit:100,dailyRemaining:100}),get:async()=>{charged++;}
+  }}),/daily plan limit \(100\).*season discovery/);
+  assert.equal(charged,0);
+});

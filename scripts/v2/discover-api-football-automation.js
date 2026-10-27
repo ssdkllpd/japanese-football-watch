@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClientFromEnv } = require('../api-football/client');
+const { createClientFromEnv, assertQuotaCapacity } = require('../api-football/client');
 const {
   plannedDiscoveryDates,
   emptyAutomationState,
@@ -50,6 +50,8 @@ async function discoverAutomation(options) {
   const dates = plannedDiscoveryDates(policy, state, now);
   const fixturesByDate = {};
   const statusQuota = await options.client.refreshDailyQuota();
+  assertQuotaCapacity(statusQuota, { reserve: policy.limits.dailyRequestReserve,
+    requests: dates.length, label: 'fixture discovery' });
   let quota = statusQuota;
   for (const date of dates) {
     const result = await options.client.get('fixtures', { date, timezone: policy.timeZone });
