@@ -244,6 +244,61 @@ test('common and competition searches share cup aliases, country terms and kana 
  global.value='・';global.dispatchEvent(new app.w.Event('input'));
  assert.equal(app.doc.querySelector('#searchResults [data-competition-id]'),null);
 });
+test('Japanese club aliases find teams from saved standings on a cold search and preserve typed input',async t=>{
+ const competitions=[61,140].map(id=>({id:`af:competition:${id}`,name:`League ${id}`,seasons:[{id:`af:season:${id}:2026`,status:'active'}]}));
+ let release;const ready=new Promise(resolve=>release=resolve);
+ const app=await boot(t,{catalog:{competitions},request:async url=>{
+  const p=new URL(url).pathname;
+  if(!p.endsWith('/standings'))return null;
+  await ready;const league=p.includes('competition%3A61')?61:140;
+  return {ok:true,status:200,json:async()=>({competition:{id:`af:competition:${league}`},season:{id:`af:season:${league}:2026`},groups:[{table:[{team:league===61?team(91,'Monaco'):team(529,'Barcelona'),rank:1,points:3}]}]})};
+ }});
+ await app.click('#searchButton');
+ const input=app.doc.getElementById('globalSearch');input.value='もなこ';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelector('#searchResults [data-team-id="af:team:91"]'),null);
+ release();await until(()=>app.doc.querySelector('#searchResults [data-team-id="af:team:91"]'),'Monaco from saved standings');
+ assert.equal(app.doc.getElementById('globalSearch'),input);assert.equal(input.value,'もなこ');
+ for(const query of ['ばるさ','ﾊﾞﾙｻ','バルセロナ','Barça']){
+  input.value=query;input.dispatchEvent(new app.w.Event('input'));await tick();
+  assert.ok(app.doc.querySelector('#searchResults [data-team-id="af:team:529"]'),query);
+  assert.equal(app.doc.querySelector('#searchResults [data-team-id="af:team:91"]'),null);
+ }
+ const count=app.calls.filter(url=>url.endsWith('/standings')).length;
+ assert.equal(count,2);
+ await app.click('#searchBack');await app.click('#searchButton');
+ assert.equal(app.calls.filter(url=>url.endsWith('/standings')).length,count);
+ assert.ok(app.calls.every(url=>new URL(url).origin==='https://api.test'));
+});
+test('club aliases also search player clubs and do not leak to similarly named youth clubs',async t=>{
+ const app=await boot(t,{legacy:{players:[{playerId:'jp-minamino',name:'南野拓実',club:'AS Monaco'}]},feed:async()=>({fixtures:[{...fixture(),teams:{home:team(529,'Barcelona'),away:team(999,'Barcelona U19')}}]})});
+ await app.click('#searchButton');const input=app.doc.getElementById('globalSearch');
+ input.value='もなこ';input.dispatchEvent(new app.w.Event('input'));
+ assert.ok(app.doc.querySelector('#searchResults [data-player-id="jp-minamino"]'));
+ input.value='ばるさ';input.dispatchEvent(new app.w.Event('input'));
+ assert.ok(app.doc.querySelector('#searchResults [data-team-id="af:team:529"]'));
+ assert.equal(app.doc.querySelector('#searchResults [data-team-id="af:team:999"]'),null);
+});
+test('search keeps acquired clubs on partial failure and retries only after explicit action',async t=>{
+ const competitions=[61,140].map(id=>({id:`af:competition:${id}`,name:`League ${id}`,seasons:[{id:`af:season:${id}:2026`,status:'active'}]}));
+ let attempts=0;
+ const app=await boot(t,{catalog:{competitions},request:async url=>{
+  const p=new URL(url).pathname;if(!p.endsWith('/standings'))return null;
+  const league=p.includes('competition%3A61')?61:140;
+  if(league===140&&++attempts===1)return {ok:false,status:503,json:async()=>({code:'not_fetched'})};
+  return {ok:true,status:200,json:async()=>({competition:{id:`af:competition:${league}`},season:{id:`af:season:${league}:2026`},groups:[{table:[{team:league===61?team(91,'Monaco'):team(529,'Barcelona')}]}]})};
+ }});
+ await app.click('#searchButton');await until(()=>app.doc.querySelector('[data-retry-search-teams]'),'partial failure status');
+ const input=app.doc.getElementById('globalSearch');input.value='ばるさ';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelector('#searchResults [data-team-id="af:team:529"]'),null);
+ assert.equal(attempts,1);
+ input.value='もなこ';input.dispatchEvent(new app.w.Event('input'));
+ assert.ok(app.doc.querySelector('#searchResults [data-team-id="af:team:91"]'));
+ await app.click('[data-retry-search-teams]');
+ await until(()=>!app.doc.querySelector('[data-retry-search-teams]'),'retry completed');
+ input.value='ばるさ';input.dispatchEvent(new app.w.Event('input'));
+ assert.ok(app.doc.querySelector('#searchResults [data-team-id="af:team:529"]'));
+ assert.equal(attempts,2);
+});
 test('lineup switches between one team at a time with starters, bench and coach visible',async t=>{
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup'});
  assert.equal(app.doc.querySelectorAll('.lineup-card').length,1);

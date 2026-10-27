@@ -57,6 +57,7 @@
     routeError: null,
     searchQuery: '',
     searchReturnPage: 'matches',
+    searchTeams: { loading: false, attempted: false, error: false },
     route: null,
     japaneseCompetition: 'all',
     japaneseNationality: 'Japan',
@@ -1631,7 +1632,7 @@
   function renderSearch() {
     eyebrow.textContent = '共通検索';
     title.textContent = '検索';
-    main.innerHTML = `<div class="detail-top"><button id="searchBack" class="back-button" type="button">← 閉じる</button></div><label class="sr-only" for="globalSearch">大会・クラブ・選手を検索</label><input id="globalSearch" class="search-box" type="search" value="${esc(state.searchQuery)}" placeholder="大会・クラブ・選手を検索" autocomplete="off"><p class="notice">取得済みの項目を検索します。全大会・全選手の検索は準備中です。</p><div id="searchResults"></div>`;
+    main.innerHTML = `<div class="detail-top"><button id="searchBack" class="back-button" type="button">← 閉じる</button></div><label class="sr-only" for="globalSearch">大会・クラブ・選手を検索</label><input id="globalSearch" class="search-box" type="search" value="${esc(state.searchQuery)}" placeholder="大会・クラブ・選手を検索" autocomplete="off"><p class="notice">取得済みの項目と保存済み順位表のクラブを検索します。対応する日本語名・略称でも探せます。</p><div id="searchTeamStatus" role="status"></div><div id="searchResults"></div>`;
     $('searchBack').addEventListener('click', () => goBack(matchRouteHash()));
     const input = $('globalSearch');
     let composing = false;
@@ -1644,18 +1645,57 @@
     };
     input.addEventListener('compositionend', () => { composing = false; update(); });
     input.addEventListener('input', update);
+    renderSearchTeamStatus();
     renderSearchResults();
+    if (!state.searchTeams.attempted) loadSearchTeams();
+  }
+  function renderSearchTeamStatus() {
+    const status = $('searchTeamStatus');
+    if (!status) return;
+    status.innerHTML = state.searchTeams.loading ? '<p class="notice">保存済み順位表からクラブを読み込み中です。</p>'
+      : state.searchTeams.error ? '<p class="notice">一部のクラブを読み込めませんでした。読み込み済みの範囲を検索しています。<button type="button" class="plain-button" data-retry-search-teams>再試行</button></p>' : '';
+  }
+  async function loadSearchTeams() {
+    if (state.searchTeams.loading || !state.workerBase) return;
+    state.searchTeams = { loading: true, attempted: true, error: false };
+    renderSearchTeamStatus();
+    const leagues = (config.scope?.trackingLeagues || []).map(item => knownCompetitions.get(item.id)).filter(item => item?.seasonId);
+    // Read our saved standings only, in bounded batches; never query the provider.
+    for (let start = 0; start < leagues.length; start += 3) {
+      const results = await Promise.allSettled(leagues.slice(start, start + 3).map(async league => {
+        const payload = await apiFetch(`/api/v2/competitions/${encodeURIComponent(league.id)}/seasons/${encodeURIComponent(league.seasonId)}/standings`);
+        if (payload.competition?.id !== league.id || payload.season?.id !== league.seasonId || !Array.isArray(payload.groups)) throw new Error('Invalid club search standings.');
+        const rows = payload.groups.flatMap(group => {
+          if (!Array.isArray(group.table)) throw new Error('Invalid club search table.');
+          return group.table;
+        });
+        if (rows.some(row => !/^af:team:[1-9]\d*$/.test(String(row.team?.id || '')) || typeof row.team?.name !== 'string' || !row.team.name.trim())) throw new Error('Invalid club search team.');
+        for (const row of rows) {
+          knownTeams.set(row.team.id, { ...knownTeams.get(row.team.id), ...row.team });
+          knownStandings.set(row.team.id, { ...row, seasonId: league.seasonId, competitionId: league.id });
+        }
+      }));
+      if (results.some(result => result.status === 'rejected')) state.searchTeams.error = true;
+      if (router.parseHash(location.hash).kind === 'search' && $('searchResults')) renderSearchResults();
+    }
+    state.searchTeams.loading = false;
+    if (router.parseHash(location.hash).kind === 'search') renderSearchTeamStatus();
   }
   function renderSearchResults() {
     const query = state.searchQuery;
     const competitions = competitionDirectory().filter(item => data.matchesSearch(query, competitionSearchValues(item)));
-    const teams = allKnownTeams().filter(item => data.matchesSearch(query, [item.name]));
+    const teams = allKnownTeams().filter(item => data.matchesSearch(query, clubSearchValues(item.name)));
     const players = allKnownPlayers().filter(item => data.matchesSearch(query, playerSearchValues(item)));
     $('searchResults').innerHTML = query.trim() ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
     bindCompetitionRows(); bindTeamRows(); bindPlayerRows(); bindFollowButtons(); bindImageFallbacks();
   }
   function competitionSearchValues(item) {
     return [item.name, item.country, ...(configuredCup(item.id)?.aliases || [])];
+  }
+  function clubSearchValues(name) {
+    const normalized = data.normalizeSearchText(name);
+    const entry = (config.clubSearchAliases || []).find(item => item.names.some(candidate => data.normalizeSearchText(candidate) === normalized));
+    return [name, ...(entry?.names || []), ...(entry?.aliases || [])];
   }
   function playerSearchValues(item) {
     const id = item.playerId || item.jfwPlayerId || item.id;
@@ -1664,7 +1704,7 @@
     const savedNames = providerId ? window.JFWPlayerNameData?.players?.[`af:player:${providerId}`] || [] : [];
     const localNames = providerId ? Object.entries(window.JFWTrackedProviderIds || {})
       .filter(([, candidate]) => candidate === providerId).map(([name]) => name) : [];
-    return [item.name, displayPlayerName(item), item.providerName, item.club, item.league, ...savedNames, ...localNames];
+    return [item.name, displayPlayerName(item), item.providerName, ...String(item.club || '').split(' / ').flatMap(clubSearchValues), item.league, ...savedNames, ...localNames];
   }
   function allKnownPlayers() {
     const players = new Map(knownPlayers);
@@ -2072,6 +2112,7 @@
   document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.page)));
   searchButton.innerHTML = icon('search');
   main.addEventListener('click', event => {
+    if (event.target.closest('[data-retry-search-teams]')) loadSearchTeams();
     if (event.target.closest('[data-retry]')) { if (router.parseHash(location.hash).kind === 'japanese' && config.attentionEnabled) loadAttention(currentProductSeason()); else applyCurrentRoute(); }
     if (event.target.closest('[data-open-search]')) searchButton.click();
   });
