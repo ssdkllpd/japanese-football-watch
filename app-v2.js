@@ -1114,8 +1114,7 @@
   }
 
   function leagueDirectorySections(leagues, query) {
-    const q = String(query || '').trim().toLowerCase();
-    const filtered = leagues.filter(item => !q || [item.name,item.country,...(configuredCup(item.id)?.aliases || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+    const filtered = leagues.filter(item => data.matchesSearch(query, competitionSearchValues(item)));
     const followed = filtered.filter(isCompetitionFollowing);
     const all = filtered.filter(item => !isCompetitionFollowing(item));
     if (!filtered.length) return '<div class="empty-state"><strong>該当する大会なし</strong>検索条件を変えてください。</div>';
@@ -1648,12 +1647,24 @@
     renderSearchResults();
   }
   function renderSearchResults() {
-    const query = state.searchQuery.trim().toLowerCase();
-    const competitions = competitionDirectory().filter(item => item.name.toLowerCase().includes(query));
-    const teams = allKnownTeams().filter(item => String(item.name).toLowerCase().includes(query));
-    const players = allKnownPlayers().filter(item => `${item.name} ${displayPlayerName(item)} ${item.club || ''} ${item.league || ''}`.toLowerCase().includes(query));
-    $('searchResults').innerHTML = query ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
+    const query = state.searchQuery;
+    const competitions = competitionDirectory().filter(item => data.matchesSearch(query, competitionSearchValues(item)));
+    const teams = allKnownTeams().filter(item => data.matchesSearch(query, [item.name]));
+    const players = allKnownPlayers().filter(item => data.matchesSearch(query, playerSearchValues(item)));
+    $('searchResults').innerHTML = query.trim() ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
     bindCompetitionRows(); bindTeamRows(); bindPlayerRows(); bindFollowButtons(); bindImageFallbacks();
+  }
+  function competitionSearchValues(item) {
+    return [item.name, item.country, ...(configuredCup(item.id)?.aliases || [])];
+  }
+  function playerSearchValues(item) {
+    const id = item.playerId || item.jfwPlayerId || item.id;
+    const providerId = /^af:player:[1-9]\d*$/.test(String(id || '')) ? Number(id.split(':').at(-1))
+      : item.providerId || window.JFWTrackedProviderIds?.[item.name];
+    const savedNames = providerId ? window.JFWPlayerNameData?.players?.[`af:player:${providerId}`] || [] : [];
+    const localNames = providerId ? Object.entries(window.JFWTrackedProviderIds || {})
+      .filter(([, candidate]) => candidate === providerId).map(([name]) => name) : [];
+    return [item.name, displayPlayerName(item), item.providerName, item.club, item.league, ...savedNames, ...localNames];
   }
   function allKnownPlayers() {
     const players = new Map(knownPlayers);
