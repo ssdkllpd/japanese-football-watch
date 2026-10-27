@@ -506,21 +506,22 @@ test('follow toggles store IDs only and do not request the fixture again',async 
  assert.deepEqual(JSON.parse(app.w.localStorage.getItem('football-v2-follows')).teams,['af:team:1']);
 });
 
-test('JFW mode opens and closes an eligible rating breakdown in its URL',async t=>{
+test('JFW breakdown opens for both tracked and untracked players and closes in its URL',async t=>{
  const legacy={trackingPeriods:[{playerId:'af:player:1',teamId:'af:team:1',competitionId:'af:competition:39',tracked:true,from:'2026-08-01T00:00:00Z',to:null}]};
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings',legacy});
  await app.click('[data-rating-mode="jfw"]');
  assert.match(app.w.location.hash,/ratingMode=jfw/);
- assert.ok(app.doc.querySelector('[data-rating-player="af:player:2"] [data-presence="not_applicable"]'));
+ assert.equal(app.doc.querySelector('[data-rating-player="af:player:2"]').disabled,false);
+ await app.click('[data-rating-player="af:player:2"]');assert.ok(app.doc.querySelector('.rating-breakdown'));
  await app.click('[data-rating-player="af:player:1"]');assert.match(app.w.location.hash,/player=af%3Aplayer%3A1/);assert.ok(app.doc.querySelector('.rating-breakdown'));
  await app.click('[data-close-rating]');assert.doesNotMatch(app.w.location.hash,/player=/);assert.equal(app.doc.querySelector('.rating-breakdown'),null);
 });
-test('J1 never shows a supplied JFW score and unknown tracking stays unfetched',async t=>{
- const detail=bundle();detail.fixture.competitionId='af:competition:98';
+test('JFW evaluates acquired statistics independently of attention competition scope',async t=>{
+ const detail=bundle();detail.fixture.competitionId='af:competition:98';detail.fixture.score.goals={home:0,away:0};
+ for(const row of detail.playerStats)Object.assign(row.values,{minutes:90,goals:0,assists:0,yellowCards:0,redCards:0,penaltiesConceded:0});
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
- assert.equal(app.doc.querySelectorAll('.rating-row b [data-presence="not_applicable"]').length,2);
- const unknown=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw'});
- assert.equal(unknown.doc.querySelectorAll('.rating-row b [data-presence="not_fetched"]').length,2);
+ assert.deepEqual([...app.doc.querySelectorAll('.rating-row b')].map(el=>el.textContent),['6.0','6.0']);
+ assert.equal(app.doc.querySelectorAll('.rating-row [data-presence="not_applicable"]').length,0);
 });
 test('missing formation draws no overlapping players but keeps textual players and coach',async t=>{
  const detail=bundle();detail.lineups.forEach(l=>l.layoutConfidence='none');
@@ -1292,7 +1293,22 @@ test('fresh JFW mode explains the missing required inputs without inventing a ra
  const detail=bundle();for(const row of detail.playerStats)delete row.jfwRating;
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
  assert.match(app.text(),/独自評価は未算出/);assert.match(app.text(),/オウンゴール・退場区分/);
- assert.equal(app.doc.querySelectorAll('.rating-row b [data-presence="not_fetched"]').length,2);
+ assert.equal(app.doc.querySelectorAll('.rating-row b [data-presence="provider_missing"]').length,2);
+ assert.deepEqual([...app.doc.querySelectorAll('.rating-row b')].map(el=>el.textContent),['未算出','未算出']);
+});
+
+test('French, Japanese and unknown-nationality players receive the same JFW score without tracking metadata',async t=>{
+ const detail=bundle();detail.fixture.score.goals={home:0,away:0};
+ detail.playerStats.push({playerId:'af:player:3',teamId:home.id,playerName:'Unknown Nationality',position:'F',values:{rating:9}});
+ detail.playerStats[0].nationality='France';detail.playerStats[1].nationality='Japan';
+ for(const row of detail.playerStats)Object.assign(row.values,{minutes:90,goals:0,assists:0,yellowCards:0,redCards:0,penaltiesConceded:0});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',legacy:{trackingPeriods:[]},detail});
+ const ratings=()=>[...app.doc.querySelectorAll('.rating-row b')].map(el=>el.textContent);
+ assert.deepEqual(ratings(),['6.0','6.0','6.0']);
+ for(const id of ['af:player:1','af:player:2','af:player:3']){
+  await app.click(`[data-rating-player="${id}"]`);assert.match(app.doc.querySelector('.rating-breakdown').textContent,/JFW 評価6\.0/);
+ }
+ await app.click('[data-rating-mode="provider"]');assert.deepEqual(ratings(),['7','9','8']);
 });
 
 test('saved match statistics produce a JFW rating and Japanese factor breakdown without extra fixture fetches',async t=>{

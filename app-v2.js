@@ -1012,37 +1012,23 @@
     return `<div class="lineup-person"><span class="lineup-portrait">${personAvatar(player)}${renderPitchContributions(player, teamId, bundle)}</span><span class="shirt-number">${esc(player.number ?? '—')}</span><div><strong>${player.id ? `<button class="lineup-team-link" data-player-id="${esc(player.id)}" type="button">${esc(displayPlayerName(player) || '選手')}</button>` : esc(displayPlayerName(player) || '選手')}</strong><span>${esc(player.position || '')} ${nationality ? esc(nationality) : ''} · 出場 ${valueCell(stats?.values?.minutes)}分</span></div>${substitution ? `<b class="substitution ${role === 'starter' ? 'is-out' : 'is-in'}">${esc(substitution)}</b>` : ''}</div>`;
   }
 
-  function jfwEligibility(row, bundle) {
-    const fixture = bundle.fixture || {};
-    if (!config.scope?.attentionEligibleCompetitions?.includes(fixture.competitionId)) return false;
-    const periods = state.legacy?.trackingPeriods;
-    if (Array.isArray(periods)) return periods.some(period => period.playerId === row.playerId
-      && period.teamId === row.teamId && data.trackedFixture(fixture, [period], config.scope));
-    // Match statistics establish the team at kickoff. Current club membership
-    // is not projected backwards to invent a historical tracking period.
-    const providerId = Number(String(row.playerId || '').split(':').at(-1));
-    const reviewed = /^af:player:[1-9]\d*$/.test(row.playerId || '')
-      && Object.values(window.JFWTrackedProviderIds || {}).includes(providerId);
-    const nationality = row.nationality || knownPlayers.get(row.playerId)?.nationality;
-    if (reviewed || nationality === 'Japan') return [fixture.teams?.home?.id,fixture.teams?.away?.id].includes(row.teamId);
-    return nationality ? false : null;
-  }
-
   function renderPlayerRatings(bundle) {
-    const rows = (Array.isArray(bundle.playerStats) ? bundle.playerStats : []).map(row => {
-      const tracked = jfwEligibility(row, bundle) === true;
-      return tracked && window.JFWFixtureRating ? { ...row, jfwRating: window.JFWFixtureRating.calculate(row, bundle) } : row;
-    });
+    const rows = (Array.isArray(bundle.playerStats) ? bundle.playerStats : []).map(row =>
+      window.JFWFixtureRating ? { ...row, jfwRating: window.JFWFixtureRating.calculate(row, bundle) } : row);
     if (data.section(bundle,'playerStats') !== 'present' || !rows.length) return emptySection(bundle,'playerStats');
     const modeLabel = state.ratingMode === 'jfw' ? 'JFW 独自評価' : 'API-Football 評価';
     const teams = [bundle.fixture?.teams?.home, bundle.fixture?.teams?.away].filter(Boolean);
     const renderRow = (row, index) => {
       const playerId = row.playerId || row.id;
       const lineupPlayer = (bundle.lineups || []).flatMap(l => [...(l.startXI || []), ...(l.substitutes || [])]).find(p => p.id === playerId);
-      const eligible = jfwEligibility(row, bundle);
-      const jfwState = eligible === false ? 'not_applicable' : eligible === null ? 'not_fetched' : row.jfwRating?.presence;
+      const jfwState = row.jfwRating?.presence;
       const jfwValue = typeof row.jfwRating === 'number' ? row.jfwRating : row.jfwRating?.value;
-      const value = state.ratingMode === 'jfw' ? valueCell(jfwValue, jfwState) : valueCell(row.values?.rating, row.fieldStates?.rating);
+      const jfwDisplay = typeof jfwValue === 'number' && Number.isFinite(jfwValue) ? jfwValue.toFixed(1) : jfwValue;
+      const value = state.ratingMode === 'jfw'
+        ? jfwValue == null && jfwState === 'provider_missing'
+          ? '<span class="presence presence-provider_missing" data-presence="provider_missing">未算出</span>'
+          : valueCell(jfwDisplay, jfwState)
+        : valueCell(row.values?.rating, row.fieldStates?.rating);
       const actionable = state.ratingMode === 'jfw' && playerId && !['not_applicable','not_fetched'].includes(jfwState) && row.jfwRating?.factors;
       const ratingRow = `<button class="rating-row" data-rating-player="${esc(playerId || '')}" type="button"${actionable ? '' : ' disabled'}>${personAvatar({ playerId, name: row.playerName, photo: row.playerPhoto })}<span><strong>${esc(displayPlayerName({playerId:row.playerId || row.id,name:row.playerName}) || '選手')}</strong><small>${esc(lineupPlayer?.number ?? '')} · ${esc(row.position || lineupPlayer?.position || '')} ${esc(row.nationality || lineupPlayer?.nationality || knownPlayers.get(playerId)?.nationality || '')} · 出場 ${valueCell(row.values?.minutes)}分</small></span><b>${value}</b></button>`;
       const expanded = Boolean(playerId && state.detail.statsPlayerId === playerId);
