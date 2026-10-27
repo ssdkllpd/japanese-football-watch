@@ -7,6 +7,12 @@ export const LIMITS = Object.freeze({ reserve:1200, dailyRequests:4000, dailyRow
 const API='https://v3.football.api-sports.io';
 const scalar = n => n===null || n==='' ? null : (/^\d+$/.test(String(n)) ? Number(n) : null);
 const chunks = rows => Array.from({length:Math.ceil(rows.length/20)},(_,i)=>rows.slice(i*20,i*20+20));
+// A renewed plan can increase quota during the same UTC day. Keep recent
+// reserve decisions local, then admit a status-only check before any data call.
+export function cachedQuotaReserved(budget,now) {
+  return !!budget && budget.remaining!==null && budget.remaining<=LIMITS.reserve+LIMITS.perTickRequests
+    && Number.isFinite(budget.checked_ms) && now-budget.checked_ms<15*MINUTE;
+}
 async function all(db,sql,...params) {
   const result=await db.prepare(sql).bind(...params).all();
   if(result.success===false || !Array.isArray(result.results)) throw new Error('live_database_read_failed');
@@ -23,7 +29,7 @@ export async function providerSession(env, now, request=fetch) {
   await db.prepare('INSERT OR IGNORE INTO live_budget(utc_day) VALUES(?)').bind(day).run();
   const budget=(await all(db,'SELECT * FROM live_budget WHERE utc_day=?',day))[0];
   if (budget.rows_written>=LIMITS.dailyRows-10000) throw new Error('live_write_budget');
-  if (budget.remaining!==null && budget.remaining<=LIMITS.reserve+LIMITS.perTickRequests) throw new Error('quota_reserved');
+  if (cachedQuotaReserved(budget,now)) throw new Error('quota_reserved');
   if(budget.requests>=LIMITS.dailyRequests) throw new Error('live_request_budget');
   if(!env.API_FOOTBALL_KEY) throw new Error('live_configuration_missing');
   let remaining=null, calls=0, minuteRemaining=null;

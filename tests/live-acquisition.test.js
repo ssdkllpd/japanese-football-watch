@@ -58,6 +58,44 @@ test('local live-request ceiling is atomic and independent of reported daily pro
   assert.equal(wire.calls.length,0);
 });
 
+test('expired low quota rechecks status but still blocks data until the provider recovers',async t=>{
+  const {providerSession}=await import('../live-worker/index.mjs');
+  const {db,LIVE_DB}=database(t),low=provider({remaining:100}),recovered=provider({remaining:7500});
+  const env={LIVE_DB,API_FOOTBALL_KEY:'test-provider-secret'};
+  await providerSession(env,now,low.request);
+  await assert.rejects(providerSession(env,now+15*60000-1,low.request),/quota_reserved/);
+  const paused=await providerSession(env,now+15*60000,low.request);
+  await assert.rejects(paused.read('/fixtures',{live:'all'}),/quota_reserved/);
+  assert.equal(low.calls.length,2);
+  assert.ok(low.calls.every(url=>new URL(url).pathname==='/status'));
+  const session=await providerSession(env,now+30*60000,recovered.request);
+  await session.read('/fixtures',{live:'all'});
+  assert.deepEqual(recovered.calls.map(url=>new URL(url).pathname),['/status','/fixtures']);
+  assert.equal(db.prepare('SELECT remaining FROM live_budget').get().remaining,7500);
+});
+
+test('live dispatcher resumes a renewed plan on the same day without a Worker provider key',async t=>{
+  const {dispatchLiveTick}=await import('../live-worker/dispatch.mjs');
+  const {scheduledTick}=await import('../live-worker/index.mjs');
+  const {db,LIVE_DB}=database(t),wire=provider({remaining:7500});
+  db.prepare('INSERT INTO live_budget(utc_day,remaining,checked_ms) VALUES(?,?,?)').run('2026-10-16',100,now);
+  const env={LIVE_DB,FOOTBALL_DB:{prepare(){return {bind(){return {async all(){return {success:true,results:[]};}};}};}},
+    LIVE_ACQUISITION_ENABLED:'true',LIVE_COMPETITION_IDS:'39',WORKFLOW_DISPATCH_TOKEN:'test-dispatch'};
+  const calls=[];
+  const github=async(url,init)=>{calls.push({url,init});return init.method==='POST'?new Response(null,{status:204}):Response.json({workflow_runs:[]});};
+  const paused=await dispatchLiveTick({scheduledTime:now+60000},env,github,now+60000);
+  assert.equal(paused.status,'quota_reserved');assert.equal(calls.length,0);
+  const stamp=now+15*60000;
+  const dispatched=await dispatchLiveTick({scheduledTime:stamp},env,github,stamp);
+  assert.equal(dispatched.status,'accepted');assert.equal(calls.length,2);
+  assert.equal(JSON.parse(calls[1].init.body).inputs.scheduled_slot,new Date(stamp).toISOString());
+  const acquired=await scheduledTick({scheduledTime:stamp},{...env,API_FOOTBALL_KEY:'test-provider-secret'},wire.request,stamp);
+  assert.equal(acquired.status,'idle');
+  assert.equal(db.prepare('SELECT last_success_ms FROM live_control').get().last_success_ms,stamp);
+  assert.equal(db.prepare('SELECT remaining FROM live_budget').get().remaining,7500);
+  assert.ok(wire.calls.some(url=>new URL(url).pathname==='/fixtures'));
+});
+
 test('UTC reset uses a new budget and re-reads provider quota',async t=>{
   const {providerSession}=await import('../live-worker/index.mjs');
   const {db,LIVE_DB}=database(t),wire=provider();
