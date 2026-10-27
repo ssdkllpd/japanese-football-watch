@@ -195,6 +195,9 @@
   },
   "jfwRatingPolicy": {
     "name": "JFW Rating",
+    "evaluationScope": "all_acquired_match_players",
+    "requiresNationality": false,
+    "requiresJapaneseTrackingPeriod": false,
     "ratingVersion": "1.0",
     "opsVersion": "ops-v1.0",
     "engine": "jfw-rating.js",

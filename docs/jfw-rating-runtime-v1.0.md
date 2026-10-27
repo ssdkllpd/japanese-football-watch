@@ -9,13 +9,11 @@ source statistics, and does not write ratings to D1/R2. This allows already
 stored matches to be evaluated without refetching them. Persisting generated
 ratings and adding season aggregates remain separate work.
 
-Eligibility requires an allowed competition and a verified Japanese-player
-identity. Explicit tracking periods, when present, take precedence. When they
-are absent, reviewed provider IDs or provider nationality identify Japanese
-players, and the actual match-statistics row establishes the team for that
-match. Current club membership is never used to invent a historical period.
-Unknown identity remains unfetched; other nationalities and excluded
-competitions remain not applicable.
+Every player in the acquired match-statistics rows is evaluated, regardless of
+nationality, Japanese-player tracking periods or attention-ranking eligibility.
+Missing nationality does not block a rating. Existing final-match, position
+and required-statistics checks still apply, with missing inputs explained in
+the breakdown. This does not change which fixtures the acquisition jobs fetch.
 
 The rating screen shows the v1.0 purpose, score, position, data coverage,
 confidence, raw performance contributions, coverage/minute coefficients,
