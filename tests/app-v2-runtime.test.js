@@ -215,6 +215,35 @@ test('search preserves its input node during typing and composition',async t=>{
  input.dispatchEvent(new app.w.CompositionEvent('compositionstart')); input.value='日本';input.dispatchEvent(new app.w.Event('input',{bubbles:true}));
  assert.equal(app.doc.getElementById('globalSearch'),input);
 });
+test('common search finds saved full names and verified Japanese aliases without extra requests',async t=>{
+ const app=await boot(t,{legacy:{players:[
+  {playerId:'af:player:16',name:'M. Götze',club:'Frankfurt'},
+  {playerId:'af:player:106835',name:'K. Mitoma',club:'Brighton'},
+ ]}});
+ await app.click('#searchButton');
+ const input=app.doc.getElementById('globalSearch'),calls=app.calls.length;
+ for(const [query,id] of [['ＧＯＴＺＥ　ＭＡＲＩＯ','af:player:16'],['三笘 薫','af:player:106835'],['mitoma brighton','af:player:106835']]){
+  input.value=query;input.dispatchEvent(new app.w.Event('input',{bubbles:true}));await tick();
+  assert.equal(app.doc.getElementById('globalSearch'),input);
+  assert.ok(app.doc.querySelector(`#searchResults [data-player-id="${id}"]`),query);
+ }
+ input.value='unrelated';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelector('#searchResults [data-player-id]'),null);
+ assert.equal(app.calls.length,calls);
+});
+test('common and competition searches share cup aliases, country terms and kana normalization',async t=>{
+ const cup={id:'af:competition:48',name:'League Cup',country:'England',seasons:[]};
+ const app=await boot(t,{hash:'#/competitions',catalog:{competitions:[cup]},feed:async()=>({fixtures:[]})});
+ const input=app.doc.getElementById('leagueSearch');
+ input.value='ｶﾗﾊﾞｵ';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelectorAll('#leagueDirectory [data-competition-id]').length,1);
+ await app.click('#searchButton');
+ const global=app.doc.getElementById('globalSearch');
+ global.value='からばお ＥＮＧＬＡＮＤ';global.dispatchEvent(new app.w.Event('input'));
+ assert.ok(app.doc.querySelector('#searchResults [data-competition-id="af:competition:48"]'));
+ global.value='・';global.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelector('#searchResults [data-competition-id]'),null);
+});
 test('lineup switches between one team at a time with starters, bench and coach visible',async t=>{
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=lineup'});
  assert.equal(app.doc.querySelectorAll('.lineup-card').length,1);

@@ -4,6 +4,26 @@ const data=require('../app-v2-data.js');
 const scope=require('../config/competition-scope-v1.json');
 const {buildConfig}=require('../scripts/v2/build-ui-config.js');
 const vm=require('node:vm');
+test('search accepts width, kana, Latin accents and separators while retaining Japanese voicing',()=>{
+ for(const [query,fields] of [
+  ['ＭＡＲＩＯ　ＧＯＴＺＥ',['Mario Götze']],
+  ['三笘 薫',['三笘薫']],
+  ['ｶﾗﾊﾞｵ',['カラバオカップ']],
+  ['からばお',['カラバオカップ']],
+  ['キリアンエムバペ',['キリアン・エムバペ']],
+  ['Jean Pierre',['Jean-Pierre']],
+  ['mitoma brighton',['K. Mitoma','Brighton']],
+  ['Götze Mario',['Mario Götze']],
+ ]) assert.equal(data.matchesSearch(query,fields),true,query);
+ assert.equal(data.matchesSearch('は',['バ']),false);
+ assert.equal(data.matchesSearch('ガ',['カ']),false);
+ assert.equal(data.matchesSearch('missing',[null,undefined]),false);
+ assert.equal(data.matchesSearch('null',[null]),false);
+ assert.equal(data.matchesSearch('club absent',['Club']),false);
+ assert.equal(data.matchesSearch('homeaway',['Home','Away']),false);
+ assert.equal(data.matchesSearch('・',['Anything']),false);
+ assert.equal(data.matchesSearch('　 ',['Anything']),true);
+});
 test('tracking uses canonical team IDs and the fixture date inside an explicit tracked period',()=>{
  const f={competitionId:'af:competition:39',kickoffUtc:'2026-09-01T12:00:00Z',teams:{home:{id:'af:team:1',name:'English Name'},away:{id:'af:team:2'}}};
  const periods=[{playerId:'af:player:1',teamId:'af:team:1',competitionId:'af:competition:39',from:'2026-08-01T00:00:00Z',to:'2026-09-02T00:00:00Z',tracked:true}];

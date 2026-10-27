@@ -4,6 +4,24 @@
   if (root) root.FootballV2Data = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   'use strict';
+  function normalizeSearchText(value) {
+    return String(value ?? '').normalize('NFKC').toLowerCase()
+      .replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60))
+      .normalize('NFD')
+      // Fold Latin accents without removing Japanese voiced-sound marks.
+      .replace(/\p{Script=Latin}\p{M}+/gu, char => char.replace(/\p{M}/gu, ''))
+      .normalize('NFC').replace(/[\s.\p{Pd}'’ʼ・·]/gu, '');
+  }
+  function searchTokens(query) {
+    return String(query ?? '').normalize('NFKC').trim().split(/\s+/u)
+      .map(normalizeSearchText).filter(Boolean);
+  }
+  function matchesSearch(query, values) {
+    const tokens = searchTokens(query);
+    if (!tokens.length) return !String(query ?? '').trim();
+    const fields = values.filter(value => value !== null && value !== undefined).map(normalizeSearchText);
+    return tokens.every(token => fields.some(field => field.includes(token)));
+  }
   function presence(value, state) {
     const explicit = typeof state === 'string' ? state : state?.presence;
     if (explicit && explicit !== 'present') return explicit;
@@ -83,5 +101,5 @@
       }
     }
   }
-  return { presence, section, trackedFixture, goalStatEvidence, rankCandidates, loadAttention };
+  return { normalizeSearchText, searchTokens, matchesSearch, presence, section, trackedFixture, goalStatEvidence, rankCandidates, loadAttention };
 });
