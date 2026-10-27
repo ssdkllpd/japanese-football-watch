@@ -160,6 +160,34 @@ function shell(script, directory, env = {}) {
   });
 }
 
+test('actual live deployment check accepts guarded acquisition pauses but rejects broken reads and stale data', async t => {
+  const script = deploymentStep('Verify public live stored-data contract');
+  const fresh = { contractVersion:'2.0.0', liveUpdatesEnabled:true, stale:false, fixtures:[] };
+  for (const [name, body, source, enabled, expected] of [
+    ['fresh live data', fresh, 'd1-live', true, 0],
+    ...['quota_reserved','live_request_budget','live_write_budget','disabled'].map(reason =>
+      [reason,{...fresh,liveUpdatesEnabled:false,reason},'d1-live',true,0]),
+    ['paused public reads',{contractVersion:'2.0.0',liveUpdatesEnabled:false,reason:'temporarily_paused',fixtures:[]},'live-paused',false,0],
+    ['stale quota pause',{...fresh,liveUpdatesEnabled:false,stale:true,reason:'quota_reserved'},'d1-live',true,1],
+    ['unavailable live DB',{...fresh,liveUpdatesEnabled:false,stale:true,reason:'acquisition_unavailable'},'d1-live-unavailable',true,1],
+    ['wrong source',fresh,'d1-live-unavailable',true,1],
+    ['unknown pause',{...fresh,liveUpdatesEnabled:false,reason:'unknown'},'d1-live',true,1],
+    ['invalid fixtures',{...fresh,fixtures:{}},'d1-live',true,1],
+    ['wrong contract',{...fresh,contractVersion:'invalid'},'d1-live',true,1],
+  ]) await t.test(name, () => {
+    const directory=fs.mkdtempSync(path.join(os.tmpdir(),'jfw-deploy-live-'));
+    try {
+      fs.mkdirSync(path.join(directory,'config'));
+      fs.mkdirSync(path.join(directory,'.tmp/public-worker/evidence'),{recursive:true});
+      fs.writeFileSync(path.join(directory,'config/public-worker-target.json'),JSON.stringify({workerOrigin:'https://offline.test',appOrigin:'https://example.github.io',liveReadEnabled:enabled}));
+      fs.writeFileSync(path.join(directory,'curl'),`#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2);fs.writeFileSync(args[args.indexOf('--output')+1],process.env.LIVE_TEST_BODY);fs.writeFileSync(args[args.indexOf('--dump-header')+1],'x-jfw-data-source: '+process.env.LIVE_TEST_SOURCE+'\\r\\n');\n`,{mode:0o755});
+      fs.writeFileSync(path.join(directory,'sleep'),'#!/bin/sh\nexit 0\n',{mode:0o755});
+      const result=shell(script,directory,{PATH:`${directory}:${process.env.PATH}`,LIVE_TEST_BODY:JSON.stringify(body),LIVE_TEST_SOURCE:source});
+      assert.equal(result.status,expected,`${result.stdout}\n${result.stderr}`);
+    } finally {fs.rmSync(directory,{recursive:true,force:true});}
+  });
+});
+
 test('public deployment requires successful same-commit migration and Admin deployment after preflight', () => {
   const provision = workflow.split('\n  provision:\n')[1].split('\n  deploy:\n')[0];
   const deploy = workflow.split('\n  deploy:\n')[1];
