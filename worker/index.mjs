@@ -1006,6 +1006,13 @@ WHERE (?1 = 'all' OR player.nationality = ?1)
       AND (?4 = '' OR club.canonical_id=?4))
 ORDER BY player.provider_id LIMIT 101`;
 const PLAYER_PROFILE_SQL = `${PLAYER_PROFILE_COLUMNS_SQL} WHERE player.canonical_id = ?1 LIMIT 1`;
+const PLAYER_NATIONALITIES_SQL = `SELECT DISTINCT player.nationality
+FROM players player
+WHERE player.nationality IS NOT NULL AND TRIM(player.nationality) <> ''
+  AND EXISTS (SELECT 1 FROM player_roster_observations membership
+    WHERE membership.player_id=player.id AND membership.source='team_squad'
+      AND membership.run_id=${ACTIVE_ROSTER_RUN_SQL})
+ORDER BY player.nationality`;
 
 function playerProfile(row) {
   return { id: row.id, providerId: row.provider_id, name: row.name,
@@ -1020,8 +1027,10 @@ async function playerDirectoryResponse(env, url) {
   const cursor = Number(url.searchParams.get('after') || 0);
   const query = (url.searchParams.get('q') || '').trim();
   const teamId = url.searchParams.get('team') || '';
-  if ((nationality !== 'all' && !/^[A-Za-z][A-Za-z .'-]{0,49}$/.test(nationality))
+  const includeNationalities = url.searchParams.get('includeNationalities');
+  if ((nationality !== 'all' && !/^[\p{L}\p{M}][\p{L}\p{M} .’'()/-]{0,79}$/u.test(nationality))
     || !Number.isSafeInteger(cursor) || cursor < 0 || query.length > 80
+    || (includeNationalities !== null && includeNationalities !== '1')
     || (teamId && !/^af:team:\d+$/.test(teamId))) {
     return json({ error: 'Invalid player directory filter' }, 400);
   }
@@ -1029,7 +1038,10 @@ async function playerDirectoryResponse(env, url) {
   if (!active) return json({ error: 'Player roster has not been initialized' }, 503);
   const rows = await d1Rows(env, PLAYER_DIRECTORY_SQL, nationality, cursor, query, teamId);
   const page = rows.slice(0, 100).map(playerProfile);
+  const nationalities = includeNationalities === '1'
+    ? (await d1Rows(env, PLAYER_NATIONALITIES_SQL)).map(row => row.nationality) : undefined;
   return withHeader(json({ contractVersion: '2.0.0', nationality, players: page,
+    ...(nationalities ? { nationalities } : {}),
     nextCursor: rows.length > 100 ? page.at(-1).providerId : null,
   }, 200, { 'cache-control': 'public, max-age=120' }), 'x-jfw-data-source', 'd1');
 }

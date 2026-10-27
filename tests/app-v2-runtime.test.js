@@ -569,6 +569,60 @@ test('Japanese list and tracked profile refresh from published stats while an un
  assert.match(app.text(),/海外日本人追跡/);
  assert.doesNotMatch(section(app,'直近試合').textContent,/以前の試合/);
 });
+test('player directory starts with all nationalities, labels countries and retains complete filter options across pages',async t=>{
+ const profiles=[{id:'af:player:11',providerId:11,name:'Japanese Player',nationality:'Japan'},
+  {id:'af:player:12',providerId:12,name:'国籍不明の選手',nationality:null},
+  {id:'af:player:21',providerId:21,name:'French Player',nationality:'France'}];
+ const app=await boot(t,{hash:'#/japanese',request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players')return null;
+  const country=u.searchParams.get('nationality'),after=u.searchParams.get('after');
+  const body={players:country==='all'?(after?[profiles[2]]:profiles.slice(0,2)):profiles.filter(p=>p.nationality===country),
+   nextCursor:country==='all'&&!after?12:null,nationalities:['France','Japan']};
+  return {ok:true,status:200,json:async()=>body};
+ }});
+ await until(()=>app.doc.querySelector('#japaneseList [data-player-id="af:player:12"]'),'all nationalities');
+ assert.equal(app.doc.getElementById('pageTitle').textContent,'選手一覧');
+ assert.equal(app.doc.getElementById('japaneseNationality').value,'all');
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:11"] .player-nationality').textContent,'日本');
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:12"] .player-nationality').textContent,'国籍未取得');
+ assert.ok(app.doc.querySelector('#japaneseNationality option[value="France"]'),'country not on the first page');
+ await app.click('#playerDirectoryMore');
+ assert.ok(app.doc.querySelector('#japaneseList [data-player-id="af:player:11"]'));
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:21"] .player-nationality').textContent,'フランス');
+ const select=app.doc.getElementById('japaneseNationality');select.value='France';select.dispatchEvent(new app.w.Event('change'));
+ await until(()=>app.doc.querySelector('[data-player-id="af:player:21"]'),'France filter');
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:11"]'),null);
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:12"]'),null);
+ assert.ok(app.doc.querySelector('#japaneseNationality option[value="Japan"]'));
+ const first=new URL(app.calls.find(url=>new URL(url).pathname==='/api/v2/players'));
+ assert.equal(first.searchParams.get('nationality'),'all');assert.equal(first.searchParams.get('includeNationalities'),'1');
+});
+
+test('an older nationality response cannot replace the currently selected country',async t=>{
+ let release;const pending=new Promise(resolve=>release=resolve);
+ const app=await boot(t,{hash:'#/japanese',request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players')return null;
+  const country=u.searchParams.get('nationality');if(country==='France')await pending;
+  return {ok:true,status:200,json:async()=>({players:[{id:country==='France'?'af:player:21':'af:player:11',providerId:country==='France'?21:11,name:country,nationality:country==='France'?'France':'Japan'}],nextCursor:null,nationalities:['Japan','France']})};
+ }});
+ await until(()=>app.doc.querySelector('#japaneseNationality option[value="France"]'),'nationality options');
+ let select=app.doc.getElementById('japaneseNationality');select.value='France';select.dispatchEvent(new app.w.Event('change'));
+ select=app.doc.getElementById('japaneseNationality');select.value='Japan';select.dispatchEvent(new app.w.Event('change'));
+ await until(()=>app.doc.querySelector('[data-player-id="af:player:11"]'),'Japanese filter');release();await tick();
+ assert.equal(app.doc.getElementById('japaneseNationality').value,'Japan');
+ assert.equal(app.doc.querySelector('[data-player-id="af:player:21"]'),null);
+});
+
+test('watch destinations are absent from match lists and detail while attention scores remain',async t=>{
+ const row={...fixture(),watch:{label:'Sample service'},attention:{presence:'present',displayedScore:'12.00'}};
+ const detail={...bundle(),fixture:row};
+ const app=await boot(t,{detail,feed:async()=>({fixtures:[row]})});
+ assert.doesNotMatch(app.text(),/配信:|Sample service/);assert.equal(app.doc.querySelector('.watch-label'),null);
+ await app.click('[data-fixture]');
+ assert.doesNotMatch(app.text(),/配信:|Sample service/);assert.equal(app.doc.querySelector('.watch-label'),null);
+ assert.match(app.text(),/視聴価値 12.00/);
+});
+
 test('nationality directory links a Japanese profile and keeps transfer clubs separate',async t=>{
  const metric=value=>({presence:'present',value,observed:1,total:1});
  const row=(teamId,goals)=>({player:{id:'af:player:106835',providerId:106835,name:'K. Mitoma',nationality:'Japan'},
@@ -684,7 +738,7 @@ test('coach provider identity supplies the official photo URL and error falls ba
 });
 test('computed attention below the list threshold is not mislabelled as uncomputed',async t=>{
  const detail=bundle();detail.fixture.attention={presence:'present',displayedScore:'12.00'};detail.fixture.watch={label:'Sample service'};
- const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10',detail});assert.match(app.text(),/視聴価値 12.00/);assert.match(app.text(),/配信: Sample service/);assert.doesNotMatch(app.text(),/未算出/);
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10',detail});assert.match(app.text(),/視聴価値 12.00/);assert.doesNotMatch(app.text(),/配信:|Sample service/);assert.doesNotMatch(app.text(),/未算出/);
 });
 
 test('match filter buttons return exact all, live, followed and tracked fixture IDs',async t=>{
@@ -729,8 +783,8 @@ test('legacy query startup consumes old parameters and renders the migrated rout
  const legacy={_dataIntegrity:{season:'2026-27'},players:[{playerId:'af:player:9',name:'Unique Player'}]};
  for(const [search,expected,title] of [
   ['?player=Unique%20Player&season=2026-27','#/players/af%3Aplayer%3A9?productSeason=jfw%3Aseason%3A2026-27','Unique Player'],
-  ['?player=Unknown','#/japanese','日本人'],
-  ['?season=2026-27','#/japanese?productSeason=jfw%3Aseason%3A2026-27','日本人'],
+  ['?player=Unknown','#/japanese','選手一覧'],
+  ['?season=2026-27','#/japanese?productSeason=jfw%3Aseason%3A2026-27','選手一覧'],
   ['?club=Unknown','#/competitions','リーグ'],
  ]) {
   const app=await boot(t,{hash:'',search,legacy});
