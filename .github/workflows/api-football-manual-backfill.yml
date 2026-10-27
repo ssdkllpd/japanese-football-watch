@@ -40,6 +40,10 @@ on:
         description: Optional earliest fixture date in Japan (YYYY-MM-DD)
         required: false
         type: string
+      fixture_ids:
+        description: Optional comma-separated canonical fixture IDs (only those fixtures)
+        required: false
+        type: string
   workflow_call:
     inputs:
       billing_mode:
@@ -59,6 +63,10 @@ on:
         required: true
         type: string
       from_date:
+        required: false
+        type: string
+        default: ''
+      fixture_ids:
         required: false
         type: string
         default: ''
@@ -93,6 +101,7 @@ jobs:
       API_FOOTBALL_DAILY_RESERVE: '100'
       JFW_MANUAL_DETAIL_DAILY_CAP: ${{ inputs.billing_mode == 'paid' && '120' || '20' }}
       JFW_MANUAL_FROM_DATE: ${{ inputs.from_date }}
+      JFW_MANUAL_FIXTURE_IDS: ${{ inputs.fixture_ids }}
     steps:
       - uses: actions/checkout@v4
 
@@ -379,4 +388,5 @@ jobs:
             -f auto_continue=true \
             -f billing_mode="$BILLING_MODE" \
             -f from_date="$JFW_MANUAL_FROM_DATE" \
+            -f fixture_ids="$JFW_MANUAL_FIXTURE_IDS" \
             -f batches_left="$((BATCHES_LEFT - 1))"

@@ -60,13 +60,19 @@ function storedFixtureDates(inventory) {
 }
 
 async function planManualFixtureBackfill({ policy, inventory, dateInventory, dailyBudget, client,
-  now = new Date(), preview = true, detailDailyCap = 20, fromDate = '' }) {
+  now = new Date(), preview = true, detailDailyCap = 20, fromDate = '', fixtureIds = '' }) {
   detailDailyCap = resolveDetailDailyCap(detailDailyCap);
   if (fromDate && (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)
     || !Number.isFinite(Date.parse(`${fromDate}T00:00:00Z`))
     || new Date(`${fromDate}T00:00:00Z`).toISOString().slice(0, 10) !== fromDate)) {
     throw new Error('Backfill start date must be a valid YYYY-MM-DD date.');
   }
+  const requestedIds = fixtureIds ? fixtureIds.split(',').map(id => id.trim()) : [];
+  if (requestedIds.length && (requestedIds.some(id => !/^af:fixture:\d+$/.test(id))
+    || new Set(requestedIds).size !== requestedIds.length || requestedIds.length > 20)) {
+    throw new Error('Fixture IDs must be unique canonical IDs, at most 20.');
+  }
+  const requested = new Set(requestedIds);
   validatePolicy(policy);
   const nowDate = new Date(now);
   if (Number.isNaN(nowDate.getTime())) throw new Error('Backfill time is invalid.');
@@ -98,6 +104,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
         throw new Error(`Season fixture discovery returned an invalid or duplicate identity: ${scope.league}:${scope.season}.`);
       }
       known.add(fixture.fixtureId);
+      if (requested.size && !requested.has(fixture.fixtureId)) continue;
       if (fromDate && dateJst(fixture.kickoffUtc) < fromDate) continue;
       if (dateJst(fixture.kickoffUtc) > todayJst) continue;
       if (!FINAL_STATUSES.has(fixture.status)) { nonFinalCount += 1; continue; }
@@ -123,7 +130,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
   const capacity = Math.min(policy.limits.maxProviderRequestsPerRun - (1 + policy.competitionSeasons.length),
     Math.max(0, remaining - policy.limits.dailyRequestReserve));
   const tableScopes=policy.competitionSeasons.filter(scope=>!require('../../config/cup-competitions.json').competitions.some(c=>c.providerId===scope.league&&!c.standings)).slice(0,policy.limits.maxStandingsPerRun);
-  const standingsFetches = capacity >= tableScopes.length
+  const standingsFetches = !requested.size && capacity >= tableScopes.length
     ? tableScopes.map(scope => ({
       ...scope,
       competitionId: `af:competition:${scope.league}`,
@@ -145,6 +152,7 @@ async function planManualFixtureBackfill({ policy, inventory, dateInventory, dai
     schemaVersion: PLAN_VERSION,
     publicationSource: 'manual',
     fromDate: fromDate || null,
+    requestedFixtureIds: requestedIds,
     mode: preview ? 'preview' : 'enabled',
     generatedAt: nowDate.toISOString(),
     discoveryDates: [],
@@ -187,6 +195,7 @@ async function main() {
     client: createClientFromEnv(process.env), preview: args.preview === 'true',
     detailDailyCap: process.env.JFW_MANUAL_DETAIL_DAILY_CAP || 20,
     fromDate: process.env.JFW_MANUAL_FROM_DATE || '',
+    fixtureIds: process.env.JFW_MANUAL_FIXTURE_IDS || '',
   });
   fs.mkdirSync(path.dirname(path.resolve(args.out)), { recursive: true });
   fs.writeFileSync(args.out, `${JSON.stringify(plan, null, 2)}\n`);
