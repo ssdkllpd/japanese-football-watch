@@ -1012,17 +1012,35 @@
     return `<div class="lineup-person"><span class="lineup-portrait">${personAvatar(player)}${renderPitchContributions(player, teamId, bundle)}</span><span class="shirt-number">${esc(player.number ?? '—')}</span><div><strong>${player.id ? `<button class="lineup-team-link" data-player-id="${esc(player.id)}" type="button">${esc(displayPlayerName(player) || '選手')}</button>` : esc(displayPlayerName(player) || '選手')}</strong><span>${esc(player.position || '')} ${nationality ? esc(nationality) : ''} · 出場 ${valueCell(stats?.values?.minutes)}分</span></div>${substitution ? `<b class="substitution ${role === 'starter' ? 'is-out' : 'is-in'}">${esc(substitution)}</b>` : ''}</div>`;
   }
 
+  function jfwEligibility(row, bundle) {
+    const fixture = bundle.fixture || {};
+    if (!config.scope?.attentionEligibleCompetitions?.includes(fixture.competitionId)) return false;
+    const periods = state.legacy?.trackingPeriods;
+    if (Array.isArray(periods)) return periods.some(period => period.playerId === row.playerId
+      && period.teamId === row.teamId && data.trackedFixture(fixture, [period], config.scope));
+    // Match statistics establish the team at kickoff. Current club membership
+    // is not projected backwards to invent a historical tracking period.
+    const providerId = Number(String(row.playerId || '').split(':').at(-1));
+    const reviewed = /^af:player:[1-9]\d*$/.test(row.playerId || '')
+      && Object.values(window.JFWTrackedProviderIds || {}).includes(providerId);
+    const nationality = row.nationality || knownPlayers.get(row.playerId)?.nationality;
+    if (reviewed || nationality === 'Japan') return [fixture.teams?.home?.id,fixture.teams?.away?.id].includes(row.teamId);
+    return nationality ? false : null;
+  }
+
   function renderPlayerRatings(bundle) {
-    const rows = Array.isArray(bundle.playerStats) ? bundle.playerStats : [];
+    const rows = (Array.isArray(bundle.playerStats) ? bundle.playerStats : []).map(row => {
+      const tracked = jfwEligibility(row, bundle) === true;
+      return tracked && window.JFWFixtureRating ? { ...row, jfwRating: window.JFWFixtureRating.calculate(row, bundle) } : row;
+    });
     if (data.section(bundle,'playerStats') !== 'present' || !rows.length) return emptySection(bundle,'playerStats');
     const modeLabel = state.ratingMode === 'jfw' ? 'JFW 独自評価' : 'API-Football 評価';
     const teams = [bundle.fixture?.teams?.home, bundle.fixture?.teams?.away].filter(Boolean);
     const renderRow = (row, index) => {
       const playerId = row.playerId || row.id;
       const lineupPlayer = (bundle.lineups || []).flatMap(l => [...(l.startXI || []), ...(l.substitutes || [])]).find(p => p.id === playerId);
-      const eligible = data.trackedFixture(bundle.fixture || {}, state.legacy?.trackingPeriods, config.scope);
-      const trackedPlayer = (state.legacy?.trackingPeriods || []).some(p => p.playerId === playerId && data.trackedFixture(bundle.fixture, [p], config.scope));
-      const jfwState = eligible === false || (eligible === true && !trackedPlayer) ? 'not_applicable' : eligible === null ? 'not_fetched' : row.jfwRating?.presence;
+      const eligible = jfwEligibility(row, bundle);
+      const jfwState = eligible === false ? 'not_applicable' : eligible === null ? 'not_fetched' : row.jfwRating?.presence;
       const jfwValue = typeof row.jfwRating === 'number' ? row.jfwRating : row.jfwRating?.value;
       const value = state.ratingMode === 'jfw' ? valueCell(jfwValue, jfwState) : valueCell(row.values?.rating, row.fieldStates?.rating);
       const actionable = state.ratingMode === 'jfw' && playerId && !['not_applicable','not_fetched'].includes(jfwState) && row.jfwRating?.factors;
@@ -1031,7 +1049,7 @@
       const panelId = `player-match-stats-${esc(row.teamId || 'team')}-${index}`;
       return `<div class="player-match-entry"><div class="player-match-entry-header">${ratingRow}${playerId ? `<button class="player-stats-toggle" type="button" data-player-stats="${esc(playerId)}" aria-expanded="${expanded}" aria-controls="${panelId}" aria-label="${esc(displayPlayerName({playerId,name:row.playerName}) || '選手')}の試合スタッツ">スタッツ <span aria-hidden="true">${expanded ? '−' : '+'}</span></button>` : ''}</div>${playerId ? `<div id="${panelId}" class="player-match-stats"${expanded ? '' : ' hidden'}>${expanded ? renderPlayerMatchStats(row, bundle) : ''}</div>` : ''}</div>`;
     };
-    return `<div class="rating-switch" role="group" aria-label="評価方式"><button class="chip${state.ratingMode === 'provider' ? ' is-active' : ''}" data-rating-mode="provider" aria-pressed="${state.ratingMode === 'provider'}" type="button">API-Football</button><button class="chip${state.ratingMode === 'jfw' ? ' is-active' : ''}" data-rating-mode="jfw" aria-pressed="${state.ratingMode === 'jfw'}" type="button">JFW 独自評価</button></div><h2>${modeLabel}</h2>${state.ratingMode === 'jfw' && rows.every(row => row.jfwRating == null) ? '<p class="notice">この試合の独自評価は未算出です。現行の取得データには、算出に必要なオウンゴール・退場区分などの規律項目が揃っていません。</p>' : ''}<p class="entity-sub player-stats-help">各選手の「スタッツ」から、この試合の個人成績を確認できます。</p>${teams.map(team => `<section class="detail-card" data-rating-team="${esc(team.id)}"><div class="section-title"><h3>${esc(team.name || 'チーム')}</h3></div>${rows.filter(row => row.teamId === team.id).map(renderRow).join('') || valueCell(null)}</section>`).join('')}${state.ratingPlayerId ? renderRatingBreakdown(rows.find(row => String(row.playerId || row.id) === String(state.ratingPlayerId))) : ''}`;
+    return `<div class="rating-switch" role="group" aria-label="評価方式"><button class="chip${state.ratingMode === 'provider' ? ' is-active' : ''}" data-rating-mode="provider" aria-pressed="${state.ratingMode === 'provider'}" type="button">API-Football</button><button class="chip${state.ratingMode === 'jfw' ? ' is-active' : ''}" data-rating-mode="jfw" aria-pressed="${state.ratingMode === 'jfw'}" type="button">JFW 独自評価</button></div><h2>${modeLabel}</h2>${state.ratingMode === 'jfw' ? '<p class="notice">JFW v1.0 · ポジション内指標。基本点6.0にプレー内容・出場時間・データ充足率・規律減点を反映します。異なるポジションの点数は直接比較できません。</p>' : ''}${state.ratingMode === 'jfw' && rows.every(row => row.jfwRating == null || row.jfwRating.value == null) ? '<p class="notice">この試合の独自評価は未算出です。算出には終了済みの試合と、オウンゴール・退場区分を含む必須項目が必要です。対象選手を選ぶと不足項目を確認できます。</p>' : ''}<p class="entity-sub player-stats-help">各選手の「スタッツ」から、この試合の個人成績を確認できます。</p>${teams.map(team => `<section class="detail-card" data-rating-team="${esc(team.id)}"><div class="section-title"><h3>${esc(team.name || 'チーム')}</h3></div>${rows.filter(row => row.teamId === team.id).map(renderRow).join('') || valueCell(null)}</section>`).join('')}${state.ratingPlayerId ? renderRatingBreakdown(rows.find(row => String(row.playerId || row.id) === String(state.ratingPlayerId))) : ''}`;
   }
 
   function renderPlayerMatchStats(row, bundle) {
@@ -1054,6 +1072,17 @@
 
   function renderRatingBreakdown(row) {
     if (!row) return '<div class="notice">指定された選手評価は取得できません。</div>';
+    const rating = row.jfwRating;
+    if (rating?.ratingInputs) {
+      const labels = {minutes:'出場時間',goals:'ゴール',assists:'アシスト',shots:'シュート',shotsOnTarget:'枠内シュート',keyPasses:'キーパス',dribbles:'ドリブル成功',duelWinRate:'デュエル勝率',duelsWon:'デュエル勝利',duelsTotal:'デュエル回数',passesCompleted:'成功パス',passesAttempted:'パス本数',passCompletionRate:'パス成功率',tackles:'タックル',interceptions:'インターセプト',clearances:'クリア',blocks:'ブロック',aerialWinRate:'空中戦勝率',aerialDuelsWon:'空中戦勝利',aerialDuelsTotal:'空中戦回数',dribbledPast:'被ドリブル突破',bigChancesMissed:'決定機逸',possessionsLost:'ボールロスト',gaOnPitch:'在場中失点',saves:'セーブ',saveRate:'セーブ率',shotsOnTargetFaced:'被枠内シュート',penaltiesSaved:'PKストップ',highClaims:'ハイボール処理',errorsLeadingToGoal:'失点直結ミス',yellowCards:'イエローカード',secondYellowRed:'2枚目イエロー退場',straightRed:'一発レッド',penaltiesConceded:'PK献上',ownGoals:'オウンゴール'};
+      const reasons = {match_not_final:'試合終了後に算出します。',unknown_position:'この試合のポジションが確認できません。',not_appeared:'未出場の選手は評価対象外です。',minimum_inputs_missing:'出場時間・得点・アシストの必須データが不足しています。',discipline_inputs_missing:'規律項目の必須データが不足しています。'};
+      const number = value => Number(value).toFixed(2);
+      const sign = value => `${value > 0 ? '+' : ''}${number(value)}`;
+      const name = displayPlayerName({playerId:row.playerId,name:row.playerName}) || '選手';
+      const coverage = rating.ratingCoverage == null ? '—' : `${Math.round(rating.ratingCoverage * 100)}%`;
+      const confidence = {high:'高',medium:'中',low:'低'}[rating.ratingConfidence] || '—';
+      return `<section class="detail-card rating-breakdown"><button type="button" class="plain-button" data-close-rating>評価一覧に戻る</button><h3>${esc(name)} · JFW Rating 要因分解</h3><p>v${esc(rating.ratingVersion)} · ${esc(rating.ratingPosition || '不明')} · ポジション内指標</p>${rating.reason ? `<p class="notice">${esc(reasons[rating.reason] || '算出に必要な情報を確認できません。')}</p>` : `<div><span>JFW 評価</span><strong>${Number(rating.value).toFixed(1)}</strong></div>`}<div><span>データ充足率 / 信頼度</span><strong>${coverage} / ${confidence}</strong></div>${rating.value != null ? `<p>6.00 + プレー加減点 ${number(rating.deltaPerformance)} × 充足率補正 ${number(rating.ratingFactors.coverage)} × 出場時間補正 ${number(rating.ratingFactors.minutes)} + 規律減点 ${number(rating.deltaDiscipline)}</p><p class="entity-sub">表示は四捨五入しています。規律減点には補正をかけません。</p>${(rating.ratingBreakdown || []).map(item => `<div><span>${esc(labels[item.key] || item.key)} (${esc(item.value)})</span><strong>${sign(item.points)}</strong></div>`).join('')}${[['yellowCards',-0.2],['secondYellowRed',-0.7],['straightRed',-1.2],['penaltiesConceded',-0.5],['ownGoals',-0.8]].map(([key,weight]) => `<div><span>${labels[key]} (${rating.ratingInputs[key].value})</span><strong>${sign(weight * rating.ratingInputs[key].value)}</strong></div>`).join('')}` : ''}${rating.missingRequired?.length ? `<p class="notice">不足する必須項目: ${rating.missingRequired.map(key => esc(labels[key] || key)).join('、')}</p>` : ''}<p class="entity-sub">未取得: ${(rating.missingFields || []).map(key => esc(labels[key] || key)).join('、') || 'なし'}。未取得値は0で補いません。</p>${rating.gaOnPitchAmbiguous ? '<p class="notice">同一分の失点と交代は、失点→交代の順で扱っています。</p>' : ''}<p class="entity-sub">出典: API-Football · ${esc(rating.ratingSources[0]?.fetchedAt || '取得日時未確認')}</p></section>`;
+    }
     const factors = row?.jfwRating?.factors || row?.ratingFactors || null;
     if (!factors || typeof factors !== 'object') return `<section class="detail-card rating-breakdown"><button type="button" class="plain-button" data-close-rating>評価一覧に戻る</button><h3>${esc(displayPlayerName({playerId:row.playerId || row.id,name:row.playerName}) || '選手')} · JFW Rating 要因分解</h3><div class="notice">要因データは未取得です。欠落を±0.00として表示していません。</div></section>`;
     return `<section class="detail-card rating-breakdown"><button type="button" class="plain-button" data-close-rating>評価一覧に戻る</button><h3>${esc(displayPlayerName({playerId:row.playerId || row.id,name:row.playerName}) || '選手')} · JFW Rating 要因分解</h3>${Object.entries(factors).map(([key, value]) => `<div><span>${esc(key)}</span><strong>${value === null || value === undefined ? '未取得' : esc(value)}</strong></div>`).join('')}</section>`;
