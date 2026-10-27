@@ -231,6 +231,77 @@ test('common search finds saved full names and verified Japanese aliases without
  assert.equal(app.doc.querySelector('#searchResults [data-player-id]'),null);
  assert.equal(app.calls.length,calls);
 });
+test('Japanese club discovery completes all pages before enabling the filter and preserves search input',async t=>{
+ let release;const secondPage=new Promise(resolve=>release=resolve);
+ const profile=(id,name,clubs)=>({id:`af:player:${id}`,providerId:id,name,nationality:'Japan',rosterObservedOn:'2026-10-27',rosterTeams:clubs});
+ const monaco=team(91,'Monaco'),brighton=team(51,'Brighton');
+ const app=await boot(t,{request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players'||u.searchParams.get('nationality')!=='Japan')return null;
+  if(u.searchParams.get('after')==='0')return {ok:true,status:200,json:async()=>({players:[profile(990001,'First Japan',[monaco])],nextCursor:990001})};
+  await secondPage;return {ok:true,status:200,json:async()=>({players:[profile(990002,'Second Japan',[monaco]),profile(990003,'Third Japan',[brighton])],nextCursor:null})};
+ }});
+ await app.click('#searchButton');
+ const input=app.doc.getElementById('globalSearch');input.value='もなこ';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.getElementById('japaneseClubFilter').disabled,true);
+ assert.equal(app.doc.querySelector('[data-japanese-club]'),null);
+ release();await until(()=>!app.doc.getElementById('japaneseClubFilter').disabled,'complete Japanese club membership');
+ assert.equal(app.doc.getElementById('globalSearch'),input);assert.equal(input.value,'もなこ');
+ const row=app.doc.querySelector('#searchResults [data-team-id="af:team:91"]');
+ assert.match(row.textContent,/日本人所属 2人/);assert.match(row.textContent,/First Japan・Second Japan/);
+ assert.match(row.querySelector('[data-japanese-club]').getAttribute('aria-label'),/名簿確認 2026-10-27/);
+ const checkbox=app.doc.getElementById('japaneseClubFilter');checkbox.checked=true;checkbox.dispatchEvent(new app.w.Event('change'));
+ input.value='';input.dispatchEvent(new app.w.Event('input'));
+ assert.equal(app.doc.querySelectorAll('#searchResults [data-team-id]').length,2);
+ assert.equal(app.doc.querySelector('#searchResults [data-team-id="af:team:1"]'),null);
+ assert.ok(app.doc.querySelector('#searchResults [data-team-id="af:team:51"]'));
+ assert.equal(app.doc.querySelector('#searchResults [data-player-id]'),null);
+});
+
+test('confirmed Japanese membership is marked in match lists, standings and club details',async t=>{
+ const league={id:'af:competition:39',name:'Premier League',seasons:[{id:'af:season:39:2026',status:'active'}]};
+ const app=await boot(t,{catalog:{competitions:[league]},
+  standings:{competition:league,season:{id:'af:season:39:2026'},groups:[{table:[home,away].map((club,i)=>({rank:i+1,team:club,points:3-i}))}]},
+  request:async url=>{
+   const u=new URL(url);if(u.pathname!=='/api/v2/players'||u.searchParams.get('nationality')!=='Japan')return null;
+   return {ok:true,status:200,json:async()=>({players:[{id:'af:player:990001',providerId:990001,name:'Current Japanese Player',nationality:'Japan',rosterObservedOn:'2026-10-27',rosterTeams:[home],rosterHistory:[away]}],nextCursor:null})};
+  }});
+ await until(()=>app.doc.querySelector('.fixture-row [data-japanese-club="af:team:1"]'),'match club badge');
+ assert.equal(app.doc.querySelector('[data-japanese-club="af:team:2"]'),null);
+ await app.click('[data-page="leagues"]');await app.click('[data-competition-id="af:competition:39"]');await app.click('[data-competition-tab="standings"]');
+ assert.ok(app.doc.querySelector('.standings-club-link[data-team-id="af:team:1"] [data-japanese-club]'));
+ assert.equal(app.doc.querySelector('.standings-club-link[data-team-id="af:team:2"] [data-japanese-club]'),null);
+ await app.click('.standings-club-link[data-team-id="af:team:1"]');
+ assert.ok(app.doc.querySelector('.entity-hero [data-japanese-club="af:team:1"]'));
+ assert.match(app.doc.querySelector('.entity-hero').textContent,/Current Japanese Player.*名簿確認 2026-10-27/);
+});
+
+test('failed Japanese club pagination publishes no partial membership and supports explicit retry without loops',async t=>{
+ let fail=true;let calls=0;
+ const app=await boot(t,{request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players'||u.searchParams.get('nationality')!=='Japan')return null;
+  calls++;const after=u.searchParams.get('after');
+  if(after!=='0'&&fail)return {ok:false,status:503,json:async()=>({error:'temporarily unavailable'})};
+  return {ok:true,status:200,json:async()=>({players:after==='0'?[{id:'af:player:990001',providerId:990001,name:'Japanese Player',nationality:'Japan',rosterTeams:[home]}]:[],nextCursor:after==='0'?990001:null})};
+ }});
+ await app.click('#searchButton');await until(()=>app.doc.querySelector('[data-retry-japanese-clubs]'),'membership failure status');
+ assert.equal(app.doc.getElementById('japaneseClubFilter').disabled,true);assert.equal(app.doc.querySelector('[data-japanese-club]'),null);
+ await app.click('#searchBack');await app.click('#searchButton');assert.equal(calls,2);
+ const input=app.doc.getElementById('globalSearch');input.value='Home';input.dispatchEvent(new app.w.Event('input'));
+ fail=false;await app.click('[data-retry-japanese-clubs]');
+ await until(()=>app.doc.querySelector('#searchResults [data-japanese-club="af:team:1"]'),'retried membership');
+ assert.equal(app.doc.getElementById('globalSearch'),input);assert.equal(calls,4);
+ assert.equal(app.doc.getElementById('japaneseClubFilter').disabled,false);
+});
+
+test('late Japanese club membership cannot reopen a search page after navigation',async t=>{
+ let release;const pending=new Promise(resolve=>release=resolve);
+ const app=await boot(t,{request:async url=>{
+  const u=new URL(url);if(u.pathname!=='/api/v2/players'||u.searchParams.get('nationality')!=='Japan')return null;
+  await pending;return {ok:true,status:200,json:async()=>({players:[{id:'af:player:990001',providerId:990001,name:'Japanese Player',nationality:'Japan',rosterTeams:[home]}],nextCursor:null})};
+ }});
+ await app.click('#searchButton');await app.click('[data-page="more"]');release();await tick();
+ assert.equal(app.doc.getElementById('pageTitle').textContent,'その他');assert.equal(app.doc.getElementById('globalSearch'),null);
+});
 test('common and competition searches share cup aliases, country terms and kana normalization',async t=>{
  const cup={id:'af:competition:48',name:'League Cup',country:'England',seasons:[]};
  const app=await boot(t,{hash:'#/competitions',catalog:{competitions:[cup]},feed:async()=>({fixtures:[]})});
@@ -1211,7 +1282,7 @@ test('match nationality uses paginated team profiles by canonical ID and late me
  assert.match(app.doc.querySelector('.lineup-card').textContent,/France/);
  await app.click('[data-detail-tab="ratings"]');
  assert.match(app.doc.querySelector('[data-rating-player="af:player:1"]').textContent,/Japan/);
- const directoryCalls=app.calls.filter(url=>url.includes('/api/v2/players?'));
+ const directoryCalls=app.calls.filter(url=>url.includes('/api/v2/players?')&&new URL(url).searchParams.has('team'));
  assert.equal(directoryCalls.length,3);
  assert.equal(app.calls.filter(url=>/\/api\/v2\/players\/af/.test(url)).length,0);
  await app.click('[data-detail-tab="lineup"]');assert.match(app.doc.querySelector('.lineup-list').textContent,/Japan/);

@@ -502,6 +502,13 @@ summary:focus-visible,
 .player-name-line { display:flex; align-items:center; gap:6px; }
 .player-list-name { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .player-nationality { flex-shrink:0; max-width:45%; white-space:normal; overflow-wrap:anywhere; font-size:12px; line-height:1.5; color:var(--muted); font-weight:normal; }
+.team-name-block { display:flex; align-items:center; gap:5px; min-width:0; }
+.team-name-block .team-name { flex:1; min-width:0; }
+.japanese-club-badge { display:inline-flex; align-items:center; gap:4px; flex-shrink:0; vertical-align:middle; padding:2px 6px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); color:var(--text); font-size:12px; line-height:1.5; font-weight:normal; white-space:nowrap; }
+.japanese-club-badge.is-compact { padding:1px 4px; font-size:11px; }
+.japanese-club-mark { display:inline-block; width:14px; height:10px; border:1px solid #b9bdc4; border-radius:1px; background:radial-gradient(circle at center,#bc002d 0 3px,#fff 3.1px); flex-shrink:0; }
+.japanese-club-filter { display:inline-flex; align-items:center; gap:8px; min-height:44px; cursor:pointer; }
+.japanese-club-filter input { width:18px; height:18px; accent-color:var(--accent); }
 .stat-inline { flex-wrap:wrap; }
 .pitch-title { flex-wrap:wrap; gap:6px; }
 .team-stat-row { grid-template-columns:minmax(0,1fr) minmax(80px,1.2fr) minmax(0,1fr); }

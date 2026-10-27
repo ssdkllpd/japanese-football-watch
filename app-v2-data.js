@@ -22,6 +22,18 @@
     const fields = values.filter(value => value !== null && value !== undefined).map(normalizeSearchText);
     return tokens.every(token => fields.some(field => field.includes(token)));
   }
+  function japaneseClubMemberships(profiles) {
+    const clubs = new Map();
+    for (const player of profiles) {
+      if (player.nationality !== 'Japan' || !/^af:player:[1-9]\d*$/.test(String(player.id || ''))) continue;
+      for (const team of player.rosterTeams || []) {
+        if (!/^af:team:[1-9]\d*$/.test(String(team.id || '')) || !team.name) continue;
+        if (!clubs.has(team.id)) clubs.set(team.id, { team, players: new Map() });
+        clubs.get(team.id).players.set(player.id, player);
+      }
+    }
+    return new Map([...clubs].map(([id, club]) => [id, { team: club.team, players: [...club.players.values()] }]));
+  }
   function presence(value, state) {
     const explicit = typeof state === 'string' ? state : state?.presence;
     if (explicit && explicit !== 'present') return explicit;
@@ -101,5 +113,5 @@
       }
     }
   }
-  return { normalizeSearchText, searchTokens, matchesSearch, presence, section, trackedFixture, goalStatEvidence, rankCandidates, loadAttention };
+  return { normalizeSearchText, searchTokens, matchesSearch, japaneseClubMemberships, presence, section, trackedFixture, goalStatEvidence, rankCandidates, loadAttention };
 });

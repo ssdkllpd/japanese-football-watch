@@ -4,6 +4,20 @@ const data=require('../app-v2-data.js');
 const scope=require('../config/competition-scope-v1.json');
 const {buildConfig}=require('../scripts/v2/build-ui-config.js');
 const vm=require('node:vm');
+test('Japanese club membership uses canonical IDs and current roster teams, without inferring nationality or old clubs',()=>{
+ const current={id:'af:team:91',name:'Monaco'},other={id:'af:team:92',name:'Monaco'};
+ const japanese={id:'af:player:7',name:'Japanese Player',nationality:'Japan',rosterTeams:[current,current],rosterHistory:[other]};
+ const result=data.japaneseClubMemberships([japanese,japanese,
+  {...japanese,id:'af:player:8',rosterTeams:[current,other]},
+  {...japanese,id:'af:player:9',nationality:null,name:'日本語の名前'},
+  {...japanese,id:'af:player:10',nationality:'France'},
+  {...japanese,id:'legacy:player:7'},
+ ]);
+ assert.deepEqual([...result.keys()],['af:team:91','af:team:92']);
+ assert.deepEqual(result.get(current.id).players.map(player=>player.id),['af:player:7','af:player:8']);
+ assert.deepEqual(result.get(other.id).players.map(player=>player.id),['af:player:8']);
+ assert.equal(data.japaneseClubMemberships([{...japanese,rosterTeams:[]}]).size,0);
+});
 test('search accepts width, kana, Latin accents and separators while retaining Japanese voicing',()=>{
  for(const [query,fields] of [
   ['ＭＡＲＩＯ　ＧＯＴＺＥ',['Mario Götze']],
