@@ -173,7 +173,7 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async (url,options)=>{calls.push(String(url));if(request){const response=await request(url,options);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','jfw-rating.js','jfw-fixture-rating.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
@@ -1293,4 +1293,31 @@ test('fresh JFW mode explains the missing required inputs without inventing a ra
  const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
  assert.match(app.text(),/独自評価は未算出/);assert.match(app.text(),/オウンゴール・退場区分/);
  assert.equal(app.doc.querySelectorAll('.rating-row b [data-presence="not_fetched"]').length,2);
+});
+
+test('saved match statistics produce a JFW rating and Japanese factor breakdown without extra fixture fetches',async t=>{
+ const detail=bundle();detail.fixture.score.goals={home:0,away:0};detail.fixture.ingestionState='finalized';
+ const row=detail.playerStats[0];row.playerId='af:player:106835';delete row.jfwRating;
+ Object.assign(row.values,{minutes:90,goals:0,assists:0,yellowCards:0,redCards:0,penaltiesConceded:0,shots:3});
+ detail.lineups[0].startXI[0].id=row.playerId;
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
+ const rating=app.doc.querySelector('[data-rating-player="af:player:106835"]');
+ assert.match(rating.textContent,/6\.1/);assert.equal(rating.disabled,false);
+ const requests=app.calls.filter(url=>url.includes('/fixtures/')).length;
+ await app.click('[data-rating-player="af:player:106835"]');
+ const breakdown=app.doc.querySelector('.rating-breakdown').textContent;
+ assert.match(breakdown,/基本|6\.00/);assert.match(breakdown,/シュート \(3\).*\+0\.12/);
+ assert.match(breakdown,/データ充足率/);assert.match(breakdown,/未取得.*決定機逸/);
+ assert.equal(app.calls.filter(url=>url.includes('/fixtures/')).length,requests);
+ assert.equal(app.doc.querySelector('script[data-jfw-backfill]'),null);
+});
+
+test('eligible unrated player opens the exact missing input reason',async t=>{
+ const detail=bundle();detail.fixture.score.goals={home:0,away:0};
+ const row=detail.playerStats[0];row.nationality='Japan';delete row.jfwRating;
+ Object.assign(row.values,{minutes:90,goals:0,assists:0,yellowCards:0,redCards:0});
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=ratings&ratingMode=jfw',detail});
+ await app.click('[data-rating-player="af:player:1"]');
+ assert.match(app.doc.querySelector('.rating-breakdown').textContent,/不足する必須項目: PK献上/);
+ assert.ok(app.doc.querySelector('[data-rating-player="af:player:1"] [data-presence="provider_missing"]'));
 });

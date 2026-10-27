@@ -229,9 +229,11 @@
     return true;
   }
 
-  window.JFWRating = {
+  const api = {
     VERSION,
     compute,
+    inputStates: (inputs, position) => Object.fromEntries((CONFIG[position]?.fields || [])
+      .map(([key]) => [key, fieldState(inputs, position, key)])),
     withComputedRating,
     seasonSummary,
     isRatingValue,
@@ -239,9 +241,13 @@
     playerRatingComparisonHtml,
     installProviderRatingUi
   };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.JFWRating = api;
 })();
 
-window.addEventListener('load', () => {
+if (typeof window !== 'undefined') window.addEventListener('load', () => {
+  // The current app uses the calculation engine without the legacy backfill UI.
+  if (document.getElementById?.('appMain')) return;
   try { window.JFWRating?.installProviderRatingUi?.(); } catch (error) {
     console.warn('provider rating UI install failed', error);
   }
