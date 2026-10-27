@@ -58,6 +58,8 @@
     searchQuery: '',
     searchReturnPage: 'matches',
     searchTeams: { loading: false, attempted: false, error: false },
+    searchJapaneseClubsOnly: false,
+    japaneseClubs: { loading: false, loaded: false, error: null, teams: new Map(), observedOn: null },
     route: null,
     japaneseCompetition: 'all',
     japaneseNationality: 'all',
@@ -531,7 +533,7 @@
 
   function fixtureTeam(team, score) {
     const logo = team?.logo ? `<img class="team-logo" src="${esc(team.logo)}" data-logo-fallback="entity" alt="" loading="lazy">` : '<span></span>';
-    return `<div class="team-line">${logo}<span class="team-name">${esc(team?.name || team?.id || '未取得')}</span><span class="team-score">${valueCell(score)}</span></div>`;
+    return `<div class="team-line">${logo}<span class="team-name-block"><span class="team-name">${esc(team?.name || team?.id || '未取得')}</span>${japaneseClubBadge(team?.id, true)}</span><span class="team-score">${valueCell(score)}</span></div>`;
   }
 
   function fixtureRow(row) {
@@ -1406,14 +1408,14 @@
     return `<div class="standings-scroll" tabindex="0" role="region" aria-label="${esc(group.name || '順位表')}・横にスクロールできます"><table class="standings-table"><caption class="sr-only">${esc(group.name || '順位表')}。直近成績はAPI掲載順。</caption><colgroup><col class="standings-rank-col"><col>${columns.map(() => '<col class="standings-number-col">').join('')}<col class="standings-form-col"></colgroup><thead><tr><th scope="col" class="standings-rank">順位</th><th scope="col" class="standings-club">クラブ</th>${columns.map(([label, title]) => `<th scope="col" title="${title}">${label}</th>`).join('')}<th scope="col">直近成績</th></tr></thead><tbody>${(group.table || []).map(row => {
       const team = row?.team || {};
       const name = esc(team.name || team.id || '未取得');
-      const club = `${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${name}</b>`;
+      const club = `${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${name}</b>${japaneseClubBadge(team.id, true)}`;
       return `<tr><td class="standings-rank">${valueCell(row?.rank, row?.fieldStates?.rank)}</td><th scope="row" class="standings-club">${team.id ? `<button type="button" class="standings-team standings-club-link" data-team-id="${esc(team.id)}" title="${name}">${club}</button>` : `<span class="standings-team" title="${name}">${club}</span>`}</th>${['played', 'wins', 'draws', 'losses', 'goalsFor', 'goalsAgainst'].map(key => `<td>${valueCell(row?.overall?.[key], row?.fieldStates?.[key])}</td>`).join('')}<td>${valueCell(row?.goalDifference, row?.fieldStates?.goalDifference)}</td><td class="standings-points">${valueCell(row?.points, row?.fieldStates?.points)}</td><td>${standingsForm(row)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
 
   function standingRow(row) {
     const team = row?.team || {};
-    return `<div class="standings-row${team.id ? ' is-link' : ''}"${team.id ? ` data-team-id="${esc(team.id)}"` : ''}><span class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</span><span class="standings-team">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(team.name || team.id || '未取得')}</b></span><span>${valueCell(row?.overall?.played,row?.fieldStates?.played)}</span><span>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</span><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></div>`;
+    return `<div class="standings-row${team.id ? ' is-link' : ''}"${team.id ? ` data-team-id="${esc(team.id)}"` : ''}><span class="standings-rank">${valueCell(row?.rank,row?.fieldStates?.rank)}</span><span class="standings-team">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(team.name || team.id || '未取得')}</b>${japaneseClubBadge(team.id, true)}</span><span>${valueCell(row?.overall?.played,row?.fieldStates?.played)}</span><span>${valueCell(row?.goalDifference,row?.fieldStates?.goalDifference)}</span><strong>${valueCell(row?.points,row?.fieldStates?.points)}</strong></div>`;
   }
 
   function competitionSeasonState(detail) {
@@ -1458,7 +1460,7 @@
     if (detail.standingsError) return errorNotice(detail.standingsError);
     const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
     if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
-    return `<p class="data-updated">順位表スナップショット更新: ${valueCell(detail.standings?.generatedAt)}</p>${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || 'チーム成績')}</h2></div><div class="stats-table-scroll"><div class="team-stats-table"><div class="team-stats-row stats-head"><span>クラブ</span><span>試</span><span>勝</span><span>分</span><span>敗</span><span>得</span><span>失</span><span>差</span><span>勝点</span><span>直近</span></div>${(group.table || []).map(row => `<div class="team-stats-row${row.team?.id ? ' is-link' : ''}"${row.team?.id ? ` data-team-id="${esc(row.team.id)}"` : ''}><span class="standings-team">${row.team?.logo ? `<img src="${esc(row.team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(row.team?.name || 'クラブ未取得')}</b></span><span>${valueCell(row.overall?.played)}</span><span>${valueCell(row.overall?.wins)}</span><span>${valueCell(row.overall?.draws)}</span><span>${valueCell(row.overall?.losses)}</span><span>${valueCell(row.overall?.goalsFor)}</span><span>${valueCell(row.overall?.goalsAgainst)}</span><span>${valueCell(row.goalDifference)}</span><strong>${valueCell(row.points)}</strong><span>${valueCell(row.form)}</span></div>`).join('')}</div></div></section>`).join('')}`;
+    return `<p class="data-updated">順位表スナップショット更新: ${valueCell(detail.standings?.generatedAt)}</p>${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || 'チーム成績')}</h2></div><div class="stats-table-scroll"><div class="team-stats-table"><div class="team-stats-row stats-head"><span>クラブ</span><span>試</span><span>勝</span><span>分</span><span>敗</span><span>得</span><span>失</span><span>差</span><span>勝点</span><span>直近</span></div>${(group.table || []).map(row => `<div class="team-stats-row${row.team?.id ? ' is-link' : ''}"${row.team?.id ? ` data-team-id="${esc(row.team.id)}"` : ''}><span class="standings-team">${row.team?.logo ? `<img src="${esc(row.team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(row.team?.name || 'クラブ未取得')}</b>${japaneseClubBadge(row.team?.id, true)}</span><span>${valueCell(row.overall?.played)}</span><span>${valueCell(row.overall?.wins)}</span><span>${valueCell(row.overall?.draws)}</span><span>${valueCell(row.overall?.losses)}</span><span>${valueCell(row.overall?.goalsFor)}</span><span>${valueCell(row.overall?.goalsAgainst)}</span><span>${valueCell(row.goalDifference)}</span><strong>${valueCell(row.points)}</strong><span>${valueCell(row.form)}</span></div>`).join('')}</div></div></section>`).join('')}`;
   }
 
   function renderFollowing() {
@@ -1483,7 +1485,7 @@
         : type === 'teams'
           ? ` data-team-id="${esc(item.id)}"`
           : ` data-player-id="${esc(item.id)}"`;
-      return `<div class="entity-row is-link"${linkAttributes}>${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(type === 'players' ? '選手' : type === 'teams' ? 'クラブ' : '大会')}</div></div><button class="follow-button is-following" data-follow-type="${type}" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">解除</button></div>`;
+      return `<div class="entity-row is-link"${linkAttributes}>${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">${esc(type === 'players' ? '選手' : type === 'teams' ? 'クラブ' : '大会')}${type === 'teams' ? japaneseClubBadge(item.id) : ''}</div></div><button class="follow-button is-following" data-follow-type="${type}" data-follow-id="${esc(item.id)}" ${String(item.id).startsWith('legacy:') && !isFollowing('competitions',item.id) ? 'disabled' : ''} data-follow-name="${esc(item.name)}" data-follow-logo="${esc(item.logo || '')}" data-follow-season="${esc(item.seasonId || '')}" type="button">解除</button></div>`;
     }).join('');
   }
 
@@ -1651,12 +1653,81 @@
     return [...teams.values()];
   }
 
+  async function loadJapaneseClubs() {
+    if (!state.workerBase || state.japaneseClubs.loading) return;
+    const request = { ...state.japaneseClubs, loading: true, error: null };
+    state.japaneseClubs = request;
+    updateJapaneseClubControls();
+    try {
+      const profiles = [], seen = new Set();
+      let after = 0, observedOn = null;
+      do {
+        const result = await apiFetch(`/api/v2/players?nationality=Japan&after=${after}`);
+        if (!Array.isArray(result.players) || result.nationality !== undefined && result.nationality !== 'Japan'
+          || result.nextCursor !== null && (!Number.isSafeInteger(result.nextCursor) || result.nextCursor <= after)) throw new Error('Invalid Japanese club roster response.');
+        for (const player of result.players) {
+          if (player.nationality !== 'Japan' || !/^af:player:[1-9]\d*$/.test(String(player.id || ''))
+            || seen.has(player.id) || !Array.isArray(player.rosterTeams)
+            || player.rosterTeams.some(team => !/^af:team:[1-9]\d*$/.test(String(team.id || '')) || typeof team.name !== 'string' || !team.name.trim())) throw new Error('Invalid Japanese club profile.');
+          if (player.rosterObservedOn) {
+            if (observedOn && observedOn !== player.rosterObservedOn) throw new Error('Japanese club roster changed during pagination.');
+            observedOn = player.rosterObservedOn;
+          }
+          seen.add(player.id);profiles.push(player);
+        }
+        after = result.nextCursor;
+      } while (after !== null);
+      request.teams = data.japaneseClubMemberships(profiles);
+      request.observedOn = observedOn;
+      request.loaded = true;
+      for (const { team, players } of request.teams.values()) {
+        const prior = knownTeams.get(team.id);
+        knownTeams.set(team.id, { ...prior, ...team, logo: team.logo || prior?.logo || null });
+        for (const player of players) rememberPlayer({ ...player, playerId: player.id });
+      }
+    } catch (error) { request.error = error; }
+    request.loading = false;
+    updateJapaneseClubControls();
+    const route = router.parseHash(location.hash);
+    if (route.kind === 'search' && $('searchResults')) renderSearchResults();
+    else if (route.kind === 'competition') renderCompetitionDetailIfVisible();
+    else if (['matches','fixture','team','following'].includes(route.kind)) renderMatchesIfVisible();
+  }
+
+  function japaneseClubBadge(teamId, compact = false) {
+    const club = state.japaneseClubs.teams.get(teamId);
+    if (!club?.players.length) return '';
+    const names = japaneseClubMemberNames(teamId);
+    const label = `日本人所属 ${club.players.length}人`;
+    const detail = `${label}: ${names}${state.japaneseClubs.observedOn ? `（名簿確認 ${state.japaneseClubs.observedOn}）` : '（最新保存名簿）'}`;
+    return `<span class="japanese-club-badge${compact ? ' is-compact' : ''}" data-japanese-club="${esc(teamId)}" title="${esc(detail)}" aria-label="${esc(detail)}"><span class="japanese-club-mark" aria-hidden="true"></span>${compact ? '日本人所属' : esc(label)}</span>`;
+  }
+
+  function japaneseClubMemberNames(teamId) {
+    return (state.japaneseClubs.teams.get(teamId)?.players || []).map(player => displayPlayerName(directoryPlayerView(player))).join('・');
+  }
+
+  function updateJapaneseClubControls() {
+    const checkbox = $('japaneseClubFilter');
+    if (checkbox) { checkbox.disabled = !state.japaneseClubs.loaded; checkbox.checked = state.searchJapaneseClubsOnly; }
+    const status = $('japaneseClubStatus');
+    if (!status) return;
+    const current = state.japaneseClubs;
+    status.innerHTML = current.loading ? '<p class="notice">日本人所属クラブを確認中です。</p>'
+      : current.error ? '<p class="notice">日本人所属クラブを確認できませんでした。<button type="button" class="plain-button" data-retry-japanese-clubs>再試行</button></p>'
+        : current.loaded ? `<p class="data-updated">日本人所属 ${current.teams.size}クラブ${current.observedOn ? ` · 名簿確認 ${esc(current.observedOn)}` : ''}。保存済み名簿で確認した所属です。試合への出場を示すものではありません。</p>` : '';
+  }
+
   function renderSearch() {
     eyebrow.textContent = '共通検索';
     title.textContent = '検索';
-    main.innerHTML = `<div class="detail-top"><button id="searchBack" class="back-button" type="button">← 閉じる</button></div><label class="sr-only" for="globalSearch">大会・クラブ・選手を検索</label><input id="globalSearch" class="search-box" type="search" value="${esc(state.searchQuery)}" placeholder="大会・クラブ・選手を検索" autocomplete="off"><p class="notice">取得済みの項目と保存済み順位表のクラブを検索します。対応する日本語名・略称でも探せます。</p><div id="searchTeamStatus" role="status"></div><div id="searchResults"></div>`;
+    main.innerHTML = `<div class="detail-top"><button id="searchBack" class="back-button" type="button">← 閉じる</button></div><label class="sr-only" for="globalSearch">大会・クラブ・選手を検索</label><input id="globalSearch" class="search-box" type="search" value="${esc(state.searchQuery)}" placeholder="大会・クラブ・選手を検索" autocomplete="off"><p class="notice">取得済みの項目と保存済み順位表のクラブを検索します。対応する日本語名・略称でも探せます。</p><div class="control-row"><label class="japanese-club-filter"><input id="japaneseClubFilter" type="checkbox">日本人所属クラブのみ</label></div><div id="japaneseClubStatus" role="status"></div><div id="searchTeamStatus" role="status"></div><div id="searchResults"></div>`;
     $('searchBack').addEventListener('click', () => goBack(matchRouteHash()));
     const input = $('globalSearch');
+    $('japaneseClubFilter').addEventListener('change', event => {
+      state.searchJapaneseClubsOnly = event.target.checked;
+      renderSearchResults();
+    });
     let composing = false;
     input.addEventListener('compositionstart', () => { composing = true; });
     const update = () => {
@@ -1668,6 +1739,7 @@
     input.addEventListener('compositionend', () => { composing = false; update(); });
     input.addEventListener('input', update);
     renderSearchTeamStatus();
+    updateJapaneseClubControls();
     renderSearchResults();
     if (!state.searchTeams.attempted) loadSearchTeams();
   }
@@ -1706,9 +1778,10 @@
   function renderSearchResults() {
     const query = state.searchQuery;
     const competitions = competitionDirectory().filter(item => data.matchesSearch(query, competitionSearchValues(item)));
-    const teams = allKnownTeams().filter(item => data.matchesSearch(query, clubSearchValues(item.name)));
+    const teams = allKnownTeams().filter(item => (!state.searchJapaneseClubsOnly || state.japaneseClubs.teams.has(item.id)) && data.matchesSearch(query, clubSearchValues(item.name)));
     const players = allKnownPlayers().filter(item => data.matchesSearch(query, playerSearchValues(item)));
-    $('searchResults').innerHTML = query.trim() ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
+    $('searchResults').innerHTML = state.searchJapaneseClubsOnly ? searchSection('日本人所属クラブ', teamSearchRows(teams))
+      : query.trim() ? `${searchSection('大会', competitionSearchRows(competitions))}${searchSection('クラブ', teamSearchRows(teams))}${searchSection('選手', japaneseRows(players))}` : '<p class="empty-state">検索語を入力してください</p>';
     bindCompetitionRows(); bindTeamRows(); bindPlayerRows(); bindFollowButtons(); bindImageFallbacks();
   }
   function competitionSearchValues(item) {
@@ -1779,7 +1852,7 @@
   }
 
   function teamSearchRows(items) {
-    return items.map(item => `<div class="entity-row is-link" data-team-id="${esc(item.id)}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" alt="">` : '<span class="entity-logo"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">クラブ</div></div><span aria-hidden="true">›</span></div>`).join('');
+    return items.map(item => `<div class="entity-row is-link" data-team-id="${esc(item.id)}">${item.logo ? `<img class="entity-logo" src="${esc(item.logo)}" alt="">` : '<span class="entity-logo"></span>'}<div class="entity-main"><div class="entity-name">${esc(item.name)}</div><div class="entity-sub">クラブ ${japaneseClubBadge(item.id)}${state.japaneseClubs.teams.has(item.id) ? ` · ${esc(japaneseClubMemberNames(item.id))}` : ''}</div></div><span aria-hidden="true">›</span></div>`).join('');
   }
 
   function bindTeamRows() {
@@ -1807,7 +1880,7 @@
     const players = sameSeason ? roster.filter(player => player.rosterTeams?.some(team => team.id === teamId))
       .map(player => ({ ...directoryPlayerView(player), displayStats: state.trackedStats.allPlayers?.get(player.id)?.clubStats?.[teamId] })) : [];
     const hasRoster = sameSeason && Array.isArray(knownTeamRosters.get(teamId));
-    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2></div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (['PST', 'TBD'].includes(statusShort(row)) || Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? `<div class="standings-card">${standingRow(standing)}</div>` : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（名簿取得分）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
+    main.innerHTML = `${entityBackButton('クラブ一覧', '#/competitions')}<section class="entity-hero">${team.logo ? `<img src="${esc(team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<div><div class="eyebrow">${esc(productSeason || currentProductSeason())}</div><h2>${esc(team.name || team.id)}</h2>${japaneseClubBadge(teamId)}${state.japaneseClubs.teams.has(teamId) ? `<p class="entity-sub">${esc(japaneseClubMemberNames(teamId))}${state.japaneseClubs.observedOn ? ` · 名簿確認 ${esc(state.japaneseClubs.observedOn)}` : ''}</p>` : ''}</div></section><section class="section"><div class="section-title"><h2>概要</h2></div><div class="competition-summary"><div><strong>${valueCell(standing?.rank)}</strong><span>順位</span></div><div><strong>${valueCell(standing?.points)}</strong><span>勝点</span></div><div><strong>${valueCell(standing?.goalDifference)}</strong><span>得失点</span></div></div></section><section class="section"><div class="section-title"><h2>取得済みの試合</h2><span class="meta">${fixtures.length ? fixtures.length + '件（取得範囲内）' : '未取得'}</span></div>${fixtures.length ? `${['直近','今後'].map((label,index) => {const rows=fixtures.filter(row => (['PST', 'TBD'].includes(statusShort(row)) || Date.parse(row.kickoffUtc) > Date.now()) === Boolean(index));return `<h3>${label}</h3>${rows.length ? `<div class="match-card">${rows.map(fixtureRow).join('')}</div>` : '<p class="notice">取得済みの範囲にはありません</p>'}`;}).join('')}` : `<div class="notice">試合 ${valueCell(null)}</div>`}</section><section class="section"><div class="section-title"><h2>順位表</h2><span class="meta">${standing?.seasonId ? esc(seasonLabel(standing.seasonId)) : ''}</span></div>${standing ? `<div class="standings-card">${standingRow(standing)}</div>` : '<div class="empty-state"><strong>順位表は未取得です</strong>未取得値を0として表示していません。</div>'}</section><section class="section"><div class="section-title"><h2>所属選手</h2><span class="meta">${hasRoster ? players.length + '人（名簿取得分）' : '未取得'}</span></div><div class="list-card">${hasRoster ? japaneseRows(players, 'このクラブの取得済み所属選手はありません。') : '<p class="notice">所属選手の対応データは未取得です。</p>'}</div></section>`;
     bindEntityBack();
     bindFixtureRows('team');
     bindPlayerRows();
@@ -2134,6 +2207,7 @@
   document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.page)));
   searchButton.innerHTML = icon('search');
   main.addEventListener('click', event => {
+    if (event.target.closest('[data-retry-japanese-clubs]')) loadJapaneseClubs();
     if (event.target.closest('[data-retry-search-teams]')) loadSearchTeams();
     if (event.target.closest('[data-retry]')) { if (router.parseHash(location.hash).kind === 'japanese' && config.attentionEnabled) loadAttention(currentProductSeason()); else applyCurrentRoute(); }
     if (event.target.closest('[data-open-search]')) searchButton.click();
@@ -2176,6 +2250,7 @@
     });
     if (migrated) history.replaceState(history.state, '', `${location.pathname}${migrated.search}${migrated.hash}`);
     applyCurrentRoute();
+    loadJapaneseClubs();
     if (state.page !== 'matches') loadMatches();
     else if (router.parseHash(location.hash).kind === 'fixture') loadMatches({ background: true });
   });
