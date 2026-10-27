@@ -1300,9 +1300,9 @@
     const tabs = [
       ['matches', '試合'],
       ['standings', '順位表'],
-      ['overview', '概要'],
       ['players', '選手成績'],
       ['teams', 'チーム成績'],
+      ['overview', '概要'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="competitionBack" class="back-button" type="button">← リーグ一覧</button><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(detail.id)}" ${String(detail.id).startsWith('legacy:') && !on ? 'disabled' : ''} data-follow-name="${esc(detail.name)}" data-follow-logo="${esc(detail.logo || '')}" data-follow-season="${esc(detail.seasonId || '')}" type="button">${icon('follow',on)} ${on ? 'フォロー中' : 'フォロー'}</button></div>
       <section class="competition-hero">${detail.logo ? `<img src="${esc(detail.logo)}" data-logo-fallback="competition" alt="">` : '<span class="competition-placeholder" aria-hidden="true"></span>'}<div><div class="eyebrow">${esc(detail.country || (detail.seasonId ? `Season ${seasonLabel(detail.seasonId)}` : 'Competition'))}</div><h2>${esc(detail.name)}</h2></div></section>
