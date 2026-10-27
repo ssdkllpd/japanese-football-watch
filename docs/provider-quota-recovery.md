@@ -9,4 +9,6 @@ On 2026-10-27 at 00:06:42 UTC, the key in the d1-staging execution environment r
 3. Confirm sufficient total capacity and remaining balance, then verify both an actual normal update and schedule synchronization. Preserve failed-run history and the real trigger origin.
 4. Treat live workflow exit success carefully: `quota_reserved` means acquisition was paused, not that live match data was refreshed.
 
+Live acquisition caches a low provider balance for 15 minutes, then checks `/status` again through the GitHub runner before allowing any match-data requests. This lets a plan renewed during the same UTC day resume without clearing budgets or waiting for midnight. Local daily request and write ceilings remain enforced; the Worker still has no provider key.
+
 The normal and schedule planners check capacity for the complete discovery batch before any charged discovery calls. Errors distinguish an insufficient total daily plan from an otherwise sufficient plan whose remaining daily balance is too low. Successful-publication checkpoints remain unchanged on preflight failure.
