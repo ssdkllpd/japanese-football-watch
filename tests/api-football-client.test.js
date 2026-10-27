@@ -200,3 +200,20 @@ test('environment factory validates automation throttling values', () => {
     API_FOOTBALL_KEY: 'secret', API_FOOTBALL_MIN_INTERVAL_MS: 'invalid',
   }), /minimumIntervalMs/);
 });
+
+test('an incompatible Free-sized plan fails explicitly before any charged discovery request', async()=>{
+  let charged=0;
+  const fake={refreshDailyQuota:async()=>({dailyLimit:100,dailyRemaining:100}),
+    get:async()=>{charged++;throw Error('charged call should not happen');}};
+  await assert.rejects(()=>discoverAutomation({policy,state:null,client:fake,preview:true,now:'2026-10-27T00:00:00Z'}),
+    error=>/daily plan limit \(100\)/.test(error.message)&&/configured API key/.test(error.message)&&error.quota.dailyLimit===100);
+  assert.equal(charged,0);
+});
+
+test('discovery requires capacity for the whole date batch before consuming a partial batch',async()=>{
+  let charged=0;
+  const fake={refreshDailyQuota:async()=>({dailyLimit:7500,dailyRemaining:101}),
+    get:async()=>{charged++;throw Error('charged call should not happen');}};
+  await assert.rejects(()=>discoverAutomation({policy,state:null,client:fake,preview:true,now:'2026-10-27T00:00:00Z'}),/daily reserve reached or insufficient/);
+  assert.equal(charged,0);
+});

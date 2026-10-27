@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { createClientFromEnv } = require('../api-football/client');
+const { createClientFromEnv, assertQuotaCapacity } = require('../api-football/client');
 const { canonicalFixture } = require('./api-football-automation-plan');
 const policy = {...require('../../config/api-football-automation.json')};
 const cupIds = new Set(require('../../config/cup-competitions.json').competitions.map(c => c.providerId));
@@ -39,8 +39,8 @@ async function planScheduleSync({ client, inventory, now = Date.now() }) {
   const changes = [];
   const held = [];
   let responseQuota = await client.refreshDailyQuota();
-  if (!Number.isSafeInteger(responseQuota?.dailyRemaining)
-    || responseQuota.dailyRemaining < 111) throw new Error('Provider quota cannot cover season discovery and reserve.');
+  assertQuotaCapacity(responseQuota, { reserve: policy.limits.dailyRequestReserve,
+    requests: policy.competitionSeasons.length + 1, label: 'season discovery' });
   for (const scope of policy.competitionSeasons) {
     const result = await client.get('fixtures', {
       league: scope.league, season: scope.season, timezone: policy.timeZone,
