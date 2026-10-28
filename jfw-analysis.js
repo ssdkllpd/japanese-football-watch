@@ -1,8 +1,9 @@
 (function(root, factory) {
-  const api = factory();
+  const appearances = typeof module === 'object' && module.exports ? require('./shared/player-appearance') : root.JFWPlayerAppearance;
+  const api = factory(appearances);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.JFWAnalysis = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+})(typeof globalThis !== 'undefined' ? globalThis : this, appearances => {
   'use strict';
 
   const playerFields = ['minutes','rating','goals','assists','goalsConceded','saves','shots',
@@ -58,7 +59,9 @@
       playerStats: row => {
         const rating = calculateRating?.(row, bundle);
         return {
-          ...pick(row, ['playerId','playerName','teamId','position','starter','captain']), ...metrics(row, playerFields),
+          ...pick(row, ['playerId','playerName','teamId','position','captain']),
+          starter: appearances.starterFromLineups(row, presence(bundle.lineups, bundle.sectionStates?.lineups) === 'present' ? bundle.lineups : []),
+          ...metrics(row, playerFields),
           jfwRating: rating ? {
             ...pick(rating, ['value','ratingVersion','ratingOpsVersion','ratingPosition',
               'reason','missingRequired','missingFields','ratingCoverage','gaOnPitchAmbiguous']),

@@ -56,6 +56,10 @@
     {
       "name": "0014_player_roster.sql",
       "sha256": "347a1a5089b3dd2dcf7acd33fe68542baa8212f2099028d23ce174eeb04d9f8e"
+    },
+    {
+      "name": "0015_lineup_appearance_roles.sql",
+      "sha256": "8c2bbfc07f6663a4bbe7b8725e3a4d1b5f6ef3eda1177a0a35639d9c4bf616dd"
     }
   ],
   "tables": {

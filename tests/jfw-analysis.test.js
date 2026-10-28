@@ -2,6 +2,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildSnapshot, buildPrompt } = require('../jfw-analysis.js');
+const { starterFromLineups, appearanceState } = require('../shared/player-appearance');
+
+test('analysis uses the same-team starting lineup and bench even when every saved starter flag is true', () => {
+  const lineups = [{ teamId: 'home', startXI: [{ id: 'p1' }], substitutes: [{ id: 'p2' }] },
+    { teamId: 'away', startXI: [{ id: 'p3' }], substitutes: [] }];
+  const rows = ['p1','p2','p3','p4'].map(playerId => ({ playerId, teamId: 'home', starter: true, values: {} }));
+  const snapshot = buildSnapshot({ bundle: { lineups, playerStats: rows, sectionStates: { lineups: 'present', playerStats: 'present' } } });
+  assert.deepEqual(snapshot.sections.playerStats.rows.map(row => row.starter), [true, false, null, null]);
+  assert.ok(rows.every(row => row.starter === true), 'do not rewrite the original provider data');
+  assert.equal(starterFromLineups(rows[0], [{ ...lineups[0], substitutes: [{ id: 'p1' }] }]), null);
+  assert.equal(appearanceState(false, 25), 'substitute_used');
+  assert.equal(appearanceState(false, 0), 'bench_unused');
+  assert.equal(appearanceState(false, null), 'unknown');
+  assert.equal(appearanceState(false, 0, 'provider_missing'), 'unknown');
+});
 
 test('analysis preserves acquired zero, missing, non-applicable and conflicting values as distinct states', () => {
   const snapshot = buildSnapshot({ bundle: {

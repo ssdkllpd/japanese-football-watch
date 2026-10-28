@@ -1,5 +1,7 @@
 'use strict';
 
+const { starterFromRole } = require('../../shared/player-appearance');
+
 const CONTRACT_VERSION = '2.1.0';
 const PRODUCT_TIME_ZONE = 'Asia/Tokyo';
 
@@ -201,8 +203,7 @@ function buildAvailableBundle(header, detailRows, stateRows) {
       playerPhoto: item.playerPhoto,
       teamId: item.teamId,
       position: item.position,
-      starter: item.appearanceState === 'started' ? true
-        : (item.appearanceState === 'substitute_used' || item.appearanceState === 'bench_unused' ? false : null),
+      starter: lineup?.teamId === item.teamId ? starterFromRole(item.squadRole) : null,
       captain: booleanOrNull(item.captain),
       values,
       fieldStates: fieldMaps.states.get(`player_stat:${item.playerId}`) || {},

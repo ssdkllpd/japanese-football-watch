@@ -113,6 +113,25 @@ function request() {
   });
 }
 
+test('legacy R2 starter flags are repaired from lineups on public reads', async t => {
+  const database = databaseWithFixture();t.after(() => database.close());
+  const worker = await import('../worker/index.mjs');
+  const payload = fixtureBundle();
+  payload.detailAvailability = 'available';
+  payload.sectionStates.lineups.presence = 'present';payload.sectionStates.playerStats.presence = 'present';
+  payload.lineups = [{ teamId: 'af:team:40', formation: null, coach: null, fieldStates: {},
+    startXI: [], substitutes: [{ id: 'af:player:1002', providerId: 1002, name: 'Bench', number: 12, position: 'F', grid: null, role: 'substitute' }], provenance: payload.fixture.provenance }];
+  payload.playerStats = [{ fixtureId: payload.fixture.id, playerId: 'af:player:1002', playerProviderId: 1002,
+    playerName: 'Bench', playerPhoto: null, teamId: 'af:team:40', position: 'F', starter: true,
+    captain: false, values: { minutes: 0 }, fieldStates: {}, fieldIssues: {}, provenance: payload.fixture.provenance }];
+  const env = envWithR2(database, payload);env.D1_FIXTURE_DETAIL_ENABLED = 'false';
+  const response = await worker.default.fetch(request(), env);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.playerStats.find(row => row.playerId === 'af:player:1002').starter, false);
+  assert.equal(payload.playerStats.at(-1).starter, true, 'raw archive remains unchanged');
+});
+
 test('fixture detail flag serves the D1 compact DTO without reading R2', async t => {
   const database = databaseWithFixture();
   t.after(() => database.close());

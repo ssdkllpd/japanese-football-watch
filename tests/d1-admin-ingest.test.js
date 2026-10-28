@@ -266,6 +266,27 @@ function fixtureEnv(db, bundle = fixturePayload()) {
   };
 }
 
+test('admin publisher ignores saved true starter flags on bench players and preserves missing appearance minutes', async t => {
+  const db = database();t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fortyOneAppearanceFixture();
+  bundle.playerStats.forEach(row => { row.starter = true; });
+  const used = bundle.playerStats.find(row => row.playerId === 'af:player:1012');
+  used.values.minutes = 30;
+  delete bundle.playerStats.find(row => row.playerId === 'af:player:1013').values.minutes;
+  const response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle));
+  assert.equal(response.status, 200, await response.text());
+  const rows = db.prepare(`SELECT player.canonical_id AS id, appearance.appearance_state AS state
+    FROM fixture_player_appearances appearance JOIN fixture_player_records record ON record.id=appearance.player_record_id
+    JOIN players player ON player.id=record.player_id`).all();
+  assert.equal(rows.filter(row => row.state === 'started').length, 22);
+  assert.equal(rows.find(row => row.id === 'af:player:1012').state, 'substitute_used');
+  assert.equal(rows.find(row => row.id === 'af:player:1013').state, 'unknown');
+  assert.equal(rows.find(row => row.id === 'af:player:1041').state, 'unknown');
+  const resolved = await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+  assert.equal(resolved.bundle.playerStats.filter(row => row.starter === true).length, 22);
+});
+
 test('admin standings ingest reads the canonical R2 object and atomically publishes a D1 snapshot', async t => {
   const db = database();
   t.after(() => db.close());

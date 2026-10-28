@@ -10,8 +10,10 @@ import {
 } from '../shared/standings-contract.mjs';
 import { FIXTURE_DETAIL_SCHEMA } from '../shared/fixture-detail-contract.mjs';
 import fixtureRepositoryModule from '../scripts/d1/fixture-repository.js';
+import playerAppearanceModule from '../shared/player-appearance.js';
 
 const { FixtureRepository } = fixtureRepositoryModule;
+const { withLineupStarters } = playerAppearanceModule;
 
 const LIVE_TTL_SECONDS = 60;
 const DATE_TTL_SECONDS = 300;
@@ -1171,7 +1173,7 @@ function competitionSeasonResponseCacheKey(competitionId, requestedSeasonId) {
 }
 
 function fixtureDetailResponseCacheKey(fixtureId) {
-  return new Request(`https://jfw.internal/cache/fixture-detail/${encodeURIComponent(fixtureId)}`);
+  return new Request(`https://jfw.internal/cache/fixture-detail-lineup-roles-v1/${encodeURIComponent(fixtureId)}`);
 }
 
 async function cacheMatch(cache, key) {
@@ -1585,6 +1587,8 @@ function assertFixtureDetailPayload(payload, fixtureId, { degraded = false } = {
   if (!payload.sectionStates || typeof payload.sectionStates !== 'object' || Array.isArray(payload.sectionStates)) {
     throw new Error('Fixture detail sectionStates is invalid.');
   }
+  // Correct legacy R2 and retained live payloads as well as reconstructed D1.
+  payload.playerStats = withLineupStarters(payload).playerStats;
   return payload;
 }
 
