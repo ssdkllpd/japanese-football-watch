@@ -35,6 +35,7 @@ jobs:
           node --check formation-view.js
           node --check jfw-rating.js
           node --check jfw-fixture-rating.js
+          node --check jfw-analysis.js
           node --check match-detail.js
           node --check theme.js
           node --check v2-preview.js

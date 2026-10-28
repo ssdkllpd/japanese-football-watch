@@ -659,6 +659,7 @@
       const bundle = await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`, { fresh: true });
       if (state.detail !== detailRequest) return;
       detailRequest.bundle = bundle;
+      detailRequest.receivedAt = new Date().toISOString();
       rememberFixtures(bundle.fixture ? [bundle.fixture] : []);
       rememberBundlePlayers(bundle);
       for (const team of [bundle.fixture?.teams?.home, bundle.fixture?.teams?.away]) if (team?.id) loadTeamRoster(team.id);
@@ -692,7 +693,7 @@
       const bundle=await apiFetch(`/api/v2/fixtures/${encodeURIComponent(fixtureId)}`, { fresh: true });
       if (bundle.fixture?.id!==fixtureId) throw new Error('Invalid refreshed fixture identity.');
       if (state.detail!==detail) return;
-      detail.bundle=bundle;detail.error=null;detail.refreshError=false;
+      detail.bundle=bundle;detail.receivedAt=new Date().toISOString();detail.error=null;detail.refreshError=false;
       rememberFixtures([bundle.fixture]);rememberBundlePlayers(bundle);
     } catch {
       if (state.detail!==detail) return;
@@ -729,7 +730,7 @@
       ['stats', 'スタッツ'],
       ['ratings', '選手評価・スタッツ'],
     ];
-    main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div>
+    main.innerHTML = `<div class="detail-top"><button id="detailBack" class="back-button" type="button">← ${returnLabel}</button><div class="fixture-actions">${!detail.loading && (row.id || row.fixtureId) && window.JFWAnalysis ? '<a class="plain-button chatgpt-analysis-button" data-chatgpt-analysis href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPTで分析 ↗</a>' : ''}<span class="status-pill${isLive(row) ? ' is-live' : ''}${isFinal(row) ? ' is-final' : ''}${isCancelled(row) ? ' is-cancelled' : ''}">${esc(statusShort(row) || row.ingestionState || '—')}</span></div></div>
       ${state.liveNotice && fixtureNeedsRefresh(row) ? `<div class="notice" role="status">${esc(state.liveNotice)}</div>` : ''}
       ${detailDelayed ? '<div class="notice" role="status">試合詳細の更新が遅れています。最後に取得した内容を表示しています。</div>' : ''}
       ${provisional ? `<p class="notice">${finalPending ? '試合終了時の速報データを表示しています。試合後の確定データの反映を待っています。' : '試合前・試合中の速報データです。試合終了後に確定データへ切り替わります。'}</p>` : ''}
@@ -741,6 +742,7 @@
       if (state.ratingPlayerId) {closeRatingBreakdown(row);return;}
       goBack(returnToCompetition ? router.competitionHash(state.competitionDetail.id,state.competitionDetail.seasonId,state.competitionDetail.tab,state.competitionDetail.date) : matchRouteHash());
     });
+    main.querySelector('[data-chatgpt-analysis]')?.addEventListener('click', () => openAnalysisHandoff(detail, row));
     main.querySelectorAll('[data-detail-tab]').forEach(button => button.addEventListener('click', () => {
       state.detailTab = button.dataset.detailTab;
       state.ratingPlayerId = null;
@@ -754,6 +756,54 @@
     bindPlayerRows();
     bindImageFallbacks();
     bindTeamRows();
+  }
+
+  function openAnalysisHandoff(detail, row) {
+    document.getElementById('analysisHandoff')?.remove();
+    const url = new URL(location.href);
+    url.search = '';
+    url.hash = router.fixtureHash(row.fixtureId || row.id);
+    const text = window.JFWAnalysis.buildPrompt({
+      bundle: detail.bundle || {}, fixture: row, fixtureUrl: url.href,
+      capturedAt: new Date().toISOString(), receivedAt: detail.receivedAt,
+      notices: [state.liveNotice, detail.refreshError ? '詳細の再取得に失敗。最後に取得した詳細を使用。' : '',
+        detail.error ? '詳細データを取得できていません。' : ''].filter(Boolean),
+      calculateRating: window.JFWFixtureRating?.calculate,
+    });
+    // Keep the handoff outside appMain: live repaint must not replace this snapshot.
+    const dialog = document.createElement('dialog');
+    dialog.id = 'analysisHandoff';
+    dialog.className = 'analysis-handoff';
+    dialog.setAttribute('aria-labelledby', 'analysisHandoffTitle');
+    dialog.setAttribute('aria-describedby', 'analysisHandoffHelp');
+    dialog.innerHTML = `<h2 id="analysisHandoffTitle">ChatGPTで試合を分析</h2><p id="analysisHandoffHelp">ChatGPTに貼り付けて送信してください。作成時点のスコア・スタッツ・欠損情報と試合URLをまとめています。</p><p class="analysis-copy-status" role="status" aria-live="polite">分析用テキストをコピーしています…</p><div class="analysis-handoff-actions"><button type="button" class="plain-button" data-analysis-copy>もう一度コピー</button><a class="plain-button" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPTを開く ↗</a><button type="button" class="plain-button" data-analysis-close>閉じる</button></div><p class="analysis-handoff-help">別タブが開かなかった場合は「ChatGPTを開く」を押してください。Workを使う場合は、ChatGPT側で切り替えてください。</p><details class="analysis-copy-details"><summary>分析用テキストを確認・手動コピー</summary><label for="analysisHandoffText">分析用テキスト</label><textarea id="analysisHandoffText" readonly spellcheck="false"></textarea></details>`;
+    const textarea = dialog.querySelector('textarea');
+    textarea.value = text;
+    const close = () => {
+      dialog.remove();
+      main.querySelector('[data-chatgpt-analysis]')?.focus({ preventScroll: true });
+    };
+    dialog.querySelector('[data-analysis-close]').addEventListener('click', close);
+    dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    const copy = async () => {
+      const status = dialog.querySelector('.analysis-copy-status');
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard_unavailable');
+        await navigator.clipboard.writeText(text);
+        status.textContent = 'コピーしました。ChatGPTに貼り付けて送信してください。';
+      } catch {
+        status.textContent = '自動コピーできませんでした。下のテキストを選択してコピーしてください。';
+        dialog.querySelector('details').open = true;
+        textarea.focus();
+        textarea.select();
+      }
+    };
+    dialog.querySelector('[data-analysis-copy]').addEventListener('click', copy);
+    document.body.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    // Start clipboard access during the click; the link opens its tab natively.
+    copy();
   }
 
   function bindFixtureViewControls() {
