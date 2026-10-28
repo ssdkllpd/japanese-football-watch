@@ -22,7 +22,9 @@ const FIXTURE_MIGRATION_SCHEMA = 'jfw-d1-fixture-migration-artifact/1';
 const SCORE_KINDS = ['halftime', 'fulltime', 'extratime', 'penalty'];
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const MAX_D1_QUERIES_PER_INVOCATION = 50;
-const FIXTURE_PREFLIGHT_QUERY_BUDGET = 13;
+// Pending repair + stored catalog + identity checks (3) + revision checks (4).
+// Optional automation guards and the daily budget read are counted below.
+const FIXTURE_PREFLIGHT_QUERY_BUDGET = 9;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -192,17 +194,27 @@ async function assertExistingIdentities(database, sourceCode, context) {
     ['coaches', entityValues(context.coaches), 'canonical_id'],
     ['venues', context.normalized.fixture.venue?.id ? [context.normalized.fixture.venue] : [], 'canonical_id'],
   ];
+  const expectedByKind = new Map();
+  const selections = [];
+  const params = [];
   for (const [table, entities, key] of groups) {
     if (!entities.length) continue;
-    const expectedById = new Map(entities.map(item => [item.id, item]));
-    const result = await database.prepare(`
-      SELECT stored.${key} AS canonical_id, stored.source_id, stored.provider_id
+    expectedByKind.set(table, new Map(entities.map(item => [item.id, item])));
+    selections.push(`
+      SELECT '${table}' AS entity_kind, stored.${key} AS canonical_id,
+        stored.source_id, stored.provider_id
       FROM ${table} stored
       JOIN json_each(?) expected
         ON stored.${key} = json_extract(expected.value, '$.id')
-    `).bind(JSON.stringify(entities.map(item => ({ id: item.id })))).all();
+    `);
+    params.push(JSON.stringify(entities.map(item => ({ id: item.id }))));
+  }
+  // One bounded read checks all five entity kinds. Separate reads pushed a
+  // complete replacement with automation guards over the 50-query limit.
+  if (selections.length) {
+    const result = await database.prepare(selections.join(' UNION ALL ')).bind(...params).all();
     for (const row of result.results || []) {
-      const expected = expectedById.get(row.canonical_id);
+      const expected = expectedByKind.get(row.entity_kind)?.get(row.canonical_id);
       if (!expected || row.source_id !== source?.id || row.provider_id !== expected.providerId) {
         throw new Error(`Stored provider identity differs: ${row.canonical_id}.`);
       }

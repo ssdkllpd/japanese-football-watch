@@ -562,6 +562,64 @@ test('failed fixture replacement rolls back lifecycle and public pointer changes
   ]);
 });
 
+test('automation replaces a complete fixture with catalog reuse and correction guards within 50 total queries', async t => {
+  const db = database();
+  t.after(() => db.close());
+  const admin = await import('../admin-worker/index.mjs');
+  const bundle = fortyOneAppearanceFixture();
+  bundle.lineups[0].fieldStates = { formation: { presence: 'present' } };
+  let response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle));
+  assert.equal(response.status, 200, await response.text());
+  db.prepare('UPDATE fixture_detail_publish_days SET date_utc = ?')
+    .run(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+  bundle.fixture.revision = 2;
+  bundle.fixture.score.goals.home = 3;
+  bundle.fixture.score.fulltime.home = 3;
+  const body = fixtureIngestBody(bundle);
+  delete body.catalog;
+  Object.assign(body, { reuseStoredCatalog: true, requireStableDate: true,
+    preserveCorrections: true, publicationSource: 'automation' });
+  const environment = fixtureEnv(db, bundle);
+  const local = environment.FOOTBALL_DB;
+  const queries = [];
+  environment.FOOTBALL_DB = {
+    prepare(sql) { queries.push(sql); return local.prepare(sql); },
+    batch(statements) { return local.batch(statements); },
+  };
+  response = await admin.default.fetch(request(body), environment);
+  const result = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(result));
+  assert.ok(queries.length <= 50, `${queries.length} total D1 queries`);
+  assert.equal(result.report.imported, true);
+  const resolved = await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+  const comparison = compareFixtureBundles(bundle, resolved.bundle);
+  assert.equal(comparison.equal, true, JSON.stringify(comparison.differences));
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixture_player_appearances').get().n, 41);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM fixture_revisions WHERE lifecycle_state = 'superseded'").get().n, 1);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM fixture_detail_publish_days WHERE publication_source = 'automation'").get().n, 1);
+});
+
+test('batched identity checks reject provider ID drift for every entity kind before publication', async t => {
+  const admin = await import('../admin-worker/index.mjs');
+  for (const [table, id] of [['competitions', 'af:competition:39'], ['teams', 'af:team:40'],
+    ['players', 'af:player:1001'], ['coaches', 'af:coach:501'], ['venues', 'af:venue:10']]) {
+    await t.test(table, async () => {
+      const db = database();
+      try {
+        const bundle = fixturePayload();
+        let response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle));
+        assert.equal(response.status, 200);
+        db.prepare(`UPDATE ${table} SET provider_id = provider_id + 1000000 WHERE canonical_id = ?`).run(id);
+        response = await admin.default.fetch(request(fixtureIngestBody(bundle)), fixtureEnv(db, bundle));
+        const result = await response.json();
+        assert.equal(response.status, 422, JSON.stringify(result));
+        assert.match(result.detail, /Stored provider identity differs/);
+        assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fixture_revisions').get().n, 1);
+      } finally { db.close(); }
+    });
+  }
+});
+
 test('reconciliation rejects array corrections when provider player order changes', () => {
   const original = fixturePayload();
   const second = structuredClone(original.playerStats[0]);
