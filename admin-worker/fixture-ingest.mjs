@@ -1,5 +1,6 @@
 import fixtureImporterModule from '../scripts/d1/fixture-bundle-importer.js';
 import fixturePublishLimitsModule from '../scripts/d1/fixture-publish-limits.js';
+import playerAppearanceModule from '../shared/player-appearance.js';
 import {
   dailyFixturePublishStatement,
   readFixturePublishBudget,
@@ -13,6 +14,7 @@ const {
   validateBundle,
 } = fixtureImporterModule;
 const { FIXTURE_PUBLISH_LIMITS } = fixturePublishLimitsModule;
+const { starterFromLineups, appearanceState: classifyAppearance } = playerAppearanceModule;
 
 export const FIXTURE_OPERATION = 'fixture_publish';
 export const FIXTURE_MIGRATION_OPERATION = 'fixture_migration_publish';
@@ -478,10 +480,8 @@ function appearanceData(context) {
     const lineup = lineupPlayers.get(playerId);
     const stat = context.playerStats.get(playerId);
     const teamId = stat?.teamId || lineup.teamId;
-    const starter = stat?.starter;
-    const appearanceState = starter === true ? 'started'
-      : (starter === false && (stat.values.minutes || 0) > 0 ? 'substitute_used'
-        : (starter === false ? 'bench_unused' : 'unknown'));
+    const starter = starterFromLineups({ playerId, teamId }, context.normalized.lineups);
+    const appearanceState = classifyAppearance(starter, stat?.values?.minutes, stat?.fieldStates?.minutes);
     return { playerId, lineup, stat, teamId, appearanceState };
   });
 }

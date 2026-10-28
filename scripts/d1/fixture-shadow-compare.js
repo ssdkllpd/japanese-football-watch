@@ -1,5 +1,7 @@
 'use strict';
 
+const { withLineupStarters } = require('../../shared/player-appearance');
+
 const { sha256, stableStringify } = require('./fixed-snapshot');
 
 const REPORT_SCHEMA_VERSION = 'd1-fixture-shadow-compare/1';
@@ -56,7 +58,7 @@ function upcastFixtureBundle(bundle) {
 }
 
 function normalizeFixtureBundle(bundle) {
-  return normalizeNode(upcastFixtureBundle(bundle));
+  return normalizeNode(withLineupStarters(upcastFixtureBundle(bundle)));
 }
 
 function pointer(path, key) {

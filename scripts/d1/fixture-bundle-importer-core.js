@@ -2,6 +2,7 @@
 
 const { normalizeFixtureBundle } = require('./fixture-shadow-compare');
 const { sha256, stableStringify } = require('./fixed-snapshot');
+const { starterFromLineups, appearanceState: classifyAppearance } = require('../../shared/player-appearance');
 
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const PRESENCES = new Set(['present', 'not_fetched', 'provider_missing', 'not_applicable']);
@@ -551,10 +552,8 @@ function importFixtureBundle(database, bundle, catalog = {}, correctionDocument)
       const record = row(database, `SELECT id, team_id FROM fixture_player_records
         WHERE fixture_id = ?1 AND player_id = ?2`, fixtureRow.id, player.id);
       if (record.team_id !== team.id) throw new Error(`Existing player record has a different team: ${playerId}.`);
-      const starter = stat?.starter;
-      const appearanceState = starter === true ? 'started'
-        : (starter === false && (stat.values.minutes || 0) > 0 ? 'substitute_used'
-          : (starter === false ? 'bench_unused' : 'unknown'));
+      const starter = starterFromLineups({ playerId, teamId }, normalized.lineups);
+      const appearanceState = classifyAppearance(starter, stat?.values?.minutes, stat?.fieldStates?.minutes);
       run(database, `INSERT INTO fixture_player_appearances(
         fixture_revision_id, player_record_id, appearance_state, position, minutes, captain
       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`, revision.id, record.id, appearanceState,

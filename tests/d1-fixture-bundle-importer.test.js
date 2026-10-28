@@ -112,6 +112,35 @@ function createDatabase() {
   return database;
 }
 
+test('lineup roles govern imports and repair stored starters without converting missing bench minutes to zero', async t => {
+  const database = createDatabase();t.after(() => database.close());
+  const bundle = fixtureBundle();
+  const starter = bundle.playerStats[0];
+  starter.starter = false;
+  for (const [index, minutes] of [30, 0, null].entries()) {
+    const providerId = 1002 + index, playerId = `af:player:${providerId}`;
+    bundle.lineups[0].substitutes.push({ id: playerId, providerId, name: `Bench ${index}`,
+      number: 8 + index, position: 'F', grid: null, role: 'substitute' });
+    bundle.playerStats.push({ ...starter, playerId, playerProviderId: providerId, playerName: `Bench ${index}`,
+      starter: true, values: minutes === null ? { goals: 0 } : { minutes, goals: 0 }, fieldStates: {}, fieldIssues: {} });
+  }
+  bundle.playerStats.push({ ...starter, playerId: 'af:player:1005', playerProviderId: 1005,
+    playerName: 'Unmatched Player', starter: true });
+  importFixtureBundle(database, bundle, catalog(), corrections(bundle));
+  const states = () => database.prepare('SELECT appearance_state FROM fixture_player_appearances ORDER BY id').all().map(row => row.appearance_state);
+  assert.deepEqual(states(), ['started','substitute_used','bench_unused','unknown','unknown']);
+  database.exec("UPDATE fixture_player_appearances SET appearance_state = 'started'");
+  const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
+  assert.deepEqual(resolved.bundle.playerStats.map(row => row.starter), [true,false,false,false,null], 'existing bad appearance states must not leak into the DTO');
+  const repair = fs.readFileSync(path.join(root, 'migrations/0015_lineup_appearance_roles.sql'), 'utf8');
+  database.exec(repair);
+  assert.deepEqual(states(), ['started','substitute_used','bench_unused','unknown','unknown']);
+  database.exec(repair);
+  assert.deepEqual(states(), ['started','substitute_used','bench_unused','unknown','unknown'], 'repair is idempotent');
+  assert.equal(database.prepare('SELECT COUNT(*) AS n FROM fixture_lineup_entries').get().n, 4);
+  assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+});
+
 test('complete 2.1 bundle imports transactionally and has semantic round-trip parity', async t => {
   const database = createDatabase();
   t.after(() => database.close());

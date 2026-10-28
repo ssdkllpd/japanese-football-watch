@@ -1,5 +1,7 @@
 'use strict';
 
+const { starterFromLineups } = require('../../shared/player-appearance');
+
 const CONTRACT_VERSION = '2.1.0';
 const PROVIDER = 'api-football';
 const PRODUCT_TIME_ZONE = 'Asia/Tokyo';
@@ -195,7 +197,7 @@ function assignNumeric(values, key, value) {
   if (parsed !== null) values[key] = parsed;
 }
 
-function normalizePlayerStats(fixture, fetchedAt) {
+function normalizePlayerStats(fixture, fetchedAt, lineups) {
   const rows = [];
   for (const teamBlock of fixture.players || []) {
     const teamProviderId = numeric(teamBlock?.team?.id) ?? teamBlock?.team?.id ?? null;
@@ -257,7 +259,7 @@ function normalizePlayerStats(fixture, fetchedAt) {
         playerPhoto: text(player.photo),
         teamId: afId('team', teamProviderId),
         position,
-        starter: typeof stats?.games?.substitute === 'boolean' ? !stats.games.substitute : null,
+        starter: starterFromLineups({ playerId: identity.id, teamId: afId('team', teamProviderId) }, lineups),
         captain: typeof stats?.games?.captain === 'boolean' ? stats.games.captain : null,
         values,
         fieldStates,
@@ -324,6 +326,7 @@ function normalizeFixtureBundle(fixture, options = {}) {
   };
   const home = normalizeTeam(fixture?.teams?.home);
   const away = normalizeTeam(fixture?.teams?.away);
+  const lineups = normalizeLineups(fixture, fetchedAt);
 
   const bundle = {
     contractVersion: CONTRACT_VERSION,
@@ -359,10 +362,10 @@ function normalizeFixtureBundle(fixture, options = {}) {
     },
     competition,
     season,
-    lineups: normalizeLineups(fixture, fetchedAt),
+    lineups,
     events: normalizeEvents(fixture, fixtureProviderId, fetchedAt),
     teamStats: normalizeTeamStats(fixture, fetchedAt),
-    playerStats: normalizePlayerStats(fixture, fetchedAt),
+    playerStats: normalizePlayerStats(fixture, fetchedAt, lineups),
     sectionStates: {
       events: { presence: sectionPresence(fixture, 'events') },
       lineups: { presence: sectionPresence(fixture, 'lineups') },

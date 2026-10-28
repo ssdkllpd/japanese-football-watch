@@ -123,6 +123,26 @@ test('all players are normalized as general football facts without a Japanese re
   assert.deepEqual(bundle.playerStats[0].fieldStates.saves, { presence: 'not_applicable' });
 });
 
+for (const leagueId of [39, 140]) test(`league ${leagueId}: false substitute flags on all 40 players still produce 22 starters and 18 bench players`, () => {
+  const fixture = sampleFixture();
+  fixture.league.id = leagueId;
+  const teams = [40, 50];
+  fixture.lineups = teams.map((id, side) => {
+    const players = Array.from({ length: 20 }, (_, i) => ({ player: {
+      id: side * 100 + i + 1, name: `Player ${side}-${i}`, number: i + 1, pos: 'M',
+    } }));
+    return { team: { id }, startXI: players.slice(0, 11), substitutes: players.slice(11) };
+  });
+  fixture.players = fixture.lineups.map(lineup => ({ team: lineup.team, players: [
+    ...lineup.startXI, ...lineup.substitutes,
+  ].map(item => ({ player: item.player, statistics: [{ games: { substitute: false, minutes: 0 } }] })) }));
+  const bundle = contract.normalizeFixtureBundle(fixture);
+  assert.equal(bundle.playerStats.filter(row => row.starter === true).length, 22);
+  assert.equal(bundle.playerStats.filter(row => row.starter === false).length, 18);
+  fixture.lineups = [];
+  assert.ok(contract.normalizeFixtureBundle(fixture).playerStats.every(row => row.starter === null));
+});
+
 test('provider pass accuracy is normalized as an accurate-pass count and invalid numbers are omitted', () => {
   const numericString = sampleFixture();
   numericString.players[0].players[0].statistics[0].passes = { total: '5', accuracy: '3' };
