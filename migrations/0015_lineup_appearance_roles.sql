@@ -1,7 +1,9 @@
 -- Repair the former inversion of games.substitute, which marked unused bench
 -- players as starters. Match each appearance to its own revision and team.
 -- Keep raw provider artifacts; lineup membership is the canonical role evidence.
-WITH corrected AS (
+-- Build the correction set once, then update by primary key. A correlated IN
+-- condition rescans every appearance for each row and exceeds D1's CPU limit.
+WITH corrected AS MATERIALIZED (
   SELECT appearance.id,
     CASE
       WHEN entry.squad_role = 'starter' THEN 'started'
@@ -24,7 +26,8 @@ WITH corrected AS (
   LEFT JOIN fixture_lineup_entries entry ON entry.player_appearance_id = appearance.id
     AND entry.lineup_id = lineup.id
 )
-UPDATE fixture_player_appearances
-SET appearance_state = (SELECT corrected.appearance_state FROM corrected WHERE corrected.id = fixture_player_appearances.id)
-WHERE id IN (SELECT corrected.id FROM corrected
-  WHERE corrected.appearance_state <> fixture_player_appearances.appearance_state);
+UPDATE fixture_player_appearances AS appearance
+SET appearance_state = corrected.appearance_state
+FROM corrected
+WHERE appearance.id = corrected.id
+  AND appearance.appearance_state <> corrected.appearance_state;
