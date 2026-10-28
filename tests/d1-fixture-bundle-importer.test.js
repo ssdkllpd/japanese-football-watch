@@ -133,6 +133,9 @@ test('lineup roles govern imports and repair stored starters without converting 
   const resolved = await new FixtureRepository(createLocalD1(database)).resolveFixture(bundle.fixture.id);
   assert.deepEqual(resolved.bundle.playerStats.map(row => row.starter), [true,false,false,false,null], 'existing bad appearance states must not leak into the DTO');
   const repair = fs.readFileSync(path.join(root, 'migrations/0015_lineup_appearance_roles.sql'), 'utf8');
+  const plan = database.prepare(`EXPLAIN QUERY PLAN ${repair}`).all().map(row => row.detail);
+  assert.equal(plan.some(detail => /CORRELATED LIST SUBQUERY/.test(detail)), false,
+    'repair must not rescan the complete correction set for every appearance');
   database.exec(repair);
   assert.deepEqual(states(), ['started','substitute_used','bench_unused','unknown','unknown']);
   database.exec(repair);
