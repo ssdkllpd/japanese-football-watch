@@ -173,11 +173,73 @@ async function boot(t,{hash='#/matches?date=2026-09-01&filter=all',legacy={},det
  for(const [k,v] of Object.entries(storage)) w.localStorage.setItem(k,typeof v === 'string' ? v : JSON.stringify(v));
  w.JFWV2BackfillData={loadCurrentMergedData:async()=>({players:[],topMatches:[],...legacy})};
  w.fetch=async (url,options)=>{calls.push(String(url));if(request){const response=await request(url,options);if(response)return response;}const p=new URL(url).pathname;let body=p==='/api/v2/competitions'?catalog:p.endsWith('/standings')?standings:p.includes('/seasons/')?seasonDetail:p.includes('/fixtures/')?detail:p.includes('/dates/')?(feed?await feed():{fixtures:[fixture()]}):{fixtures:[]};return {ok:true,status:200,json:async()=>structuredClone(body)};};
- for(const file of ['formation-view.js','jfw-rating.js','jfw-fixture-rating.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['formation-view.js','jfw-rating.js','jfw-fixture-rating.js','app-v2-config.js','app-v2-data.js','tracked-player-stats.js','tracked-player-provider-ids.js','all-player-stats.js','app-v2-history.js','app-v2-router.js','player-name-data.js','player-names.js','jfw-analysis.js','app-v2.js']) if(fs.existsSync(path.join(root,file)))w.eval(file === 'app-v2-config.js' && publicConfig ? publicConfig : fs.readFileSync(path.join(root,file),'utf8'));
  await tick();
  const click=async selector=>{const el=w.document.querySelector(selector);assert.ok(el,`missing ${selector}`);el.click();await tick();};
  return {w,doc:w.document,calls,scrollCalls,click,text:()=>w.document.getElementById('appMain').textContent};
 }
+
+test('ChatGPT analysis copies the loaded match snapshot without fetching more data and uses a safe external link', async t => {
+ const detail=bundle();detail.fixture.provenance={source:'api-football',fetchedAt:'2026-09-01T15:00:00Z'};
+ detail.playerStats[0].values={minutes:90,goals:0,assists:0,penaltiesConceded:null};
+ detail.playerStats[0].fieldStates={penaltiesConceded:{presence:'provider_missing'}};
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10?tab=stats',detail,search:'?unused=private'});
+ let copied;Object.defineProperty(app.w.navigator,'clipboard',{value:{writeText:async text=>{copied=text;}}});
+ const calls=app.calls.length;
+ const link=app.doc.querySelector('[data-chatgpt-analysis]');
+ assert.equal(link.href,'https://chatgpt.com/');assert.equal(link.target,'_blank');
+ assert.match(link.rel,/noopener/);assert.match(link.rel,/noreferrer/);
+ await app.click('[data-chatgpt-analysis]');
+ assert.equal(app.calls.length,calls);
+ const dialog=app.doc.getElementById('analysisHandoff');
+ assert.equal(dialog.open,true);
+ assert.match(dialog.textContent,/コピーしました/);
+ assert.equal(dialog.querySelector('textarea').value,copied);
+ const snapshot=JSON.parse(copied.split('JFWスナップショット（JSON）:\n')[1]);
+ assert.equal(snapshot.fixtureUrl,'https://football.test/#/fixtures/af%3Afixture%3A10?tab=overview');
+ assert.ok(snapshot.detailReceivedAt);
+ assert.equal(snapshot.sections.playerStats.rows[0].values.goals,0);
+ assert.equal(snapshot.sections.playerStats.rows[0].fieldStates.penaltiesConceded,'provider_missing');
+ assert.doesNotMatch(copied,/unused=private/);
+ await app.click('[data-analysis-close]');
+ assert.equal(app.doc.getElementById('analysisHandoff'),null);
+ assert.equal(app.doc.activeElement,link);
+});
+
+for(const mode of ['unavailable','denied']) test(`ChatGPT analysis supports manual copy when clipboard is ${mode}`,async t=>{
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10'});
+ if(mode==='denied')Object.defineProperty(app.w.navigator,'clipboard',{value:{writeText:async()=>{throw new Error('denied');}}});
+ await app.click('[data-chatgpt-analysis]');
+ const dialog=app.doc.getElementById('analysisHandoff'),text=dialog.querySelector('textarea');
+ assert.match(dialog.textContent,/自動コピーできませんでした/);
+ assert.equal(dialog.querySelector('details').open,true);
+ assert.equal(app.doc.activeElement,text);
+ assert.equal(text.selectionStart,0);assert.equal(text.selectionEnd,text.value.length);
+ assert.equal(dialog.querySelector('a').href,'https://chatgpt.com/');
+ dialog.dispatchEvent(new app.w.Event('cancel',{cancelable:true}));
+ assert.equal(app.doc.getElementById('analysisHandoff'),null);
+});
+
+test('ChatGPT analysis keeps its snapshot during live repaint and uses the latest details on the next click',async t=>{
+ const intervals=[];let phase=0;
+ const current=()=>{
+  const result=bundle();result.fixture={...fixture(),status:{short:'2H',elapsed:phase?66:60},kickoffUtc:new Date().toISOString()};
+  result.playerStats[0].values={minutes:phase?66:60,goals:phase?1:0};return result;
+ };
+ const app=await boot(t,{hash:'#/fixtures/af%3Afixture%3A10',intervals,feed:async()=>({fixtures:[current().fixture]}),
+  request:async url=>new URL(url).pathname.includes('/fixtures/')?{ok:true,status:200,json:async()=>current()}:null});
+ const copied=[];Object.defineProperty(app.w.navigator,'clipboard',{value:{writeText:async text=>{copied.push(text);}}});
+ await app.click('[data-chatgpt-analysis]');
+ const original=app.doc.getElementById('analysisHandoff'),text=original.querySelector('textarea').value;
+ phase=1;intervals.find(item=>item.ms===60000).callback();await tick();await tick();
+ assert.equal(app.doc.getElementById('analysisHandoff'),original);
+ await app.click('[data-analysis-copy]');assert.equal(copied.at(-1),text);
+ await app.click('[data-analysis-close]');await app.click('[data-chatgpt-analysis]');
+ const snapshot=JSON.parse(copied.at(-1).split('JFWスナップショット（JSON）:\n')[1]);
+ assert.equal(snapshot.detailFixture.status.elapsed,66);
+ assert.equal(snapshot.sections.playerStats.rows[0].values.goals,1);
+ assert.notEqual(copied.at(-1),text);
+});
 
 test('paused live keeps stored fixtures and explains the pause only on today',async t=>{
  const today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(new Date());
