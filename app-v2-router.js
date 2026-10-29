@@ -7,7 +7,7 @@
 
   const MATCH_FILTERS = new Set(['all', 'live', 'following', 'japanese']);
   const FIXTURE_TABS = new Set(['overview', 'lineup', 'events', 'stats', 'ratings']);
-  const COMPETITION_TABS = new Set(['matches', 'standings', 'overview', 'players', 'teams']);
+  const COMPETITION_TABS = new Set(['matches', 'standings', 'overview', 'players']);
   const LEGACY_HASHES = new Map([
     ['#home', '#/matches'],
     ['#featured', '#/matches'],
@@ -76,11 +76,12 @@
     if (decoded.length === 2 && decoded[0] === 'competitions' && decoded[1]) {
       const seasonId = params.get('competitionSeason');
       if (seasonId && !seasonId.startsWith('af:season:')) return invalidSeason('competitionSeason', seasonId);
-      const tab = COMPETITION_TABS.has(params.get('tab')) ? params.get('tab') : 'matches';
+      const requestedTab = params.get('tab');
+      const tab = requestedTab === 'teams' ? 'standings' : COMPETITION_TABS.has(requestedTab) ? requestedTab : 'matches';
       const date = validDate(params.get('date')) ? params.get('date') : null;
       return {
         kind: 'competition', page: 'leagues', competitionId: decoded[1], competitionSeason: seasonId || null, tab, date,
-        canonicalHash: competitionHash(decoded[1], seasonId, tab, date), shouldReplace: false,
+        canonicalHash: competitionHash(decoded[1], seasonId, tab, date), shouldReplace: requestedTab === 'teams',
       };
     }
 
@@ -140,7 +141,7 @@
     return withParams(`/competitions/${encodeURIComponent(competitionId)}`, [
       ['competitionSeason', seasonId],
       ['date', date],
-      ['tab', COMPETITION_TABS.has(tab) ? tab : 'matches'],
+      ['tab', tab === 'teams' ? 'standings' : COMPETITION_TABS.has(tab) ? tab : 'matches'],
     ]);
   }
 

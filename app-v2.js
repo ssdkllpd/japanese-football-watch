@@ -1366,7 +1366,6 @@
       ['matches', '試合'],
       ['standings', '順位表'],
       ['players', '選手成績'],
-      ['teams', 'チーム成績'],
       ['overview', '概要'],
     ];
     main.innerHTML = `<div class="detail-top"><button id="competitionBack" class="back-button" type="button">← リーグ一覧</button><button class="follow-button${on ? ' is-following' : ''}" data-follow-type="competitions" data-follow-id="${esc(detail.id)}" ${String(detail.id).startsWith('legacy:') && !on ? 'disabled' : ''} data-follow-name="${esc(detail.name)}" data-follow-logo="${esc(detail.logo || '')}" data-follow-season="${esc(detail.seasonId || '')}" type="button">${icon('follow',on)} ${on ? 'フォロー中' : 'フォロー'}</button></div>
@@ -1405,7 +1404,6 @@
     if (detail.tab === 'matches') return renderCompetitionMatches(detail);
     if (detail.tab === 'overview') return renderCompetitionOverview(detail);
     if (detail.tab === 'players') return renderCompetitionPlayers(detail);
-    if (detail.tab === 'teams') return renderCompetitionTeams(detail);
     return '<div class="empty-state"><strong>表示できません</strong>不明なタブです。</div>';
   }
 
@@ -1517,15 +1515,6 @@
       ? '<div class="notice">API-Footballの保存済み試合詳細に選手成績がありません。</div>'
       : `<div class="notice">${valueCell(null, stats.presence)}</div>`;
     return `<p class="data-updated">終了試合の公開済み詳細を集計。値が返っていない項目は0にせず「未取得」と表示します。</p><div class="stats-table-scroll"><div class="player-stats-table"><div class="player-stats-row stats-head"><span>選手</span><span>出場</span><span>先発</span><span>分</span><span>G</span><span>A</span><span>評価</span></div>${rows.map(row => `<div class="player-stats-row"><span class="player-stat-person">${personAvatar(row.player)}<span><strong>${esc(displayPlayerName(row.player) || '選手名未取得')}</strong><small>${esc(row.team?.name || (row.teamCount > 1 ? `${row.teamCount}クラブ` : 'クラブ未取得'))}</small></span></span><span>${valueCell(row.appearances)}</span><span>${valueCell(row.starts)}</span><span>${aggregateValue(row.minutes)}</span><span>${aggregateValue(row.goals)}</span><span>${aggregateValue(row.assists)}</span><span>${aggregateValue(row.averageRating)}</span></div>`).join('')}</div></div>${stats.limited ? '<p class="notice">表示は上位200選手までです。</p>' : ''}`;
-  }
-
-  function renderCompetitionTeams(detail) {
-    if (detail.standingsNotApplicable) return '<p class="notice">この大会の順位表を使ったチーム成績は対象外です。</p>';
-    if (detail.standingsLoading) return '<div class="notice">チーム成績を読み込み中…</div>';
-    if (detail.standingsError) return errorNotice(detail.standingsError);
-    const groups = Array.isArray(detail.standings?.groups) ? detail.standings.groups : [];
-    if (!groups.length) return detail.standings ? '<p class="empty-result">該当なし</p>' : valueCell(null);
-    return `<p class="data-updated">順位表スナップショット更新: ${valueCell(detail.standings?.generatedAt)}</p>${groups.map(group => `<section class="section"><div class="section-title"><h2>${esc(group.name || 'チーム成績')}</h2></div><div class="stats-table-scroll"><div class="team-stats-table"><div class="team-stats-row stats-head"><span>クラブ</span><span>試</span><span>勝</span><span>分</span><span>敗</span><span>得</span><span>失</span><span>差</span><span>勝点</span><span>直近</span></div>${(group.table || []).map(row => `<div class="team-stats-row${row.team?.id ? ' is-link' : ''}"${row.team?.id ? ` data-team-id="${esc(row.team.id)}"` : ''}><span class="standings-team">${row.team?.logo ? `<img src="${esc(row.team.logo)}" data-logo-fallback="entity" alt="">` : '<span class="entity-logo logo-fallback"></span>'}<b>${esc(row.team?.name || 'クラブ未取得')}</b>${japaneseClubBadge(row.team?.id, true)}</span><span>${valueCell(row.overall?.played)}</span><span>${valueCell(row.overall?.wins)}</span><span>${valueCell(row.overall?.draws)}</span><span>${valueCell(row.overall?.losses)}</span><span>${valueCell(row.overall?.goalsFor)}</span><span>${valueCell(row.overall?.goalsAgainst)}</span><span>${valueCell(row.goalDifference)}</span><strong>${valueCell(row.points)}</strong><span>${valueCell(row.form)}</span></div>`).join('')}</div></div></section>`).join('')}`;
   }
 
   function renderFollowing() {

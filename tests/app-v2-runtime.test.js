@@ -824,7 +824,7 @@ test('legacy date fallback canonicalizes known leagues and does not leak J1 into
  assert.equal(app.doc.querySelectorAll('[data-competition-id^="legacy:competition:"]').length,0);
  assert.doesNotMatch(app.text(),/J1/);
 });
-test('overview, player stats, team stats and standings render stored D1 values without inventing missing values',async t=>{
+test('overview, player stats and standings render stored D1 values without inventing missing values',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',country:'England',logo:'https://logos.test/39.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
  const seasonDetail={competition:catalog.competitions[0],season:{id:'af:season:39:2026',startsOn:'2026-08-01',endsOn:'2027-05-31'},summary:{teamCount:20,fixtureCount:380,completedFixtureCount:30,publishedDetailCount:29,standingsUpdatedAt:'2026-09-08T02:15:09.068Z',detailUpdatedAt:'2026-09-08T02:00:00.000Z'},detailSections:{lineups:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},events:{present:20,presentEmpty:2,providerMissing:7,notFetched:0},teamStats:{present:29,presentEmpty:0,providerMissing:0,notFetched:0},playerStats:{present:28,presentEmpty:0,providerMissing:0,notFetched:1}},playerStats:{presence:'present',rows:[{player:{id:'af:player:7',name:'Test Player',photo:null},team:{id:'af:team:1',name:'Home Club'},teamCount:1,appearances:3,starts:2,minutes:{value:180,presence:'present'},goals:{value:0,presence:'present'},assists:{value:null,presence:'not_fetched'},averageRating:{value:7.4,presence:'present'}}]}};
  const standings={competition:catalog.competitions[0],season:{id:'af:season:39:2026'},generatedAt:'2026-09-08T02:15:09.068Z',groups:[{name:'Premier League',table:[{rank:1,team:{id:'af:team:1',name:'Home Club',logo:null},overall:{played:3,wins:2,draws:1,losses:0,goalsFor:5,goalsAgainst:1},goalDifference:4,points:7,form:'WWD'}]}]};
@@ -833,8 +833,7 @@ test('overview, player stats, team stats and standings render stored D1 values w
  assert.match(app.text(),/提供なし/);assert.match(app.text(),/順位表更新/);assert.doesNotMatch(app.text(),/準備中/);
  await app.click('[data-competition-tab="players"]');
  assert.match(app.text(),/Test Player/);assert.match(app.text(),/未取得/);assert.match(app.text(),/0/);
- await app.click('[data-competition-tab="teams"]');
- assert.match(app.text(),/Home Club/);assert.match(app.text(),/直近/);assert.doesNotMatch(app.text(),/準備中/);
+ assert.equal(app.doc.querySelector('[data-competition-tab="teams"]'),null);
  await app.click('[data-competition-tab="standings"]');
  const table=app.doc.querySelector('.standings-table');
  assert.deepEqual([...table.querySelectorAll('thead th')].map(el=>el.textContent),['順位','クラブ','試','勝','分','敗','得','失','差','勝点','直近成績']);
@@ -850,6 +849,19 @@ test('overview, player stats, team stats and standings render stored D1 values w
  const unknown=app.doc.querySelectorAll('.standings-table')[1].querySelector('tbody tr');
  assert.deepEqual([...unknown.children].map(el=>el.textContent),['2','Unknown Club','0','0','未取得','0','0','未取得','-2','0','未取得']);
  assert.equal(unknown.querySelector('[data-team-id]'),null);
+});
+test('old team stats links open the standings with competition, season and date preserved',async t=>{
+ const season='af:season:39:2026';
+ const catalog={competitions:[{id:'af:competition:39',name:'Premier League',seasons:[{id:season,status:'active'}]}]};
+ const standings={groups:[{name:'Premier League',table:[{rank:1,team:{id:'af:team:1',name:'Home Club'},overall:{played:3,wins:2,draws:1,losses:0,goalsFor:5,goalsAgainst:1},goalDifference:4,points:7,form:'WWD'}]}]};
+ const app=await boot(t,{hash:'#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&date=2026-09-01&tab=teams',catalog,standings,feed:async()=>({fixtures:[]})});
+ await until(()=>app.doc.querySelector('.standings-table'),'standings did not load');
+ const params=new URLSearchParams(app.w.location.hash.split('?')[1]);
+ assert.equal(params.get('tab'),'standings');assert.equal(params.get('competitionSeason'),season);assert.equal(params.get('date'),'2026-09-01');
+ assert.match(app.w.location.hash,/#\/competitions\/af%3Acompetition%3A39/);
+ assert.equal(app.doc.querySelector('[data-competition-tab="teams"]'),null);
+ assert.equal(app.doc.querySelector('[data-competition-tab="standings"]').getAttribute('aria-selected'),'true');
+ assert.match(app.doc.querySelector('.standings-table').textContent,/Home Club/);
 });
 test('failed competition logo switches to a stable placeholder',async t=>{
  const catalog={competitions:[{id:'af:competition:39',name:'Premier League',logo:'https://logos.test/missing.png',seasons:[{id:'af:season:39:2026',status:'active'}]}]};
