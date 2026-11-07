@@ -48,6 +48,42 @@ test('periodic cup refresh retains all acquired matches and rejects identity los
  });
 });
 
+test('captured provider home-away swaps are accepted only for the same unplayed future tie',async()=>{
+ const evidence=require('./fixtures/cup-refresh-home-away-swaps.json');
+ const {assertCupRefresh}=await import('../scripts/cups/refresh.mjs');
+ const {prepareCups}=await import('../scripts/cups/prepare.mjs');
+ const build=()=>{
+  const snapshot=source();snapshot.observedAt=evidence.source.observedAt;
+  const raw=JSON.stringify(snapshot),p=prepareCups(raw,{source:{snapshotSha256:createHash('sha256').update(raw).digest('hex')}});
+  const object=p.objects.find(o=>o.entry.id==='af:competition:137');
+  const prior=JSON.parse(object.text),fresh=structuredClone(prior);
+  prior.generatedAt='2026-11-05T13:40:09.540Z';
+  prior.fixtures=evidence.changes.map(c=>structuredClone(c.previous));
+  fresh.fixtures=evidence.changes.map(c=>structuredClone(c.next));
+  object.text=JSON.stringify(fresh);
+  return {previous:[prior],prepared:p,fresh,object};
+ };
+ const valid=build(),result=assertCupRefresh(valid.previous,valid.prepared);
+ assert.equal(result.scheduleChanges.length,3);
+ assert.deepEqual(result.identityChanges,[]);
+ for(const alter of [
+  (old,fresh)=>{fresh.teams.home.id='af:team:999';fresh.teams.home.providerId=999;},
+  (old,fresh)=>{fresh.round='Quarter-finals';},
+  (old,fresh)=>{old.status.short='FT';old.ingestionState='finalized';},
+  (old,fresh)=>{fresh.status.short='1H';fresh.status.elapsed=1;},
+  (old,fresh)=>{old.score.goals.home=0;},
+  (old,fresh)=>{fresh.score.fulltime.away=0;},
+  (old,fresh)=>{old.teams.home.winner=false;},
+  (old,fresh)=>{fresh.teams.away.winner=true;},
+  (old,fresh)=>{old.kickoffUtc='2026-11-01T12:00:00.000Z';old.dateJst='2026-11-01';},
+  (old,fresh)=>{fresh.kickoffUtc='2026-11-01T12:00:00.000Z';fresh.dateJst='2026-11-01';},
+ ]) {
+  const changed=build();alter(changed.previous[0].fixtures[0],changed.fresh.fixtures[0]);
+  changed.object.text=JSON.stringify(changed.fresh);
+  assert.throws(()=>assertCupRefresh(changed.previous,changed.prepared),/changed fixture identity/);
+ }
+});
+
 test('the global stored daily feed includes cup ties that have not received a core detail row',async()=>{
  const worker=(await import('../worker/index.mjs')).default;
  const p=await prepared(),{env,objects}=envOf(p);

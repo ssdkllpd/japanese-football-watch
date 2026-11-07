@@ -1,0 +1,336 @@
+{
+  "source": {
+    "workflowRunId": 42334967048,
+    "artifactId": 13559177319,
+    "observedAt": "2026-11-07T03:39:37.302Z"
+  },
+  "changes": [
+    {
+      "competitionId": "af:competition:137",
+      "seasonId": "af:season:137:2026",
+      "fixtureId": "af:fixture:1637927",
+      "previous": {
+        "fixtureId": "af:fixture:1637927",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2026-12-02T17:00:00.000Z",
+        "dateJst": "2026-12-03",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:1579",
+            "providerId": 1579,
+            "name": "Monza",
+            "logo": "https://media.api-sports.io/football/teams/1579.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:489",
+            "providerId": 489,
+            "name": "AC Milan",
+            "logo": "https://media.api-sports.io/football/teams/489.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      },
+      "next": {
+        "fixtureId": "af:fixture:1637927",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2027-01-13T20:00:00.000Z",
+        "dateJst": "2027-01-14",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:489",
+            "providerId": 489,
+            "name": "AC Milan",
+            "logo": "https://media.api-sports.io/football/teams/489.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:1579",
+            "providerId": 1579,
+            "name": "Monza",
+            "logo": "https://media.api-sports.io/football/teams/1579.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      }
+    },
+    {
+      "competitionId": "af:competition:137",
+      "seasonId": "af:season:137:2026",
+      "fixtureId": "af:fixture:1638135",
+      "previous": {
+        "fixtureId": "af:fixture:1638135",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2026-12-02T17:00:00.000Z",
+        "dateJst": "2026-12-03",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:494",
+            "providerId": 494,
+            "name": "Udinese",
+            "logo": "https://media.api-sports.io/football/teams/494.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:499",
+            "providerId": 499,
+            "name": "Atalanta",
+            "logo": "https://media.api-sports.io/football/teams/499.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      },
+      "next": {
+        "fixtureId": "af:fixture:1638135",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2027-01-26T20:00:00.000Z",
+        "dateJst": "2027-01-27",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:499",
+            "providerId": 499,
+            "name": "Atalanta",
+            "logo": "https://media.api-sports.io/football/teams/499.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:494",
+            "providerId": 494,
+            "name": "Udinese",
+            "logo": "https://media.api-sports.io/football/teams/494.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      }
+    },
+    {
+      "competitionId": "af:competition:137",
+      "seasonId": "af:season:137:2026",
+      "fixtureId": "af:fixture:1639883",
+      "previous": {
+        "fixtureId": "af:fixture:1639883",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2026-12-02T17:00:00.000Z",
+        "dateJst": "2026-12-03",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:502",
+            "providerId": 502,
+            "name": "Fiorentina",
+            "logo": "https://media.api-sports.io/football/teams/502.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:492",
+            "providerId": 492,
+            "name": "Napoli",
+            "logo": "https://media.api-sports.io/football/teams/492.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      },
+      "next": {
+        "fixtureId": "af:fixture:1639883",
+        "competitionId": "af:competition:137",
+        "seasonId": "af:season:137:2026",
+        "kickoffUtc": "2026-12-16T20:00:00.000Z",
+        "dateJst": "2026-12-17",
+        "status": {
+          "short": "NS",
+          "long": "Not Started",
+          "elapsed": null
+        },
+        "ingestionState": "scheduled",
+        "teams": {
+          "home": {
+            "id": "af:team:492",
+            "providerId": 492,
+            "name": "Napoli",
+            "logo": "https://media.api-sports.io/football/teams/492.png",
+            "winner": null
+          },
+          "away": {
+            "id": "af:team:502",
+            "providerId": 502,
+            "name": "Fiorentina",
+            "logo": "https://media.api-sports.io/football/teams/502.png",
+            "winner": null
+          }
+        },
+        "score": {
+          "goals": {
+            "home": null,
+            "away": null
+          },
+          "halftime": {
+            "home": null,
+            "away": null
+          },
+          "fulltime": {
+            "home": null,
+            "away": null
+          },
+          "extratime": {
+            "home": null,
+            "away": null
+          },
+          "penalty": {
+            "home": null,
+            "away": null
+          }
+        },
+        "round": "Round of 16"
+      }
+    }
+  ]
+}
