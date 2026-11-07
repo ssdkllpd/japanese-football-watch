@@ -56,6 +56,7 @@ jobs:
           node --check scripts/d1/create-v2-admin-plan.js
           node --check scripts/v2/reconcile-fixture-revision.js
           node --check scripts/v2/plan-manual-fixture-backfill.js
+          node --check scripts/v2/audit-missing-fixture-details.mjs
           node --check scripts/v2/check-manual-backfill-budget.js
           node --check scripts/v2/manual-backfill-checkpoint.js
           node --check scripts/d1/repair-manual-backfill-dates.mjs

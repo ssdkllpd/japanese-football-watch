@@ -1,0 +1,34 @@
+name: Audit missing fixture details
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/api-football-incident-audit.yml
+      - scripts/v2/audit-missing-fixture-details.mjs
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: d1-staging
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      JFW_INCIDENT_SINCE: '2026-11-05'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare every configured provider season to published D1 details without writes
+        run: node scripts/v2/audit-missing-fixture-details.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: missing-fixture-audit-${{ github.run_id }}
+          path: .tmp/incident-audit
+          retention-days: 14
+          if-no-files-found: error
