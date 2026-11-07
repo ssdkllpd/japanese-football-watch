@@ -556,13 +556,14 @@ test('fills a missing player-stats position from the matching lineup', () => {
   assert.equal(context.normalized.playerStats[0].position, 'D');
 });
 
-test('still fails closed when lineup and player stats provide conflicting positions', () => {
+test('keeps lineup and player-stats positions as distinct source facts', () => {
   const bundle = hincapieBundle();
   bundle.playerStats[0].position = 'M';
-  assert.throws(
-    () => validateBundle(bundle, catalog()),
-    /playerStats\[0\] conflicts with lineup team or position/,
-  );
+  const context=validateBundle(bundle,catalog());
+  assert.equal(context.normalized.lineups[0].startXI[0].position,'D');
+  assert.equal(context.normalized.playerStats[0].position,'M');
+  bundle.playerStats[0].teamId=bundle.fixture.teams.away.id;
+  assert.throws(()=>validateBundle(bundle,catalog()),/conflicts with lineup team/);
 });
 
 test('does not apply the reviewed alias outside the pinned snapshot observation', () => {

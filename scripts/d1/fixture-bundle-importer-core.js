@@ -228,8 +228,8 @@ function validateBundle(bundle, catalog = {}) {
     addEntity(players, { id: stat.playerId, providerId: stat.playerProviderId, name: stat.playerName, photo: stat.playerPhoto }, 'player', path);
     if (playerStats.has(stat.playerId)) throw new Error(`Duplicate playerStats player: ${stat.playerId}.`);
     const lineupPlayer = lineupPlayers.get(stat.playerId);
-    if (lineupPlayer && (lineupPlayer.teamId !== stat.teamId || lineupPlayer.position !== stat.position)) {
-      throw new Error(`${path} conflicts with lineup team or position.`);
+    if (lineupPlayer && lineupPlayer.teamId !== stat.teamId) {
+      throw new Error(`${path} conflicts with lineup team.`);
     }
     if (!stat.values || typeof stat.values !== 'object' || Array.isArray(stat.values)) throw new Error(`${path}.values must be an object.`);
     for (const [key, value] of Object.entries(stat.values)) {
@@ -564,9 +564,9 @@ function importFixtureBundle(database, bundle, catalog = {}, correctionDocument)
       const appearance = row(database, 'SELECT last_insert_rowid() AS id');
       if (lineupPlayer) {
         run(database, `INSERT INTO fixture_lineup_entries(
-          lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`, lineupPlayer.lineupId, appearance.id,
-        lineupPlayer.role, lineupPlayer.entryOrder, lineupPlayer.number, lineupPlayer.grid);
+          lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid, position
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`, lineupPlayer.lineupId, appearance.id,
+        lineupPlayer.role, lineupPlayer.entryOrder, lineupPlayer.number, lineupPlayer.grid, lineupPlayer.position);
       }
       if (stat) {
         const knownKeys = Object.keys(PLAYER_STAT_COLUMNS);

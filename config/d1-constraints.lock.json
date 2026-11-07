@@ -60,6 +60,10 @@
     {
       "name": "0015_lineup_appearance_roles.sql",
       "sha256": "2ee4c31168e91819852649b664be67f7c08075ab3436d5af3a8bd9352d1b09a3"
+    },
+    {
+      "name": "0016_lineup_positions.sql",
+      "sha256": "b64e6a41a5993cdf4d6f5966afe43f7e9dd1f4b405f7c78260b5a428ac6fb143"
     }
   ],
   "tables": {

@@ -163,6 +163,7 @@ FROM (
       'teamId', team.canonical_id,
       'appearanceState', appearance.appearance_state,
       'position', appearance.position,
+      'lineupPosition', entry.position,
       'minutes', appearance.minutes,
       'captain', appearance.captain,
       'hasStats', stats.player_appearance_id IS NOT NULL,
