@@ -1,6 +1,7 @@
 'use strict';
 
 const { withLineupStarters } = require('../../shared/player-appearance');
+const { reconcileDuplicateLineupEntries } = require('./lineup-identity');
 
 const { sha256, stableStringify } = require('./fixed-snapshot');
 
@@ -58,7 +59,7 @@ function upcastFixtureBundle(bundle) {
 }
 
 function normalizeFixtureBundle(bundle) {
-  return normalizeNode(withLineupStarters(upcastFixtureBundle(bundle)));
+  return normalizeNode(withLineupStarters(reconcileDuplicateLineupEntries(upcastFixtureBundle(bundle)).bundle));
 }
 
 function pointer(path, key) {

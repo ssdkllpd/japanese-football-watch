@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '3-58/5 * * * *'
   workflow_run:
-    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher, Deploy Live Acquisition Worker, API-Football Manual Backfill, API-Football Paid Bounded Catch-up]
+    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher, Deploy Live Acquisition Worker, API-Football Manual Backfill, API-Football Paid Bounded Catch-up, API-Football Live Acquisition]
     types: [completed]
     branches: [main]
   push:
@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   acquisition-health:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.path != '.github/workflows/api-football-live.yml' || github.event.workflow_run.conclusion != 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -48,6 +49,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
   dispatch-platform:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.path != '.github/workflows/api-football-live.yml' || github.event.workflow_run.conclusion != 'success'
     runs-on: ubuntu-latest
     environment: d1-staging
     timeout-minutes: 5

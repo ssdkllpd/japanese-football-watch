@@ -7,6 +7,12 @@ export const LIMITS = Object.freeze({ reserve:1200, dailyRequests:4000, dailyRow
 const API='https://v3.football.api-sports.io';
 const scalar = n => n===null || n==='' ? null : (/^\d+$/.test(String(n)) ? Number(n) : null);
 const chunks = rows => Array.from({length:Math.ceil(rows.length/20)},(_,i)=>rows.slice(i*20,i*20+20));
+async function writeCommands(db,commands) {
+  for(const part of chunks(commands))await db.batch(part);
+}
+class TickTimeBudget extends Error {
+  constructor(calls){super('tick_time_limit');this.calls=calls;}
+}
 // A renewed plan can increase quota during the same UTC day. Keep recent
 // reserve decisions local, then admit a status-only check before any data call.
 export function cachedQuotaReserved(budget,now) {
@@ -24,7 +30,7 @@ export async function scheduleDiscoveryDue(env,now) {
   const checked=await all(env.LIVE_DB,'SELECT date_jst,checked_ms FROM live_date_checks WHERE date_jst IN (?,?)',...dates);
   return dates.some(date=>!checked.some(row=>row.date_jst===date&&now-row.checked_ms<15*MINUTE));
 }
-export async function providerSession(env, now, request=fetch) {
+export async function providerSession(env, now, request=fetch,clock=Date.now) {
   const db=env.LIVE_DB, day=new Date(now).toISOString().slice(0,10);
   await db.prepare('INSERT OR IGNORE INTO live_budget(utc_day) VALUES(?)').bind(day).run();
   const budget=(await all(db,'SELECT * FROM live_budget WHERE utc_day=?',day))[0];
@@ -33,17 +39,19 @@ export async function providerSession(env, now, request=fetch) {
   if(budget.requests>=LIMITS.dailyRequests) throw new Error('live_request_budget');
   if(!env.API_FOOTBALL_KEY) throw new Error('live_configuration_missing');
   let remaining=null, calls=0, minuteRemaining=null;
-  const started=Date.now();
+  const started=clock();
   const read=async (endpoint,parameters={},status=false) => {
     if(!status && (remaining===null || remaining<=LIMITS.reserve+LIMITS.perTickRequests)) throw new Error('quota_reserved');
     if(minuteRemaining!==null && minuteRemaining<=1) throw new Error('provider_minute_limit');
     if(calls>=LIMITS.perTickRequests) throw new Error('tick_request_limit');
+    // Saving one fetched batch may use the remaining tick. Its checkpoints are
+    // durable; yield before claiming another request and resume next minute.
+    if(clock()-started>=60000)throw new TickTimeBudget(calls);
     const claim=await all(db,'UPDATE live_budget SET requests=requests+1 WHERE utc_day=? AND requests<? RETURNING requests',day,LIMITS.dailyRequests);
     if(!claim.length) throw new Error('live_request_budget');
     calls++;
-    if(Date.now()-started>60000) throw new Error('tick_time_limit');
     if(env.LEASE_OWNER) {
-      const lease=await all(db,'UPDATE live_control SET lease_until_ms=? WHERE id=1 AND lease_owner=? RETURNING id',now+(Date.now()-started)+180000,env.LEASE_OWNER);
+      const lease=await all(db,'UPDATE live_control SET lease_until_ms=? WHERE id=1 AND lease_owner=? RETURNING id',now+(clock()-started)+180000,env.LEASE_OWNER);
       if(!lease.length) throw new Error('lease_lost');
     }
     const url=new URL(endpoint,API);
@@ -80,7 +88,7 @@ export async function providerSession(env, now, request=fetch) {
   await read('/status',{},true);
   return { read, day, get remaining(){return remaining;}, get calls(){return calls;} };
 }
-async function saveSchedule(env,dto,now,{stage=null,snapshot=false,seen=false,resetMissing=false,coreKickoff=null}={}) {
+function scheduleCommands(env,dto,now,{stage=null,snapshot=false,seen=false,resetMissing=false,coreKickoff=null}={}) {
   const db=env.LIVE_DB, id=Number(dto.fixtureId.split(':')[2]),league=Number(dto.competitionId.split(':')[2]);
   const kickoff=Date.parse(dto.kickoffUtc),payload=JSON.stringify(dto);
   const commands=[db.prepare(`INSERT INTO live_schedule(fixture_id,provider_id,competition_id,kickoff_ms,status,payload,last_check_ms,last_seen_ms,core_kickoff_ms)
@@ -95,9 +103,15 @@ async function saveSchedule(env,dto,now,{stage=null,snapshot=false,seen=false,re
   if(snapshot) commands.push(db.prepare(`INSERT INTO live_snapshots(fixture_id,payload,updated_ms) VALUES(?,?,?)
     ON CONFLICT(fixture_id) DO UPDATE SET payload=excluded.payload,updated_ms=excluded.updated_ms
     WHERE excluded.updated_ms>=live_snapshots.updated_ms`).bind(dto.fixtureId,payload,now));
-  await db.batch(commands);
+  return commands;
+}
+async function saveSchedules(env,records,now) {
+  await writeCommands(env.LIVE_DB,records.flatMap(({dto,...options})=>scheduleCommands(env,dto,now,options)));
 }
 async function saveDetails(env,records,now,allowed) {
+  for(const part of chunks(records))await saveDetailBatch(env,part,now,allowed);
+}
+async function saveDetailBatch(env,records,now,allowed) {
   if (!records.length) return;
   const priorRows=await all(env.LIVE_DB,`SELECT fixture_id,payload FROM live_details WHERE fixture_id IN (${records.map(()=>'?').join(',')})`,...records.map(raw=>`af:fixture:${raw.fixture.id}`));
   const previous=new Map(priorRows.map(row=>[row.fixture_id,row]));
@@ -138,9 +152,8 @@ async function refreshIds(env,session,rows,now,allowed,stages=null) {
     }
     if(seen.size!==expected.size) throw new Error('schedule_fixture_missing');
     await saveDetails(env,validated.map(item=>item.raw),now,allowed);
-    for(const {dto} of validated) {
-      await saveSchedule(env,dto,now,{stage:stages?.get(dto.fixtureId),snapshot:liveEligible(expected.get(dto.fixtureId),now)||CLOSED_STATUSES.has(dto.status.short),resetMissing:true});
-    }
+    await saveSchedules(env,validated.map(({dto})=>({dto,stage:stages?.get(dto.fixtureId),
+      snapshot:liveEligible(expected.get(dto.fixtureId),now)||CLOSED_STATUSES.has(dto.status.short),resetMissing:true})),now);
   }
 }
 async function refreshDetails(env,session,rows,now,allowed) {
@@ -162,9 +175,7 @@ async function refreshDetails(env,session,rows,now,allowed) {
     }
     if (seen.size!==expected.size) throw new Error('detail_fixture_missing');
     await saveDetails(env,validated.map(item=>item.raw),now,allowed);
-    for (const {dto} of validated) {
-      await saveSchedule(env,dto,now,{snapshot:true,resetMissing:true});
-    }
+    await saveSchedules(env,validated.map(({dto})=>({dto,snapshot:true,resetMissing:true})),now);
   }
 }
 async function seedCore(env,now,allowed) {
@@ -177,21 +188,23 @@ async function seedCore(env,now,allowed) {
     WHERE f.kickoff_utc>=? AND f.kickoff_utc<=? ORDER BY f.kickoff_utc LIMIT 1001`,new Date(now-6*3600000).toISOString(),new Date(now+48*3600000).toISOString());
   if(rows.length>1000) throw new Error('core_inventory_limit');
   const known=new Map((await all(env.LIVE_DB,'SELECT fixture_id,core_kickoff_ms,status FROM live_schedule')).map(row=>[row.fixture_id,row]));
+  const commands=[];
   for(const row of rows) {
     if(!allowed.has(row.competition_id)) continue;
     // Never overwrite newer provider changes with the four-hour core inventory.
     const prior=known.get(`af:fixture:${row.provider_id}`),coreKickoff=Date.parse(row.kickoff_utc);
     if(prior?.core_kickoff_ms===null) {
-      await env.LIVE_DB.prepare('UPDATE live_schedule SET core_kickoff_ms=? WHERE fixture_id=?').bind(coreKickoff,prior.fixture_id).run();
+      commands.push(env.LIVE_DB.prepare('UPDATE live_schedule SET core_kickoff_ms=? WHERE fixture_id=?').bind(coreKickoff,prior.fixture_id));
       if(row.ingestion_state!=='finalized') continue;
     }
     if(prior && prior.core_kickoff_ms===coreKickoff && !(row.ingestion_state==='finalized' && prior.status!==row.status_short)) continue;
     const dto=providerFixture({fixture:{id:row.provider_id,date:row.kickoff_utc,status:{short:row.status_short,long:row.status_long,elapsed:row.status_elapsed}},
       league:{id:row.competition_id,season:row.provider_season},teams:{home:{id:row.home_id,name:row.home_name,logo:row.home_logo},away:{id:row.away_id,name:row.away_name,logo:row.away_logo}},goals:{home:row.home_goals,away:row.away_goals}},allowed);
-    if(dto) await saveSchedule(env,dto,now,{coreKickoff,snapshot:row.ingestion_state==='finalized'});
+    if(dto)commands.push(...scheduleCommands(env,dto,now,{coreKickoff,snapshot:row.ingestion_state==='finalized'}));
   }
+  await writeCommands(env.LIVE_DB,commands);
 }
-async function runTick(env,now,request) {
+async function runTick(env,now,request,clock) {
   const db=env.LIVE_DB,allowed=allowedLeagues(env),day=jstDate(now);
   const control=(await all(db,'SELECT * FROM live_control WHERE id=1'))[0];
   const daily=control.daily_day!==day;
@@ -210,20 +223,23 @@ async function runTick(env,now,request) {
     const next=rows.filter(row=>isCandidate(row,now)).map(row=>row.kickoff_ms-3600000);
     return {status:'idle',nextStart:next.length?Math.min(...next):null};
   }
-  const session=await providerSession(env,now,request);
+  const session=await providerSession(env,now,request,clock);
   if(daily || discoveryDue) {
     for(const date of [day,jstDate(now+86400000)]) {
       const checked=(await all(db,'SELECT checked_ms FROM live_date_checks WHERE date_jst=?',date))[0];
       if(checked && (CUP_ACQUISITION_ENABLED ? now-checked.checked_ms<15*MINUTE : jstDate(checked.checked_ms)===day)) continue;
       const body=await session.read('/fixtures',{date,timezone:'Asia/Tokyo'});
       const previous=new Map(rows.map(row=>[row.fixture_id,row]));
+      const discovered=[],closedDetails=[];
       for(const raw of body.response) {
         const dto=providerFixture(raw,allowed);if(!dto)continue;
         const closed=CLOSED_STATUSES.has(dto.status.short)&&previous.get(dto.fixtureId)?.status!==dto.status.short;
-        await saveSchedule(env,dto,now,{snapshot:closed});
+        discovered.push({dto,snapshot:closed});
         // Date discovery may observe FT before live=all's disappearance check.
-        if(closed)await saveDetails(env,[raw],now,allowed);
+        if(closed){providerDetail(raw,allowed,now);closedDetails.push(raw);}
       }
+      await saveSchedules(env,discovered,now);
+      await saveDetails(env,closedDetails,now,allowed);
       await db.prepare('INSERT INTO live_date_checks VALUES(?,?) ON CONFLICT(date_jst) DO UPDATE SET checked_ms=excluded.checked_ms').bind(date,now).run();
     }
     await db.prepare('UPDATE live_control SET daily_day=? WHERE id=1').bind(day).run();
@@ -252,21 +268,21 @@ async function runTick(env,now,request) {
     return {status:'idle',nextStart:next.length?Math.min(...next):null,providerCalls:session.calls};
   }
   const body=await session.read('/fixtures',{live:'all',timezone:'Asia/Tokyo'});
-  const selected=new Map(active.map(row=>[row.fixture_id,row])),seen=new Set();
+  const selected=new Map(active.map(row=>[row.fixture_id,row])),seen=new Set(),liveSchedules=[];
   for(const raw of body.response) {
     const dto=providerFixture(raw,allowed);
     if(!dto || !selected.has(dto.fixtureId)) continue;
     if(seen.has(dto.fixtureId)) throw new Error('duplicate_live_fixture');
     seen.add(dto.fixtureId);
-    await saveSchedule(env,dto,now,{snapshot:true,seen:true});
+    liveSchedules.push({dto,snapshot:true,seen:true});
   }
+  await saveSchedules(env,liveSchedules,now);
   const disappeared=active.filter(row=>!seen.has(row.fixture_id) && row.last_seen_ms!==null);
   // A game disappearing from live=all may have just finished. Confirm once;
   // otherwise a goal/FT transition could remain stale for thirty minutes.
   if(disappeared.length) await refreshIds(env,session,disappeared,now,allowed);
-  for(const row of active.filter(row=>!seen.has(row.fixture_id))) {
-    await db.prepare('UPDATE live_schedule SET missing_since_ms=COALESCE(missing_since_ms,?),last_seen_ms=NULL WHERE fixture_id=?').bind(now,row.fixture_id).run();
-  }
+  await writeCommands(db,active.filter(row=>!seen.has(row.fixture_id)).map(row=>
+    db.prepare('UPDATE live_schedule SET missing_since_ms=COALESCE(missing_since_ms,?),last_seen_ms=NULL WHERE fixture_id=?').bind(now,row.fixture_id)));
   const current=await all(db,'SELECT * FROM live_schedule WHERE kickoff_ms>=? ORDER BY kickoff_ms LIMIT 1001',now-6*3600000);
   await refreshDetails(env,session,current.filter(row=>liveEligible(row,now)),now,allowed);
   await db.prepare('UPDATE live_control SET last_poll_ms=? WHERE id=1').bind(now).run();
@@ -282,7 +298,7 @@ export function countedDatabase(db,counter) {
   };
   return {prepare:sql=>wrap(db.prepare(sql)),async batch(statements){const results=await db.batch(statements.map(stmt=>native.get(stmt)));results.forEach(record);return results;} };
 }
-export async function scheduledTick(event,env,request=fetch,now=Date.now()) {
+export async function scheduledTick(event,env,request=fetch,now=Date.now(),clock=Date.now) {
   if(!env.LIVE_DB) throw new Error('live_database_missing');
   const counter={rows:0};
   env={...env,LIVE_DB:countedDatabase(env.LIVE_DB,counter)};
@@ -295,12 +311,16 @@ export async function scheduledTick(event,env,request=fetch,now=Date.now()) {
   try {
     if(env.LIVE_ACQUISITION_ENABLED!=='true') result={status:'disabled',nextStart:null};
     else if(!env.FOOTBALL_DB) throw new Error('live_configuration_missing');
-    else result=await runTick(env,now,request);
+    else result=await runTick(env,now,request,clock);
   } catch(caught) {
-    const code=String(caught?.message||'');
-    const safe=/^[a-z_]{3,60}$/.test(code)?code:'live_acquisition_error';
-    result={status:['quota_reserved','live_request_budget','live_write_budget','provider_minute_limit'].includes(safe)?safe:'error',nextStart:null};
-    error=safe;
+    if(caught instanceof TickTimeBudget) {
+      result={status:'deferred',nextStart:null,deferredReason:'tick_time_limit',providerCalls:caught.calls};
+    } else {
+      const code=String(caught?.message||'');
+      const safe=/^[a-z_]{3,60}$/.test(code)?code:'live_acquisition_error';
+      result={status:['quota_reserved','live_request_budget','live_write_budget','provider_minute_limit'].includes(safe)?safe:'error',nextStart:null};
+      error=safe;
+    }
   }
   await env.LIVE_DB.prepare(`UPDATE live_control SET lease_until_ms=0,status=?,error_code=?,next_start_ms=?,
     last_success_ms=CASE WHEN ? IS NULL THEN ? ELSE last_success_ms END WHERE id=1 AND lease_owner=?`).bind(result.status,error||null,result.nextStart??null,error||null,now,owner).run();

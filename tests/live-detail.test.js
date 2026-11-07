@@ -38,8 +38,58 @@ async function harness(t,league=39) {
  const {scheduledTick}=await import('../live-worker/index.mjs');
  const {fixtureDetailResponse}=await import('../worker/index.mjs');
  const read=async stamp=>{const response=await fixtureDetailResponse(env,'af:fixture:10',null,stamp);assert.equal(response.status,200);return {body:await response.json(),source:response.headers.get('x-jfw-data-source')};};
- return {db,now,raw,calls,env,fixtures,tick:stamp=>scheduledTick({scheduledTime:stamp},env,request,stamp),read,setCore:value=>{core=value;}};
+ return {db,now,raw,calls,env,fixtures,tick:(stamp,clock)=>scheduledTick({scheduledTime:stamp},env,request,stamp,clock),read,setCore:value=>{core=value;}};
 }
+
+test('a busy date saves eighty closed fixtures with bounded remote batches',async t=>{
+ const h=await harness(t);let batches=0,elapsed=0;
+ const base=h.env.LIVE_DB,original=base.batch;
+ base.batch=async statements=>{
+  batches++;elapsed+=500;
+  assert.ok(statements.length<=20,'one remote batch must stay bounded');
+  return original(statements);
+ };
+ h.fixtures.clear();
+ for(let id=10;id<90;id++) {
+  const raw=structuredClone(h.raw);raw.fixture.id=id;
+  raw.fixture.date=new Date(h.now-90*60000).toISOString();
+  raw.fixture.status={short:'FT',elapsed:90};raw.goals={home:1,away:0};
+  h.fixtures.set(id,raw);
+ }
+ const result=await h.tick(h.now,()=>elapsed);
+ assert.equal(result.status,'idle');
+ assert.ok(batches<40,`${batches} remote round trips for eighty matches`);
+ assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM live_details').get().n,80);
+ assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM live_snapshots').get().n,80);
+ assert.equal(h.db.prepare("SELECT COUNT(*) AS n FROM live_schedule WHERE status='FT'").get().n,80);
+});
+
+test('a time-limited tick keeps its date checkpoint and resumes without charging an unissued call',async t=>{
+ const h=await harness(t);
+ const clock=()=>h.db.prepare('SELECT COUNT(*) AS n FROM live_date_checks').get().n?61000:0;
+ const yielded=await h.tick(h.now,clock);
+ assert.equal(yielded.status,'deferred');
+ assert.equal(yielded.deferredReason,'tick_time_limit');
+ assert.equal(yielded.providerCalls,2);
+ assert.equal(h.db.prepare('SELECT requests FROM live_budget').get().requests,2);
+ assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM live_date_checks').get().n,1);
+ assert.equal(h.db.prepare('SELECT error_code,last_poll_ms FROM live_control').get().error_code,null);
+ assert.equal(h.db.prepare('SELECT last_poll_ms FROM live_control').get().last_poll_ms,null);
+ const {providerFixture}=await import('../shared/live-contract.mjs');
+ const staleRaw=structuredClone(h.raw);staleRaw.fixture.status={short:'1H',elapsed:12};
+ const stale=providerFixture(staleRaw,new Set([39]));
+ h.db.prepare('INSERT INTO live_snapshots(fixture_id,payload,updated_ms) VALUES(?,?,?)')
+  .run(stale.fixtureId,JSON.stringify(stale),h.now-4*60000);
+ const {storedLiveResponse}=await import('../worker/index.mjs');
+ const visible=await (await storedLiveResponse({...h.env,LIVE_DATA_READ_ENABLED:'true'},h.now)).json();
+ assert.equal(visible.stale,true,'a yielded tick must not mark stale match data as fresh');
+ const completed=await h.tick(h.now+60000,()=>0);
+ assert.equal(completed.status,'polling');
+ assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM live_date_checks').get().n,2);
+ assert.equal(h.db.prepare('SELECT last_poll_ms FROM live_control').get().last_poll_ms,h.now+60000);
+ const today=h.calls.filter(url=>new URL(url).searchParams.get('date')==='2026-10-18');
+ assert.equal(today.length,1,'the committed discovery date must not be fetched again');
+});
 
 test('announced pre-match lineups, live corrections and final details flow through stored data only',async t=>{
  const h=await harness(t),minute=60000;

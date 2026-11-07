@@ -287,6 +287,25 @@ test('admin publisher ignores saved true starter flags on bench players and pres
   assert.equal(resolved.bundle.playerStats.filter(row => row.starter === true).length, 22);
 });
 
+test('captured duplicate bench ID publishes without guessing its contradictory shirt number',async t=>{
+  const db=database();t.after(()=>db.close());
+  const admin=await import('../admin-worker/index.mjs');
+  const bundle=structuredClone(require('./fixtures/duplicate-provider-lineup-1554413.json'));
+  const original=JSON.stringify(bundle),body=fixtureIngestBody(bundle);
+  body.catalog.competition={type:'Cup',countryCode:null};
+  body.catalog.season.startsOn='2026-07-01';
+  const response=await admin.default.fetch(request(body),fixtureEnv(db,bundle));
+  const result=await response.json();
+  assert.equal(response.status,200,JSON.stringify(result));
+  assert.deepEqual(result.report.lineupDuplicates[0].sourceNumbers,[44,66]);
+  const resolved=await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+  const rows=resolved.bundle.lineups.flatMap(l=>l.substitutes).filter(p=>p.id==='af:player:619640');
+  assert.equal(rows.length,1);assert.equal(rows[0].number,null);
+  const comparison=compareFixtureBundles(bundle,resolved.bundle);
+  assert.equal(comparison.equal,true,JSON.stringify(comparison.differences));
+  assert.equal(JSON.stringify(bundle),original);
+});
+
 test('admin standings ingest reads the canonical R2 object and atomically publishes a D1 snapshot', async t => {
   const db = database();
   t.after(() => db.close());
