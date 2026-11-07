@@ -23,7 +23,7 @@ function reconcileDuplicateLineupEntries(bundle) {
   for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
     for(const player of lineup[role]||[]) {
       if(!/^af:player:[1-9]\d*$/.test(player.id||'')||player.id!==`af:player:${player.providerId}`
-        ||!/^(?:[A-Z]\.\s*)?Trialist$/i.test(player.name||''))continue;
+        ||!/^(?:[A-Z]\.?\s*)?Trialist(?:\s+[A-Z]\.?)?$/i.test(player.name||''))continue;
       if(!placeholders.has(player.id))placeholders.set(player.id,[]);
       placeholders.get(player.id).push({teamId:lineup.teamId,listRole:role,...player});
     }

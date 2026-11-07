@@ -59,3 +59,14 @@ test('named players and manually corrected identities are never discarded as tri
   assert.equal(reconcileDuplicateLineupEntries(source).report.length,0);
  }
 });
+
+
+test('provider trialist letter labels on either side remain unresolved across teams',()=>{
+ const source=require('./fixtures/provider-trialist-1548126.json');
+ const {bundle,report}=reconcileDuplicateLineupEntries(source);
+ assert.equal(report[0].sourceCount,2);assert.equal(report[0].eventReferences,2);
+ assert.equal(bundle.lineups.flatMap(l=>[...l.startXI,...l.substitutes]).some(p=>p.id==='af:player:182419'),false);
+ for(const e of bundle.events)assert.equal([e.playerId,e.relatedPlayerId].includes('af:player:182419'),false);
+ for(const l of bundle.lineups)assert.equal(l.fieldStates.substitutes.presence,'provider_missing');
+ assert.deepEqual(normalizeFixtureBundle(bundle),normalizeFixtureBundle(source));
+});
