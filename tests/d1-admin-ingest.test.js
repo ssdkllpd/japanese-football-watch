@@ -980,3 +980,18 @@ for(const fixtureId of [1548116,1548126])test(`captured unnamed trialists ${fixt
  assert.equal(compared.equal,true,JSON.stringify(compared.differences));
  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM players WHERE canonical_id='af:player:182419'").get().n,0);
 });
+
+test('captured provider position differences survive Admin publication and the public D1 DTO',async t=>{
+ const db=database();t.after(()=>db.close());const admin=await import('../admin-worker/index.mjs');
+ const bundle=structuredClone(require('./fixtures/provider-position-1554376.json'));
+ const original=JSON.stringify(bundle),body=fixtureIngestBody(bundle);
+ body.catalog.competition={type:'Cup',countryCode:null};body.catalog.season.startsOn='2026-07-01';
+ const expected=require('../scripts/d1/fixture-bundle-importer').validateBundle(bundle,body.catalog).normalized;
+ const response=await admin.default.fetch(request(body),fixtureEnv(db,bundle));
+ assert.equal(response.status,200,await response.clone().text());
+ const resolved=await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+ const keeper=resolved.bundle.lineups.flatMap(l=>l.startXI).find(p=>p.id==='af:player:69948');
+ assert.equal(keeper.position,'G');assert.equal(resolved.bundle.playerStats.find(p=>p.playerId===keeper.id).position,'F');
+ const compared=compareFixtureBundles(expected,resolved.bundle);
+ assert.equal(compared.equal,true,JSON.stringify(compared.differences));assert.equal(JSON.stringify(bundle),original);
+});

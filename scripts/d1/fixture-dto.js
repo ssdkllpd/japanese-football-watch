@@ -181,7 +181,7 @@ function buildAvailableBundle(header, detailRows, stateRows) {
       providerId: item.playerProviderId,
       name: item.playerName,
       number: item.shirtNumber,
-      position: item.position,
+      position: Object.hasOwn(item, 'lineupPosition') ? item.lineupPosition : item.position,
       grid: item.grid,
       role: item.squadRole,
     };

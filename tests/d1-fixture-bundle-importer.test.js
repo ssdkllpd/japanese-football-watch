@@ -371,3 +371,23 @@ test('individual offsides in extensible stats reject negative, fractional, unsaf
   assert.throws(()=>validateBundle(bundle, catalog()),/offsides/);
  }
 });
+
+test('Node imports retain independent lineup and statistics positions',async t=>{
+ const db=createDatabase();t.after(()=>db.close());const bundle=fixtureBundle();
+ bundle.lineups[0].startXI[0].position='D';bundle.playerStats[0].position='M';
+ importFixtureBundle(db,bundle,catalog(),corrections(bundle));
+ const result=await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+ assert.equal(result.bundle.lineups[0].startXI[0].position,'D');
+ assert.equal(result.bundle.playerStats[0].position,'M');
+ assert.equal(compareFixtureBundles(bundle,result.bundle).equal,true);
+});
+
+test('lineup-position migration preserves existing published source positions',async t=>{
+ const db=createDatabase();t.after(()=>db.close());const bundle=fixtureBundle();
+ importFixtureBundle(db,bundle,catalog(),corrections(bundle));
+ db.exec('ALTER TABLE fixture_lineup_entries DROP COLUMN position');
+ db.exec(fs.readFileSync(path.join(root,'migrations/0016_lineup_positions.sql'),'utf8'));
+ const result=await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
+ assert.equal(compareFixtureBundles(bundle,result.bundle).equal,true);
+ assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+});

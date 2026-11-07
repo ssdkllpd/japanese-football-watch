@@ -549,7 +549,7 @@ function addAppearanceStatements(database, statements, context) {
   if (lineupEntries.length) {
     statements.push(statement(database, `
       INSERT INTO fixture_lineup_entries(
-        lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid
+        lineup_id, player_appearance_id, squad_role, entry_order, shirt_number, grid, position
       )
       SELECT
         (SELECT lineup.id FROM fixture_lineups lineup
@@ -561,7 +561,7 @@ function addAppearanceStatements(database, statements, context) {
         (SELECT id FROM fixture_player_appearances
           WHERE ${appearanceSelector().replace('player.canonical_id = ?', "player.canonical_id = json_extract(value, '$.playerId')")}),
         json_extract(value, '$.role'), json_extract(value, '$.entryOrder'),
-        json_extract(value, '$.number'), json_extract(value, '$.grid')
+        json_extract(value, '$.number'), json_extract(value, '$.grid'), json_extract(value, '$.position')
       FROM json_each(?)
     `, [fixture.id, fixture.revision, fixture.id, fixture.revision, fixture.id,
       JSON.stringify(lineupEntries.map(item => ({
@@ -571,6 +571,7 @@ function addAppearanceStatements(database, statements, context) {
         entryOrder: item.lineup.entryOrder,
         number: item.lineup.number,
         grid: item.lineup.grid,
+        position: item.lineup.position,
       })))]));
   }
   const statEntries = appearances.filter(item => item.stat);
