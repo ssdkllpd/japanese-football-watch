@@ -963,18 +963,19 @@ test('a full 80-player fixture retains every explicit missing metric within the 
 });
 
 
-test('captured unnamed trialists publish a partial lineup with unresolved event identities',async t=>{
+for(const fixtureId of [1548116,1548126])test(`captured unnamed trialists ${fixtureId} publish a partial lineup with unresolved event identities`,async t=>{
  const db=database();t.after(()=>db.close());
  const admin=await import('../admin-worker/index.mjs');
- const bundle=structuredClone(require('./fixtures/provider-trialist-1548116.json'));
+ const bundle=structuredClone(require(`./fixtures/provider-trialist-${fixtureId}.json`));
  const body=fixtureIngestBody(bundle);body.catalog.competition={type:'Cup',countryCode:null};
  body.catalog.season.startsOn='2026-07-01';
  const response=await admin.default.fetch(request(body),fixtureEnv(db,bundle));
  const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));
  assert.equal(result.report.lineupDuplicates[0].reason,'provider_unnamed_trialist_identity');
  const resolved=await new FixtureRepository(createLocalD1(db)).resolveFixture(bundle.fixture.id);
- assert.equal(resolved.bundle.events[0].playerId,null);
- assert.equal(resolved.bundle.events[0].relatedPlayerId,null);
+ for(const event of resolved.bundle.events){
+  assert.notEqual(event.playerId,'af:player:182419');assert.notEqual(event.relatedPlayerId,'af:player:182419');
+ }
  const compared=compareFixtureBundles(bundle,resolved.bundle);
  assert.equal(compared.equal,true,JSON.stringify(compared.differences));
  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM players WHERE canonical_id='af:player:182419'").get().n,0);
