@@ -909,6 +909,7 @@ export async function publishFixtureFromR2(env, input) {
     schemaVersion: 'jfw-d1-admin-ingest-report/1', operation: input.operation,
     fixtureId: input.fixtureId, sourceR2Key, sourceSha256, contentSha256,
     imported: true, revision: context.fixture.revision, statementCount: statements.length,
+    ...(context.lineupDuplicateEvidence?.length?{lineupDuplicates:context.lineupDuplicateEvidence}:{}),
     counts: {
       events: context.normalized.events.length, lineups: context.normalized.lineups.length,
       appearances: boundedAppearances.length, playerStats: context.normalized.playerStats.length,

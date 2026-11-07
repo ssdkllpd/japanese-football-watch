@@ -37,6 +37,7 @@ jobs:
           node --check jfw-fixture-rating.js
           node --check jfw-analysis.js
           node --check shared/player-appearance.js
+          node --check scripts/d1/lineup-identity.js
           node --check match-detail.js
           node --check theme.js
           node --check v2-preview.js

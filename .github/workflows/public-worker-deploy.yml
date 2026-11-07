@@ -23,6 +23,8 @@ on:
       - 'scripts/d1/fixture-repository.js'
       - 'scripts/d1/fixture-dto.js'
       - 'scripts/d1/fixture-bundle-importer*.js'
+      - 'scripts/d1/fixture-shadow-compare.js'
+      - 'scripts/d1/lineup-identity.js'
       - 'worker/**'
       - 'shared/**'
   workflow_dispatch:

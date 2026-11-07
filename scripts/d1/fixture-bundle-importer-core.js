@@ -3,6 +3,7 @@
 const { normalizeFixtureBundle } = require('./fixture-shadow-compare');
 const { sha256, stableStringify } = require('./fixed-snapshot');
 const { starterFromLineups, appearanceState: classifyAppearance } = require('../../shared/player-appearance');
+const { reconcileDuplicateLineupEntries } = require('./lineup-identity');
 
 const SECTION_KEYS = ['events', 'lineups', 'teamStats', 'playerStats'];
 const PRESENCES = new Set(['present', 'not_fetched', 'provider_missing', 'not_applicable']);
@@ -310,7 +311,8 @@ function validateBundle(bundle, catalog = {}) {
   if (!equalJson(normalized.fieldIssues || {}, expectedIssues)) {
     throw new Error('Top-level fieldIssues must exactly represent review_required corrections.');
   }
-  return { normalized, fixture, kickoffUtc, publishedAt, productSeasonId, source, teams, players, coaches, playerStats };
+  return { normalized, fixture, kickoffUtc, publishedAt, productSeasonId, source, teams, players, coaches, playerStats,
+    lineupDuplicateEvidence:reconcileDuplicateLineupEntries(bundle).report };
 }
 
 function upsertMasterData(database, context, catalog) {

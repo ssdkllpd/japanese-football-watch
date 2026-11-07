@@ -1,0 +1,783 @@
+{
+  "contractVersion": "2.1.0",
+  "detailAvailability": "available",
+  "fixture": {
+    "id": "af:fixture:1554413",
+    "providerId": 1554413,
+    "competitionId": "af:competition:848",
+    "seasonId": "af:season:848:2026",
+    "kickoffUtc": "2026-07-09T18:00:00.000Z",
+    "dateJst": "2026-07-10",
+    "productTimeZone": "Asia/Tokyo",
+    "round": "1st Qualifying Round",
+    "referee": "G. Avazashvili",
+    "venue": {
+      "id": null,
+      "providerId": null,
+      "name": null,
+      "city": null
+    },
+    "status": {
+      "short": "FT",
+      "long": "Match Finished",
+      "elapsed": 90
+    },
+    "ingestionState": "finalized",
+    "teams": {
+      "home": {
+        "id": "af:team:3339",
+        "providerId": 3339,
+        "name": "Vllaznia Shkodër",
+        "logo": "https://media.api-sports.io/football/teams/3339.png",
+        "winner": true
+      },
+      "away": {
+        "id": "af:team:15576",
+        "providerId": 15576,
+        "name": "Malisheva",
+        "logo": "https://media.api-sports.io/football/teams/15576.png",
+        "winner": false
+      }
+    },
+    "score": {
+      "goals": {
+        "home": 2,
+        "away": 1
+      },
+      "halftime": {
+        "home": 1,
+        "away": 1
+      },
+      "fulltime": {
+        "home": 2,
+        "away": 1
+      },
+      "extratime": {
+        "home": null,
+        "away": null
+      },
+      "penalty": {
+        "home": null,
+        "away": null
+      }
+    },
+    "revision": 1,
+    "reconciledAt": "2026-11-07T03:59:19.018Z",
+    "provenance": {
+      "source": "api-football",
+      "fetchedAt": "2026-11-07T03:59:19.018Z",
+      "verification": "provider",
+      "issues": []
+    }
+  },
+  "competition": {
+    "id": "af:competition:848",
+    "providerId": 848,
+    "name": "UEFA Europa Conference League",
+    "country": "World",
+    "logo": "https://media.api-sports.io/football/leagues/848.png",
+    "flag": null
+  },
+  "season": {
+    "id": "af:season:848:2026",
+    "competitionId": "af:competition:848",
+    "providerSeason": 2026,
+    "label": "2026"
+  },
+  "lineups": [
+    {
+      "teamId": "af:team:3339",
+      "formation": null,
+      "fieldStates": {
+        "formation": {
+          "presence": "provider_missing"
+        }
+      },
+      "coach": {
+        "id": "af:coach:27085",
+        "providerId": 27085,
+        "name": "Eduard Martini",
+        "photo": "https://media.api-sports.io/football/coachs/27085.png"
+      },
+      "startXI": [
+        {
+          "id": "af:player:390632",
+          "providerId": 390632,
+          "name": "A. Jukaj",
+          "number": 12,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:3741",
+          "providerId": 3741,
+          "name": "E. Gurishta",
+          "number": 2,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:14443",
+          "providerId": 14443,
+          "name": "J. Celikovic",
+          "number": 4,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:419649",
+          "providerId": 419649,
+          "name": "G. Pusi",
+          "number": 3,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:3522",
+          "providerId": 3522,
+          "name": "E. Musta",
+          "number": 29,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:3551",
+          "providerId": 3551,
+          "name": "K. Qato",
+          "number": 25,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:42724",
+          "providerId": 42724,
+          "name": "C. Dros",
+          "number": 6,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:381845",
+          "providerId": 381845,
+          "name": "E. Murataj",
+          "number": 11,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:469605",
+          "providerId": 469605,
+          "name": "A. Ara",
+          "number": 19,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:53555",
+          "providerId": 53555,
+          "name": "B. Balaj",
+          "number": 9,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:388326",
+          "providerId": 388326,
+          "name": "R. Toma",
+          "number": 22,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        }
+      ],
+      "substitutes": [
+        {
+          "id": "af:player:461280",
+          "providerId": 461280,
+          "name": "R. Bunjaj",
+          "number": 31,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:423217",
+          "providerId": 423217,
+          "name": "G. Kubazi",
+          "number": 27,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:667167",
+          "providerId": 667167,
+          "name": "A. Kthupi",
+          "number": 30,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:619640",
+          "providerId": 619640,
+          "name": "S. Uldedaj",
+          "number": 44,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:667132",
+          "providerId": 667132,
+          "name": "K. Halili",
+          "number": 70,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:469610",
+          "providerId": 469610,
+          "name": "X. Hajdari",
+          "number": 80,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:619640",
+          "providerId": 619640,
+          "name": "S. Uldedaj",
+          "number": 66,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        }
+      ],
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "teamId": "af:team:15576",
+      "formation": null,
+      "fieldStates": {
+        "formation": {
+          "presence": "provider_missing"
+        }
+      },
+      "coach": {
+        "id": "af:coach:3394",
+        "providerId": 3394,
+        "name": "Bekim Isufi",
+        "photo": "https://media.api-sports.io/football/coachs/3394.png"
+      },
+      "startXI": [
+        {
+          "id": "af:player:3709",
+          "providerId": 3709,
+          "name": "I. Avdyli",
+          "number": 1,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:323245",
+          "providerId": 323245,
+          "name": "D. Vitija",
+          "number": 30,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:330671",
+          "providerId": 330671,
+          "name": "D. Kryeziu",
+          "number": 5,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:36974",
+          "providerId": 36974,
+          "name": "A. Skovgaard",
+          "number": 27,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:269598",
+          "providerId": 269598,
+          "name": "A. Pira",
+          "number": 20,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:74611",
+          "providerId": 74611,
+          "name": "V. Nafiu",
+          "number": 18,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:3468",
+          "providerId": 3468,
+          "name": "B. Ferati",
+          "number": 6,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:382275",
+          "providerId": 382275,
+          "name": "A. Veliu",
+          "number": 2,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:359310",
+          "providerId": 359310,
+          "name": "L. Xhylani",
+          "number": 10,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:582458",
+          "providerId": 582458,
+          "name": "K. Uka",
+          "number": 7,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        },
+        {
+          "id": "af:player:109623",
+          "providerId": 109623,
+          "name": "D. Ibishi",
+          "number": 99,
+          "position": null,
+          "grid": null,
+          "role": "starter"
+        }
+      ],
+      "substitutes": [
+        {
+          "id": "af:player:437180",
+          "providerId": 437180,
+          "name": "E. Morina",
+          "number": 23,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:199780",
+          "providerId": 199780,
+          "name": "A. Kanuric",
+          "number": 25,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:180634",
+          "providerId": 180634,
+          "name": "O. Bajraktari",
+          "number": 3,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:544848",
+          "providerId": 544848,
+          "name": "A. Sopaj",
+          "number": 4,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:274566",
+          "providerId": 274566,
+          "name": "M. Bushaj",
+          "number": 8,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:667168",
+          "providerId": 667168,
+          "name": "K. Dulaj",
+          "number": 9,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:667169",
+          "providerId": 667169,
+          "name": "E. Kryeziu",
+          "number": 12,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:667170",
+          "providerId": 667170,
+          "name": "K. Luma",
+          "number": 13,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:544760",
+          "providerId": 544760,
+          "name": "V. Isgandarli",
+          "number": 17,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:437183",
+          "providerId": 437183,
+          "name": "E. Zogaj",
+          "number": 19,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:550232",
+          "providerId": 550232,
+          "name": "R. Murati",
+          "number": 33,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        },
+        {
+          "id": "af:player:391733",
+          "providerId": 391733,
+          "name": "K. Shani",
+          "number": 55,
+          "position": null,
+          "grid": null,
+          "role": "substitute"
+        }
+      ],
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "af:event:1554413:0",
+      "type": "goal",
+      "detail": "Normal Goal",
+      "comments": null,
+      "elapsed": 3,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:359310",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:1",
+      "type": "card",
+      "detail": "Yellow Card",
+      "comments": null,
+      "elapsed": 12,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:3741",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:2",
+      "type": "card",
+      "detail": "Yellow Card",
+      "comments": null,
+      "elapsed": 35,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:109623",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:3",
+      "type": "goal",
+      "detail": "Normal Goal",
+      "comments": null,
+      "elapsed": 37,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:3551",
+      "relatedPlayerId": "af:player:388326",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:4",
+      "type": "substitution",
+      "detail": "Substitution 1",
+      "comments": null,
+      "elapsed": 46,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:469605",
+      "relatedPlayerId": "af:player:423217",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:5",
+      "type": "card",
+      "detail": "Red Card",
+      "comments": null,
+      "elapsed": 54,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:36974",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:6",
+      "type": "goal",
+      "detail": "Normal Goal",
+      "comments": null,
+      "elapsed": 56,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:3522",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:7",
+      "type": "card",
+      "detail": "Yellow Card",
+      "comments": null,
+      "elapsed": 58,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:74611",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:8",
+      "type": "substitution",
+      "detail": "Substitution 1",
+      "comments": null,
+      "elapsed": 64,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:74611",
+      "relatedPlayerId": "af:player:544760",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:9",
+      "type": "substitution",
+      "detail": "Substitution 2",
+      "comments": null,
+      "elapsed": 64,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:109623",
+      "relatedPlayerId": "af:player:391733",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:10",
+      "type": "substitution",
+      "detail": "Substitution 2",
+      "comments": null,
+      "elapsed": 80,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:381845",
+      "relatedPlayerId": "af:player:667132",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:11",
+      "type": "substitution",
+      "detail": "Substitution 3",
+      "comments": null,
+      "elapsed": 84,
+      "extra": null,
+      "teamId": "af:team:15576",
+      "playerId": "af:player:359310",
+      "relatedPlayerId": "af:player:274566",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:12",
+      "type": "card",
+      "detail": "Yellow Card",
+      "comments": null,
+      "elapsed": 85,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:419649",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:13",
+      "type": "substitution",
+      "detail": "Substitution 3",
+      "comments": null,
+      "elapsed": 88,
+      "extra": null,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:3522",
+      "relatedPlayerId": "af:player:619640",
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    },
+    {
+      "id": "af:event:1554413:14",
+      "type": "card",
+      "detail": "Yellow Card",
+      "comments": null,
+      "elapsed": 90,
+      "extra": 1,
+      "teamId": "af:team:3339",
+      "playerId": "af:player:619640",
+      "relatedPlayerId": null,
+      "provenance": {
+        "source": "api-football",
+        "fetchedAt": "2026-11-07T03:59:19.018Z",
+        "verification": "provider",
+        "issues": []
+      }
+    }
+  ],
+  "teamStats": [],
+  "playerStats": [],
+  "sectionStates": {
+    "events": {
+      "presence": "present"
+    },
+    "lineups": {
+      "presence": "present"
+    },
+    "teamStats": {
+      "presence": "present"
+    },
+    "playerStats": {
+      "presence": "present"
+    }
+  },
+  "overrides": {},
+  "fieldIssues": {}
+}
