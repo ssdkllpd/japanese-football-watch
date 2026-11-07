@@ -1,6 +1,10 @@
 name: API-Football Paid Bounded Catch-up
 
 on:
+  workflow_dispatch:
+  # Incident recovery: process the verified historical backlog in bounded batches.
+  schedule:
+    - cron: '15 2 * * *'
   push:
     branches: [main]
     paths:
@@ -11,8 +15,24 @@ permissions:
   actions: write
 
 jobs:
+  recovery-window:
+    runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.window.outputs.active }}
+    steps:
+      - name: Bound automatic recovery to the reviewed incident window
+        id: window
+        shell: bash
+        run: |
+          today=$(date -u +%F)
+          if [[ "$today" < '2026-11-07' || "$today" > '2026-12-07' ]]; then
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          fi
   batch:
-    if: github.repository == 'ssdkllpd/japanese-football-watch'
+    needs: recovery-window
+    if: github.repository == 'ssdkllpd/japanese-football-watch' && needs.recovery-window.outputs.active == 'true'
     uses: ./.github/workflows/api-football-manual-backfill.yml
     with:
       mode: execute

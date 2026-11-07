@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '3-58/5 * * * *'
   workflow_run:
-    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher, Deploy Live Acquisition Worker]
+    workflows: [API-Football Automation, API-Football Schedule Sync, Prepare or Deploy Workflow Dispatcher, Deploy Live Acquisition Worker, API-Football Manual Backfill, API-Football Paid Bounded Catch-up]
     types: [completed]
     branches: [main]
   push:
