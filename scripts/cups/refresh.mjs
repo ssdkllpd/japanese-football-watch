@@ -9,6 +9,7 @@ import {assertCupSnapshot,CUP_CATALOG_KEY} from '../../shared/cup-snapshot-contr
 // A complete season grows as draws are made. Never replace it with a partial reply.
 export function assertCupRefresh(previous,next) {
   const byId=new Map(next.objects.map(o=>[o.entry.id,JSON.parse(o.text)]));
+  const identityChanges=[];
   for(const old of previous) {
     const value=assertCupSnapshot(old,old.competition.id,old.season.id),fresh=byId.get(value.competition.id);
     if(!fresh||fresh.season.id!==value.season.id||fresh.generatedAt<value.generatedAt)throw new Error('Cup refresh scope or timestamp regressed');
@@ -16,9 +17,17 @@ export function assertCupRefresh(previous,next) {
     for(const f of value.fixtures) {
       const replacement=rows.get(f.fixtureId);
       if(!replacement)throw new Error(`Cup refresh lost a stored fixture: ${f.fixtureId}`);
-      if(['home','away'].some(side=>f.teams[side].id!==replacement.teams[side].id))throw new Error('Cup refresh changed fixture identity');
+      if(['home','away'].some(side=>f.teams[side].id!==replacement.teams[side].id)) {
+        identityChanges.push({competitionId:value.competition.id,seasonId:value.season.id,
+          fixtureId:f.fixtureId,previous:f,next:replacement});
+      }
     }
     if(value.standings&&!fresh.standings)throw new Error('Cup refresh lost acquired standings');
+  }
+  if(identityChanges.length) {
+    const error=new Error(`Cup refresh changed fixture identity: ${identityChanges.map(c=>c.fixtureId).join(', ')}`);
+    error.identityChanges=identityChanges;
+    throw error;
   }
 }
 
@@ -41,9 +50,17 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   run('scripts/cups/inspect.mjs');
   const raw=fs.readFileSync(`${dir}/snapshot.json`,'utf8'),source=JSON.parse(fs.readFileSync(`${dir}/summary.json`,'utf8'));
   const prepared=prepareCups(raw,{source});
-  assertCupRefresh(previous,prepared);
-  r2(['put',`${process.env.R2_BUCKET}/${source.snapshotKey}`,'--file',`${dir}/snapshot.json`,'--content-type','application/json']);
+  fs.writeFileSync(`${dir}/previous-snapshots.json`,JSON.stringify(previous));
   writePreparedCups(prepared);
+  try {
+    assertCupRefresh(previous,prepared);
+    fs.writeFileSync(`${dir}/refresh-report.json`,JSON.stringify({passed:true,generatedAt:prepared.catalog.generatedAt,identityChanges:[]}));
+  } catch(error) {
+    fs.writeFileSync(`${dir}/refresh-report.json`,JSON.stringify({passed:false,generatedAt:prepared.catalog.generatedAt,
+      error:error.message,identityChanges:error.identityChanges||[]}));
+    throw error;
+  }
+  r2(['put',`${process.env.R2_BUCKET}/${source.snapshotKey}`,'--file',`${dir}/snapshot.json`,'--content-type','application/json']);
   run('scripts/cups/publish.mjs');
   run('scripts/cups/bootstrap-catalog.mjs');
   console.log(JSON.stringify({cupRefresh:true,cups:prepared.objects.length,generatedAt:prepared.catalog.generatedAt,quota:source.quota}));

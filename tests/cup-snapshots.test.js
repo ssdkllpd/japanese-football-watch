@@ -39,7 +39,13 @@ test('periodic cup refresh retains all acquired matches and rejects identity los
  const changed=structuredClone(p);const value=JSON.parse(changed.objects[0].text);value.fixtures=[];changed.objects[0].text=JSON.stringify(value);
  assert.throws(()=>assertCupRefresh(previous,changed),/lost a stored fixture/);
  const moved=structuredClone(p),row=JSON.parse(moved.objects[0].text);row.fixtures[0].teams.home.id='af:team:999';moved.objects[0].text=JSON.stringify(row);
- assert.throws(()=>assertCupRefresh(previous,moved),/changed fixture identity/);
+ assert.throws(()=>assertCupRefresh(previous,moved),error=>{
+  assert.match(error.message,/changed fixture identity: af:fixture:/);
+  assert.equal(error.identityChanges.length,1);
+  assert.equal(error.identityChanges[0].previous.teams.home.id,'af:team:1');
+  assert.equal(error.identityChanges[0].next.teams.home.id,'af:team:999');
+  return true;
+ });
 });
 
 test('the global stored daily feed includes cup ties that have not received a core detail row',async()=>{
