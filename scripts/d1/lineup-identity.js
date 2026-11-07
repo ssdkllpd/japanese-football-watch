@@ -1,6 +1,12 @@
 'use strict';
 
-const { stableStringify } = require('./fixed-snapshot');
+// This normalization runs in public Workers as well as the Node importer.
+function canonicalize(value) {
+  if(Array.isArray(value))return value.map(canonicalize);
+  if(!value||typeof value!=='object')return value;
+  return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonicalize(value[key])]));
+}
+const stableStringify=value=>JSON.stringify(canonicalize(value));
 
 // Preserve the original R2 document and reconcile its canonical view. Named
 // players can coalesce repeated entries in the same role.

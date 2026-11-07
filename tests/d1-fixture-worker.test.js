@@ -434,3 +434,25 @@ test('fixture detail flag off accepts validated contract 2.0.0 and 2.1.0 shapes'
   assert.equal(current.contractVersion, '2.1.0');
   assert.equal(current.detailAvailability, 'unavailable');
 });
+
+test('public reads repair retained unnamed trialist identities in R2 and live snapshots',async()=>{
+ const worker=await import('../worker/index.mjs');
+ for(const source of ['r2','live']){
+  const payload=structuredClone(require('./fixtures/provider-trialist-1548116.json'));
+  const original=JSON.stringify(payload),id=payload.fixture.id;
+  const env={D1_FIXTURE_DETAIL_ENABLED:'false',RESPONSE_CACHE:responseCache(),
+   FOOTBALL_DATA:{async get(key){
+    if(key===`football/v2/indexes/fixture/${id}.json`)return r2Object({fixtureId:id,key:'captured.json'});
+    return key==='captured.json'&&source==='r2'?r2Object(payload):null;
+   }}};
+  if(source==='live')Object.assign(env,{LIVE_DATA_READ_ENABLED:'true',
+   LIVE_DB:{prepare(){return {bind(){return {async all(){return {success:true,results:[{payload:JSON.stringify(payload),updated_ms:Date.now()}]};}};}};}}});
+  const response=await worker.fixtureDetailResponse(env,id);
+  assert.equal(response.status,200,await response.clone().text());
+  const body=await response.json();
+  assert.equal(body.lineups.flatMap(l=>[...l.startXI,...l.substitutes]).some(p=>p.id==='af:player:182419'),false);
+  assert.equal(body.events[0].playerId,null);assert.equal(body.events[0].relatedPlayerId,null);
+  assert.equal(body.lineups.find(l=>l.teamId==='af:team:6781').fieldStates.startXI.presence,'provider_missing');
+  assert.equal(JSON.stringify(payload),original);
+ }
+});

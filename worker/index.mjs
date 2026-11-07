@@ -11,9 +11,11 @@ import {
 import { FIXTURE_DETAIL_SCHEMA } from '../shared/fixture-detail-contract.mjs';
 import fixtureRepositoryModule from '../scripts/d1/fixture-repository.js';
 import playerAppearanceModule from '../shared/player-appearance.js';
+import lineupIdentityModule from '../scripts/d1/lineup-identity.js';
 
 const { FixtureRepository } = fixtureRepositoryModule;
 const { withLineupStarters } = playerAppearanceModule;
+const { reconcileDuplicateLineupEntries } = lineupIdentityModule;
 
 const LIVE_TTL_SECONDS = 60;
 const DATE_TTL_SECONDS = 300;
@@ -1588,6 +1590,7 @@ function assertFixtureDetailPayload(payload, fixtureId, { degraded = false } = {
     throw new Error('Fixture detail sectionStates is invalid.');
   }
   // Correct legacy R2 and retained live payloads as well as reconstructed D1.
+  Object.assign(payload, reconcileDuplicateLineupEntries(payload).bundle);
   payload.playerStats = withLineupStarters(payload).playerStats;
   return payload;
 }
