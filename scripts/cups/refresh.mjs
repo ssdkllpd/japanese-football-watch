@@ -6,10 +6,26 @@ import {execFileSync} from 'node:child_process';
 import {prepareCups,writePreparedCups} from './prepare.mjs';
 import {assertCupSnapshot,CUP_CATALOG_KEY} from '../../shared/cup-snapshot-contract.mjs';
 
+function unplayedHomeAwaySwap(previous,next,observedAt) {
+  const untouched=fixture=>['NS','TBD'].includes(fixture.status.short)
+    &&fixture.ingestionState==='scheduled'&&fixture.status.elapsed===null
+    &&Date.parse(fixture.kickoffUtc)>Date.parse(observedAt)
+    &&['home','away'].every(side=>fixture.teams[side].winner===null)
+    &&['goals','halftime','fulltime','extratime','penalty']
+      .every(kind=>fixture.score[kind]?.home===null&&fixture.score[kind]?.away===null);
+  return previous.round===next.round&&untouched(previous)&&untouched(next)
+    &&previous.teams.home.id!==previous.teams.away.id
+    &&['home','away'].every((side,index)=>{
+      const opposite=index===0?'away':'home';
+      return previous.teams[side].id===next.teams[opposite].id
+        &&previous.teams[side].providerId===next.teams[opposite].providerId;
+    });
+}
+
 // A complete season grows as draws are made. Never replace it with a partial reply.
 export function assertCupRefresh(previous,next) {
   const byId=new Map(next.objects.map(o=>[o.entry.id,JSON.parse(o.text)]));
-  const identityChanges=[];
+  const identityChanges=[],scheduleChanges=[];
   for(const old of previous) {
     const value=assertCupSnapshot(old,old.competition.id,old.season.id),fresh=byId.get(value.competition.id);
     if(!fresh||fresh.season.id!==value.season.id||fresh.generatedAt<value.generatedAt)throw new Error('Cup refresh scope or timestamp regressed');
@@ -18,8 +34,11 @@ export function assertCupRefresh(previous,next) {
       const replacement=rows.get(f.fixtureId);
       if(!replacement)throw new Error(`Cup refresh lost a stored fixture: ${f.fixtureId}`);
       if(['home','away'].some(side=>f.teams[side].id!==replacement.teams[side].id)) {
-        identityChanges.push({competitionId:value.competition.id,seasonId:value.season.id,
-          fixtureId:f.fixtureId,previous:f,next:replacement});
+        const change={competitionId:value.competition.id,seasonId:value.season.id,
+          fixtureId:f.fixtureId,previous:f,next:replacement};
+        if(unplayedHomeAwaySwap(f,replacement,fresh.generatedAt)) {
+          scheduleChanges.push({...change,reason:'unplayed_home_away_swap'});
+        } else identityChanges.push(change);
       }
     }
     if(value.standings&&!fresh.standings)throw new Error('Cup refresh lost acquired standings');
@@ -27,8 +46,10 @@ export function assertCupRefresh(previous,next) {
   if(identityChanges.length) {
     const error=new Error(`Cup refresh changed fixture identity: ${identityChanges.map(c=>c.fixtureId).join(', ')}`);
     error.identityChanges=identityChanges;
+    error.scheduleChanges=scheduleChanges;
     throw error;
   }
+  return {identityChanges,scheduleChanges};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
@@ -53,11 +74,11 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   fs.writeFileSync(`${dir}/previous-snapshots.json`,JSON.stringify(previous));
   writePreparedCups(prepared);
   try {
-    assertCupRefresh(previous,prepared);
-    fs.writeFileSync(`${dir}/refresh-report.json`,JSON.stringify({passed:true,generatedAt:prepared.catalog.generatedAt,identityChanges:[]}));
+    const comparison=assertCupRefresh(previous,prepared);
+    fs.writeFileSync(`${dir}/refresh-report.json`,JSON.stringify({passed:true,generatedAt:prepared.catalog.generatedAt,...comparison}));
   } catch(error) {
     fs.writeFileSync(`${dir}/refresh-report.json`,JSON.stringify({passed:false,generatedAt:prepared.catalog.generatedAt,
-      error:error.message,identityChanges:error.identityChanges||[]}));
+      error:error.message,identityChanges:error.identityChanges||[],scheduleChanges:error.scheduleChanges||[]}));
     throw error;
   }
   r2(['put',`${process.env.R2_BUCKET}/${source.snapshotKey}`,'--file',`${dir}/snapshot.json`,'--content-type','application/json']);
