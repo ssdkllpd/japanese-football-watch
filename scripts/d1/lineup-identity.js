@@ -2,14 +2,43 @@
 
 const { stableStringify } = require('./fixed-snapshot');
 
-// The provider's canonical ID identifies one player. Preserve the original R2
-// document; only its canonical view coalesces repeated entries in the same role.
+// Preserve the original R2 document and reconcile its canonical view. Named
+// players can coalesce repeated entries in the same role.
 // A conflicting shirt number becomes unknown rather than choosing either value.
 function reconcileDuplicateLineupEntries(bundle) {
   const next=structuredClone(bundle),report=[];
   // An indexed manual correction must be reconciled explicitly before changing
   // array positions. Never silently retarget an existing correction.
-  if(Object.keys(next.overrides||{}).some(path=>path.startsWith('lineups.')))return {bundle:next,report};
+  if(Object.keys(next.overrides||{}).some(path=>/^(lineups|events|playerStats)\./.test(path)))return {bundle:next,report};
+  // "Trialist" is an unnamed registration slot, not a player identity. The
+  // provider reuses its ID for different people, including both sides of a sub.
+  // Keep the source evidence and the event, but never link that slot to a person.
+  const placeholders=new Map();
+  for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
+    for(const player of lineup[role]||[]) {
+      if(!/^af:player:[1-9]\d*$/.test(player.id||'')||player.id!==`af:player:${player.providerId}`
+        ||!/^(?:[A-Z]\.\s*)?Trialist$/i.test(player.name||''))continue;
+      if(!placeholders.has(player.id))placeholders.set(player.id,[]);
+      placeholders.get(player.id).push({teamId:lineup.teamId,listRole:role,...player});
+    }
+  }
+  for(const [id,entries]of placeholders) {
+    // Never discard a real named player sharing the provider's placeholder ID.
+    const all=(next.lineups||[]).flatMap(l=>[...(l.startXI||[]),...(l.substitutes||[])]).filter(p=>p.id===id);
+    if(all.length!==entries.length||(next.playerStats||[]).some(p=>p.playerId===id))continue;
+    for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
+      if(!lineup[role]?.some(p=>p.id===id))continue;
+      lineup[role]=lineup[role].filter(p=>p.id!==id);
+      lineup.fieldStates={...lineup.fieldStates,[role]:{presence:'provider_missing'}};
+    }
+    let eventReferences=0;
+    for(const event of next.events||[])for(const [key,nameKey]of [['playerId','playerName'],['relatedPlayerId','relatedPlayerName']]) {
+      if(event[key]!==id)continue;
+      event[key]=null;delete event[nameKey];eventReferences++;
+    }
+    report.push({playerId:id,sourceCount:entries.length,sourceEntries:entries,eventReferences,
+      reason:'provider_unnamed_trialist_identity'});
+  }
   for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
     const rows=lineup[role];if(!Array.isArray(rows))continue;
     const groups=new Map();

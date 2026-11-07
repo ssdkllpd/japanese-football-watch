@@ -33,3 +33,29 @@ test('indexed lineup corrections prevent implicit entry removal',()=>{
  const source=structuredClone(captured);source.overrides={'lineups.0.substitutes.1.number':{value:44}};
  assert.equal(reconcileDuplicateLineupEntries(source).report.length,0);
 });
+
+
+test('unnamed trialist slots never become a person or a self-substitution',()=>{
+ const source=require('./fixtures/provider-trialist-1548116.json'),original=JSON.stringify(source);
+ const {bundle,report}=reconcileDuplicateLineupEntries(source);
+ assert.equal(report[0].reason,'provider_unnamed_trialist_identity');
+ assert.equal(report[0].sourceCount,2);assert.equal(report[0].eventReferences,2);
+ assert.equal(bundle.lineups.flatMap(l=>[...l.startXI,...l.substitutes]).some(p=>p.id==='af:player:182419'),false);
+ const lineup=bundle.lineups.find(l=>l.teamId==='af:team:6781');
+ assert.equal(lineup.fieldStates.startXI.presence,'provider_missing');
+ assert.equal(lineup.fieldStates.substitutes.presence,'provider_missing');
+ assert.equal(bundle.events[0].playerId,null);assert.equal(bundle.events[0].relatedPlayerId,null);
+ assert.equal(bundle.events.length,source.events.length);
+ assert.deepEqual(normalizeFixtureBundle(bundle),normalizeFixtureBundle(source));
+ assert.equal(JSON.stringify(source),original);
+});
+
+test('named players and manually corrected identities are never discarded as trialists',()=>{
+ for(const kind of ['named','stats','correction']){
+  const source=structuredClone(require('./fixtures/provider-trialist-1548116.json'));
+  if(kind==='named')source.lineups[0].substitutes.find(p=>p.id==='af:player:182419').name='A real named player';
+  if(kind==='stats')source.playerStats.push({playerId:'af:player:182419'});
+  if(kind==='correction')source.overrides={'events.0.playerId':{value:'af:player:182419'}};
+  assert.equal(reconcileDuplicateLineupEntries(source).report.length,0);
+ }
+});
