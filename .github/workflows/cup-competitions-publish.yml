@@ -51,6 +51,18 @@ jobs:
           path: .tmp/cups/public/catalog.json
           retention-days: 30
           if-no-files-found: warn
+      - name: Preserve cup refresh comparison even when publication is rejected
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cup-refresh-diagnostics-${{ github.run_id }}
+          path: |
+            .tmp/cups/refresh-report.json
+            .tmp/cups/previous-snapshots.json
+            .tmp/cups/snapshot.json
+            .tmp/cups/summary.json
+          if-no-files-found: ignore
+          retention-days: 14
   verify:
     needs: publish
     runs-on: ubuntu-latest
