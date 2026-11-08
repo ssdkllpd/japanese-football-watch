@@ -122,8 +122,7 @@
   text-align: center;
 }
 
-.player-stats-row:first-child,
-.team-stats-row:first-child {
+.player-stats-row:first-child {
   border-top: 0;
 }
 
@@ -151,29 +150,6 @@
 
 .player-stat-person small {
   color: var(--muted);
-}
-
-.team-stats-table {
-  min-width: 760px;
-}
-
-.team-stats-row {
-  display: grid;
-  grid-template-columns: minmax(190px, 1fr) repeat(8, 48px) 64px;
-  align-items: center;
-  min-height: 44px;
-  padding: 5px 8px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-  text-align: center;
-}
-
-.team-stats-row.is-link {
-  cursor: pointer;
-}
-
-.team-stats-row.is-link:hover {
-  background: var(--panel2);
 }
 
 .logo-fallback {

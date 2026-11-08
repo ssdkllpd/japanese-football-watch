@@ -14,6 +14,11 @@ test('canonical routes preserve entity ids, tabs and season namespaces', () => {
     },
   );
   assert.equal(router.parseHash('#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A2026&tab=standings').tab, 'standings');
+  const oldTeams = router.parseHash('#/competitions/af%3Acompetition%3A39?competitionSeason=af%3Aseason%3A39%3A2026&date=2026-09-01&tab=teams');
+  assert.equal(oldTeams.tab, 'standings');
+  assert.equal(oldTeams.shouldReplace, true);
+  assert.equal(oldTeams.canonicalHash, router.competitionHash('af:competition:39', 'af:season:39:2026', 'standings', '2026-09-01'));
+  assert.equal(router.competitionHash('af:competition:39', 'af:season:39:2026', 'teams'), router.competitionHash('af:competition:39', 'af:season:39:2026', 'standings'));
 });
 
 test('match filters are canonical and live=1 is normalized once', () => {
