@@ -74,6 +74,42 @@ function reconcileDuplicateLineupEntries(bundle) {
       emitted.add(player.id);return [resolved.get(player.id)];
     });
   }
+  // Remaining duplicate IDs cannot identify a single appearance. In particular,
+  // a starter must never silently win over a substitute with the same ID: the
+  // provider can attach a defender's identity to a goalkeeper's lineup slot.
+  // Quarantine only the disputed identity, retaining every source entry in the
+  // publication report and leaving the immutable source document untouched.
+  const appearances=new Map();
+  for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
+    for(const player of lineup[role]||[]) {
+      if(!/^af:player:[1-9]\d*$/.test(player.id||'')||player.id!==`af:player:${player.providerId}`)continue;
+      if(!appearances.has(player.id))appearances.set(player.id,[]);
+      appearances.get(player.id).push({teamId:lineup.teamId,listRole:role,...player});
+    }
+  }
+  for(const [id,entries]of appearances) {
+    if(entries.length<2)continue;
+    for(const lineup of next.lineups||[])for(const role of ['startXI','substitutes']) {
+      if(!lineup[role]?.some(player=>player.id===id))continue;
+      lineup[role]=lineup[role].filter(player=>player.id!==id);
+      lineup.fieldStates={...lineup.fieldStates,[role]:{presence:'provider_missing'}};
+    }
+    const sourceStats=(next.playerStats||[]).filter(stat=>stat.playerId===id);
+    if(sourceStats.length) {
+      next.playerStats=next.playerStats.filter(stat=>stat.playerId!==id);
+      next.sectionStates={...next.sectionStates,playerStats:{presence:'provider_missing'}};
+    }
+    const sourceEvents=[];
+    for(const event of next.events||[]) {
+      if(event.playerId===id||event.relatedPlayerId===id)sourceEvents.push(structuredClone(event));
+      for(const [key,nameKey]of [['playerId','playerName'],['relatedPlayerId','relatedPlayerName']]) {
+        if(event[key]!==id)continue;
+        event[key]=null;delete event[nameKey];
+      }
+    }
+    report.push({playerId:id,sourceCount:entries.length,sourceEntries:entries,sourceStats,sourceEvents,
+      reason:'ambiguous_provider_lineup_identity'});
+  }
   return {bundle:next,report};
 }
 
